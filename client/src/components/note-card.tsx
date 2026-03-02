@@ -24,6 +24,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
 
+import { useSkills } from "@/hooks/use-skills";
+import { Badge } from "@/components/ui/badge";
+
 interface NoteCardProps {
   note: Note;
   onEdit: (note: Note) => void;
@@ -33,6 +36,7 @@ interface NoteCardProps {
 export function NoteCard({ note, onEdit, index }: NoteCardProps) {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const deleteNote = useDeleteNote();
+  const { data: allSkills } = useSkills();
   const { toast } = useToast();
 
   const handleDelete = () => {
@@ -53,10 +57,13 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
     });
   };
 
-  // Convert generic skills string into array for badges, or empty if none
-  const skillsArray = note.skills 
-    ? note.skills.split(',').map(s => s.trim()).filter(Boolean)
-    : [];
+  // Convert skill IDs into actual skill objects
+  const practicedSkills = (note.skillIds || [])
+    .map(id => allSkills?.find(s => s.id === id))
+    .filter((s): s is NonNullable<typeof s> => !!s);
+
+  // Calculate total difficulty
+  const totalDifficulty = practicedSkills.reduce((acc, s) => acc + s.difficulty, 0);
 
   // Determine animation delay class based on index (cap at 5 for simplicity)
   const staggerClass = `stagger-${Math.min(index + 1, 5)}`;
@@ -77,11 +84,17 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary text-secondary-foreground">
               <Calendar className="w-4 h-4" />
             </div>
-            <span>
-              {/* Parse date carefully handling string formats */}
-              {format(new Date(note.date), "MMMM d, yyyy")}
-              {note.time && ` at ${note.time}`}
-            </span>
+            <div className="flex flex-col">
+              <span>
+                {format(new Date(note.date), "MMMM d, yyyy")}
+                {note.time && ` at ${note.time}`}
+              </span>
+              {totalDifficulty > 0 && (
+                <span className="text-[10px] text-primary font-bold">
+                  Total Difficulty: {totalDifficulty.toFixed(1)}
+                </span>
+              )}
+            </div>
           </div>
           
           <div className="flex items-center gap-3">
@@ -116,16 +129,20 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
           </p>
 
           {/* Skills */}
-          {skillsArray.length > 0 && (
+          {practicedSkills.length > 0 && (
             <div className="flex flex-wrap gap-2 pt-2">
-              {skillsArray.map((skill, i) => (
-                <span 
-                  key={i} 
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-secondary text-secondary-foreground"
-                >
-                  <Activity className="w-3 h-3 opacity-50" />
-                  {skill}
-                </span>
+              {practicedSkills.map((skill, i) => (
+                <div key={`${skill.id}-${i}`} className="flex flex-col items-center gap-0.5">
+                  <Badge 
+                    variant="outline"
+                    className="px-2 py-0.5 rounded-lg text-[10px] font-mono bg-secondary/30 text-secondary-foreground flex items-center gap-1 border-border/40"
+                  >
+                    {skill.code}
+                  </Badge>
+                  <span className="text-[9px] text-muted-foreground font-mono leading-none">
+                    {skill.difficulty.toFixed(1)}
+                  </span>
+                </div>
               ))}
             </div>
           )}
