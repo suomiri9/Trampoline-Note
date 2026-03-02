@@ -10,6 +10,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertSkillSchema, type Skill } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 export default function SkillsPage() {
   const { data: allItems, createSkill, deleteSkill, updateSkill, isCreating, isUpdating } = useSkills();
@@ -265,55 +267,57 @@ export default function SkillsPage() {
                   {editingSkill && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <FormLabel>Connection Name</FormLabel>
-                  <Input value={connName} onChange={e => setConnName(e.target.value)} placeholder="e.g. Barani + Back Tuck" />
-                </div>
-                <div className="space-y-2">
-                  <FormLabel>Combined Code</FormLabel>
-                  <Input value={connCode} onChange={e => setConnCode(e.target.value)} placeholder="e.g. Ba+BT" />
-                </div>
-                
-                <div className="space-y-2">
-                  <FormLabel>Build Sequence</FormLabel>
-                  <Select onValueChange={addSkillToConn}>
-                    <SelectTrigger><SelectValue placeholder="Add skill to sequence..." /></SelectTrigger>
-                    <SelectContent>
-                      {skills?.sort((a,b) => b.difficulty - a.difficulty).map(s => (
-                        <SelectItem key={s.id} value={s.id.toString()}>
-                          <span className="font-mono mr-2">{s.code}</span> {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Connection Name</label>
+                    <Input value={connName} onChange={e => setConnName(e.target.value)} placeholder="e.g. Barani + Back Tuck" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Combined Code</label>
+                    <Input value={connCode} onChange={e => setConnCode(e.target.value)} placeholder="e.g. Ba+BT" />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Build Sequence</label>
+                    <Select onValueChange={addSkillToConn}>
+                      <SelectTrigger><SelectValue placeholder="Add skill to sequence..." /></SelectTrigger>
+                      <SelectContent>
+                        {skills?.sort((a,b) => b.difficulty - a.difficulty).map(s => (
+                          <SelectItem key={s.id} value={s.id.toString()}>
+                            <span className="font-mono mr-2">{s.code}</span> {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div className="min-h-[100px] border rounded-lg p-2 bg-muted/30 flex flex-wrap gap-2 items-start">
-                  {connSkillIds.map((id, idx) => {
-                    const s = skills?.find(sk => sk.id === id);
-                    return (
-                      <Badge key={idx} variant="secondary" className="pr-1 gap-1">
-                        {s?.code}
-                        <button onClick={() => removeSkillFromConn(idx)}><X className="h-3 w-3" /></button>
-                      </Badge>
-                    );
-                  })}
-                  {connSkillIds.length === 0 && <span className="text-xs text-muted-foreground p-2">No skills added yet</span>}
-                </div>
+                  <div className="min-h-[100px] border rounded-lg p-2 bg-muted/30 flex flex-wrap gap-2 items-start">
+                    {connSkillIds.map((id, idx) => {
+                      const s = skills?.find(sk => sk.id === id);
+                      return (
+                        <Badge key={idx} variant="secondary" className="pr-1 gap-1">
+                          {s?.code}
+                          <button onClick={() => removeSkillFromConn(idx)}><X className="h-3 w-3" /></button>
+                        </Badge>
+                      );
+                    })}
+                    {connSkillIds.length === 0 && <span className="text-xs text-muted-foreground p-2">No skills added yet</span>}
+                  </div>
 
-                <div className="pt-2 flex justify-between items-center">
-                  <span className="text-sm font-medium">Total DD:</span>
-                  <span className="font-bold text-primary">
-                    {connSkillIds.reduce((acc, id) => acc + (skills?.find(s => s.id === id)?.difficulty || 0), 0).toFixed(1)}
-                  </span>
-                </div>
+                  <div className="pt-2 flex justify-between items-center">
+                    <span className="text-sm font-medium">Total DD:</span>
+                    <span className="font-bold text-primary">
+                      {connSkillIds.reduce((acc, id) => acc + (skills?.find(s => s.id === id)?.difficulty || 0), 0).toFixed(1)}
+                    </span>
+                  </div>
 
-                <div className="flex gap-2">
-                  <Button className="flex-1" onClick={onConnectionSubmit} disabled={isCreating || isUpdating || !connName || !connCode || connSkillIds.length === 0}>
-                    {editingSkill ? "Update Connection" : "Save Connection"}
-                  </Button>
-                  {editingSkill && <Button variant="outline" onClick={cancelEditing}>Cancel</Button>}
+                  <div className="flex gap-2">
+                    <Button className="flex-1" onClick={onConnectionSubmit} disabled={isCreating || isUpdating || !connName || !connCode || connSkillIds.length === 0}>
+                      {editingSkill ? "Update Connection" : "Save Connection"}
+                    </Button>
+                    {editingSkill && <Button variant="outline" onClick={cancelEditing}>Cancel</Button>}
+                  </div>
                 </div>
               </CardContent>
             </Card>
