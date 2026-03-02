@@ -162,29 +162,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     form.setValue('skills', JSON.stringify(newSkills));
   };
 
-  const totalDifficulty = selectedSkills.reduce((sum, item, idx) => {
+  const totalDifficulty = selectedSkills.reduce((sum, item) => {
     if (item.id === -1) return sum;
-    
-    // Find the group this item belongs to
-    let groupStart = idx;
-    while (groupStart > 0 && selectedSkills[groupStart - 1].id !== -1) {
-      groupStart--;
-    }
-    
-    // Only process the first item of each group to avoid overcounting
-    if (idx !== groupStart) return sum;
-
-    // Calculate sum of difficulty for all items in this group
-    let groupDD = 0;
-    let i = groupStart;
-    while (i < selectedSkills.length && selectedSkills[i].id !== -1) {
-      const skill = allItems?.find(s => s.id === selectedSkills[i].id);
-      groupDD += (skill?.difficulty || 0);
-      i++;
-    }
-
-    // Multiply the group's total difficulty by the reps (stored on the first item)
-    return sum + (groupDD * (item.reps || 1));
+    const skill = allItems?.find(s => s.id === item.id);
+    return sum + (skill?.difficulty || 0);
   }, 0);
 
   const onSubmit = (values: FormValues) => {
@@ -320,42 +301,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     </div>
                                   );
                                 })}
-                              </div>
-                              <div className="flex items-center gap-1 flex-none">
-                                <span className="text-[9px] text-muted-foreground">Sets/Reps:</span>
-                                <div className="flex items-center border rounded-md bg-background overflow-hidden">
-                                  <button 
-                                    type="button" 
-                                    className="h-6 w-8 flex items-center justify-center hover:bg-secondary text-lg font-bold border-r active:bg-secondary/80 touch-manipulation select-none"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      const currentVal = currentConnection[0]?.reps || 1;
-                                      const newVal = Math.max(1, currentVal - 1);
-                                      const indices = currentConnection.map((_, i) => connectionIdx + i);
-                                      updateReps(indices, newVal);
-                                    }}
-                                  >
-                                    -
-                                  </button>
-                                  <div className="h-6 w-8 flex items-center justify-center text-xs font-bold bg-transparent select-none">
-                                    {currentConnection[0]?.reps || 1}
-                                  </div>
-                                  <button 
-                                    type="button" 
-                                    className="h-6 w-8 flex items-center justify-center hover:bg-secondary text-lg font-bold border-l active:bg-secondary/80 touch-manipulation select-none"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      const currentVal = currentConnection[0]?.reps || 1;
-                                      const newVal = currentVal + 1;
-                                      const indices = currentConnection.map((_, i) => connectionIdx + i);
-                                      updateReps(indices, newVal);
-                                    }}
-                                  >
-                                    +
-                                  </button>
-                                </div>
                               </div>
                             </div>
                           </div>
