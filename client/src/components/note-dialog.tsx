@@ -299,62 +299,64 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               )}>
                                 {isSingle ? "Single Practice" : "Connected Sequence"}
                               </span>
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[9px] text-muted-foreground">Sets/Reps:</span>
-                                  <div className="flex items-center border rounded-md bg-background overflow-hidden">
-                                    <button 
-                                      type="button" 
-                                      className="h-6 w-8 flex items-center justify-center hover:bg-secondary text-lg font-bold border-r active:bg-secondary/80 touch-manipulation select-none"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        const currentVal = currentConnection[0]?.reps || 1;
-                                        const newVal = Math.max(1, currentVal - 1);
-                                        const indices = currentConnection.map((_, i) => connectionIdx + i);
-                                        updateReps(indices, newVal);
-                                      }}
-                                    >
-                                      -
-                                    </button>
-                                    <div className="h-6 w-10 flex items-center justify-center text-xs font-bold bg-transparent select-none">
-                                      {currentConnection[0]?.reps || 1}
-                                    </div>
-                                    <button 
-                                      type="button" 
-                                      className="h-6 w-8 flex items-center justify-center hover:bg-secondary text-lg font-bold border-l active:bg-secondary/80 touch-manipulation select-none"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        const currentVal = currentConnection[0]?.reps || 1;
-                                        const newVal = currentVal + 1;
-                                        const indices = currentConnection.map((_, i) => connectionIdx + i);
-                                        updateReps(indices, newVal);
-                                      }}
-                                    >
-                                      +
-                                    </button>
-                                  </div>
-                                </div>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                              {currentConnection.map((item, subIdx) => {
-                                const skill = allItems?.find(s => s.id === item.id);
-                                const originalIdx = connectionIdx + subIdx;
-                                return (
-                                  <div key={originalIdx} className="flex items-center gap-1.5">
-                                    <Badge variant="outline" className={cn(
-                                      "font-mono text-[10px] bg-background pr-1 gap-1",
-                                      !isSingle && "border-primary/30 text-primary"
-                                    )}>
-                                      {skill?.code}
-                                      <button type="button" onClick={() => removeSkill(originalIdx)} className="hover:text-destructive transition-colors">
-                                        <Trash2 className="w-2.5 h-2.5" />
-                                      </button>
-                                    </Badge>
-                                    {subIdx < currentConnection.length - 1 && <span className="text-primary/30 text-xs">+</span>}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex flex-wrap gap-2 flex-1">
+                                {currentConnection.map((item, subIdx) => {
+                                  const skill = allItems?.find(s => s.id === item.id);
+                                  const originalIdx = connectionIdx + subIdx;
+                                  return (
+                                    <div key={originalIdx} className="flex items-center gap-1.5">
+                                      <Badge variant="outline" className={cn(
+                                        "font-mono text-[10px] bg-background pr-1 gap-1",
+                                        !isSingle && "border-primary/30 text-primary"
+                                      )}>
+                                        {skill?.code}
+                                        <button type="button" onClick={() => removeSkill(originalIdx)} className="hover:text-destructive transition-colors">
+                                          <Trash2 className="w-2.5 h-2.5" />
+                                        </button>
+                                      </Badge>
+                                      {subIdx < currentConnection.length - 1 && <span className="text-primary/30 text-xs">+</span>}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <div className="flex items-center gap-1 flex-none">
+                                <span className="text-[9px] text-muted-foreground">Sets/Reps:</span>
+                                <div className="flex items-center border rounded-md bg-background overflow-hidden">
+                                  <button 
+                                    type="button" 
+                                    className="h-6 w-8 flex items-center justify-center hover:bg-secondary text-lg font-bold border-r active:bg-secondary/80 touch-manipulation select-none"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      const currentVal = currentConnection[0]?.reps || 1;
+                                      const newVal = Math.max(1, currentVal - 1);
+                                      const indices = currentConnection.map((_, i) => connectionIdx + i);
+                                      updateReps(indices, newVal);
+                                    }}
+                                  >
+                                    -
+                                  </button>
+                                  <div className="h-6 w-8 flex items-center justify-center text-xs font-bold bg-transparent select-none">
+                                    {currentConnection[0]?.reps || 1}
                                   </div>
-                                );
-                              })}
+                                  <button 
+                                    type="button" 
+                                    className="h-6 w-8 flex items-center justify-center hover:bg-secondary text-lg font-bold border-l active:bg-secondary/80 touch-manipulation select-none"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      const currentVal = currentConnection[0]?.reps || 1;
+                                      const newVal = currentVal + 1;
+                                      const indices = currentConnection.map((_, i) => connectionIdx + i);
+                                      updateReps(indices, newVal);
+                                    }}
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         );
