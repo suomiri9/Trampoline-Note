@@ -128,6 +128,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   };
 
   const totalDifficulty = selectedSkillIds.reduce((sum, id) => {
+    if (id === -1) return sum;
     const skill = allItems?.find(s => s.id === id);
     return sum + (skill?.difficulty || 0);
   }, 0);
@@ -213,45 +214,70 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </div>
                 </div>
                 <div className="divide-y divide-border/30 max-h-[300px] overflow-y-auto">
-                  {selectedSkillIds.map((id, index) => {
-                    if (id === -1) {
-                      return (
-                        <div key={`conn-${index}`} className="flex items-center justify-between bg-primary/5 px-3 py-1 group hover:bg-primary/10 transition-colors border-y border-primary/10 first:border-t-0 last:border-b-0">
-                          <div className="flex items-center gap-2">
-                            <Plus className="w-2.5 h-2.5 text-primary/40 rotate-45" />
-                            <span className="text-[9px] font-bold text-primary/60 uppercase tracking-widest">Connection Break</span>
+                  {(() => {
+                    const rows: JSX.Element[] = [];
+                    let currentConnection: number[] = [];
+                    
+                    const flushConnection = (idx: number) => {
+                      if (currentConnection.length === 0) return;
+                      const connectionIdx = idx - currentConnection.length;
+                      rows.push(
+                        <div key={`group-${connectionIdx}`} className="bg-primary/5 p-2 space-y-2 border-y border-primary/10">
+                          <div className="flex items-center justify-between px-1">
+                            <span className="text-[9px] font-bold text-primary/60 uppercase tracking-widest">Connected Sequence</span>
                           </div>
-                          <Button type="button" variant="ghost" size="icon" className="h-5 w-5 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeSkill(index)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          <div className="flex flex-wrap gap-2">
+                            {currentConnection.map((id, subIdx) => {
+                              const skill = allItems?.find(s => s.id === id);
+                              const originalIdx = connectionIdx + subIdx;
+                              return (
+                                <div key={originalIdx} className="flex items-center gap-1.5">
+                                  <Badge variant="outline" className="font-mono text-[10px] bg-background pr-1 gap-1">
+                                    {skill?.code}
+                                    <button type="button" onClick={() => removeSkill(originalIdx)} className="hover:text-destructive transition-colors">
+                                      <Trash2 className="w-2.5 h-2.5" />
+                                    </button>
+                                  </Badge>
+                                  {subIdx < currentConnection.length - 1 && <span className="text-primary/30 text-xs">+</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                      currentConnection = [];
+                    };
+
+                    selectedSkillIds.forEach((id, index) => {
+                      if (id === -1) {
+                        flushConnection(index);
+                        rows.push(
+                          <div key={`sep-${index}`} className="flex items-center justify-between bg-muted/30 px-3 py-1 group transition-colors">
+                            <div className="flex items-center gap-2">
+                              <Plus className="w-2.5 h-2.5 text-muted-foreground/40 rotate-45" />
+                              <span className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest">Break</span>
+                            </div>
+                            <Button type="button" variant="ghost" size="icon" className="h-5 w-5 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeSkill(index)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        );
+                      } else {
+                        currentConnection.push(id);
+                      }
+                    });
+                    flushConnection(selectedSkillIds.length);
+
+                    if (rows.length === 0) {
+                      return (
+                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground/40 space-y-2">
+                          <GripVertical className="w-6 h-6 opacity-20" />
+                          <p className="text-xs font-medium">Select items or start a connection</p>
                         </div>
                       );
                     }
-                    const skill = allItems?.find(s => s.id === id);
-                    if (!skill) return null;
-                    return (
-                      <div key={`${id}-${index}`} className="flex items-center justify-between bg-card/50 px-3 py-2 group hover:bg-secondary/5 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] font-mono text-muted-foreground/60 w-4">{index + 1}.</span>
-                          <Badge variant="outline" className="font-mono text-[10px] bg-background">{skill.code}</Badge>
-                          <span className="text-sm font-medium truncate max-w-[180px]">{skill.name}</span>
-                          {skill.isDrill === 1 && <Badge variant="secondary" className="text-[8px] h-3 px-1">Drill</Badge>}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-mono text-muted-foreground">{skill.difficulty.toFixed(1)}</span>
-                          <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeSkill(index)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {selectedSkillIds.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground/40 space-y-2">
-                      <GripVertical className="w-6 h-6 opacity-20" />
-                      <p className="text-xs font-medium">Select items to build your session list</p>
-                    </div>
-                  )}
+                    return rows;
+                  })()}
                 </div>
               </div>
             </div>
