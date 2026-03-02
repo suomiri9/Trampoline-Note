@@ -273,23 +273,44 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         <div className="flex-1 overflow-y-auto min-h-0 px-6 pb-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <FormField control={form.control} name="date" render={({ field }) => (
-                  <FormItem className="flex-1"><FormLabel>Date</FormLabel>
-                    <Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className="w-full text-left font-normal rounded-xl h-11">{field.value ? format(field.value, "PPP") : "Pick a date"}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 rounded-xl"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date()} initialFocus /></PopoverContent></Popover>
-                  </FormItem>
-                )} />
-                <div className="flex gap-2 items-end">
-                  <FormField control={form.control} name="startTime" render={({ field }) => (
-                    <FormItem className="w-24"><FormLabel>Start</FormLabel><FormControl><Input type="time" className="rounded-xl h-11" {...field} value={field.value || ""} /></FormControl></FormItem>
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <FormField control={form.control} name="date" render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel>Date</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button variant="outline" className="w-full text-left font-normal rounded-xl h-11">
+                              {field.value ? format(field.value, "PPP") : "Pick a date"}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 rounded-xl">
+                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date()} initialFocus />
+                        </PopoverContent>
+                      </Popover>
+                    </FormItem>
                   )} />
-                  <FormField control={form.control} name="endTime" render={({ field }) => (
-                    <FormItem className="w-24"><FormLabel>End</FormLabel><FormControl><Input type="time" className="rounded-xl h-11" {...field} value={field.value || ""} /></FormControl></FormItem>
-                  )} />
+                  <div className="flex gap-2 items-end">
+                    <FormField control={form.control} name="startTime" render={({ field }) => (
+                      <FormItem className="w-24"><FormLabel>Start</FormLabel><FormControl><Input type="time" className="rounded-xl h-11" {...field} value={field.value || ""} /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="endTime" render={({ field }) => (
+                      <FormItem className="w-24"><FormLabel>End</FormLabel><FormControl><Input type="time" className="rounded-xl h-11" {...field} value={field.value || ""} /></FormControl></FormItem>
+                    )} />
+                  </div>
                 </div>
                 <FormField control={form.control} name="rating" render={({ field }) => (
-                  <FormItem className="flex-1"><FormLabel>Rating</FormLabel><FormControl><div className="h-11 flex items-center"><StarRating value={field.value} onChange={field.onChange} /></div></FormControl></FormItem>
+                  <FormItem className="flex-1">
+                    <FormLabel>Rating</FormLabel>
+                    <FormControl>
+                      <div className="h-11 flex items-center bg-secondary/20 rounded-xl px-3 border border-border/50 w-fit">
+                        <StarRating value={field.value} onChange={field.onChange} />
+                      </div>
+                    </FormControl>
+                  </FormItem>
                 )} />
               </div>
 
