@@ -22,7 +22,7 @@ export const skills = pgTable("skills", {
 export const routines = pgTable("routines", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  skillIds: integer("skill_ids").array().notNull(), // Array of 10 skill IDs
+  skillIds: integer("skill_ids").array().notNull(), // Dynamic array of skill IDs
 });
 
 export const insertNoteSchema = createInsertSchema(notes).omit({ id: true });
