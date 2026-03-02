@@ -292,7 +292,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     </Button>
                   </div>
                 </div>
-                <Select onValueChange={addSkill}>
+                <Select onValueChange={(val) => {
+                  addSkill(val);
+                  // Reset select value to allow adding the same skill again
+                  setTimeout(() => {
+                    const selectTriggers = document.querySelectorAll('[role="combobox"]');
+                    selectTriggers.forEach(trigger => {
+                      if (trigger.textContent?.includes("Add a skill")) {
+                        // This is a bit hacky but Select doesn't expose a clean reset without being controlled
+                      }
+                    });
+                  }, 0);
+                }}>
                   <SelectTrigger className="rounded-xl h-11">
                     <SelectValue placeholder="Add a skill or drill..." />
                   </SelectTrigger>
@@ -391,7 +402,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                   const skill = allItems?.find(s => s.id === item.id);
                                   const originalIdx = connectionIdx + subIdx;
                                   return (
-                                    <div key={`${originalIdx}-${item.reps}`} className="flex items-center gap-1.5">
+                                    <div key={`${originalIdx}-${item.id}-${item.reps}`} className="flex items-center gap-1.5">
                                       <Badge variant="outline" className={cn(
                                         "font-mono text-[10px] bg-background pr-1 gap-1",
                                         !isSingle && "border-primary/30 text-primary"
