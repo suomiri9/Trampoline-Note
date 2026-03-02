@@ -216,7 +216,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-[24px] border-border/50 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] w-[95vw] p-0 overflow-hidden rounded-[24px] border-border/50 max-h-[90vh] overflow-y-auto">
         <div className="p-6 pb-4">
           <DialogHeader>
             <DialogTitle className="text-2xl font-display">{isEditing ? "Edit Session" : "Log Training Session"}</DialogTitle>
