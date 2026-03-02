@@ -48,8 +48,7 @@ const formSchema = z.object({
   date: z.date({
     required_error: "A date is required.",
   }),
-  startTime: z.string().optional().nullable(),
-  endTime: z.string().optional().nullable(),
+  time: z.string().optional().nullable(),
   content: z.string().min(1, "Notes cannot be empty."),
   skills: z.string().optional().nullable(), // Store as comma-separated IDs
   rating: z.number().min(1).max(5).optional().nullable(),
@@ -81,8 +80,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     resolver: zodResolver(formSchema),
     defaultValues: {
       date: new Date(),
-      startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-      endTime: "",
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
       content: "",
       skills: "",
       rating: null,
@@ -105,8 +103,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         setSelectedSkills(skills);
         form.reset({
           date: new Date(noteToEdit.date),
-          startTime: noteToEdit.startTime || "",
-          endTime: noteToEdit.endTime || "",
+          time: noteToEdit.time || "",
           content: noteToEdit.content,
           skills: noteToEdit.skills || "",
           rating: noteToEdit.rating || null,
@@ -116,8 +113,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         setIsConnectMode(false);
         form.reset({
           date: new Date(),
-          startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-          endTime: "",
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
           content: "",
           skills: "",
           rating: null,
@@ -234,8 +230,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     const payload = {
       ...values,
       date: values.date.toISOString(), 
-      startTime: values.startTime || null,
-      endTime: values.endTime || null,
+      time: values.time || null,
       skills: JSON.stringify(selectedSkills) || null,
       rating: values.rating || null,
     };
@@ -274,21 +269,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         <div className="flex-1 overflow-y-auto min-h-0 px-6 pb-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <FormField control={form.control} name="date" render={({ field }) => (
-                  <FormItem className="col-span-2 sm:col-span-1"><FormLabel>Date</FormLabel>
-                    <Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className="w-full text-left font-normal rounded-xl h-11 px-3">{field.value ? format(field.value, "MMM d") : "Pick date"}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger>
+                  <FormItem className="flex-1"><FormLabel>Date</FormLabel>
+                    <Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className="w-full text-left font-normal rounded-xl h-11">{field.value ? format(field.value, "PPP") : "Pick a date"}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger>
                     <PopoverContent className="w-auto p-0 rounded-xl"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date()} initialFocus /></PopoverContent></Popover>
                   </FormItem>
                 )} />
-                <FormField control={form.control} name="startTime" render={({ field }) => (
-                  <FormItem><FormLabel>Start</FormLabel><FormControl><Input type="time" className="rounded-xl h-11" {...field} value={field.value || ""} /></FormControl></FormItem>
-                )} />
-                <FormField control={form.control} name="endTime" render={({ field }) => (
-                  <FormItem><FormLabel>End</FormLabel><FormControl><Input type="time" className="rounded-xl h-11" {...field} value={field.value || ""} /></FormControl></FormItem>
+                <FormField control={form.control} name="time" render={({ field }) => (
+                  <FormItem className="w-32"><FormLabel>Time</FormLabel><FormControl><Input type="time" className="rounded-xl h-11" {...field} value={field.value || ""} /></FormControl></FormItem>
                 )} />
                 <FormField control={form.control} name="rating" render={({ field }) => (
-                  <FormItem className="col-span-2 sm:col-span-1"><FormLabel>Rating</FormLabel><FormControl><div className="h-11 flex items-center justify-center bg-secondary/20 rounded-xl"><StarRating value={field.value} onChange={field.onChange} /></div></FormControl></FormItem>
+                  <FormItem className="flex-1"><FormLabel>Rating</FormLabel><FormControl><div className="h-11 flex items-center"><StarRating value={field.value} onChange={field.onChange} /></div></FormControl></FormItem>
                 )} />
               </div>
 
