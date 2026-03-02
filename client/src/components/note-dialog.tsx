@@ -313,7 +313,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                   const skill = allItems?.find(s => s.id === item.id);
                                   const originalIdx = connectionIdx + subIdx;
                                   return (
-                                    <div key={originalIdx} className="flex items-center gap-1.5">
+                                    <div key={`${originalIdx}-${item.reps}`} className="flex items-center gap-1.5">
                                       <Badge variant="outline" className={cn(
                                         "font-mono text-[10px] bg-background pr-1 gap-1",
                                         !isSingle && "border-primary/30 text-primary"
@@ -335,6 +335,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     return acc + (skill?.difficulty || 0);
                                   }, 0);
                                   const reps = currentConnection[0]?.reps || 1;
+                                  const groupIndices = currentConnection.map((_, i) => connectionIdx + i);
+                                  
                                   return (
                                     <>
                                       <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10">
@@ -351,16 +353,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
-                                            const currentVal = currentConnection[0]?.reps || 1;
-                                            const newVal = Math.max(1, currentVal - 1);
-                                            const indices = currentConnection.map((_, i) => connectionIdx + i);
-                                            updateReps(indices, newVal);
+                                            updateReps(groupIndices, reps - 1);
                                           }}
                                         >
                                           -
                                         </button>
                                         <div className="h-7 w-10 flex items-center justify-center text-xs font-bold bg-transparent select-none">
-                                          {currentConnection[0]?.reps || 1}
+                                          {reps}
                                         </div>
                                         <button 
                                           type="button" 
@@ -368,10 +367,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
-                                            const currentVal = currentConnection[0]?.reps || 1;
-                                            const newVal = currentVal + 1;
-                                            const indices = currentConnection.map((_, i) => connectionIdx + i);
-                                            updateReps(indices, newVal);
+                                            updateReps(groupIndices, reps + 1);
                                           }}
                                         >
                                           +
