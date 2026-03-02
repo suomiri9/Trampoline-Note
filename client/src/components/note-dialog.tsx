@@ -306,49 +306,42 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               )}>
                                 {isSingle ? "Single Practice" : "Connected Sequence"}
                               </span>
-                              <div className="flex items-center gap-1">
-                                <span className="text-[9px] text-muted-foreground">Reps:</span>
-                                <div className="flex items-center border rounded-md bg-background overflow-hidden">
-                                  <Button 
-                                    type="button" 
-                                    variant="ghost"
-                                    className="h-5 w-6 px-0 hover:bg-secondary text-[10px] border-r rounded-none"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      const val = (currentConnection[0]?.reps || 1) - 1;
-                                      const indices = currentConnection.map((_, i) => connectionIdx + i);
-                                      updateReps(indices, val);
-                                    }}
-                                  >-</Button>
-                                  <input 
-                                    type="number" 
-                                    className="h-5 w-8 text-[10px] p-0 text-center border-none focus:ring-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-transparent" 
-                                    value={currentConnection[0]?.reps || 1}
-                                    onChange={(e) => {
-                                      const val = parseInt(e.target.value) || 1;
-                                      const indices = currentConnection.map((_, i) => connectionIdx + i);
-                                      updateReps(indices, val);
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') e.preventDefault();
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                  <Button 
-                                    type="button" 
-                                    variant="ghost"
-                                    className="h-5 w-6 px-0 hover:bg-secondary text-[10px] border-l rounded-none"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      const val = (currentConnection[0]?.reps || 1) + 1;
-                                      const indices = currentConnection.map((_, i) => connectionIdx + i);
-                                      updateReps(indices, val);
-                                    }}
-                                  >+</Button>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[9px] text-muted-foreground">Sets/Reps:</span>
+                                  <div className="flex items-center border rounded-md bg-background overflow-hidden">
+                                    <button 
+                                      type="button" 
+                                      className="h-6 w-8 flex items-center justify-center hover:bg-secondary text-lg font-bold border-r active:bg-secondary/80 touch-manipulation select-none"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const currentVal = currentConnection[0]?.reps || 1;
+                                        const newVal = Math.max(1, currentVal - 1);
+                                        const indices = currentConnection.map((_, i) => connectionIdx + i);
+                                        updateReps(indices, newVal);
+                                      }}
+                                    >
+                                      -
+                                    </button>
+                                    <div className="h-6 w-10 flex items-center justify-center text-xs font-bold bg-transparent select-none">
+                                      {currentConnection[0]?.reps || 1}
+                                    </div>
+                                    <button 
+                                      type="button" 
+                                      className="h-6 w-8 flex items-center justify-center hover:bg-secondary text-lg font-bold border-l active:bg-secondary/80 touch-manipulation select-none"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const currentVal = currentConnection[0]?.reps || 1;
+                                        const newVal = currentVal + 1;
+                                        const indices = currentConnection.map((_, i) => connectionIdx + i);
+                                        updateReps(indices, newVal);
+                                      }}
+                                    >
+                                      +
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
                             </div>
                             <div className="flex flex-wrap gap-2">
                               {currentConnection.map((item, subIdx) => {
