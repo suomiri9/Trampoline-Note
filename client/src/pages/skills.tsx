@@ -17,6 +17,7 @@ export default function SkillsPage() {
   
   const skills = allItems?.filter(item => item.isDrill === 0);
   const drills = allItems?.filter(item => item.isDrill === 1);
+  const frequentConnections = allItems?.filter(item => item.isDrill === 2);
 
   const skillForm = useForm({
     resolver: zodResolver(insertSkillSchema),
@@ -35,6 +36,16 @@ export default function SkillsPage() {
       code: "",
       difficulty: 0,
       isDrill: 1,
+    }
+  });
+
+  const connectionForm = useForm({
+    resolver: zodResolver(insertSkillSchema),
+    defaultValues: {
+      name: "",
+      code: "",
+      difficulty: 0,
+      isDrill: 2,
     }
   });
 
@@ -58,9 +69,19 @@ export default function SkillsPage() {
     drillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 1 });
   };
 
+  const onConnectionSubmit = async (values: any) => {
+    if (editingSkill) {
+      await updateSkill({ id: editingSkill.id, ...values });
+      setEditingSkill(null);
+    } else {
+      await createSkill({ ...values, isDrill: 2 });
+    }
+    connectionForm.reset({ name: "", code: "", difficulty: 0, isDrill: 2 });
+  };
+
   const startEditing = (skill: Skill) => {
     setEditingSkill(skill);
-    const form = skill.isDrill === 1 ? drillForm : skillForm;
+    const form = skill.isDrill === 2 ? connectionForm : (skill.isDrill === 1 ? drillForm : skillForm);
     form.reset({
       name: skill.name,
       code: skill.code,
@@ -72,7 +93,9 @@ export default function SkillsPage() {
   const cancelEditing = () => {
     const isDrill = editingSkill?.isDrill;
     setEditingSkill(null);
-    if (isDrill === 1) {
+    if (isDrill === 2) {
+      connectionForm.reset({ name: "", code: "", difficulty: 0, isDrill: 2 });
+    } else if (isDrill === 1) {
       drillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 1 });
     } else {
       skillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 0 });
@@ -82,9 +105,10 @@ export default function SkillsPage() {
   return (
     <div className="container mx-auto py-8 px-4">
       <Tabs defaultValue="skills" className="space-y-8" onValueChange={() => cancelEditing()}>
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="drills">Drills</TabsTrigger>
+          <TabsTrigger value="connections">Frequent Connections</TabsTrigger>
         </TabsList>
 
         <TabsContent value="skills" className="space-y-8">
@@ -187,6 +211,61 @@ export default function SkillsPage() {
                         <TableCell className="text-right space-x-2">
                           <Button variant="ghost" size="icon" onClick={() => startEditing(drill)}><Pencil className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" onClick={() => deleteSkill(drill.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="connections" className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <Card className="md:col-span-1">
+              <CardHeader>
+                <CardTitle className="flex justify-between items-center">
+                  {editingSkill ? "Edit Connection" : "Add New Frequent Connection"}
+                  {editingSkill && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Form {...connectionForm}>
+                  <form onSubmit={connectionForm.handleSubmit(onConnectionSubmit)} className="space-y-4">
+                    <FormField control={connectionForm.control} name="name" render={({ field }) => (
+                      <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} placeholder="Barani + Back Tuck" /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField control={connectionForm.control} name="code" render={({ field }) => (
+                      <FormItem><FormLabel>Combined Code</FormLabel><FormControl><Input {...field} placeholder="Ba+BT" /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField control={connectionForm.control} name="difficulty" render={({ field }) => (
+                      <FormItem><FormLabel>Total Difficulty</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <div className="flex gap-2">
+                      <Button type="submit" className="flex-1" disabled={isCreating || isUpdating}>
+                        {editingSkill ? "Update Connection" : "Add Connection"}
+                      </Button>
+                      {editingSkill && <Button type="button" variant="outline" onClick={cancelEditing}>Cancel</Button>}
+                    </div>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+            <Card className="md:col-span-2">
+              <CardHeader><CardTitle>Frequent Connections Library</CardTitle></CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Difficulty</TableHead><TableHead /></TableRow></TableHeader>
+                  <TableBody>
+                    {frequentConnections?.map((conn) => (
+                      <TableRow key={conn.id} className={editingSkill?.id === conn.id ? "bg-muted/50" : ""}>
+                        <TableCell className="font-medium">{conn.name}</TableCell>
+                        <TableCell>{conn.code}</TableCell>
+                        <TableCell>{conn.difficulty.toFixed(1)}</TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <Button variant="ghost" size="icon" onClick={() => startEditing(conn)}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => deleteSkill(conn.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                         </TableCell>
                       </TableRow>
                     ))}
