@@ -155,13 +155,16 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const updateReps = (indices: number[], reps: number) => {
     const val = Math.max(1, reps);
     setSelectedSkills(prev => {
-      const newSkills = [...prev];
-      indices.forEach(idx => {
-        if (newSkills[idx] && newSkills[idx].id !== -1) {
-          newSkills[idx] = { ...newSkills[idx], reps: val };
+      const newSkills = prev.map((item, idx) => {
+        if (indices.includes(idx) && item.id !== -1) {
+          return { ...item, reps: val };
         }
+        return item;
       });
-      form.setValue('skills', JSON.stringify(newSkills));
+      // Defer form update to avoid sync issues during render/event
+      setTimeout(() => {
+        form.setValue('skills', JSON.stringify(newSkills));
+      }, 0);
       return newSkills;
     });
   };
