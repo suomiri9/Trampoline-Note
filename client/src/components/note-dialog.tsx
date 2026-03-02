@@ -37,24 +37,13 @@ import { StarRating } from "./star-rating";
 
 // We create a frontend-specific schema that handles Date objects nicely
 // before transforming to the string format expected by the API if needed.
-import { useSkills } from "@/hooks/use-skills";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Trash2, X } from "lucide-react";
-
 const formSchema = z.object({
   date: z.date({
     required_error: "A date is required.",
   }),
   time: z.string().optional().nullable(),
   content: z.string().min(1, "Notes cannot be empty."),
-  skillIds: z.array(z.number()).default([]),
+  skills: z.string().optional().nullable(),
   rating: z.number().min(1).max(5).optional().nullable(),
 });
 
@@ -68,7 +57,6 @@ interface NoteDialogProps {
 
 export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) {
   const { toast } = useToast();
-  const { data: allSkills } = useSkills();
   const createNote = useCreateNote();
   const updateNote = useUpdateNote();
 
@@ -80,7 +68,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       date: new Date(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
       content: "",
-      skillIds: [],
+      skills: "",
       rating: null,
     },
   });
@@ -93,7 +81,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
           date: new Date(noteToEdit.date),
           time: noteToEdit.time || "",
           content: noteToEdit.content,
-          skillIds: noteToEdit.skillIds || [],
+          skills: noteToEdit.skills || "",
           rating: noteToEdit.rating || null,
         });
       } else {
@@ -101,7 +89,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
           date: new Date(),
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
           content: "",
-          skillIds: [],
+          skills: "",
           rating: null,
         });
       }
@@ -109,11 +97,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   }, [open, noteToEdit, form]);
 
   const onSubmit = (values: FormValues) => {
+    // API might expect string for date depending on Drizzle setup, but we'll 
+    // send as ISO string. Zod `createInsertSchema` will parse it.
     const payload = {
       ...values,
       date: values.date.toISOString(), 
       time: values.time || null,
-      skillIds: values.skillIds,
+      skills: values.skills || null,
       rating: values.rating || null,
     };
 
@@ -250,96 +240,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
             <FormField
               control={form.control}
-              name="skillIds"
+              name="skills"
               render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel className="text-foreground/80 font-medium text-base">Practiced Skills</FormLabel>
-                  <div className="space-y-4">
-                    <Select onValueChange={(val) => {
-                      const id = parseInt(val);
-                      if (!field.value.includes(id)) {
-                        field.onChange([...field.value, id]);
-                      }
-                    }}>
-                      <SelectTrigger className="rounded-xl h-11 border-border/60 focus-visible:ring-primary/20">
-                        <SelectValue placeholder="Add a skill..." />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        {allSkills?.map(skill => (
-                          <SelectItem key={skill.id} value={skill.id.toString()}>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="font-mono text-[10px] h-4 px-1 leading-none shrink-0">
-                                {skill.code}
-                              </Badge>
-                              <span>{skill.name}</span>
-                              <span className="text-muted-foreground ml-auto text-[10px]">({skill.difficulty.toFixed(1)})</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    {field.value.length > 0 && (
-                      <div className="border border-border/40 rounded-xl overflow-hidden bg-muted/5">
-                        <table className="w-full text-sm">
-                          <thead className="bg-muted/30 border-b border-border/40">
-                            <tr>
-                              <th className="text-left py-2 px-3 font-semibold text-muted-foreground uppercase text-[10px]">Skill</th>
-                              <th className="text-center py-2 px-3 font-semibold text-muted-foreground uppercase text-[10px] w-12">Diff</th>
-                              <th className="w-10"></th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border/40">
-                            {field.value.map((id, idx) => {
-                              const skill = allSkills?.find(s => s.id === id);
-                              return (
-                                <tr key={`${id}-${idx}`} className="group hover:bg-muted/40 transition-colors">
-                                  <td className="py-2 px-3">
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="outline" className="font-mono text-[10px] h-4 px-1 shrink-0">
-                                        {skill?.code || "???"}
-                                      </Badge>
-                                      <span className="truncate max-w-[150px]">{skill?.name || "Unknown Skill"}</span>
-                                    </div>
-                                  </td>
-                                  <td className="py-2 px-3 text-center font-mono text-xs font-medium">
-                                    {skill?.difficulty.toFixed(1) || "0.0"}
-                                  </td>
-                                  <td className="py-2 px-1">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
-                                      onClick={() => {
-                                        const newSkills = [...field.value];
-                                        newSkills.splice(idx, 1);
-                                        field.onChange(newSkills);
-                                      }}
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </Button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                          <tfoot className="bg-muted/10 border-t border-border/40">
-                            <tr>
-                              <td className="py-2 px-3 font-bold text-xs">Total Difficulty</td>
-                              <td className="py-2 px-3 text-center font-bold font-mono text-primary text-sm">
-                                {field.value.reduce((acc, id) => {
-                                  const skill = allSkills?.find(s => s.id === id);
-                                  return acc + (skill?.difficulty || 0);
-                                }, 0).toFixed(1)}
-                              </td>
-                              <td></td>
-                            </tr>
-                          </tfoot>
-                        </table>
-                      </div>
-                    )}
-                  </div>
+                <FormItem>
+                  <FormLabel className="text-foreground/80 font-medium">Skills Practiced</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="e.g. front flip, barani, double full..." 
+                      className="rounded-xl h-11 border-border/60 focus-visible:ring-primary/20"
+                      {...field} 
+                      value={field.value || ""} 
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
