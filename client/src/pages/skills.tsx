@@ -75,7 +75,7 @@ export default function SkillsPage() {
     }, 0);
 
     const payload = {
-      name: connName,
+      name: connName.endsWith(" (FC)") ? connName : `${connName} (FC)`,
       code: connCode,
       difficulty: totalDifficulty,
       isDrill: 2,

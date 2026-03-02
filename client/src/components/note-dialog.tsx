@@ -318,6 +318,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           <Badge variant="outline" className="font-mono text-[10px]">{item.code}</Badge>
                           <span>{item.name}</span>
                           {item.isDrill === 1 && <span className="text-[10px] text-muted-foreground ml-auto">(Drill)</span>}
+                          {item.isDrill === 2 && <span className="text-[10px] text-muted-foreground ml-auto">(FC)</span>}
                         </div>
                       </SelectItem>
                     ))}
