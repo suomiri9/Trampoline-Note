@@ -1,5 +1,6 @@
 import { useNotes } from "@/hooks/use-notes";
 import { useSkills } from "@/hooks/use-skills";
+import { useRoutines } from "@/hooks/use-routines";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, TrendingUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -8,8 +9,9 @@ import { format, parseISO } from "date-fns";
 export default function StatsPage() {
   const { data: notes, isLoading: notesLoading } = useNotes();
   const { data: allItems, isLoading: skillsLoading } = useSkills();
+  const { data: routines, isLoading: routinesLoading } = useRoutines();
 
-  if (notesLoading || skillsLoading) {
+  if (notesLoading || skillsLoading || routinesLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
@@ -38,6 +40,15 @@ export default function StatsPage() {
         noteDD += currentGroupDD * currentGroupReps;
         currentGroupDD = 0;
         currentGroupReps = 1;
+      } else if (item.id === -2) {
+        const routine = routines?.find(r => r.id === item.routineId);
+        if (routine) {
+          const routineDD = routine.skillIds.reduce((sum, sid) => {
+            const skill = allItems?.find(s => s.id === sid);
+            return sum + (skill?.difficulty || 0);
+          }, 0);
+          noteDD += routineDD * (item.reps || 1);
+        }
       } else {
         const skill = allItems?.find(s => s.id === item.id);
         currentGroupDD += (skill?.difficulty || 0);
