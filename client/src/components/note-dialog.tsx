@@ -136,7 +136,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         const lastSkill = [...newSkills].reverse().find(s => s.id !== -1);
         const reps = lastSkill?.reps || 1;
         newSkills.push({ id, reps });
-        setIsConnectMode(false);
+        // Removed: setIsConnectMode(false); - Keep it true until manually toggled
       } else {
         if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
           newSkills.push({ id: -1 });
