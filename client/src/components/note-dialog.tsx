@@ -237,7 +237,17 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
     if (isEditing && noteToEdit) {
       updateNote.mutate({ id: noteToEdit.id, ...payload }, {
-        onSuccess: () => { onOpenChange(false); toast({ title: "Session updated" }); }
+        onSuccess: () => { 
+          onOpenChange(false); 
+          toast({ title: "Session updated" }); 
+        },
+        onError: (error: any) => {
+          toast({ 
+            title: "Update failed", 
+            description: error.message || "Could not update the session.",
+            variant: "destructive"
+          });
+        }
       });
     } else {
       createNote.mutate(payload as any, {
