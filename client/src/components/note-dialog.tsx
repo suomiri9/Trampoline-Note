@@ -156,8 +156,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         newSkills.push({ id: -1 });
       }
       
-      const routineSkills = routine.skillIds.map(id => ({ id, reps: 1 }));
-      newSkills = [...newSkills, ...routineSkills];
+      // Add a routine marker with the routine ID and its name
+      newSkills.push({ id: -2, routineId, routineName: routine.name });
       
       form.setValue('skills', JSON.stringify(newSkills));
       return newSkills;
@@ -193,6 +193,17 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const totalDifficulty = selectedSkills.reduce((sum, item, idx) => {
     if (item.id === -1) return sum;
     
+    // Handle Routine markers (id: -2)
+    if (item.id === -2) {
+      const routine = routines?.find(r => r.id === item.routineId);
+      if (!routine) return sum;
+      const routineDD = routine.skillIds.reduce((acc, sId) => {
+        const skill = allItems?.find(s => s.id === sId);
+        return acc + (skill?.difficulty || 0);
+      }, 0);
+      return sum + routineDD;
+    }
+
     // Find the group this item belongs to
     let groupStart = idx;
     while (groupStart > 0 && selectedSkills[groupStart - 1].id !== -1) {
@@ -332,6 +343,34 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       const flushConnection = (idx: number) => {
                         if (currentConnection.length === 0) return;
                         const connectionIdx = idx - currentConnection.length;
+                        
+                        // Check if this "connection" is actually a routine marker
+                        if (currentConnection.length === 1 && currentConnection[0].id === -2) {
+                          const item = currentConnection[0];
+                          const routine = routines?.find(r => r.id === item.routineId);
+                          const routineDD = routine?.skillIds.reduce((acc, sId) => {
+                            const skill = allItems?.find(s => s.id === sId);
+                            return acc + (skill?.difficulty || 0);
+                          }, 0) || 0;
+
+                          rows.push(
+                            <div key={`routine-${connectionIdx}`} className="p-3 bg-primary/10 border-y border-primary/20 flex items-center justify-between rounded-xl my-1">
+                              <div className="flex items-center gap-3">
+                                <Badge variant="outline" className="font-mono text-[10px] bg-primary text-primary-foreground border-none">ROUTINE</Badge>
+                                <span className="text-sm font-bold text-primary">{item.routineName || "Routine"}</span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs font-mono font-bold text-primary">{routineDD.toFixed(1)} DD</span>
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeSkill(connectionIdx)}>
+                                  <Trash2 className="h-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                          currentConnection = [];
+                          return;
+                        }
+
                         const isSingle = currentConnection.length === 1;
                         rows.push(
                           <div key={`group-${connectionIdx}`} className={cn(

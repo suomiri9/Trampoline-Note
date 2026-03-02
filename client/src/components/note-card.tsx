@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useDeleteNote } from "@/hooks/use-notes";
 import { useSkills } from "@/hooks/use-skills";
+import { useRoutines } from "@/hooks/use-routines";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -37,6 +38,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const deleteNote = useDeleteNote();
   const { data: allItems } = useSkills();
+  const { data: routines } = useRoutines();
   const { toast } = useToast();
 
   const handleDelete = () => {
@@ -63,19 +65,25 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
     let currentGroupDD = 0;
     let currentGroupReps = 1;
 
-    skillsData.forEach((item) => {
+    skillsData.forEach((item: any) => {
       if (item.id === -1) {
         total += currentGroupDD * currentGroupReps;
         currentGroupDD = 0;
         currentGroupReps = 1;
+      } else if (item.id === -2) {
+        const routine = routines?.find(r => r.id === item.routineId);
+        if (routine) {
+          total += routine.skillIds.reduce((acc, sId) => {
+            const skill = allItems?.find(s => s.id === sId);
+            return acc + (skill?.difficulty || 0);
+          }, 0);
+        }
       } else {
         const skill = allItems?.find(s => s.id === item.id);
         currentGroupDD += (skill?.difficulty || 0);
-        // All items in a group should have the same reps, but we'll take it from the item
         currentGroupReps = item.reps || 1;
       }
     });
-    // Add the last group
     total += currentGroupDD * currentGroupReps;
     return total;
   })();
@@ -128,6 +136,26 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
 
                   return groups.map((group, groupIdx) => {
                     if (!Array.isArray(group)) return null;
+
+                    // Handle Routine marker
+                    if (group.length === 1 && (group[0] as any).id === -2) {
+                      const item = group[0] as any;
+                      const routine = routines?.find(r => r.id === item.routineId);
+                      const routineDD = routine?.skillIds.reduce((acc, sId) => {
+                        const skill = allItems?.find(s => s.id === sId);
+                        return acc + (skill?.difficulty || 0);
+                      }, 0) || 0;
+
+                      return (
+                        <div key={`routine-${groupIdx}`} className="flex items-center justify-between py-2 px-3 rounded-xl border border-primary/20 bg-primary/5 shadow-sm">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none">ROUTINE</Badge>
+                            <span className="text-sm font-bold text-primary">{item.routineName || "Routine"}</span>
+                          </div>
+                          <span className="text-[11px] font-mono font-bold text-primary">{routineDD.toFixed(1)}</span>
+                        </div>
+                      );
+                    }
 
                     const isSingle = group.length === 1;
                     const reps = group[0]?.reps || 1;
