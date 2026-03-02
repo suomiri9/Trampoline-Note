@@ -7,6 +7,7 @@ import { CalendarIcon, Plus, Trash2, GripVertical } from "lucide-react";
 import { type Note, type Skill } from "@shared/schema";
 import { useCreateNote, useUpdateNote } from "@/hooks/use-notes";
 import { useSkills } from "@/hooks/use-skills";
+import { useRoutines } from "@/hooks/use-routines";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -68,6 +69,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const createNote = useCreateNote();
   const updateNote = useUpdateNote();
   const { data: allItems } = useSkills();
+  const { data: routines } = useRoutines();
   
   const [selectedSkills, setSelectedSkills] = useState<SkillItem[]>([]);
   const [isConnectMode, setIsConnectMode] = useState(false);
@@ -138,6 +140,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         }
         newSkills.push({ id, reps: 1 });
       }
+      form.setValue('skills', JSON.stringify(newSkills));
+      return newSkills;
+    });
+  };
+
+  const addRoutine = (idStr: string) => {
+    const routineId = parseInt(idStr);
+    const routine = routines?.find(r => r.id === routineId);
+    if (!routine) return;
+
+    setSelectedSkills(prev => {
+      let newSkills = [...prev];
+      if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
+        newSkills.push({ id: -1 });
+      }
+      
+      const routineSkills = routine.skillIds.map(id => ({ id, reps: 1 }));
+      newSkills = [...newSkills, ...routineSkills];
+      
       form.setValue('skills', JSON.stringify(newSkills));
       return newSkills;
     });
@@ -276,6 +297,24 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     ))}
                   </SelectContent>
                 </Select>
+
+                {routines && routines.length > 0 && (
+                  <Select onValueChange={addRoutine}>
+                    <SelectTrigger className="rounded-xl h-11 border-primary/20 bg-primary/5">
+                      <SelectValue placeholder="Add a saved routine..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {routines.map(routine => (
+                        <SelectItem key={routine.id} value={routine.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="font-mono text-[10px] bg-primary/10 border-primary/20 text-primary">Routine</Badge>
+                            <span>{routine.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
 
                 <div className="min-h-[150px] bg-secondary/10 rounded-xl border border-border/50 overflow-hidden">
                   <div className="bg-secondary/20 px-3 py-1.5 border-b border-border/50 flex justify-between items-center">
