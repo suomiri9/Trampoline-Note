@@ -122,51 +122,48 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   const addSkill = (idStr: string) => {
     const id = parseInt(idStr);
-    let newSkills = [...selectedSkills];
-    
-    if (isConnectMode && newSkills.length > 0) {
-      if (newSkills[newSkills.length - 1].id === -1) {
-        newSkills.pop();
+    setSelectedSkills(prev => {
+      let newSkills = [...prev];
+      if (isConnectMode && newSkills.length > 0) {
+        if (newSkills[newSkills.length - 1].id === -1) {
+          newSkills.pop();
+        }
+        const lastSkill = [...newSkills].reverse().find(s => s.id !== -1);
+        const reps = lastSkill?.reps || 1;
+        newSkills.push({ id, reps });
+        setIsConnectMode(false);
+      } else {
+        if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
+          newSkills.push({ id: -1 });
+        }
+        newSkills.push({ id, reps: 1 });
       }
-      const lastSkill = [...newSkills].reverse().find(s => s.id !== -1);
-      const reps = lastSkill?.reps || 1;
-      newSkills.push({ id, reps });
-      setIsConnectMode(false);
-    } else {
-      if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
-        newSkills.push({ id: -1 });
-      }
-      newSkills.push({ id, reps: 1 });
-    }
-    
-    setSelectedSkills(newSkills);
-    // Use setTimeout to ensure state is updated before form value
-    setTimeout(() => {
       form.setValue('skills', JSON.stringify(newSkills));
-    }, 0);
+      return newSkills;
+    });
   };
 
   const removeSkill = (index: number) => {
-    const newSkills = [...selectedSkills];
-    newSkills.splice(index, 1);
-    setSelectedSkills(newSkills);
-    setTimeout(() => {
+    setSelectedSkills(prev => {
+      const newSkills = [...prev];
+      newSkills.splice(index, 1);
       form.setValue('skills', JSON.stringify(newSkills));
-    }, 0);
+      return newSkills;
+    });
   };
 
   const updateReps = (indices: number[], reps: number) => {
     const val = Math.max(1, reps);
-    const newSkills = [...selectedSkills];
-    indices.forEach(idx => {
-      if (newSkills[idx] && newSkills[idx].id !== -1) {
-        newSkills[idx] = { ...newSkills[idx], reps: val };
-      }
-    });
-    setSelectedSkills(newSkills);
-    setTimeout(() => {
+    setSelectedSkills(prev => {
+      const newSkills = [...prev];
+      indices.forEach(idx => {
+        if (newSkills[idx] && newSkills[idx].id !== -1) {
+          newSkills[idx] = { ...newSkills[idx], reps: val };
+        }
+      });
       form.setValue('skills', JSON.stringify(newSkills));
-    }, 0);
+      return newSkills;
+    });
   };
 
   const totalDifficulty = selectedSkills.reduce((sum, item, idx) => {
