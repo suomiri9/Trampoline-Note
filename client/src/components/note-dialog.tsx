@@ -61,13 +61,15 @@ interface NoteDialogProps {
   noteToEdit?: Note | null;
 }
 
+type SkillItem = { id: number; reps?: number };
+
 export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) {
   const { toast } = useToast();
   const createNote = useCreateNote();
   const updateNote = useUpdateNote();
   const { data: allItems } = useSkills();
   
-  const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<SkillItem[]>([]);
 
   const isEditing = !!noteToEdit;
 
@@ -85,8 +87,17 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   useEffect(() => {
     if (open) {
       if (noteToEdit) {
-        const ids = noteToEdit.skills ? noteToEdit.skills.split(',').map(Number).filter(id => !isNaN(id)) : [];
-        setSelectedSkillIds(ids);
+        let skills: SkillItem[] = [];
+        try {
+          skills = noteToEdit.skills ? JSON.parse(noteToEdit.skills) : [];
+          if (!Array.isArray(skills)) {
+            // Migration for old comma-separated string
+            skills = noteToEdit.skills.split(',').map(s => ({ id: parseInt(s) }));
+          }
+        } catch (e) {
+          skills = noteToEdit.skills ? noteToEdit.skills.split(',').map(s => ({ id: parseInt(s) })) : [];
+        }
+        setSelectedSkills(skills);
         form.reset({
           date: new Date(noteToEdit.date),
           time: noteToEdit.time || "",
@@ -95,7 +106,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
           rating: noteToEdit.rating || null,
         });
       } else {
-        setSelectedSkillIds([]);
+        setSelectedSkills([]);
         form.reset({
           date: new Date(),
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
@@ -109,28 +120,35 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   const addSkill = (idStr: string) => {
     if (idStr === "connection") {
-      const newIds = [...selectedSkillIds, -1];
-      setSelectedSkillIds(newIds);
-      form.setValue('skills', newIds.join(','));
+      const newSkills = [...selectedSkills, { id: -1 }];
+      setSelectedSkills(newSkills);
+      form.setValue('skills', JSON.stringify(newSkills));
       return;
     }
     const id = parseInt(idStr);
-    const newIds = [...selectedSkillIds, id];
-    setSelectedSkillIds(newIds);
-    form.setValue('skills', newIds.join(','));
+    const newSkills = [...selectedSkills, { id, reps: 1 }];
+    setSelectedSkills(newSkills);
+    form.setValue('skills', JSON.stringify(newSkills));
   };
 
   const removeSkill = (index: number) => {
-    const newIds = [...selectedSkillIds];
-    newIds.splice(index, 1);
-    setSelectedSkillIds(newIds);
-    form.setValue('skills', newIds.join(','));
+    const newSkills = [...selectedSkills];
+    newSkills.splice(index, 1);
+    setSelectedSkills(newSkills);
+    form.setValue('skills', JSON.stringify(newSkills));
   };
 
-  const totalDifficulty = selectedSkillIds.reduce((sum, id) => {
-    if (id === -1) return sum;
-    const skill = allItems?.find(s => s.id === id);
-    return sum + (skill?.difficulty || 0);
+  const updateReps = (index: number, reps: number) => {
+    const newSkills = [...selectedSkills];
+    newSkills[index] = { ...newSkills[index], reps: Math.max(1, reps) };
+    setSelectedSkills(newSkills);
+    form.setValue('skills', JSON.stringify(newSkills));
+  };
+
+  const totalDifficulty = selectedSkills.reduce((sum, item) => {
+    if (item.id === -1) return sum;
+    const skill = allItems?.find(s => s.id === item.id);
+    return sum + ((skill?.difficulty || 0) * (item.reps || 1));
   }, 0);
 
   const onSubmit = (values: FormValues) => {
@@ -138,7 +156,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       ...values,
       date: values.date.toISOString(), 
       time: values.time || null,
-      skills: selectedSkillIds.join(',') || null,
+      skills: JSON.stringify(selectedSkills) || null,
       rating: values.rating || null,
     };
 
@@ -183,7 +201,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <FormLabel className="text-foreground/80 font-medium">Skills & Drills Practiced</FormLabel>
-                {selectedSkillIds.length > 0 && selectedSkillIds[selectedSkillIds.length - 1] !== -1 && (
+                {selectedSkills.length > 0 && selectedSkills[selectedSkills.length - 1].id !== -1 && (
                   <Button 
                     type="button" 
                     variant="outline" 
@@ -223,7 +241,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 <div className="divide-y divide-border/30 max-h-[300px] overflow-y-auto">
                   {(() => {
                     const rows: JSX.Element[] = [];
-                    let currentConnection: number[] = [];
+                    let currentConnection: SkillItem[] = [];
                     
                     const flushConnection = (idx: number) => {
                       if (currentConnection.length === 0) return;
@@ -241,10 +259,46 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             )}>
                               {isSingle ? "Single Practice" : "Connected Sequence"}
                             </span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] text-muted-foreground">Reps:</span>
+                              <div className="flex items-center border rounded-md bg-background overflow-hidden">
+                                <button 
+                                  type="button" 
+                                  className="h-5 px-1 hover:bg-secondary text-[10px] border-r"
+                                  onClick={() => {
+                                    const val = (currentConnection[0].reps || 1) - 1;
+                                    for(let i=0; i<currentConnection.length; i++) {
+                                      updateReps(connectionIdx + i, val);
+                                    }
+                                  }}
+                                >-</button>
+                                <Input 
+                                  type="number" 
+                                  className="h-5 w-8 text-[10px] p-0 text-center border-none shadow-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                  value={currentConnection[0].reps || 1}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 1;
+                                    for(let i=0; i<currentConnection.length; i++) {
+                                      updateReps(connectionIdx + i, val);
+                                    }
+                                  }}
+                                />
+                                <button 
+                                  type="button" 
+                                  className="h-5 px-1 hover:bg-secondary text-[10px] border-l"
+                                  onClick={() => {
+                                    const val = (currentConnection[0].reps || 1) + 1;
+                                    for(let i=0; i<currentConnection.length; i++) {
+                                      updateReps(connectionIdx + i, val);
+                                    }
+                                  }}
+                                >+</button>
+                              </div>
+                            </div>
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            {currentConnection.map((id, subIdx) => {
-                              const skill = allItems?.find(s => s.id === id);
+                            {currentConnection.map((item, subIdx) => {
+                              const skill = allItems?.find(s => s.id === item.id);
                               const originalIdx = connectionIdx + subIdx;
                               return (
                                 <div key={originalIdx} className="flex items-center gap-1.5">
@@ -267,8 +321,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       currentConnection = [];
                     };
 
-                    selectedSkillIds.forEach((id, index) => {
-                      if (id === -1) {
+                    selectedSkills.forEach((item, index) => {
+                      if (item.id === -1) {
                         flushConnection(index);
                         rows.push(
                           <div key={`sep-${index}`} className="flex items-center justify-between bg-muted/10 px-3 py-0.5 group transition-colors border-y border-border/10">
@@ -281,10 +335,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           </div>
                         );
                       } else {
-                        currentConnection.push(id);
+                        currentConnection.push(item);
                       }
                     });
-                    flushConnection(selectedSkillIds.length);
+                    flushConnection(selectedSkills.length);
 
                     if (rows.length === 0) {
                       return (

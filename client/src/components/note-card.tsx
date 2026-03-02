@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useDeleteNote } from "@/hooks/use-notes";
 import { useSkills } from "@/hooks/use-skills";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,11 +47,21 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
     });
   };
 
-  const skillIds = note.skills ? note.skills.split(',').map(Number).filter(id => !isNaN(id)) : [];
+  const skillsData: { id: number; reps?: number }[] = (() => {
+    try {
+      const parsed = note.skills ? JSON.parse(note.skills) : [];
+      if (Array.isArray(parsed)) return parsed;
+      // Migration for old comma-separated string
+      return note.skills ? note.skills.split(',').map(s => ({ id: parseInt(s) })) : [];
+    } catch (e) {
+      return note.skills ? note.skills.split(',').map(s => ({ id: parseInt(s) })) : [];
+    }
+  })();
   
-  const totalDifficulty = skillIds.reduce((sum, id) => {
-    const skill = allItems?.find(s => s.id === id);
-    return sum + (skill?.difficulty || 0);
+  const totalDifficulty = skillsData.reduce((sum, item) => {
+    if (item.id === -1) return sum;
+    const skill = allItems?.find(s => s.id === item.id);
+    return sum + ((skill?.difficulty || 0) * (item.reps || 1));
   }, 0);
 
   const staggerClass = `stagger-${Math.min(index + 1, 5)}`;
@@ -79,57 +90,61 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
         <div className="space-y-4">
           <p className="text-foreground/90 leading-relaxed whitespace-pre-wrap">{note.content}</p>
           
-          {skillIds.length > 0 && (
+          {skillsData.length > 0 && (
             <div className="space-y-2 pt-3 border-t border-border/40">
               <div className="flex flex-col gap-1.5">
                 {(() => {
-                  const groups: (number | number[])[] = [];
-                  let currentGroup: number[] = [];
+                  const groups: ({ id: number; reps?: number } | { id: number; reps?: number }[])[] = [];
+                  let currentGroup: { id: number; reps?: number }[] = [];
 
-                  skillIds.forEach(id => {
-                    if (id === -1) {
+                  skillsData.forEach(item => {
+                    if (item.id === -1) {
                       if (currentGroup.length > 0) {
                         groups.push(currentGroup);
                         currentGroup = [];
                       }
-                      groups.push(-1);
+                      groups.push({ id: -1 });
                     } else {
-                      currentGroup.push(id);
+                      currentGroup.push(item);
                     }
                   });
                   if (currentGroup.length > 0) groups.push(currentGroup);
 
-                  return groups.map((item, groupIdx) => {
-                    if (item === -1) {
-                      return null; // Don't show "Connection" separator anymore
-                    }
+                  return groups.map((group, groupIdx) => {
+                    if (!Array.isArray(group)) return null;
 
-                    const isSingle = item.length === 1;
+                    const isSingle = group.length === 1;
+                    const reps = group[0].reps || 1;
 
                     return (
                       <div key={`group-${groupIdx}`} className={cn(
                         "flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl border border-border/30 shadow-sm",
                         isSingle ? "bg-secondary/5" : "bg-primary/5 border-primary/20"
                       )}>
-                        {item.map((skillId, skillIdx) => {
-                          const skill = allItems?.find(s => s.id === skillId);
-                          if (!skill) return null;
-                          return (
-                            <div key={skillIdx} className="flex items-center gap-2">
-                              <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {group.map((skillItem, skillIdx) => {
+                            const skill = allItems?.find(s => s.id === skillItem.id);
+                            if (!skill) return null;
+                            return (
+                              <div key={skillIdx} className="flex items-center gap-2">
                                 <Badge variant="outline" className={cn(
                                   "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
                                   isSingle ? "border-border/60 text-muted-foreground" : "border-primary/30 text-primary"
                                 )}>
                                   {skill.code}
                                 </Badge>
+                                {skillIdx < group.length - 1 && (
+                                  <span className="text-primary/30 font-bold text-xs">+</span>
+                                )}
                               </div>
-                              {skillIdx < item.length - 1 && (
-                                <span className="text-primary/30 font-bold text-xs">+</span>
-                              )}
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
+                        {reps > 1 && (
+                          <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-bold bg-primary/10 text-primary border-none">
+                            x{reps}
+                          </Badge>
+                        )}
                       </div>
                     );
                   });

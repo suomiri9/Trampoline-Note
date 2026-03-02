@@ -7,7 +7,7 @@ export const notes = pgTable("notes", {
   date: date("date").notNull(),
   time: text("time"), // Store as HH:mm
   content: text("content").notNull(),
-  skills: text("skills"), // JSON string or comma-separated: "skillId1,skillId2"
+  skills: text("skills"), // JSON string: [{"id": 1, "reps": 5}, {"id": -1}, {"id": 2, "reps": 10}]
   rating: integer("rating"), // 1 to 5
 });
 
