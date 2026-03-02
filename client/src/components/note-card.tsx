@@ -60,12 +60,23 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
   
   const totalDifficulty = (() => {
     let total = 0;
+    let currentGroupDD = 0;
+    let currentGroupReps = 1;
+
     skillsData.forEach((item) => {
-      if (item.id !== -1) {
+      if (item.id === -1) {
+        total += currentGroupDD * currentGroupReps;
+        currentGroupDD = 0;
+        currentGroupReps = 1;
+      } else {
         const skill = allItems?.find(s => s.id === item.id);
-        total += (skill?.difficulty || 0);
+        currentGroupDD += (skill?.difficulty || 0);
+        // All items in a group should have the same reps, but we'll take it from the item
+        currentGroupReps = item.reps || 1;
       }
     });
+    // Add the last group
+    total += currentGroupDD * currentGroupReps;
     return total;
   })();
 
@@ -121,6 +132,11 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                     const isSingle = group.length === 1;
                     const reps = group[0]?.reps || 1;
 
+                    const lineDD = group.reduce((acc, skillItem) => {
+                      const skill = allItems?.find(s => s.id === skillItem.id);
+                      return acc + (skill?.difficulty || 0);
+                    }, 0);
+
                     return (
                       <div key={`group-${groupIdx}`} className={cn(
                         "flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl border border-border/30 shadow-sm",
@@ -144,6 +160,13 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                               </div>
                             );
                           })}
+                        </div>
+                        <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
+                          <span className="text-muted-foreground">{lineDD.toFixed(1)}</span>
+                          <span className="text-primary/40">×</span>
+                          <span className="text-primary">{reps}</span>
+                          <span className="text-primary/40">=</span>
+                          <span className="text-primary">{(lineDD * reps).toFixed(1)}</span>
                         </div>
                       </div>
                     );
