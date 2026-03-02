@@ -216,199 +216,201 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] w-[95vw] p-0 overflow-hidden rounded-[24px] border-border/50 max-h-[90vh] overflow-y-auto">
-        <div className="p-6 pb-4">
+      <DialogContent className="sm:max-w-[500px] w-[calc(100vw-32px)] p-0 overflow-hidden rounded-[24px] border-border/50 max-h-[90vh] flex flex-col">
+        <div className="p-6 pb-4 flex-none">
           <DialogHeader>
             <DialogTitle className="text-2xl font-display">{isEditing ? "Edit Session" : "Log Training Session"}</DialogTitle>
             <DialogDescription>Record your notes and skills practiced.</DialogDescription>
           </DialogHeader>
         </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="px-6 pb-6 space-y-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <FormField control={form.control} name="date" render={({ field }) => (
-                <FormItem className="flex-1"><FormLabel>Date</FormLabel>
-                  <Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className="w-full text-left font-normal rounded-xl h-11">{field.value ? format(field.value, "PPP") : "Pick a date"}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 rounded-xl"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date()} initialFocus /></PopoverContent></Popover>
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="time" render={({ field }) => (
-                <FormItem className="w-32"><FormLabel>Time</FormLabel><FormControl><Input type="time" className="rounded-xl h-11" {...field} value={field.value || ""} /></FormControl></FormItem>
-              )} />
-              <FormField control={form.control} name="rating" render={({ field }) => (
-                <FormItem className="flex-1"><FormLabel>Rating</FormLabel><FormControl><div className="h-11 flex items-center"><StarRating value={field.value} onChange={field.onChange} /></div></FormControl></FormItem>
-              )} />
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <FormLabel className="text-foreground/80 font-medium">Skills & Drills Practiced</FormLabel>
-                <div className="flex items-center gap-2">
-                  <Button 
-                    type="button" 
-                    variant={isConnectMode ? "default" : "outline"}
-                    size="sm" 
-                    className={cn(
-                      "h-7 px-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all",
-                      isConnectMode ? "bg-primary text-primary-foreground shadow-md" : "border-primary/20 text-primary hover:bg-primary/5"
-                    )}
-                    onClick={() => setIsConnectMode(!isConnectMode)}
-                  >
-                    {isConnectMode ? "Connecting Next..." : "Connect Next"}
-                  </Button>
-                </div>
+        <div className="flex-1 overflow-y-auto min-h-0 px-6 pb-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <FormField control={form.control} name="date" render={({ field }) => (
+                  <FormItem className="flex-1"><FormLabel>Date</FormLabel>
+                    <Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className="w-full text-left font-normal rounded-xl h-11">{field.value ? format(field.value, "PPP") : "Pick a date"}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 rounded-xl"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date()} initialFocus /></PopoverContent></Popover>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="time" render={({ field }) => (
+                  <FormItem className="w-32"><FormLabel>Time</FormLabel><FormControl><Input type="time" className="rounded-xl h-11" {...field} value={field.value || ""} /></FormControl></FormItem>
+                )} />
+                <FormField control={form.control} name="rating" render={({ field }) => (
+                  <FormItem className="flex-1"><FormLabel>Rating</FormLabel><FormControl><div className="h-11 flex items-center"><StarRating value={field.value} onChange={field.onChange} /></div></FormControl></FormItem>
+                )} />
               </div>
-              <Select onValueChange={addSkill}>
-                <SelectTrigger className="rounded-xl h-11">
-                  <SelectValue placeholder="Add a skill or drill..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {allItems?.sort((a, b) => b.difficulty - a.difficulty).map(item => (
-                    <SelectItem key={item.id} value={item.id.toString()}>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="font-mono text-[10px]">{item.code}</Badge>
-                        <span>{item.name}</span>
-                        {item.isDrill === 1 && <span className="text-[10px] text-muted-foreground ml-auto">(Drill)</span>}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
 
-              <div className="min-h-[150px] bg-secondary/10 rounded-xl border border-border/50 overflow-hidden">
-                <div className="bg-secondary/20 px-3 py-1.5 border-b border-border/50 flex justify-between items-center">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Practice List</span>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <FormLabel className="text-foreground/80 font-medium">Skills & Drills Practiced</FormLabel>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total DD:</span>
-                    <span className="text-xs font-mono font-bold text-primary">{totalDifficulty.toFixed(1)}</span>
+                    <Button 
+                      type="button" 
+                      variant={isConnectMode ? "default" : "outline"}
+                      size="sm" 
+                      className={cn(
+                        "h-7 px-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all",
+                        isConnectMode ? "bg-primary text-primary-foreground shadow-md" : "border-primary/20 text-primary hover:bg-primary/5"
+                      )}
+                      onClick={() => setIsConnectMode(!isConnectMode)}
+                    >
+                      {isConnectMode ? "Connecting Next..." : "Connect Next"}
+                    </Button>
                   </div>
                 </div>
-                <div className="divide-y divide-border/30 max-h-[300px] overflow-y-auto">
-                  {(() => {
-                    const rows: JSX.Element[] = [];
-                    let currentConnection: SkillItem[] = [];
-                    
-                    const flushConnection = (idx: number) => {
-                      if (currentConnection.length === 0) return;
-                      const connectionIdx = idx - currentConnection.length;
-                      const isSingle = currentConnection.length === 1;
-                      rows.push(
-                        <div key={`group-${connectionIdx}`} className={cn(
-                          "p-2 space-y-2 border-y border-border/10",
-                          isSingle ? "bg-transparent" : "bg-primary/5"
-                        )}>
-                          <div className="flex items-center justify-between px-1">
-                            <span className={cn(
-                              "text-[9px] font-bold uppercase tracking-widest",
-                              isSingle ? "text-muted-foreground/40" : "text-primary/60"
-                            )}>
-                              {isSingle ? "Single Practice" : "Connected Sequence"}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <span className="text-[9px] text-muted-foreground">Reps:</span>
-                              <div className="flex items-center border rounded-md bg-background overflow-hidden">
-                                <button 
-                                  type="button" 
-                                  className="h-5 px-1 hover:bg-secondary text-[10px] border-r"
-                                  onClick={() => {
-                                    const val = (currentConnection[0]?.reps || 1) - 1;
-                                    const indices = currentConnection.map((_, i) => connectionIdx + i);
-                                    updateReps(indices, val);
-                                  }}
-                                >-</button>
-                                <Input 
-                                  type="number" 
-                                  className="h-5 w-8 text-[10px] p-0 text-center border-none shadow-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                  value={currentConnection[0]?.reps || 1}
-                                  onChange={(e) => {
-                                    const val = parseInt(e.target.value) || 1;
-                                    const indices = currentConnection.map((_, i) => connectionIdx + i);
-                                    updateReps(indices, val);
-                                  }}
-                                />
-                                <button 
-                                  type="button" 
-                                  className="h-5 px-1 hover:bg-secondary text-[10px] border-l"
-                                  onClick={() => {
-                                    const val = (currentConnection[0]?.reps || 1) + 1;
-                                    const indices = currentConnection.map((_, i) => connectionIdx + i);
-                                    updateReps(indices, val);
-                                  }}
-                                >+</button>
+                <Select onValueChange={addSkill}>
+                  <SelectTrigger className="rounded-xl h-11">
+                    <SelectValue placeholder="Add a skill or drill..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allItems?.sort((a, b) => b.difficulty - a.difficulty).map(item => (
+                      <SelectItem key={item.id} value={item.id.toString()}>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="font-mono text-[10px]">{item.code}</Badge>
+                          <span>{item.name}</span>
+                          {item.isDrill === 1 && <span className="text-[10px] text-muted-foreground ml-auto">(Drill)</span>}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="min-h-[150px] bg-secondary/10 rounded-xl border border-border/50 overflow-hidden">
+                  <div className="bg-secondary/20 px-3 py-1.5 border-b border-border/50 flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Practice List</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total DD:</span>
+                      <span className="text-xs font-mono font-bold text-primary">{totalDifficulty.toFixed(1)}</span>
+                    </div>
+                  </div>
+                  <div className="divide-y divide-border/30 max-h-[300px] overflow-y-auto">
+                    {(() => {
+                      const rows: JSX.Element[] = [];
+                      let currentConnection: SkillItem[] = [];
+                      
+                      const flushConnection = (idx: number) => {
+                        if (currentConnection.length === 0) return;
+                        const connectionIdx = idx - currentConnection.length;
+                        const isSingle = currentConnection.length === 1;
+                        rows.push(
+                          <div key={`group-${connectionIdx}`} className={cn(
+                            "p-2 space-y-2 border-y border-border/10",
+                            isSingle ? "bg-transparent" : "bg-primary/5"
+                          )}>
+                            <div className="flex items-center justify-between px-1">
+                              <span className={cn(
+                                "text-[9px] font-bold uppercase tracking-widest",
+                                isSingle ? "text-muted-foreground/40" : "text-primary/60"
+                              )}>
+                                {isSingle ? "Single Practice" : "Connected Sequence"}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[9px] text-muted-foreground">Reps:</span>
+                                <div className="flex items-center border rounded-md bg-background overflow-hidden">
+                                  <button 
+                                    type="button" 
+                                    className="h-5 px-1 hover:bg-secondary text-[10px] border-r"
+                                    onClick={() => {
+                                      const val = (currentConnection[0]?.reps || 1) - 1;
+                                      const indices = currentConnection.map((_, i) => connectionIdx + i);
+                                      updateReps(indices, val);
+                                    }}
+                                  >-</button>
+                                  <Input 
+                                    type="number" 
+                                    className="h-5 w-8 text-[10px] p-0 text-center border-none shadow-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                    value={currentConnection[0]?.reps || 1}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value) || 1;
+                                      const indices = currentConnection.map((_, i) => connectionIdx + i);
+                                      updateReps(indices, val);
+                                    }}
+                                  />
+                                  <button 
+                                    type="button" 
+                                    className="h-5 px-1 hover:bg-secondary text-[10px] border-l"
+                                    onClick={() => {
+                                      const val = (currentConnection[0]?.reps || 1) + 1;
+                                      const indices = currentConnection.map((_, i) => connectionIdx + i);
+                                      updateReps(indices, val);
+                                    }}
+                                  >+</button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {currentConnection.map((item, subIdx) => {
-                              const skill = allItems?.find(s => s.id === item.id);
-                              const originalIdx = connectionIdx + subIdx;
-                              return (
-                                <div key={originalIdx} className="flex items-center gap-1.5">
-                                  <Badge variant="outline" className={cn(
-                                    "font-mono text-[10px] bg-background pr-1 gap-1",
-                                    !isSingle && "border-primary/30 text-primary"
-                                  )}>
-                                    {skill?.code}
-                                    <button type="button" onClick={() => removeSkill(originalIdx)} className="hover:text-destructive transition-colors">
-                                      <Trash2 className="w-2.5 h-2.5" />
-                                    </button>
-                                  </Badge>
-                                  {subIdx < currentConnection.length - 1 && <span className="text-primary/30 text-xs">+</span>}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                      currentConnection = [];
-                    };
-
-                    selectedSkills.forEach((item, index) => {
-                      if (item.id === -1) {
-                        flushConnection(index);
-                        rows.push(
-                          <div key={`sep-${index}`} className="flex items-center justify-between bg-muted/10 px-3 py-0.5 group transition-colors border-y border-border/10">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[8px] font-bold text-muted-foreground/40 uppercase tracking-widest">Next Set</span>
+                            <div className="flex flex-wrap gap-2">
+                              {currentConnection.map((item, subIdx) => {
+                                const skill = allItems?.find(s => s.id === item.id);
+                                const originalIdx = connectionIdx + subIdx;
+                                return (
+                                  <div key={originalIdx} className="flex items-center gap-1.5">
+                                    <Badge variant="outline" className={cn(
+                                      "font-mono text-[10px] bg-background pr-1 gap-1",
+                                      !isSingle && "border-primary/30 text-primary"
+                                    )}>
+                                      {skill?.code}
+                                      <button type="button" onClick={() => removeSkill(originalIdx)} className="hover:text-destructive transition-colors">
+                                        <Trash2 className="w-2.5 h-2.5" />
+                                      </button>
+                                    </Badge>
+                                    {subIdx < currentConnection.length - 1 && <span className="text-primary/30 text-xs">+</span>}
+                                  </div>
+                                );
+                              })}
                             </div>
-                            <Button type="button" variant="ghost" size="icon" className="h-5 w-5 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeSkill(index)}>
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
                           </div>
                         );
-                      } else {
-                        currentConnection.push(item);
-                      }
-                    });
-                    flushConnection(selectedSkills.length);
+                        currentConnection = [];
+                      };
 
-                    if (rows.length === 0) {
-                      return (
-                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground/40 space-y-2">
-                          <GripVertical className="w-6 h-6 opacity-20" />
-                          <p className="text-xs font-medium">Select items or start a connection</p>
-                        </div>
-                      );
-                    }
-                    return rows;
-                  })()}
+                      selectedSkills.forEach((item, index) => {
+                        if (item.id === -1) {
+                          flushConnection(index);
+                          rows.push(
+                            <div key={`sep-${index}`} className="flex items-center justify-between bg-muted/10 px-3 py-0.5 group transition-colors border-y border-border/10">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[8px] font-bold text-muted-foreground/40 uppercase tracking-widest">Next Set</span>
+                              </div>
+                              <Button type="button" variant="ghost" size="icon" className="h-5 w-5 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeSkill(index)}>
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          );
+                        } else {
+                          currentConnection.push(item);
+                        }
+                      });
+                      flushConnection(selectedSkills.length);
+
+                      if (rows.length === 0) {
+                        return (
+                          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground/40 space-y-2">
+                            <GripVertical className="w-6 h-6 opacity-20" />
+                            <p className="text-xs font-medium">Select items or start a connection</p>
+                          </div>
+                        );
+                      }
+                      return rows;
+                    })()}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <FormField control={form.control} name="content" render={({ field }) => (
-              <FormItem><FormLabel>Notes & Reflections</FormLabel><FormControl><Textarea placeholder="How did the session go? Any takeaways?" className="rounded-xl min-h-[100px] bg-secondary/5 border-border/60" {...field} /></FormControl></FormItem>
-            )} />
+              <FormField control={form.control} name="content" render={({ field }) => (
+                <FormItem><FormLabel>Notes & Reflections</FormLabel><FormControl><Textarea placeholder="How did the session go? Any takeaways?" className="rounded-xl min-h-[100px] bg-secondary/5 border-border/60" {...field} /></FormControl></FormItem>
+              )} />
 
-            <div className="pt-2 flex justify-end gap-3">
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl">Cancel</Button>
-              <Button type="submit" disabled={createNote.isPending || updateNote.isPending} className="rounded-xl px-6 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md">
-                {isEditing ? "Update Session" : "Log Training"}
-              </Button>
-            </div>
-          </form>
-        </Form>
+              <div className="pt-2 flex justify-end gap-3">
+                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl">Cancel</Button>
+                <Button type="submit" disabled={createNote.isPending || updateNote.isPending} className="rounded-xl px-6 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md">
+                  {isEditing ? "Update Session" : "Log Training"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </div>
       </DialogContent>
     </Dialog>
   );
