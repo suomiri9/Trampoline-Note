@@ -167,21 +167,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     });
   };
 
-  const moveSkill = (index: number, direction: 'up' | 'down') => {
-    setSelectedSkills(prev => {
-      const newSkills = [...prev];
-      const targetIndex = direction === 'up' ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= newSkills.length) return prev;
-      
-      const temp = newSkills[index];
-      newSkills[index] = newSkills[targetIndex];
-      newSkills[targetIndex] = temp;
-      
-      form.setValue('skills', JSON.stringify(newSkills));
-      return newSkills;
-    });
-  };
-
   const removeSkill = (index: number) => {
     setSelectedSkills(prev => {
       const newSkills = [...prev];
@@ -425,17 +410,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               </div>
                               <div className="flex items-center gap-3">
                                 <span className="text-xs font-mono font-bold text-primary">{routineDD.toFixed(1)} DD</span>
-                                <div className="flex items-center gap-1">
-                                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => moveSkill(connectionIdx, 'up')} disabled={connectionIdx === 0}>
-                                    <Plus className="h-4 w-4 rotate-180" />
-                                  </Button>
-                                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => moveSkill(connectionIdx, 'down')} disabled={connectionIdx === selectedSkills.length - 1}>
-                                    <Plus className="h-4 w-4" />
-                                  </Button>
-                                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeSkill(connectionIdx)}>
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeSkill(connectionIdx)}>
+                                  <Trash2 className="h-4 h-4" />
+                                </Button>
                               </div>
                             </div>
                           );
@@ -463,19 +440,15 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                   const skill = allItems?.find(s => s.id === item.id);
                                   const originalIdx = connectionIdx + subIdx;
                                   return (
-                                    <div key={`${originalIdx}-${item.id}-${item.reps}`} className="flex items-center gap-1.5 group/badge">
+                                    <div key={`${originalIdx}-${item.id}-${item.reps}`} className="flex items-center gap-1.5">
                                       <Badge variant="outline" className={cn(
                                         "font-mono text-[10px] bg-background pr-1 gap-1",
                                         !isSingle && "border-primary/30 text-primary"
                                       )}>
                                         {skill?.code}
-                                        <div className="flex items-center gap-0.5 opacity-0 group-hover/badge:opacity-100 transition-opacity">
-                                          <button type="button" onClick={() => moveSkill(originalIdx, 'up')} disabled={originalIdx === 0} className="hover:text-primary"><Plus className="w-2 h-2 rotate-180" /></button>
-                                          <button type="button" onClick={() => moveSkill(originalIdx, 'down')} disabled={originalIdx === selectedSkills.length - 1} className="hover:text-primary"><Plus className="w-2 h-2" /></button>
-                                          <button type="button" onClick={() => removeSkill(originalIdx)} className="hover:text-destructive transition-colors">
-                                            <Trash2 className="w-2.5 h-2.5" />
-                                          </button>
-                                        </div>
+                                        <button type="button" onClick={() => removeSkill(originalIdx)} className="hover:text-destructive transition-colors">
+                                          <Trash2 className="w-2.5 h-2.5" />
+                                        </button>
                                       </Badge>
                                       {subIdx < currentConnection.length - 1 && <span className="text-primary/30 text-xs">+</span>}
                                     </div>
@@ -545,17 +518,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               <div className="flex items-center gap-2">
                                 <span className="text-[8px] font-bold text-muted-foreground/40 uppercase tracking-widest">Next Set</span>
                               </div>
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button type="button" variant="ghost" size="icon" className="h-5 w-5" onClick={() => moveSkill(index, 'up')} disabled={index === 0}>
-                                  <Plus className="h-3 w-3 rotate-180" />
-                                </Button>
-                                <Button type="button" variant="ghost" size="icon" className="h-5 w-5" onClick={() => moveSkill(index, 'down')} disabled={index === selectedSkills.length - 1}>
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                                <Button type="button" variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => removeSkill(index)}>
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
+                              <Button type="button" variant="ghost" size="icon" className="h-5 w-5 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeSkill(index)}>
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
                             </div>
                           );
                         } else {
