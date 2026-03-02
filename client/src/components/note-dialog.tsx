@@ -165,32 +165,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const totalDifficulty = selectedSkills.reduce((sum, item, idx) => {
     if (item.id === -1) return sum;
     
-    // Find if this skill is part of a connection group
-    // A group is defined by skills between -1 separators
-    let groupSkills: SkillItem[] = [];
-    let i = idx;
-    // Look backwards to find start of group
-    while (i >= 0 && selectedSkills[i].id !== -1) {
-      groupSkills.unshift(selectedSkills[i]);
-      i--;
+    // Find the group this item belongs to
+    let groupStart = idx;
+    while (groupStart > 0 && selectedSkills[groupStart - 1].id !== -1) {
+      groupStart--;
     }
-    // Look forwards to find end of group
-    i = idx + 1;
+    
+    // Only process the first item of each group to avoid overcounting
+    if (idx !== groupStart) return sum;
+
+    // Calculate sum of difficulty for all items in this group
+    let groupDD = 0;
+    let i = groupStart;
     while (i < selectedSkills.length && selectedSkills[i].id !== -1) {
-      groupSkills.push(selectedSkills[i]);
+      const skill = allItems?.find(s => s.id === selectedSkills[i].id);
+      groupDD += (skill?.difficulty || 0);
       i++;
     }
 
-    // Only process the first item of each group to avoid overcounting
-    // The first item of a group is either index 0 or follows a -1
-    const isFirstInGroup = idx === 0 || selectedSkills[idx - 1].id === -1;
-    if (!isFirstInGroup) return sum;
-
-    const groupDD = groupSkills.reduce((acc, gs) => {
-      const skill = allItems?.find(s => s.id === gs.id);
-      return acc + (skill?.difficulty || 0);
-    }, 0);
-
+    // Multiply the group's total difficulty by the reps (stored on the first item)
     return sum + (groupDD * (item.reps || 1));
   }, 0);
 
