@@ -298,7 +298,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       )}
                       onClick={() => setIsConnectMode(!isConnectMode)}
                     >
-                      {isConnectMode ? "Connecting Next..." : "Connect Next"}
+                      {isConnectMode ? "Connecting (FC) Next..." : "Connect (FC) Next"}
                     </Button>
                   </div>
                 </div>
