@@ -14,18 +14,11 @@ async function seedDatabase() {
       skills: "straight jump, tuck jump, straddle jump",
       rating: 4
     });
-    await storage.createNote({
-      date: new Date(Date.now() - 86400000).toISOString().split('T')[0], // yesterday
-      content: "Struggled a bit with my twisting, need to keep arms tighter.",
-      skills: "front flip, barani",
-      rating: 3
-    });
-    await storage.createNote({
-      date: new Date(Date.now() - 86400000 * 2).toISOString().split('T')[0], // 2 days ago
-      content: "Nailed the back tuck! Super proud.",
-      skills: "back tuck",
-      rating: 5
-    });
+    
+    // Seed some skills
+    await storage.createSkill({ name: "Back Tuck", code: "BT", difficulty: 0.5 });
+    await storage.createSkill({ name: "Front Flip", code: "FF", difficulty: 0.5 });
+    await storage.createSkill({ name: "Barani", code: "Ba", difficulty: 0.6 });
   }
 }
 
@@ -34,25 +27,16 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  // Seed the database
   seedDatabase().catch(console.error);
 
+  // Notes
   app.get(api.notes.list.path, async (req, res) => {
     const notesList = await storage.getNotes();
     res.json(notesList);
   });
 
-  app.get(api.notes.get.path, async (req, res) => {
-    const note = await storage.getNote(Number(req.params.id));
-    if (!note) {
-      return res.status(404).json({ message: 'Note not found' });
-    }
-    res.json(note);
-  });
-
   app.post(api.notes.create.path, async (req, res) => {
     try {
-      // Coerce numeric inputs if any, though rating is an integer it could come as string
       const bodySchema = api.notes.create.input.extend({
         rating: z.coerce.number().optional().nullable(),
       });
@@ -66,21 +50,26 @@ export async function registerRoutes(
           field: err.errors[0].path.join('.'),
         });
       }
-      throw err;
+      res.status(500).json({ message: "Internal server error" });
     }
   });
 
-  app.put(api.notes.update.path, async (req, res) => {
+  app.delete(api.notes.delete.path, async (req, res) => {
+    await storage.deleteNote(Number(req.params.id));
+    res.status(204).send();
+  });
+
+  // Skills
+  app.get(api.skills.list.path, async (req, res) => {
+    const skillsList = await storage.getSkills();
+    res.json(skillsList);
+  });
+
+  app.post(api.skills.create.path, async (req, res) => {
     try {
-      const bodySchema = api.notes.update.input.extend({
-        rating: z.coerce.number().optional().nullable(),
-      });
-      const input = bodySchema.parse(req.body);
-      const note = await storage.updateNote(Number(req.params.id), input);
-      if (!note) {
-        return res.status(404).json({ message: 'Note not found' });
-      }
-      res.json(note);
+      const input = api.skills.create.input.parse(req.body);
+      const skill = await storage.createSkill(input);
+      res.status(201).json(skill);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({
@@ -88,12 +77,39 @@ export async function registerRoutes(
           field: err.errors[0].path.join('.'),
         });
       }
-      throw err;
+      res.status(500).json({ message: "Internal server error" });
     }
   });
 
-  app.delete(api.notes.delete.path, async (req, res) => {
-    await storage.deleteNote(Number(req.params.id));
+  app.delete(api.skills.delete.path, async (req, res) => {
+    await storage.deleteSkill(Number(req.params.id));
+    res.status(204).send();
+  });
+
+  // Routines
+  app.get(api.routines.list.path, async (req, res) => {
+    const routinesList = await storage.getRoutines();
+    res.json(routinesList);
+  });
+
+  app.post(api.routines.create.path, async (req, res) => {
+    try {
+      const input = api.routines.create.input.parse(req.body);
+      const routine = await storage.createRoutine(input);
+      res.status(201).json(routine);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete(api.routines.delete.path, async (req, res) => {
+    await storage.deleteRoutine(Number(req.params.id));
     res.status(204).send();
   });
 

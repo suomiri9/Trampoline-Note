@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertNoteSchema, notes } from './schema';
+import { insertNoteSchema, notes, skills, routines, insertSkillSchema, insertRoutineSchema } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -59,6 +59,58 @@ export const api = {
       },
     },
   },
+  skills: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/skills' as const,
+      responses: {
+        200: z.array(z.custom<typeof skills.$inferSelect>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/skills' as const,
+      input: insertSkillSchema,
+      responses: {
+        201: z.custom<typeof skills.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/skills/:id' as const,
+      responses: {
+        204: z.void(),
+        404: errorSchemas.notFound,
+      },
+    },
+  },
+  routines: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/routines' as const,
+      responses: {
+        200: z.array(z.custom<typeof routines.$inferSelect>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/routines' as const,
+      input: insertRoutineSchema,
+      responses: {
+        201: z.custom<typeof routines.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/routines/:id' as const,
+      responses: {
+        204: z.void(),
+        404: errorSchemas.notFound,
+      },
+    },
+  },
 };
 
 export function buildUrl(path: string, params?: Record<string, string | number>): string {
@@ -72,8 +124,3 @@ export function buildUrl(path: string, params?: Record<string, string | number>)
   }
   return url;
 }
-
-export type NoteInput = z.infer<typeof api.notes.create.input>;
-export type NoteUpdateInput = z.infer<typeof api.notes.update.input>;
-export type NoteResponse = z.infer<typeof api.notes.create.responses[201]>;
-export type NotesListResponse = z.infer<typeof api.notes.list.responses[200]>;
