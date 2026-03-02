@@ -312,7 +312,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                   <button 
                                     type="button" 
                                     className="h-5 px-1 hover:bg-secondary text-[10px] border-r"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
                                       const val = (currentConnection[0]?.reps || 1) - 1;
                                       const indices = currentConnection.map((_, i) => connectionIdx + i);
                                       updateReps(indices, val);
@@ -327,11 +329,14 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                       const indices = currentConnection.map((_, i) => connectionIdx + i);
                                       updateReps(indices, val);
                                     }}
+                                    onClick={(e) => e.stopPropagation()}
                                   />
                                   <button 
                                     type="button" 
                                     className="h-5 px-1 hover:bg-secondary text-[10px] border-l"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
                                       const val = (currentConnection[0]?.reps || 1) + 1;
                                       const indices = currentConnection.map((_, i) => connectionIdx + i);
                                       updateReps(indices, val);
