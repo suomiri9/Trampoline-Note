@@ -181,18 +181,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
             </div>
 
             <div className="space-y-3">
-              <FormLabel className="text-foreground/80 font-medium">Skills & Drills Practiced</FormLabel>
+              <div className="flex items-center justify-between">
+                <FormLabel className="text-foreground/80 font-medium">Skills & Drills Practiced</FormLabel>
+                {selectedSkillIds.length > 0 && selectedSkillIds[selectedSkillIds.length - 1] !== -1 && (
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 px-2 text-[10px] font-bold uppercase tracking-wider border-primary/20 text-primary hover:bg-primary/5 rounded-lg"
+                    onClick={() => addSkill("connection")}
+                  >
+                    Finish Connection
+                  </Button>
+                )}
+              </div>
               <Select onValueChange={addSkill}>
                 <SelectTrigger className="rounded-xl h-11">
                   <SelectValue placeholder="Add a skill or drill..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="connection">
-                    <div className="flex items-center gap-2 text-primary font-bold">
-                      <Plus className="w-3 h-3" />
-                      <span>Connection</span>
-                    </div>
-                  </SelectItem>
                   {allItems?.sort((a, b) => b.difficulty - a.difficulty).map(item => (
                     <SelectItem key={item.id} value={item.id.toString()}>
                       <div className="flex items-center gap-2">
