@@ -96,7 +96,11 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
         <div className="flex justify-between items-start mb-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary text-secondary-foreground"><Calendar className="w-4 h-4" /></div>
-            <span>{format(new Date(note.date), "MMMM d, yyyy")}{note.time && ` at ${note.time}`}</span>
+            <span>{format(new Date(note.date), "MMMM d, yyyy")}</span>
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground/60 bg-secondary/50 px-2 py-1 rounded-lg ml-2">
+              <Activity className="w-3 h-3" />
+              {note.startTime || "??:??"} - {note.endTime || "??:??"}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             {note.rating ? <StarRating value={note.rating} onChange={() => {}} readonly /> : null}

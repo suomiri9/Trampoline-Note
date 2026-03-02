@@ -48,7 +48,8 @@ const formSchema = z.object({
   date: z.date({
     required_error: "A date is required.",
   }),
-  time: z.string().optional().nullable(),
+  startTime: z.string().optional().nullable(),
+  endTime: z.string().optional().nullable(),
   content: z.string().min(1, "Notes cannot be empty."),
   skills: z.string().optional().nullable(), // Store as comma-separated IDs
   rating: z.number().min(1).max(5).optional().nullable(),
@@ -103,7 +104,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         setSelectedSkills(skills);
         form.reset({
           date: new Date(noteToEdit.date),
-          time: noteToEdit.time || "",
+          startTime: noteToEdit.startTime || "",
+          endTime: noteToEdit.endTime || "",
           content: noteToEdit.content,
           skills: noteToEdit.skills || "",
           rating: noteToEdit.rating || null,
@@ -113,7 +115,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         setIsConnectMode(false);
         form.reset({
           date: new Date(),
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+          startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+          endTime: "",
           content: "",
           skills: "",
           rating: null,
@@ -230,7 +233,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     const payload = {
       ...values,
       date: values.date.toISOString(), 
-      time: values.time || null,
+      startTime: values.startTime || null,
+      endTime: values.endTime || null,
       skills: JSON.stringify(selectedSkills) || null,
       rating: values.rating || null,
     };
@@ -276,9 +280,14 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     <PopoverContent className="w-auto p-0 rounded-xl"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date()} initialFocus /></PopoverContent></Popover>
                   </FormItem>
                 )} />
-                <FormField control={form.control} name="time" render={({ field }) => (
-                  <FormItem className="w-32"><FormLabel>Time</FormLabel><FormControl><Input type="time" className="rounded-xl h-11" {...field} value={field.value || ""} /></FormControl></FormItem>
-                )} />
+                <div className="flex gap-2 items-end">
+                  <FormField control={form.control} name="startTime" render={({ field }) => (
+                    <FormItem className="w-24"><FormLabel>Start</FormLabel><FormControl><Input type="time" className="rounded-xl h-11" {...field} value={field.value || ""} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="endTime" render={({ field }) => (
+                    <FormItem className="w-24"><FormLabel>End</FormLabel><FormControl><Input type="time" className="rounded-xl h-11" {...field} value={field.value || ""} /></FormControl></FormItem>
+                  )} />
+                </div>
                 <FormField control={form.control} name="rating" render={({ field }) => (
                   <FormItem className="flex-1"><FormLabel>Rating</FormLabel><FormControl><div className="h-11 flex items-center"><StarRating value={field.value} onChange={field.onChange} /></div></FormControl></FormItem>
                 )} />
