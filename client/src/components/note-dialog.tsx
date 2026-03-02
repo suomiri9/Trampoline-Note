@@ -309,9 +309,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               <div className="flex items-center gap-1">
                                 <span className="text-[9px] text-muted-foreground">Reps:</span>
                                 <div className="flex items-center border rounded-md bg-background overflow-hidden">
-                                  <button 
+                                  <Button 
                                     type="button" 
-                                    className="h-5 px-1 hover:bg-secondary text-[10px] border-r"
+                                    variant="ghost"
+                                    className="h-5 w-6 px-0 hover:bg-secondary text-[10px] border-r rounded-none"
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
@@ -319,21 +320,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                       const indices = currentConnection.map((_, i) => connectionIdx + i);
                                       updateReps(indices, val);
                                     }}
-                                  >-</button>
-                                  <Input 
+                                  >-</Button>
+                                  <input 
                                     type="number" 
-                                    className="h-5 w-8 text-[10px] p-0 text-center border-none shadow-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                    className="h-5 w-8 text-[10px] p-0 text-center border-none focus:ring-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-transparent" 
                                     value={currentConnection[0]?.reps || 1}
                                     onChange={(e) => {
                                       const val = parseInt(e.target.value) || 1;
                                       const indices = currentConnection.map((_, i) => connectionIdx + i);
                                       updateReps(indices, val);
                                     }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') e.preventDefault();
+                                    }}
                                     onClick={(e) => e.stopPropagation()}
                                   />
-                                  <button 
+                                  <Button 
                                     type="button" 
-                                    className="h-5 px-1 hover:bg-secondary text-[10px] border-l"
+                                    variant="ghost"
+                                    className="h-5 w-6 px-0 hover:bg-secondary text-[10px] border-l rounded-none"
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
@@ -341,7 +346,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                       const indices = currentConnection.map((_, i) => connectionIdx + i);
                                       updateReps(indices, val);
                                     }}
-                                  >+</button>
+                                  >+</Button>
                                 </div>
                               </div>
                             </div>
