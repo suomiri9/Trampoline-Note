@@ -140,14 +140,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     }
     
     setSelectedSkills(newSkills);
-    form.setValue('skills', JSON.stringify(newSkills));
+    // Use setTimeout to ensure state is updated before form value
+    setTimeout(() => {
+      form.setValue('skills', JSON.stringify(newSkills));
+    }, 0);
   };
 
   const removeSkill = (index: number) => {
     const newSkills = [...selectedSkills];
     newSkills.splice(index, 1);
     setSelectedSkills(newSkills);
-    form.setValue('skills', JSON.stringify(newSkills));
+    setTimeout(() => {
+      form.setValue('skills', JSON.stringify(newSkills));
+    }, 0);
   };
 
   const updateReps = (indices: number[], reps: number) => {
@@ -159,7 +164,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       }
     });
     setSelectedSkills(newSkills);
-    form.setValue('skills', JSON.stringify(newSkills));
+    setTimeout(() => {
+      form.setValue('skills', JSON.stringify(newSkills));
+    }, 0);
   };
 
   const totalDifficulty = selectedSkills.reduce((sum, item, idx) => {
