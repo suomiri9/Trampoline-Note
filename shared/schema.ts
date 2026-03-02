@@ -17,6 +17,7 @@ export const skills = pgTable("skills", {
   code: text("code").notNull(),
   difficulty: real("difficulty").notNull(),
   isDrill: integer("is_drill").notNull().default(0), // 0 for skill, 1 for drill, 2 for frequent connection
+  skillIds: integer("skill_ids").array(), // For frequent connections (type 2)
 });
 
 export const routines = pgTable("routines", {
