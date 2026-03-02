@@ -145,7 +145,7 @@ export default function SkillsPage() {
         <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="drills">Drills</TabsTrigger>
-          <TabsTrigger value="connections">Frequent Connections</TabsTrigger>
+          <TabsTrigger value="connections">FC</TabsTrigger>
         </TabsList>
 
         <TabsContent value="skills" className="space-y-8">

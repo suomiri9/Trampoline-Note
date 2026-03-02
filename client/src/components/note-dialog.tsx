@@ -309,7 +309,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   }}
                 >
                   <SelectTrigger className="rounded-xl h-11">
-                    <SelectValue placeholder="Add a skill or drill..." />
+                    <SelectValue placeholder="Add a skill, drill or FC..." />
                   </SelectTrigger>
                   <SelectContent>
                     {allItems?.sort((a, b) => b.difficulty - a.difficulty).map(item => (
