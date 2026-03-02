@@ -292,18 +292,12 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     </Button>
                   </div>
                 </div>
-                <Select onValueChange={(val) => {
-                  addSkill(val);
-                  // Reset select value to allow adding the same skill again
-                  setTimeout(() => {
-                    const selectTriggers = document.querySelectorAll('[role="combobox"]');
-                    selectTriggers.forEach(trigger => {
-                      if (trigger.textContent?.includes("Add a skill")) {
-                        // This is a bit hacky but Select doesn't expose a clean reset without being controlled
-                      }
-                    });
-                  }, 0);
-                }}>
+                <Select 
+                  key={selectedSkills.length} 
+                  onValueChange={(val) => {
+                    addSkill(val);
+                  }}
+                >
                   <SelectTrigger className="rounded-xl h-11">
                     <SelectValue placeholder="Add a skill or drill..." />
                   </SelectTrigger>
@@ -321,7 +315,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 </Select>
 
                 {routines && routines.length > 0 && (
-                  <Select onValueChange={addRoutine}>
+                  <Select 
+                    key={`routine-select-${selectedSkills.length}`}
+                    onValueChange={addRoutine}
+                  >
                     <SelectTrigger className="rounded-xl h-11 border-primary/20 bg-primary/5">
                       <SelectValue placeholder="Add a saved routine..." />
                     </SelectTrigger>
