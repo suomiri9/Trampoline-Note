@@ -16,9 +16,9 @@ function Navigation() {
 
   const navItems = [
     { href: "/", label: "Training", icon: LayoutDashboard },
+    { href: "/stats", label: "Progress", icon: BarChart3 },
     { href: "/skills", label: "Skills", icon: Target },
     { href: "/routines", label: "Routines", icon: Layers },
-    { href: "/stats", label: "Progress", icon: BarChart3 },
   ];
 
   return (
