@@ -23,15 +23,15 @@ function Navigation() {
     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-md border border-border px-4 py-2 rounded-2xl shadow-2xl flex items-center gap-2 z-50">
       {navItems.map((item) => (
         <Link key={item.href} href={item.href}>
-          <a className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
+          <div className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer",
             location === item.href 
               ? "bg-foreground text-background shadow-lg" 
               : "text-muted-foreground hover:bg-secondary"
           )}>
             <item.icon className="w-4 h-4" />
             <span className="hidden sm:inline">{item.label}</span>
-          </a>
+          </div>
         </Link>
       ))}
     </nav>

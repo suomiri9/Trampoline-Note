@@ -52,30 +52,48 @@ export default function RoutinesPage() {
               onChange={e => setName(e.target.value)} 
             />
             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-              {selectedSkillIds.map((id, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-muted-foreground w-6">{index + 1}.</span>
-                  <Select onValueChange={(val) => handleAddSkill(index, val)} value={id?.toString() || ""}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select Skill" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {skills?.map(skill => (
-                        <SelectItem key={skill.id} value={skill.id.toString()}>
-                          {skill.name} ({skill.difficulty})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ))}
+              {selectedSkillIds.map((id, index) => {
+                const selectedSkill = skills?.find(s => s.id === id);
+                return (
+                  <div key={index} className="flex items-center gap-2 group">
+                    <span className="text-xs font-mono text-muted-foreground w-6">{index + 1}.</span>
+                    <Select onValueChange={(val) => handleAddSkill(index, val)} value={id?.toString() || ""}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select Skill" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {skills?.map(skill => (
+                          <SelectItem key={skill.id} value={skill.id.toString()}>
+                            {skill.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="w-16 flex justify-end">
+                      {selectedSkill ? (
+                        <Badge variant="outline" className="font-mono bg-secondary/50">
+                          {selectedSkill.difficulty.toFixed(1)}
+                        </Badge>
+                      ) : (
+                        <div className="w-8 h-4 bg-muted/20 rounded-full" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="pt-4 border-t flex justify-between items-center">
+              <span className="text-sm font-medium text-muted-foreground">Total Difficulty</span>
+              <span className="text-2xl font-bold text-primary">
+                {calculateDifficulty(selectedSkillIds.filter((id): id is number => id !== null))}
+              </span>
             </div>
             <Button 
-              className="w-full" 
+              className="w-full h-11" 
               onClick={handleCreate} 
               disabled={isCreating || !name || selectedSkillIds.some(id => id === null)}
             >
-              Save Routine
+              {isCreating ? "Saving..." : "Save Routine"}
             </Button>
           </CardContent>
         </Card>
@@ -97,13 +115,18 @@ export default function RoutinesPage() {
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                   </div>
-                  <div className="p-4 flex flex-wrap gap-2">
+                  <div className="p-4 flex flex-wrap gap-4">
                     {routine.skillIds.map((id, idx) => {
                       const skill = skills?.find(s => s.id === id);
                       return (
-                        <Badge key={idx} variant="outline" className="px-2 py-1">
-                          {skill?.code || "???"}
-                        </Badge>
+                        <div key={idx} className="flex flex-col items-center gap-1">
+                          <Badge variant="outline" className="px-2 py-1 font-mono">
+                            {skill?.code || "???"}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground font-semibold">
+                            {skill?.difficulty.toFixed(1) || "0.0"}
+                          </span>
+                        </div>
                       );
                     })}
                   </div>
