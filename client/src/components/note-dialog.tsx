@@ -154,7 +154,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     const val = Math.max(1, reps);
     const newSkills = [...selectedSkills];
     indices.forEach(idx => {
-      if (newSkills[idx]) {
+      if (newSkills[idx] && newSkills[idx].id !== -1) {
         newSkills[idx] = { ...newSkills[idx], reps: val };
       }
     });
