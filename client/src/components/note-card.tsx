@@ -58,11 +58,27 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
     }
   })();
   
-  const totalDifficulty = skillsData.reduce((sum, item) => {
-    if (item.id === -1) return sum;
-    const skill = allItems?.find(s => s.id === item.id);
-    return sum + ((skill?.difficulty || 0) * (item.reps || 1));
-  }, 0);
+  const totalDifficulty = (() => {
+    let total = 0;
+    let currentGroupDD = 0;
+    let currentGroupReps = 1;
+
+    skillsData.forEach((item) => {
+      if (item.id === -1) {
+        total += currentGroupDD * currentGroupReps;
+        currentGroupDD = 0;
+        currentGroupReps = 1;
+      } else {
+        const skill = allItems?.find(s => s.id === item.id);
+        currentGroupDD += (skill?.difficulty || 0);
+        // All items in a group should have the same reps, but we'll take it from the item
+        currentGroupReps = item.reps || 1;
+      }
+    });
+    // Add the last group
+    total += currentGroupDD * currentGroupReps;
+    return total;
+  })();
 
   const staggerClass = `stagger-${Math.min(index + 1, 5)}`;
 

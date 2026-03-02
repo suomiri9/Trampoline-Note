@@ -70,6 +70,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const { data: allItems } = useSkills();
   
   const [selectedSkills, setSelectedSkills] = useState<SkillItem[]>([]);
+  const [isConnectMode, setIsConnectMode] = useState(false);
 
   const isEditing = !!noteToEdit;
 
@@ -107,6 +108,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         });
       } else {
         setSelectedSkills([]);
+        setIsConnectMode(false);
         form.reset({
           date: new Date(),
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
@@ -119,14 +121,24 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   }, [open, noteToEdit, form]);
 
   const addSkill = (idStr: string) => {
-    if (idStr === "connection") {
-      const newSkills = [...selectedSkills, { id: -1 }];
-      setSelectedSkills(newSkills);
-      form.setValue('skills', JSON.stringify(newSkills));
-      return;
-    }
     const id = parseInt(idStr);
-    const newSkills = [...selectedSkills, { id, reps: 1 }];
+    let newSkills = [...selectedSkills];
+    
+    if (isConnectMode && newSkills.length > 0) {
+      if (newSkills[newSkills.length - 1].id === -1) {
+        newSkills.pop();
+      }
+      const lastSkill = [...newSkills].reverse().find(s => s.id !== -1);
+      const reps = lastSkill?.reps || 1;
+      newSkills.push({ id, reps });
+      setIsConnectMode(false);
+    } else {
+      if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
+        newSkills.push({ id: -1 });
+      }
+      newSkills.push({ id, reps: 1 });
+    }
+    
     setSelectedSkills(newSkills);
     form.setValue('skills', JSON.stringify(newSkills));
   };
@@ -138,17 +150,48 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     form.setValue('skills', JSON.stringify(newSkills));
   };
 
-  const updateReps = (index: number, reps: number) => {
+  const updateReps = (indices: number[], reps: number) => {
+    const val = Math.max(1, reps);
     const newSkills = [...selectedSkills];
-    newSkills[index] = { ...newSkills[index], reps: Math.max(1, reps) };
+    indices.forEach(idx => {
+      if (newSkills[idx]) {
+        newSkills[idx] = { ...newSkills[idx], reps: val };
+      }
+    });
     setSelectedSkills(newSkills);
     form.setValue('skills', JSON.stringify(newSkills));
   };
 
-  const totalDifficulty = selectedSkills.reduce((sum, item) => {
+  const totalDifficulty = selectedSkills.reduce((sum, item, idx) => {
     if (item.id === -1) return sum;
-    const skill = allItems?.find(s => s.id === item.id);
-    return sum + ((skill?.difficulty || 0) * (item.reps || 1));
+    
+    // Find if this skill is part of a connection group
+    // A group is defined by skills between -1 separators
+    let groupSkills: SkillItem[] = [];
+    let i = idx;
+    // Look backwards to find start of group
+    while (i >= 0 && selectedSkills[i].id !== -1) {
+      groupSkills.unshift(selectedSkills[i]);
+      i--;
+    }
+    // Look forwards to find end of group
+    i = idx + 1;
+    while (i < selectedSkills.length && selectedSkills[i].id !== -1) {
+      groupSkills.push(selectedSkills[i]);
+      i++;
+    }
+
+    // Only process the first item of each group to avoid overcounting
+    // The first item of a group is either index 0 or follows a -1
+    const isFirstInGroup = idx === 0 || selectedSkills[idx - 1].id === -1;
+    if (!isFirstInGroup) return sum;
+
+    const groupDD = groupSkills.reduce((acc, gs) => {
+      const skill = allItems?.find(s => s.id === gs.id);
+      return acc + (skill?.difficulty || 0);
+    }, 0);
+
+    return sum + (groupDD * (item.reps || 1));
   }, 0);
 
   const onSubmit = (values: FormValues) => {
@@ -201,17 +244,20 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <FormLabel className="text-foreground/80 font-medium">Skills & Drills Practiced</FormLabel>
-                {selectedSkills.length > 0 && selectedSkills[selectedSkills.length - 1].id !== -1 && (
+                <div className="flex items-center gap-2">
                   <Button 
                     type="button" 
-                    variant="outline" 
+                    variant={isConnectMode ? "default" : "outline"}
                     size="sm" 
-                    className="h-7 px-2 text-[10px] font-bold uppercase tracking-wider border-primary/20 text-primary hover:bg-primary/5 rounded-lg"
-                    onClick={() => addSkill("connection")}
+                    className={cn(
+                      "h-7 px-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all",
+                      isConnectMode ? "bg-primary text-primary-foreground shadow-md" : "border-primary/20 text-primary hover:bg-primary/5"
+                    )}
+                    onClick={() => setIsConnectMode(!isConnectMode)}
                   >
-                    Separate Skills
+                    {isConnectMode ? "Connecting Next..." : "Connect Next"}
                   </Button>
-                )}
+                </div>
               </div>
               <Select onValueChange={addSkill}>
                 <SelectTrigger className="rounded-xl h-11">
@@ -267,9 +313,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                   className="h-5 px-1 hover:bg-secondary text-[10px] border-r"
                                   onClick={() => {
                                     const val = (currentConnection[0]?.reps || 1) - 1;
-                                    for(let i=0; i<currentConnection.length; i++) {
-                                      updateReps(connectionIdx + i, val);
-                                    }
+                                    const indices = currentConnection.map((_, i) => connectionIdx + i);
+                                    updateReps(indices, val);
                                   }}
                                 >-</button>
                                 <Input 
@@ -278,9 +323,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                   value={currentConnection[0]?.reps || 1}
                                   onChange={(e) => {
                                     const val = parseInt(e.target.value) || 1;
-                                    for(let i=0; i<currentConnection.length; i++) {
-                                      updateReps(connectionIdx + i, val);
-                                    }
+                                    const indices = currentConnection.map((_, i) => connectionIdx + i);
+                                    updateReps(indices, val);
                                   }}
                                 />
                                 <button 
@@ -288,9 +332,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                   className="h-5 px-1 hover:bg-secondary text-[10px] border-l"
                                   onClick={() => {
                                     const val = (currentConnection[0]?.reps || 1) + 1;
-                                    for(let i=0; i<currentConnection.length; i++) {
-                                      updateReps(connectionIdx + i, val);
-                                    }
+                                    const indices = currentConnection.map((_, i) => connectionIdx + i);
+                                    updateReps(indices, val);
                                   }}
                                 >+</button>
                               </div>
