@@ -93,17 +93,19 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
   return (
     <>
       <div className={`group relative bg-card p-6 rounded-2xl border border-border/50 hover:border-border hover:shadow-lg transition-all animate-fade-in-up opacity-0 ${staggerClass}`}>
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary text-secondary-foreground"><Calendar className="w-4 h-4" /></div>
-            <span>{format(new Date(note.date), "MMMM d, yyyy")}</span>
-            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground/60 bg-secondary/50 px-2 py-1 rounded-lg ml-2">
-              <Activity className="w-3 h-3" />
-              {note.startTime || "??:??"} - {note.endTime || "??:??"}
+        <div className="flex justify-between items-start mb-4 gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-muted-foreground font-medium min-w-0">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary text-secondary-foreground shrink-0"><Calendar className="w-4 h-4" /></div>
+              <span className="truncate">{format(new Date(note.date), "MMMM d, yyyy")}</span>
+            </div>
+            <div className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-muted-foreground/60 bg-secondary/50 px-2 py-1 rounded-lg w-fit sm:ml-1">
+              <Activity className="w-3 h-3 shrink-0" />
+              <span className="whitespace-nowrap">{note.startTime || "??:??"} - {note.endTime || "??:??"}</span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            {note.rating ? <StarRating value={note.rating} onChange={() => {}} readonly /> : null}
+          <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+            {note.rating ? <div className="scale-75 sm:scale-100 origin-right"><StarRating value={note.rating} onChange={() => {}} readonly /></div> : null}
             <DropdownMenu>
               <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40 rounded-xl">
