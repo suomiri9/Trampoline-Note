@@ -7,8 +7,9 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import SkillsPage from "@/pages/skills";
 import RoutinesPage from "@/pages/routines";
+import StatsPage from "@/pages/stats";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Target, Layers } from "lucide-react";
+import { LayoutDashboard, Target, Layers, BarChart3 } from "lucide-react";
 
 function Navigation() {
   const [location] = useLocation();
@@ -17,6 +18,7 @@ function Navigation() {
     { href: "/", label: "Training", icon: LayoutDashboard },
     { href: "/skills", label: "Skills", icon: Target },
     { href: "/routines", label: "Routines", icon: Layers },
+    { href: "/stats", label: "Progress", icon: BarChart3 },
   ];
 
   return (
@@ -45,6 +47,7 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/skills" component={SkillsPage} />
         <Route path="/routines" component={RoutinesPage} />
+        <Route path="/stats" component={StatsPage} />
         <Route component={NotFound} />
       </Switch>
     </div>
