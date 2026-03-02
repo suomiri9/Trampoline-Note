@@ -108,6 +108,25 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  app.put(api.skills.update.path, async (req, res) => {
+    try {
+      const input = api.skills.update.input.parse(req.body);
+      const skill = await storage.updateSkill(Number(req.params.id), input);
+      if (!skill) {
+        return res.status(404).json({ message: "Skill not found" });
+      }
+      res.json(skill);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Routines
   app.get(api.routines.list.path, async (req, res) => {
     const routinesList = await storage.getRoutines();
@@ -133,6 +152,25 @@ export async function registerRoutes(
   app.delete(api.routines.delete.path, async (req, res) => {
     await storage.deleteRoutine(Number(req.params.id));
     res.status(204).send();
+  });
+
+  app.put(api.routines.update.path, async (req, res) => {
+    try {
+      const input = api.routines.update.input.parse(req.body);
+      const routine = await storage.updateRoutine(Number(req.params.id), input);
+      if (!routine) {
+        return res.status(404).json({ message: "Routine not found" });
+      }
+      res.json(routine);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   return httpServer;

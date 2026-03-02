@@ -40,10 +40,30 @@ export function useSkills() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, ...skill }: { id: number } & Partial<InsertSkill>) => {
+      const res = await apiRequest("PUT", buildUrl(api.skills.update.path, { id }), skill);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
+      toast({ title: "Skill updated successfully" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update skill",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     ...query,
     createSkill: createMutation.mutateAsync,
     isCreating: createMutation.isPending,
     deleteSkill: deleteMutation.mutateAsync,
+    updateSkill: updateMutation.mutateAsync,
+    isUpdating: updateMutation.isPending,
   };
 }

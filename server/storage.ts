@@ -24,11 +24,13 @@ export interface IStorage {
   // Skills
   getSkills(): Promise<Skill[]>;
   createSkill(skill: InsertSkill): Promise<Skill>;
+  updateSkill(id: number, updates: Partial<InsertSkill>): Promise<Skill | undefined>;
   deleteSkill(id: number): Promise<void>;
   
   // Routines
   getRoutines(): Promise<Routine[]>;
   createRoutine(routine: InsertRoutine): Promise<Routine>;
+  updateRoutine(id: number, updates: Partial<InsertRoutine>): Promise<Routine | undefined>;
   deleteRoutine(id: number): Promise<void>;
 }
 
@@ -68,6 +70,14 @@ export class DatabaseStorage implements IStorage {
     return skill;
   }
 
+  async updateSkill(id: number, updates: Partial<InsertSkill>): Promise<Skill | undefined> {
+    const [updated] = await db.update(skills)
+      .set(updates)
+      .where(eq(skills.id, id))
+      .returning();
+    return updated;
+  }
+
   async deleteSkill(id: number): Promise<void> {
     await db.delete(skills).where(eq(skills.id, id));
   }
@@ -79,6 +89,14 @@ export class DatabaseStorage implements IStorage {
   async createRoutine(insertRoutine: InsertRoutine): Promise<Routine> {
     const [routine] = await db.insert(routines).values(insertRoutine).returning();
     return routine;
+  }
+
+  async updateRoutine(id: number, updates: Partial<InsertRoutine>): Promise<Routine | undefined> {
+    const [updated] = await db.update(routines)
+      .set(updates)
+      .where(eq(routines.id, id))
+      .returning();
+    return updated;
   }
 
   async deleteRoutine(id: number): Promise<void> {

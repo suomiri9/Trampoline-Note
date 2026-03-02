@@ -5,14 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, GripVertical } from "lucide-react";
+import { Trash2, Plus, GripVertical, Pencil, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { type Routine } from "@shared/schema";
+import { cn } from "@/lib/utils";
 
 export default function RoutinesPage() {
   const { data: allItems } = useSkills();
   const skills = allItems?.filter(item => item.isDrill === 0);
-  const { data: routines, createRoutine, deleteRoutine, isCreating } = useRoutines();
+  const { data: routines, createRoutine, deleteRoutine, updateRoutine, isCreating, isUpdating } = useRoutines();
   
+  const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
   const [name, setName] = useState("");
   const [selectedSkillIds, setSelectedSkillIds] = useState<(number | null)[]>(new Array(10).fill(null));
 
@@ -24,10 +27,33 @@ export default function RoutinesPage() {
 
   const handleCreate = async () => {
     if (!name || selectedSkillIds.some(id => id === null)) return;
-    await createRoutine({
-      name,
-      skillIds: selectedSkillIds as number[],
-    });
+    
+    if (editingRoutine) {
+      await updateRoutine({
+        id: editingRoutine.id,
+        name,
+        skillIds: selectedSkillIds as number[],
+      });
+      setEditingRoutine(null);
+    } else {
+      await createRoutine({
+        name,
+        skillIds: selectedSkillIds as number[],
+      });
+    }
+    
+    setName("");
+    setSelectedSkillIds(new Array(10).fill(null));
+  };
+
+  const startEditing = (routine: Routine) => {
+    setEditingRoutine(routine);
+    setName(routine.name);
+    setSelectedSkillIds(routine.skillIds);
+  };
+
+  const cancelEditing = () => {
+    setEditingRoutine(null);
     setName("");
     setSelectedSkillIds(new Array(10).fill(null));
   };
@@ -44,7 +70,10 @@ export default function RoutinesPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <Card className="md:col-span-1">
           <CardHeader>
-            <CardTitle>Create Routine (10 Skills)</CardTitle>
+            <CardTitle className="flex justify-between items-center">
+              {editingRoutine ? "Edit Routine" : "Create Routine (10 Skills)"}
+              {editingRoutine && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Input 
@@ -89,32 +118,40 @@ export default function RoutinesPage() {
                 {calculateDifficulty(selectedSkillIds.filter((id): id is number => id !== null))}
               </span>
             </div>
-            <Button 
-              className="w-full h-11" 
-              onClick={handleCreate} 
-              disabled={isCreating || !name || selectedSkillIds.some(id => id === null)}
-            >
-              {isCreating ? "Saving..." : "Save Routine"}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                className="flex-1 h-11" 
+                onClick={handleCreate} 
+                disabled={isCreating || isUpdating || !name || selectedSkillIds.some(id => id === null)}
+              >
+                {isCreating || isUpdating ? "Saving..." : editingRoutine ? "Update Routine" : "Save Routine"}
+              </Button>
+              {editingRoutine && (
+                <Button variant="outline" className="h-11" onClick={cancelEditing}>Cancel</Button>
+              )}
+            </div>
           </CardContent>
         </Card>
 
         <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Saved Routines</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Saved Routines</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-4">
               {routines?.map((routine) => (
-                <Card key={routine.id} className="overflow-hidden">
+                <Card key={routine.id} className={cn("overflow-hidden", editingRoutine?.id === routine.id && "ring-2 ring-primary")}>
                   <div className="p-4 flex items-center justify-between bg-muted/30">
                     <div>
                       <h3 className="font-bold text-lg">{routine.name}</h3>
                       <p className="text-sm text-muted-foreground">Total Difficulty: {calculateDifficulty(routine.skillIds)}</p>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => deleteRoutine(routine.id)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+                    <div className="space-x-2">
+                      <Button variant="ghost" size="icon" onClick={() => startEditing(routine)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => deleteRoutine(routine.id)}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="p-4 flex flex-wrap gap-4">
                     {routine.skillIds.map((id, idx) => {

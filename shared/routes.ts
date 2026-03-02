@@ -84,6 +84,16 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/skills/:id' as const,
+      input: insertSkillSchema.partial(),
+      responses: {
+        200: z.custom<typeof skills.$inferSelect>(),
+        400: errorSchemas.validation,
+        404: errorSchemas.notFound,
+      },
+    },
   },
   routines: {
     list: {
@@ -107,6 +117,16 @@ export const api = {
       path: '/api/routines/:id' as const,
       responses: {
         204: z.void(),
+        404: errorSchemas.notFound,
+      },
+    },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/routines/:id' as const,
+      input: insertRoutineSchema.partial(),
+      responses: {
+        200: z.custom<typeof routines.$inferSelect>(),
+        400: errorSchemas.validation,
         404: errorSchemas.notFound,
       },
     },

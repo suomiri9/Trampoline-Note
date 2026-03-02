@@ -40,10 +40,30 @@ export function useRoutines() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, ...routine }: { id: number } & Partial<InsertRoutine>) => {
+      const res = await apiRequest("PUT", buildUrl(api.routines.update.path, { id }), routine);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.routines.list.path] });
+      toast({ title: "Routine updated successfully" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update routine",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     ...query,
     createRoutine: createMutation.mutateAsync,
     isCreating: createMutation.isPending,
     deleteRoutine: deleteMutation.mutateAsync,
+    updateRoutine: updateMutation.mutateAsync,
+    isUpdating: updateMutation.isPending,
   };
 }
