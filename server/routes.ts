@@ -59,6 +59,28 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  app.put(api.notes.update.path, async (req, res) => {
+    try {
+      const bodySchema = api.notes.update.input.extend({
+        rating: z.coerce.number().optional().nullable(),
+      });
+      const input = bodySchema.parse(req.body);
+      const note = await storage.updateNote(Number(req.params.id), input);
+      if (!note) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+      res.json(note);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Skills
   app.get(api.skills.list.path, async (req, res) => {
     const skillsList = await storage.getSkills();
