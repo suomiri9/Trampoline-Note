@@ -180,7 +180,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   <SelectValue placeholder="Add a skill or drill..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {allItems?.map(item => (
+                  {allItems?.sort((a, b) => b.difficulty - a.difficulty).map(item => (
                     <SelectItem key={item.id} value={item.id.toString()}>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="font-mono text-[10px]">{item.code}</Badge>

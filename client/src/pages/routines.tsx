@@ -63,7 +63,7 @@ export default function RoutinesPage() {
                         <SelectValue placeholder="Skill Code" />
                       </SelectTrigger>
                       <SelectContent>
-                        {skills?.map(skill => (
+                        {skills?.sort((a, b) => b.difficulty - a.difficulty).map(skill => (
                           <SelectItem key={skill.id} value={skill.id.toString()}>
                             <span className="font-mono">{skill.code}</span>
                           </SelectItem>
