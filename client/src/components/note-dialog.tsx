@@ -191,7 +191,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     className="h-7 px-2 text-[10px] font-bold uppercase tracking-wider border-primary/20 text-primary hover:bg-primary/5 rounded-lg"
                     onClick={() => addSkill("connection")}
                   >
-                    Finish Connection
+                    Separate Skills
                   </Button>
                 )}
               </div>
@@ -228,10 +228,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     const flushConnection = (idx: number) => {
                       if (currentConnection.length === 0) return;
                       const connectionIdx = idx - currentConnection.length;
+                      const isSingle = currentConnection.length === 1;
                       rows.push(
-                        <div key={`group-${connectionIdx}`} className="bg-primary/5 p-2 space-y-2 border-y border-primary/10">
+                        <div key={`group-${connectionIdx}`} className={cn(
+                          "p-2 space-y-2 border-y border-border/10",
+                          isSingle ? "bg-transparent" : "bg-primary/5"
+                        )}>
                           <div className="flex items-center justify-between px-1">
-                            <span className="text-[9px] font-bold text-primary/60 uppercase tracking-widest">Connected Sequence</span>
+                            <span className={cn(
+                              "text-[9px] font-bold uppercase tracking-widest",
+                              isSingle ? "text-muted-foreground/40" : "text-primary/60"
+                            )}>
+                              {isSingle ? "Single Practice" : "Connected Sequence"}
+                            </span>
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {currentConnection.map((id, subIdx) => {
@@ -239,7 +248,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               const originalIdx = connectionIdx + subIdx;
                               return (
                                 <div key={originalIdx} className="flex items-center gap-1.5">
-                                  <Badge variant="outline" className="font-mono text-[10px] bg-background pr-1 gap-1">
+                                  <Badge variant="outline" className={cn(
+                                    "font-mono text-[10px] bg-background pr-1 gap-1",
+                                    !isSingle && "border-primary/30 text-primary"
+                                  )}>
                                     {skill?.code}
                                     <button type="button" onClick={() => removeSkill(originalIdx)} className="hover:text-destructive transition-colors">
                                       <Trash2 className="w-2.5 h-2.5" />
@@ -259,10 +271,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       if (id === -1) {
                         flushConnection(index);
                         rows.push(
-                          <div key={`sep-${index}`} className="flex items-center justify-between bg-muted/30 px-3 py-1 group transition-colors">
+                          <div key={`sep-${index}`} className="flex items-center justify-between bg-muted/10 px-3 py-0.5 group transition-colors border-y border-border/10">
                             <div className="flex items-center gap-2">
-                              <Plus className="w-2.5 h-2.5 text-muted-foreground/40 rotate-45" />
-                              <span className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest">Break</span>
+                              <span className="text-[8px] font-bold text-muted-foreground/40 uppercase tracking-widest">Next Set</span>
                             </div>
                             <Button type="button" variant="ghost" size="icon" className="h-5 w-5 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeSkill(index)}>
                               <Trash2 className="h-3 w-3" />

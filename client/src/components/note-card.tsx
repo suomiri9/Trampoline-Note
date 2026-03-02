@@ -101,24 +101,26 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
 
                   return groups.map((item, groupIdx) => {
                     if (item === -1) {
-                      return (
-                        <div key={`sep-${groupIdx}`} className="flex items-center gap-2 py-0.5">
-                          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-                          <span className="text-[8px] font-bold text-primary/40 uppercase tracking-[0.2em]">Connection</span>
-                          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-                        </div>
-                      );
+                      return null; // Don't show "Connection" separator anymore
                     }
 
+                    const isSingle = item.length === 1;
+
                     return (
-                      <div key={`group-${groupIdx}`} className="flex flex-wrap items-center gap-2 py-1.5 px-3 bg-secondary/5 rounded-xl border border-border/30 shadow-sm">
+                      <div key={`group-${groupIdx}`} className={cn(
+                        "flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl border border-border/30 shadow-sm",
+                        isSingle ? "bg-secondary/5" : "bg-primary/5 border-primary/20"
+                      )}>
                         {item.map((skillId, skillIdx) => {
                           const skill = allItems?.find(s => s.id === skillId);
                           if (!skill) return null;
                           return (
                             <div key={skillIdx} className="flex items-center gap-2">
                               <div className="flex flex-col items-center">
-                                <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[10px] border-primary/30 bg-background text-primary shadow-sm">
+                                <Badge variant="outline" className={cn(
+                                  "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
+                                  isSingle ? "border-border/60 text-muted-foreground" : "border-primary/30 text-primary"
+                                )}>
                                   {skill.code}
                                 </Badge>
                               </div>
