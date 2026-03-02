@@ -1,38 +1,46 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { db } from "./db";
+import {
+  notes,
+  type CreateNoteRequest,
+  type UpdateNoteRequest,
+  type NoteResponse
+} from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getNotes(): Promise<NoteResponse[]>;
+  getNote(id: number): Promise<NoteResponse | undefined>;
+  createNote(note: CreateNoteRequest): Promise<NoteResponse>;
+  updateNote(id: number, updates: UpdateNoteRequest): Promise<NoteResponse>;
+  deleteNote(id: number): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async getNotes(): Promise<NoteResponse[]> {
+    return await db.select().from(notes);
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getNote(id: number): Promise<NoteResponse | undefined> {
+    const [note] = await db.select().from(notes).where(eq(notes.id, id));
+    return note;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async createNote(insertNote: CreateNoteRequest): Promise<NoteResponse> {
+    const [note] = await db.insert(notes).values(insertNote).returning();
+    return note;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async updateNote(id: number, updates: UpdateNoteRequest): Promise<NoteResponse> {
+    const [updated] = await db.update(notes)
+      .set(updates)
+      .where(eq(notes.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteNote(id: number): Promise<void> {
+    await db.delete(notes).where(eq(notes.id, id));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
