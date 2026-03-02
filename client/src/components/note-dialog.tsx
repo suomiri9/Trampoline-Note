@@ -108,6 +108,12 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   }, [open, noteToEdit, form]);
 
   const addSkill = (idStr: string) => {
+    if (idStr === "connection") {
+      const newIds = [...selectedSkillIds, -1]; // Use -1 for connection
+      setSelectedSkillIds(newIds);
+      form.setValue('skills', newIds.join(','));
+      return;
+    }
     const id = parseInt(idStr);
     const newIds = [...selectedSkillIds, id];
     setSelectedSkillIds(newIds);
@@ -180,6 +186,12 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   <SelectValue placeholder="Add a skill or drill..." />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="connection">
+                    <div className="flex items-center gap-2 text-primary font-bold">
+                      <Plus className="w-3 h-3" />
+                      <span>Connection</span>
+                    </div>
+                  </SelectItem>
                   {allItems?.sort((a, b) => b.difficulty - a.difficulty).map(item => (
                     <SelectItem key={item.id} value={item.id.toString()}>
                       <div className="flex items-center gap-2">
@@ -202,6 +214,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 </div>
                 <div className="divide-y divide-border/30 max-h-[300px] overflow-y-auto">
                   {selectedSkillIds.map((id, index) => {
+                    if (id === -1) {
+                      return (
+                        <div key={`conn-${index}`} className="flex items-center justify-between bg-primary/5 px-3 py-1.5 group hover:bg-primary/10 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <div className="w-1 h-1 rounded-full bg-primary/40" />
+                            <span className="text-[10px] font-bold text-primary/70 uppercase tracking-widest">Connection</span>
+                          </div>
+                          <Button type="button" variant="ghost" size="icon" className="h-5 w-5 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeSkill(index)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      );
+                    }
                     const skill = allItems?.find(s => s.id === id);
                     if (!skill) return null;
                     return (

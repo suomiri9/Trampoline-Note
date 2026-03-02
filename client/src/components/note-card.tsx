@@ -83,6 +83,15 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
             <div className="space-y-2 pt-3 border-t border-border/40">
               <div className="flex flex-col gap-1.5">
                 {skillIds.map((id, i) => {
+                  if (id === -1) {
+                    return (
+                      <div key={i} className="flex items-center gap-2 py-0.5">
+                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+                        <span className="text-[8px] font-bold text-primary/40 uppercase tracking-[0.2em]">Connection</span>
+                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+                      </div>
+                    );
+                  }
                   const skill = allItems?.find(s => s.id === id);
                   if (!skill) return null;
                   return (
