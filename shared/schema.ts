@@ -5,6 +5,7 @@ import { z } from "zod";
 export const notes = pgTable("notes", {
   id: serial("id").primaryKey(),
   date: date("date").notNull(),
+  time: text("time"), // Store as HH:mm
   content: text("content").notNull(),
   skills: text("skills"), // e.g. "front flip, back tuck"
   rating: integer("rating"), // 1 to 5

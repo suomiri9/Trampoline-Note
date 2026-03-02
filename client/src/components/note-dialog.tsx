@@ -41,6 +41,7 @@ const formSchema = z.object({
   date: z.date({
     required_error: "A date is required.",
   }),
+  time: z.string().optional().nullable(),
   content: z.string().min(1, "Notes cannot be empty."),
   skills: z.string().optional().nullable(),
   rating: z.number().min(1).max(5).optional().nullable(),
@@ -65,6 +66,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     resolver: zodResolver(formSchema),
     defaultValues: {
       date: new Date(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
       content: "",
       skills: "",
       rating: null,
@@ -77,6 +79,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       if (noteToEdit) {
         form.reset({
           date: new Date(noteToEdit.date),
+          time: noteToEdit.time || "",
           content: noteToEdit.content,
           skills: noteToEdit.skills || "",
           rating: noteToEdit.rating || null,
@@ -84,6 +87,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       } else {
         form.reset({
           date: new Date(),
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
           content: "",
           skills: "",
           rating: null,
@@ -98,6 +102,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     const payload = {
       ...values,
       date: values.date.toISOString(), 
+      time: values.time || null,
       skills: values.skills || null,
       rating: values.rating || null,
     };
@@ -189,6 +194,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         />
                       </PopoverContent>
                     </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="time"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col flex-1">
+                    <FormLabel className="text-foreground/80 font-medium">Time</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="time" 
+                        className="rounded-xl h-11 border-border/60 focus-visible:ring-primary/20"
+                        {...field} 
+                        value={field.value || ""} 
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

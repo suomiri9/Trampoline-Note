@@ -14,7 +14,7 @@ function Navigation() {
   const [location] = useLocation();
 
   const navItems = [
-    { href: "/", label: "Log", icon: LayoutDashboard },
+    { href: "/", label: "Training", icon: LayoutDashboard },
     { href: "/skills", label: "Skills", icon: Target },
     { href: "/routines", label: "Routines", icon: Layers },
   ];

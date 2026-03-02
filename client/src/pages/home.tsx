@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, BookOpen, Loader2 } from "lucide-react";
+import { Plus, BookOpen, Loader2, Activity } from "lucide-react";
 import { useNotes } from "@/hooks/use-notes";
 import { NoteCard } from "@/components/note-card";
 import { NoteDialog } from "@/components/note-dialog";
@@ -34,20 +34,34 @@ export default function Home() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
           <div className="space-y-2">
             <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground tracking-tight">
-              Flight Log
+              Training Log
             </h1>
             <p className="text-lg text-muted-foreground">
               Track your trampoline sessions, skills, and progress.
             </p>
           </div>
           
-          <Button 
-            onClick={handleCreateNew}
-            className="rounded-2xl h-12 px-6 font-semibold bg-foreground text-background hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-black/5 self-start md:self-auto flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Log Session
-          </Button>
+          <div className="flex gap-4">
+            <Button 
+              onClick={() => {
+                setNoteToEdit(null);
+                setIsDialogOpen(true);
+              }}
+              variant="outline"
+              className="rounded-2xl h-12 px-6 font-semibold border-primary text-primary hover:bg-primary/5 transition-all flex items-center gap-2"
+            >
+              <Activity className="w-5 h-5" />
+              Start Training
+            </Button>
+
+            <Button 
+              onClick={handleCreateNew}
+              className="rounded-2xl h-12 px-6 font-semibold bg-foreground text-background hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-black/5 self-start md:self-auto flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              Log Session
+            </Button>
+          </div>
         </div>
 
         {/* Content Section */}

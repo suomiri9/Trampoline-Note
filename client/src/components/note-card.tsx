@@ -80,6 +80,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
             <span>
               {/* Parse date carefully handling string formats */}
               {format(new Date(note.date), "MMMM d, yyyy")}
+              {note.time && ` at ${note.time}`}
             </span>
           </div>
           

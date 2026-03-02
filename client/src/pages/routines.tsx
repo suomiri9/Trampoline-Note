@@ -64,7 +64,12 @@ export default function RoutinesPage() {
                       <SelectContent>
                         {skills?.map(skill => (
                           <SelectItem key={skill.id} value={skill.id.toString()}>
-                            {skill.name}
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="font-mono text-[10px] h-4 px-1 leading-none shrink-0">
+                                {skill.code}
+                              </Badge>
+                              <span className="truncate">{skill.name}</span>
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
