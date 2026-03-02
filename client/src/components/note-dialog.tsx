@@ -109,7 +109,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   const addSkill = (idStr: string) => {
     if (idStr === "connection") {
-      const newIds = [...selectedSkillIds, -1]; // Use -1 for connection
+      const newIds = [...selectedSkillIds, -1];
       setSelectedSkillIds(newIds);
       form.setValue('skills', newIds.join(','));
       return;
@@ -216,10 +216,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   {selectedSkillIds.map((id, index) => {
                     if (id === -1) {
                       return (
-                        <div key={`conn-${index}`} className="flex items-center justify-between bg-primary/5 px-3 py-1.5 group hover:bg-primary/10 transition-colors">
+                        <div key={`conn-${index}`} className="flex items-center justify-between bg-primary/5 px-3 py-1 group hover:bg-primary/10 transition-colors border-y border-primary/10 first:border-t-0 last:border-b-0">
                           <div className="flex items-center gap-2">
-                            <div className="w-1 h-1 rounded-full bg-primary/40" />
-                            <span className="text-[10px] font-bold text-primary/70 uppercase tracking-widest">Connection</span>
+                            <Plus className="w-2.5 h-2.5 text-primary/40 rotate-45" />
+                            <span className="text-[9px] font-bold text-primary/60 uppercase tracking-widest">Connection Break</span>
                           </div>
                           <Button type="button" variant="ghost" size="icon" className="h-5 w-5 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeSkill(index)}>
                             <Trash2 className="h-3 w-3" />

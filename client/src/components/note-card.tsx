@@ -82,27 +82,56 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
           {skillIds.length > 0 && (
             <div className="space-y-2 pt-3 border-t border-border/40">
               <div className="flex flex-col gap-1.5">
-                {skillIds.map((id, i) => {
-                  if (id === -1) {
+                {(() => {
+                  const groups: (number | number[])[] = [];
+                  let currentGroup: number[] = [];
+
+                  skillIds.forEach(id => {
+                    if (id === -1) {
+                      if (currentGroup.length > 0) {
+                        groups.push(currentGroup);
+                        currentGroup = [];
+                      }
+                      groups.push(-1);
+                    } else {
+                      currentGroup.push(id);
+                    }
+                  });
+                  if (currentGroup.length > 0) groups.push(currentGroup);
+
+                  return groups.map((item, groupIdx) => {
+                    if (item === -1) {
+                      return (
+                        <div key={`sep-${groupIdx}`} className="flex items-center gap-2 py-0.5">
+                          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+                          <span className="text-[8px] font-bold text-primary/40 uppercase tracking-[0.2em]">Connection</span>
+                          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+                        </div>
+                      );
+                    }
+
                     return (
-                      <div key={i} className="flex items-center gap-2 py-0.5">
-                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-                        <span className="text-[8px] font-bold text-primary/40 uppercase tracking-[0.2em]">Connection</span>
-                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+                      <div key={`group-${groupIdx}`} className="flex flex-wrap items-center gap-2 py-1.5 px-3 bg-secondary/5 rounded-xl border border-border/30 shadow-sm">
+                        {item.map((skillId, skillIdx) => {
+                          const skill = allItems?.find(s => s.id === skillId);
+                          if (!skill) return null;
+                          return (
+                            <div key={skillIdx} className="flex items-center gap-2">
+                              <div className="flex flex-col items-center">
+                                <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[10px] border-primary/30 bg-background text-primary shadow-sm">
+                                  {skill.code}
+                                </Badge>
+                              </div>
+                              {skillIdx < item.length - 1 && (
+                                <span className="text-primary/30 font-bold text-xs">+</span>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     );
-                  }
-                  const skill = allItems?.find(s => s.id === id);
-                  if (!skill) return null;
-                  return (
-                    <div key={i} className="flex items-center gap-3 text-[11px] text-muted-foreground/80 font-medium">
-                      <span className="w-3 text-center opacity-40">{i + 1}</span>
-                      <Badge variant="outline" className="px-1.5 py-0 h-4 font-mono text-[9px] border-border/60 bg-secondary/5">{skill.code}</Badge>
-                      <span className="truncate flex-1">{skill.name}</span>
-                      <span className="font-mono text-[9px] opacity-60">{skill.difficulty.toFixed(1)}</span>
-                    </div>
-                  );
-                })}
+                  });
+                })()}
               </div>
               <div className="flex justify-between items-center pt-1 mt-1 border-t border-dashed border-border/20">
                 <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest">Total DD</span>
