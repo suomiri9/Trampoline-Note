@@ -266,7 +266,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                   type="button" 
                                   className="h-5 px-1 hover:bg-secondary text-[10px] border-r"
                                   onClick={() => {
-                                    const val = (currentConnection[0].reps || 1) - 1;
+                                    const val = (currentConnection[0]?.reps || 1) - 1;
                                     for(let i=0; i<currentConnection.length; i++) {
                                       updateReps(connectionIdx + i, val);
                                     }
@@ -275,7 +275,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                 <Input 
                                   type="number" 
                                   className="h-5 w-8 text-[10px] p-0 text-center border-none shadow-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                  value={currentConnection[0].reps || 1}
+                                  value={currentConnection[0]?.reps || 1}
                                   onChange={(e) => {
                                     const val = parseInt(e.target.value) || 1;
                                     for(let i=0; i<currentConnection.length; i++) {
@@ -287,7 +287,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                   type="button" 
                                   className="h-5 px-1 hover:bg-secondary text-[10px] border-l"
                                   onClick={() => {
-                                    const val = (currentConnection[0].reps || 1) + 1;
+                                    const val = (currentConnection[0]?.reps || 1) + 1;
                                     for(let i=0; i<currentConnection.length; i++) {
                                       updateReps(connectionIdx + i, val);
                                     }

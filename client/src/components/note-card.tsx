@@ -114,7 +114,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                     if (!Array.isArray(group)) return null;
 
                     const isSingle = group.length === 1;
-                    const reps = group[0].reps || 1;
+                    const reps = group[0]?.reps || 1;
 
                     return (
                       <div key={`group-${groupIdx}`} className={cn(
