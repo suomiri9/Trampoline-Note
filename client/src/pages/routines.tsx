@@ -9,7 +9,8 @@ import { Trash2, Plus, GripVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function RoutinesPage() {
-  const { data: skills } = useSkills();
+  const { data: allItems } = useSkills();
+  const skills = allItems?.filter(item => item.isDrill === 0);
   const { data: routines, createRoutine, deleteRoutine, isCreating } = useRoutines();
   
   const [name, setName] = useState("");
@@ -59,17 +60,12 @@ export default function RoutinesPage() {
                     <span className="text-xs font-mono text-muted-foreground w-6">{index + 1}.</span>
                     <Select onValueChange={(val) => handleAddSkill(index, val)} value={id?.toString() || ""}>
                       <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select Skill" />
+                        <SelectValue placeholder="Skill Code" />
                       </SelectTrigger>
                       <SelectContent>
                         {skills?.map(skill => (
                           <SelectItem key={skill.id} value={skill.id.toString()}>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="font-mono text-[10px] h-4 px-1 leading-none shrink-0">
-                                {skill.code}
-                              </Badge>
-                              <span className="truncate">{skill.name}</span>
-                            </div>
+                            <span className="font-mono">{skill.code}</span>
                           </SelectItem>
                         ))}
                       </SelectContent>

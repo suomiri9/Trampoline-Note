@@ -43,23 +43,11 @@ export default function Home() {
           
           <div className="flex gap-4">
             <Button 
-              onClick={() => {
-                setNoteToEdit(null);
-                setIsDialogOpen(true);
-              }}
-              variant="outline"
-              className="rounded-2xl h-12 px-6 font-semibold border-primary text-primary hover:bg-primary/5 transition-all flex items-center gap-2"
-            >
-              <Activity className="w-5 h-5" />
-              Start Training
-            </Button>
-
-            <Button 
               onClick={handleCreateNew}
               className="rounded-2xl h-12 px-6 font-semibold bg-foreground text-background hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-black/5 self-start md:self-auto flex items-center gap-2"
             >
               <Plus className="w-5 h-5" />
-              Log Session
+              Start Training
             </Button>
           </div>
         </div>
@@ -90,7 +78,7 @@ export default function Home() {
                 variant="outline"
                 className="rounded-xl border-border hover:bg-secondary transition-colors h-11 px-6 font-medium"
               >
-                Log your first session
+                Start Training
               </Button>
             </div>
           ) : (
