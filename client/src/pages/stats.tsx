@@ -4,7 +4,7 @@ import { useRoutines } from "@/hooks/use-routines";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, TrendingUp } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, eachDayOfInterval, startOfDay } from "date-fns";
 
 export default function StatsPage() {
   const { data: notes, isLoading: notesLoading } = useNotes();
@@ -67,7 +67,25 @@ export default function StatsPage() {
     return acc;
   }, []) || [];
 
-  const chartData = dailyStats.sort((a, b) => new Date(a.rawDate).getTime() - new Date(b.rawDate).getTime());
+  const sortedStats = dailyStats.sort((a, b) => new Date(a.rawDate).getTime() - new Date(b.rawDate).getTime());
+
+  // Fill in all days between first and last training day; use null for rest days so line breaks
+  let chartData: { date: string; difficulty: number | null; sessions: number }[] = [];
+  if (sortedStats.length >= 2) {
+    const allDays = eachDayOfInterval({
+      start: startOfDay(parseISO(sortedStats[0].rawDate)),
+      end: startOfDay(parseISO(sortedStats[sortedStats.length - 1].rawDate)),
+    });
+    chartData = allDays.map(day => {
+      const label = format(day, "MMM dd");
+      const found = sortedStats.find(d => d.date === label);
+      return found
+        ? { date: label, difficulty: found.difficulty, sessions: found.sessions }
+        : { date: label, difficulty: null, sessions: 0 };
+    });
+  } else {
+    chartData = sortedStats.map(d => ({ date: d.date, difficulty: d.difficulty, sessions: d.sessions }));
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -86,7 +104,7 @@ export default function StatsPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold flex items-center justify-between">
               Daily Total Difficulty
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-secondary px-2 py-1 rounded-lg">Last {chartData.length} Days</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-secondary px-2 py-1 rounded-lg">{sortedStats.length} Training Days</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -116,10 +134,11 @@ export default function StatsPage() {
                     cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '4 4' }}
                   />
                   <Line 
-                    type="monotone"
+                    type="linear"
                     dataKey="difficulty"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2.5}
+                    connectNulls={false}
                     dot={{ fill: 'hsl(var(--primary))', r: 4, strokeWidth: 0 }}
                     activeDot={{ r: 6, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
                   />
@@ -134,7 +153,7 @@ export default function StatsPage() {
             <CardContent className="pt-6">
               <div className="text-sm font-medium text-muted-foreground mb-1">Total DD Earned</div>
               <div className="text-3xl font-display font-bold text-primary">
-                {chartData.reduce((sum, d) => sum + d.difficulty, 0).toFixed(1)}
+                {chartData.reduce((sum, d) => sum + (d.difficulty ?? 0), 0).toFixed(1)}
               </div>
             </CardContent>
           </Card>
