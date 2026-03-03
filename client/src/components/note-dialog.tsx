@@ -461,7 +461,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     <span className="font-bold text-primary">
                                       {item.routineName}{" "}
                                       <span className="font-normal text-muted-foreground">
-                                        attempt{item.attempt != null ? `: ${item.attempt}/${maxSkills}` : ""}
+                                        {item.attempt != null && item.attempt < maxSkills ? `attempt: ${item.attempt}` : "attempt"}
                                       </span>
                                     </span>
                                     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
