@@ -119,8 +119,9 @@ export default function StatsPage() {
   } else if (range === "year") {
     useMonthly = true;
     const yearStart = startOfYear(today);
-    const months = eachMonthOfInterval({ start: yearStart, end: today });
-    periodLabel = `${format(yearStart, "MMM yyyy")} – ${format(today, "MMM yyyy")}`;
+    const yearEnd = new Date(today.getFullYear(), 11, 1);
+    const months = eachMonthOfInterval({ start: yearStart, end: yearEnd });
+    periodLabel = `${format(yearStart, "MMM yyyy")} – ${format(yearEnd, "MMM yyyy")}`;
     chartData = months.map(month => {
       const label = format(month, "MMM");
       const totalDD = Object.entries(ddByDate)
