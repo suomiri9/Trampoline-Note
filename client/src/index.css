@@ -69,6 +69,18 @@
   }
 }
 
+/* Safari / iOS fixes */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+.overflow-scroll-touch {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+}
+
 /* Custom subtle animations for clean minimal feel */
 @keyframes fade-in-up {
   from {

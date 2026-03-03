@@ -251,7 +251,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[500px] w-[calc(100vw-32px)] p-0 overflow-hidden rounded-[24px] border-border/50 max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-[500px] w-[calc(100vw-32px)] p-0 overflow-hidden rounded-[24px] border-border/50 max-h-[90svh] flex flex-col">
         <div className="p-6 pb-4 flex-none">
           <DialogHeader>
             <DialogTitle className="text-2xl font-display">{isEditing ? "Edit Session" : "Log Training Session"}</DialogTitle>
@@ -259,7 +259,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
           </DialogHeader>
         </div>
 
-        <div className="flex-1 overflow-y-auto min-h-0 px-6 pb-6 text-foreground">
+        <div className="flex-1 overflow-scroll-touch min-h-0 px-6 pb-6 text-foreground">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-4">
@@ -357,7 +357,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       <span className="text-xs font-mono font-bold text-primary">{totalDifficulty.toFixed(1)}</span>
                     </div>
                   </div>
-                  <div className="divide-y divide-border/30 max-h-[300px] overflow-y-auto">
+                  <div className="divide-y divide-border/30 max-h-[300px] overflow-scroll-touch">
                     {/* Simplified List for brevity - maintaining functionality */}
                     {selectedSkills.map((item, idx) => {
                        if (item.id === -1) return null;
