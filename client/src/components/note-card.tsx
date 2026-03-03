@@ -176,7 +176,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                             <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none">ROUTINE</Badge>
                             <span className="text-sm font-bold text-primary">{item.routineName || "Routine"}</span>
                             {isPartial && (
-                              <span className="text-[11px] font-mono text-muted-foreground">{item.attempt}/{maxSkills}</span>
+                              <span className="text-[11px] font-mono text-muted-foreground">attempt {item.attempt}/{maxSkills}</span>
                             )}
                           </div>
                           <span className="text-[11px] font-mono font-bold text-primary">{routineDD.toFixed(1)}</span>
