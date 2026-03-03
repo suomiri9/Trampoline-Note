@@ -1,21 +1,24 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNotes } from "@/hooks/use-notes";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import {
   format, parseISO, eachDayOfInterval, eachMonthOfInterval,
   startOfDay, startOfWeek, endOfWeek, startOfMonth,
-  subDays, subMonths,
+  addWeeks, subDays, subMonths,
 } from "date-fns";
 
 type Range = "week" | "month" | "year" | "all";
 
 export default function StatsPage() {
   const [range, setRange] = useState<Range>("week");
+  const [weekOffset, setWeekOffset] = useState(0); // 0 = current week, -1 = last week, etc.
+  const touchStartX = useRef<number | null>(null);
 
   const { data: notes, isLoading: notesLoading } = useNotes();
   const { data: allItems, isLoading: skillsLoading } = useSkills();
@@ -79,33 +82,45 @@ export default function StatsPage() {
   type ChartPoint = { date: string; difficulty: number | null; sessions: number };
   let chartData: ChartPoint[] = [];
   let xTickInterval: number | "preserveStartEnd" = 0;
-  let xDateFormat = "MMM dd";
   let useMonthly = false;
+  let periodLabel = "";
 
   if (range === "week") {
-    const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
-    const weekEnd = endOfWeek(today, { weekStartsOn: 1 });     // Sunday
+    const baseMonday = startOfWeek(today, { weekStartsOn: 1 });
+    const weekStart = addWeeks(baseMonday, weekOffset);
+    const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
     const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
-    xDateFormat = "EEE";
+
+    const startLabel = format(weekStart, "MMM d");
+    const endLabel = format(weekEnd, "MMM d, yyyy");
+    periodLabel = `${startLabel} – ${endLabel}`;
+
     chartData = days.map(day => {
       const key = format(day, "yyyy-MM-dd");
       const found = ddByDate[key];
       const isFuture = day > today;
-      return { date: format(day, "EEE"), difficulty: found?.difficulty ?? (isFuture ? null : null), sessions: found?.sessions ?? 0 };
+      return {
+        date: format(day, "EEE d"),
+        difficulty: found?.difficulty ?? null,
+        sessions: found?.sessions ?? 0,
+        isFuture,
+      };
     });
   } else if (range === "month") {
     const monthStart = subDays(today, 29);
     const days = eachDayOfInterval({ start: monthStart, end: today });
-    xTickInterval = 4; // show every 5th label
+    xTickInterval = 4;
+    periodLabel = `${format(monthStart, "MMM d")} – ${format(today, "MMM d, yyyy")}`;
     chartData = days.map(day => {
       const key = format(day, "yyyy-MM-dd");
       const found = ddByDate[key];
-      return { date: format(day, "MMM dd"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0 };
+      return { date: format(day, "MMM d"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0 };
     });
   } else if (range === "year") {
     useMonthly = true;
     const yearStart = startOfMonth(subMonths(today, 11));
     const months = eachMonthOfInterval({ start: yearStart, end: today });
+    periodLabel = `${format(yearStart, "MMM yyyy")} – ${format(today, "MMM yyyy")}`;
     chartData = months.map(month => {
       const label = format(month, "MMM yy");
       const totalDD = Object.entries(ddByDate)
@@ -117,12 +132,12 @@ export default function StatsPage() {
       return { date: label, difficulty: totalDD > 0 ? totalDD : null, sessions: totalSess };
     });
   } else {
-    // all — monthly aggregation
     useMonthly = true;
     const allKeys = Object.keys(ddByDate).sort();
     if (allKeys.length > 0) {
       const earliest = startOfMonth(parseISO(allKeys[0]));
       const months = eachMonthOfInterval({ start: earliest, end: today });
+      periodLabel = `${format(earliest, "MMM yyyy")} – ${format(today, "MMM yyyy")}`;
       chartData = months.map(month => {
         const label = format(month, "MMM yy");
         const totalDD = Object.entries(ddByDate)
@@ -133,6 +148,8 @@ export default function StatsPage() {
           .reduce((sum, [, v]) => sum + v.sessions, 0);
         return { date: label, difficulty: totalDD > 0 ? totalDD : null, sessions: totalSess };
       });
+    } else {
+      periodLabel = "No data yet";
     }
   }
 
@@ -140,11 +157,20 @@ export default function StatsPage() {
   const totalDDInRange = chartData.reduce((sum, d) => sum + (d.difficulty ?? 0), 0);
   const totalSessionsInRange = chartData.reduce((sum, d) => sum + d.sessions, 0);
 
-  const rangeLabels: Record<Range, string> = {
-    week: "This Week",
-    month: "Last 30 Days",
-    year: "Last 12 Months",
-    all: "All Time",
+  const isCurrentWeek = weekOffset === 0;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || range !== "week") return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 50) {
+      if (dx < 0) setWeekOffset(w => w - 1);       // swipe left = go back
+      else if (dx > 0 && !isCurrentWeek) setWeekOffset(w => w + 1); // swipe right = go forward
+    }
+    touchStartX.current = null;
   };
 
   return (
@@ -164,7 +190,7 @@ export default function StatsPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold flex items-center justify-between gap-3">
               <span>Daily Total Difficulty</span>
-              <Select value={range} onValueChange={(v) => setRange(v as Range)}>
+              <Select value={range} onValueChange={(v) => { setRange(v as Range); setWeekOffset(0); }}>
                 <SelectTrigger className="w-36 h-8 rounded-xl text-xs border-border/50">
                   <SelectValue />
                 </SelectTrigger>
@@ -176,12 +202,45 @@ export default function StatsPage() {
                 </SelectContent>
               </Select>
             </CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">
-              {rangeLabels[range]} · {trainingDaysInRange} training {useMonthly ? "months" : "days"}
-            </p>
+
+            <div className="flex items-center justify-between mt-2">
+              {range === "week" ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-lg"
+                    onClick={() => setWeekOffset(w => w - 1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xs font-medium text-foreground/80 min-w-[140px] text-center">
+                    {periodLabel}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-lg"
+                    disabled={isCurrentWeek}
+                    onClick={() => setWeekOffset(w => w + 1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <span className="text-xs text-muted-foreground">{periodLabel}</span>
+              )}
+              <span className="text-xs text-muted-foreground">
+                {trainingDaysInRange} training {useMonthly ? "months" : "days"}
+              </span>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full mt-4">
+            <div
+              className="h-[300px] w-full mt-4"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
@@ -226,18 +285,20 @@ export default function StatsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Card className="rounded-2xl border-border/50 shadow-lg shadow-black/5">
             <CardContent className="pt-6">
-              <div className="text-sm font-medium text-muted-foreground mb-1">Total DD — {rangeLabels[range]}</div>
+              <div className="text-sm font-medium text-muted-foreground mb-1">Total DD</div>
               <div className="text-3xl font-display font-bold text-primary">
                 {totalDDInRange.toFixed(1)}
               </div>
+              <div className="text-xs text-muted-foreground mt-1">{periodLabel}</div>
             </CardContent>
           </Card>
           <Card className="rounded-2xl border-border/50 shadow-lg shadow-black/5">
             <CardContent className="pt-6">
-              <div className="text-sm font-medium text-muted-foreground mb-1">Sessions — {rangeLabels[range]}</div>
+              <div className="text-sm font-medium text-muted-foreground mb-1">Sessions</div>
               <div className="text-3xl font-display font-bold text-primary">
                 {totalSessionsInRange}
               </div>
+              <div className="text-xs text-muted-foreground mt-1">{periodLabel}</div>
             </CardContent>
           </Card>
         </div>
