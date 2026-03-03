@@ -1,12 +1,22 @@
+import { useState } from "react";
 import { useNotes } from "@/hooks/use-notes";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, TrendingUp } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { format, parseISO, eachDayOfInterval, startOfDay } from "date-fns";
+import {
+  format, parseISO, eachDayOfInterval, eachMonthOfInterval,
+  startOfDay, startOfWeek, startOfMonth, endOfMonth,
+  subDays, subMonths, subYears,
+} from "date-fns";
+
+type Range = "week" | "month" | "year" | "all";
 
 export default function StatsPage() {
+  const [range, setRange] = useState<Range>("week");
+
   const { data: notes, isLoading: notesLoading } = useNotes();
   const { data: allItems, isLoading: skillsLoading } = useSkills();
   const { data: routines, isLoading: routinesLoading } = useRoutines();
@@ -19,14 +29,14 @@ export default function StatsPage() {
     );
   }
 
-  const dailyStats = notes?.reduce((acc: any[], note) => {
-    const dateStr = format(parseISO(note.date), "MMM dd");
+  // Compute DD per note keyed by raw date string (YYYY-MM-DD)
+  const ddByDate: Record<string, { difficulty: number; sessions: number }> = {};
+
+  notes?.forEach(note => {
     let skillsData: any[] = [];
     try {
       skillsData = note.skills ? JSON.parse(note.skills) : [];
-      if (!Array.isArray(skillsData)) {
-        skillsData = note.skills.split(',').map((s: string) => ({ id: parseInt(s) }));
-      }
+      if (!Array.isArray(skillsData)) skillsData = note.skills.split(',').map((s: string) => ({ id: parseInt(s) }));
     } catch (e) {
       skillsData = note.skills ? note.skills.split(',').map((s: string) => ({ id: parseInt(s) })) : [];
     }
@@ -35,7 +45,7 @@ export default function StatsPage() {
     let currentGroupDD = 0;
     let currentGroupReps = 1;
 
-    skillsData.forEach((item) => {
+    skillsData.forEach((item: any) => {
       if (item.id === -1) {
         noteDD += currentGroupDD * currentGroupReps;
         currentGroupDD = 0;
@@ -57,35 +67,83 @@ export default function StatsPage() {
     });
     noteDD += currentGroupDD * currentGroupReps;
 
-    const existingDay = acc.find(d => d.date === dateStr);
-    if (existingDay) {
-      existingDay.difficulty += noteDD;
-      existingDay.sessions += 1;
-    } else {
-      acc.push({ date: dateStr, difficulty: noteDD, sessions: 1, rawDate: note.date });
-    }
-    return acc;
-  }, []) || [];
+    const key = note.date.substring(0, 10);
+    if (!ddByDate[key]) ddByDate[key] = { difficulty: 0, sessions: 0 };
+    ddByDate[key].difficulty += noteDD;
+    ddByDate[key].sessions += 1;
+  });
 
-  const sortedStats = dailyStats.sort((a, b) => new Date(a.rawDate).getTime() - new Date(b.rawDate).getTime());
+  const today = startOfDay(new Date());
 
-  // Fill in all days between first and last training day; use null for rest days so line breaks
-  let chartData: { date: string; difficulty: number | null; sessions: number }[] = [];
-  if (sortedStats.length >= 2) {
-    const allDays = eachDayOfInterval({
-      start: startOfDay(parseISO(sortedStats[0].rawDate)),
-      end: startOfDay(parseISO(sortedStats[sortedStats.length - 1].rawDate)),
+  // Build chart data based on selected range
+  type ChartPoint = { date: string; difficulty: number | null; sessions: number };
+  let chartData: ChartPoint[] = [];
+  let xTickInterval: number | "preserveStartEnd" = 0;
+  let xDateFormat = "MMM dd";
+  let useMonthly = false;
+
+  if (range === "week") {
+    const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
+    const days = eachDayOfInterval({ start: weekStart, end: today });
+    xDateFormat = "EEE";
+    chartData = days.map(day => {
+      const key = format(day, "yyyy-MM-dd");
+      const found = ddByDate[key];
+      return { date: format(day, "EEE"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0 };
     });
-    chartData = allDays.map(day => {
-      const label = format(day, "MMM dd");
-      const found = sortedStats.find(d => d.date === label);
-      return found
-        ? { date: label, difficulty: found.difficulty, sessions: found.sessions }
-        : { date: label, difficulty: null, sessions: 0 };
+  } else if (range === "month") {
+    const monthStart = subDays(today, 29);
+    const days = eachDayOfInterval({ start: monthStart, end: today });
+    xTickInterval = 4; // show every 5th label
+    chartData = days.map(day => {
+      const key = format(day, "yyyy-MM-dd");
+      const found = ddByDate[key];
+      return { date: format(day, "MMM dd"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0 };
+    });
+  } else if (range === "year") {
+    useMonthly = true;
+    const yearStart = startOfMonth(subMonths(today, 11));
+    const months = eachMonthOfInterval({ start: yearStart, end: today });
+    chartData = months.map(month => {
+      const label = format(month, "MMM yy");
+      const totalDD = Object.entries(ddByDate)
+        .filter(([k]) => k.startsWith(format(month, "yyyy-MM")))
+        .reduce((sum, [, v]) => sum + v.difficulty, 0);
+      const totalSess = Object.entries(ddByDate)
+        .filter(([k]) => k.startsWith(format(month, "yyyy-MM")))
+        .reduce((sum, [, v]) => sum + v.sessions, 0);
+      return { date: label, difficulty: totalDD > 0 ? totalDD : null, sessions: totalSess };
     });
   } else {
-    chartData = sortedStats.map(d => ({ date: d.date, difficulty: d.difficulty, sessions: d.sessions }));
+    // all — monthly aggregation
+    useMonthly = true;
+    const allKeys = Object.keys(ddByDate).sort();
+    if (allKeys.length > 0) {
+      const earliest = startOfMonth(parseISO(allKeys[0]));
+      const months = eachMonthOfInterval({ start: earliest, end: today });
+      chartData = months.map(month => {
+        const label = format(month, "MMM yy");
+        const totalDD = Object.entries(ddByDate)
+          .filter(([k]) => k.startsWith(format(month, "yyyy-MM")))
+          .reduce((sum, [, v]) => sum + v.difficulty, 0);
+        const totalSess = Object.entries(ddByDate)
+          .filter(([k]) => k.startsWith(format(month, "yyyy-MM")))
+          .reduce((sum, [, v]) => sum + v.sessions, 0);
+        return { date: label, difficulty: totalDD > 0 ? totalDD : null, sessions: totalSess };
+      });
+    }
   }
+
+  const trainingDaysInRange = chartData.filter(d => d.difficulty !== null).length;
+  const totalDDInRange = chartData.reduce((sum, d) => sum + (d.difficulty ?? 0), 0);
+  const totalSessionsInRange = chartData.reduce((sum, d) => sum + d.sessions, 0);
+
+  const rangeLabels: Record<Range, string> = {
+    week: "This Week",
+    month: "Last 30 Days",
+    year: "Last 12 Months",
+    all: "All Time",
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -102,38 +160,53 @@ export default function StatsPage() {
       <div className="grid gap-6">
         <Card className="rounded-[2rem] border-border/50 shadow-xl shadow-black/5 overflow-hidden">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-semibold flex items-center justify-between">
-              Daily Total Difficulty
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-secondary px-2 py-1 rounded-lg">{sortedStats.length} Training Days</span>
+            <CardTitle className="text-lg font-semibold flex items-center justify-between gap-3">
+              <span>Daily Total Difficulty</span>
+              <Select value={range} onValueChange={(v) => setRange(v as Range)}>
+                <SelectTrigger className="w-36 h-8 rounded-xl text-xs border-border/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="week">1 Week</SelectItem>
+                  <SelectItem value="month">1 Month</SelectItem>
+                  <SelectItem value="year">1 Year</SelectItem>
+                  <SelectItem value="all">All Time</SelectItem>
+                </SelectContent>
+              </Select>
             </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              {rangeLabels[range]} · {trainingDaysInRange} training {useMonthly ? "months" : "days"}
+            </p>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                  <XAxis 
-                    dataKey="date" 
-                    axisLine={false} 
-                    tickLine={false} 
+                  <XAxis
+                    dataKey="date"
+                    axisLine={false}
+                    tickLine={false}
                     tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                     dy={10}
+                    interval={xTickInterval}
                   />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
                     tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                   />
-                  <Tooltip 
-                    contentStyle={{ 
-                      borderRadius: '16px', 
-                      border: 'none', 
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '16px',
+                      border: 'none',
                       boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
                       fontSize: '12px'
                     }}
+                    formatter={(value: any) => value !== null ? [Number(value).toFixed(1), "DD"] : ["Rest day", ""]}
                     cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '4 4' }}
                   />
-                  <Line 
+                  <Line
                     type="linear"
                     dataKey="difficulty"
                     stroke="hsl(var(--primary))"
@@ -151,17 +224,17 @@ export default function StatsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Card className="rounded-2xl border-border/50 shadow-lg shadow-black/5">
             <CardContent className="pt-6">
-              <div className="text-sm font-medium text-muted-foreground mb-1">Total DD Earned</div>
+              <div className="text-sm font-medium text-muted-foreground mb-1">Total DD — {rangeLabels[range]}</div>
               <div className="text-3xl font-display font-bold text-primary">
-                {chartData.reduce((sum, d) => sum + (d.difficulty ?? 0), 0).toFixed(1)}
+                {totalDDInRange.toFixed(1)}
               </div>
             </CardContent>
           </Card>
           <Card className="rounded-2xl border-border/50 shadow-lg shadow-black/5">
             <CardContent className="pt-6">
-              <div className="text-sm font-medium text-muted-foreground mb-1">Total Sessions</div>
+              <div className="text-sm font-medium text-muted-foreground mb-1">Sessions — {rangeLabels[range]}</div>
               <div className="text-3xl font-display font-bold text-primary">
-                {chartData.reduce((sum, d) => sum + d.sessions, 0)}
+                {totalSessionsInRange}
               </div>
             </CardContent>
           </Card>
