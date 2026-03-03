@@ -358,7 +358,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </Select>
                 )}
 
-                <div className="min-h-[150px] bg-secondary/10 rounded-xl border border-border/50 overflow-hidden relative">
+                <div className="min-h-[220px] bg-secondary/10 rounded-xl border border-border/50 overflow-hidden relative">
                   <div className="bg-secondary/20 px-3 py-1.5 border-b border-border/50 flex justify-between items-center">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Practice List</span>
                     <div className="flex items-center gap-2">
