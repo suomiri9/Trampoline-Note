@@ -9,7 +9,7 @@ import { Loader2, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import {
   format, parseISO, eachDayOfInterval, eachMonthOfInterval,
-  startOfDay, startOfWeek, endOfWeek, startOfMonth,
+  startOfDay, startOfWeek, endOfWeek, startOfMonth, startOfYear,
   addWeeks, subDays, subMonths,
 } from "date-fns";
 
@@ -118,7 +118,7 @@ export default function StatsPage() {
     });
   } else if (range === "year") {
     useMonthly = true;
-    const yearStart = startOfMonth(subMonths(today, 11));
+    const yearStart = startOfYear(today);
     const months = eachMonthOfInterval({ start: yearStart, end: today });
     periodLabel = `${format(yearStart, "MMM yyyy")} – ${format(today, "MMM yyyy")}`;
     chartData = months.map(month => {
