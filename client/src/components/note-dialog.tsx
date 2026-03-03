@@ -367,7 +367,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     </div>
                   </div>
 
-                  {editingRoutineIdx !== null && (() => {
+                  {editingRoutineIdx !== null && selectedSkills[editingRoutineIdx]?.id === -2 && (() => {
                     const rItem = selectedSkills[editingRoutineIdx];
                     const routine = routines?.find(r => r.id === rItem.routineId);
                     const maxSkills = routine?.skillIds.length ?? 10;
@@ -452,10 +452,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                 const routine = routines?.find(r => r.id === item.routineId);
                                 const maxSkills = routine?.skillIds.length ?? 10;
                                 return (
-                                  <button
+                                  <div
                                     key={idx}
-                                    type="button"
-                                    className="w-full px-3 py-2 text-sm flex justify-between items-center hover:bg-secondary/20 active:bg-secondary/40 transition-colors text-left"
+                                    className="w-full px-3 py-2 text-sm flex justify-between items-center hover:bg-secondary/20 active:bg-secondary/40 transition-colors cursor-pointer"
                                     onClick={() => setEditingRoutineIdx(idx)}
                                   >
                                     <span className="font-bold text-primary">
@@ -467,7 +466,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                                       <Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(idx)}><Trash2 className="h-4 w-4" /></Button>
                                     </div>
-                                  </button>
+                                  </div>
                                 );
                               }
                               const skill = allItems?.find(s => s.id === item.id);
