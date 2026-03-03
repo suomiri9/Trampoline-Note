@@ -31,6 +31,9 @@ export const scores = pgTable("scores", {
   id: serial("id").primaryKey(),
   date: date("date").notNull(),
   routineId: integer("routine_id").references(() => routines.id),
+  type: text("type").notNull().default("practice"), // "practice" or "competition"
+  competitionName: text("competition_name"),
+  rank: integer("rank"),
   execution: real("execution").notNull().default(0), // E score
   difficulty: real("difficulty").notNull().default(0), // D score
   horizontal: real("horizontal").notNull().default(0), // H score

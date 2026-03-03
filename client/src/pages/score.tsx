@@ -57,6 +57,9 @@ export default function ScorePage() {
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       routineId: undefined,
+      type: "practice",
+      competitionName: "",
+      rank: undefined,
       execution: 0,
       difficulty: 0,
       horizontal: 0,
@@ -112,6 +115,32 @@ export default function ScorePage() {
                   <FormField control={form.control} name="date" render={({ field }) => (
                     <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} className="rounded-xl" /></FormControl></FormItem>
                   )} />
+                  <FormField control={form.control} name="type" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="practice">Practice</SelectItem>
+                          <SelectItem value="competition">Competition</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
+                </div>
+
+                {form.watch("type") === "competition" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="competitionName" render={({ field }) => (
+                      <FormItem><FormLabel>Competition Name</FormLabel><FormControl><Input {...field} placeholder="e.g. State Championships" className="rounded-xl" /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="rank" render={({ field }) => (
+                      <FormItem><FormLabel>Rank</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 1" className="rounded-xl" /></FormControl></FormItem>
+                    )} />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField control={form.control} name="routineId" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Routine</FormLabel>
@@ -156,10 +185,19 @@ export default function ScorePage() {
             <Card key={score.id} className="rounded-2xl border-border/50 overflow-hidden">
               <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-lg">{format(new Date(score.date), "MMM d, yyyy")}</span>
+                    <Badge variant={score.type === "competition" ? "default" : "outline"} className="rounded-lg capitalize">
+                      {score.type}
+                    </Badge>
                     {routine && <Badge variant="secondary" className="rounded-lg">{routine.name}</Badge>}
                   </div>
+                  {score.type === "competition" && (
+                    <div className="text-sm font-medium text-primary flex items-center gap-2">
+                      <span>{score.competitionName}</span>
+                      {score.rank && <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/20 hover:bg-yellow-500/20">#{score.rank}</Badge>}
+                    </div>
+                  )}
                   <div className="flex gap-4 text-xs text-muted-foreground font-mono">
                     <span>E: {score.execution.toFixed(1)}</span>
                     <span>D: {score.difficulty.toFixed(1)}</span>
