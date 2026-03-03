@@ -122,7 +122,7 @@ export default function StatsPage() {
     const months = eachMonthOfInterval({ start: yearStart, end: today });
     periodLabel = `${format(yearStart, "MMM yyyy")} – ${format(today, "MMM yyyy")}`;
     chartData = months.map(month => {
-      const label = format(month, "MMM yy");
+      const label = format(month, "MMM");
       const totalDD = Object.entries(ddByDate)
         .filter(([k]) => k.startsWith(format(month, "yyyy-MM")))
         .reduce((sum, [, v]) => sum + v.difficulty, 0);
