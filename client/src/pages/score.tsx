@@ -75,36 +75,39 @@ export default function ScorePage() {
     }
   });
 
+  const [lastRoutineId, setLastRoutineId] = useState<number | undefined>();
+  const [lastRoutineIdVol, setLastRoutineIdVol] = useState<number | undefined>();
+
   const watchFields = form.watch(["execution", "difficulty", "horizontal", "timeOfFlight", "routineId", "category", "executionVol", "difficultyVol", "horizontalVol", "timeOfFlightVol", "routineIdVol"]);
 
   useEffect(() => {
     const [e, d, h, t, rId, cat, e2, d2, h2, t2, rIdVol] = watchFields;
     
-    // Auto-calculate Difficulty for Set/Single Vol
-    if (rId && routines && allSkills) {
-      const routine = routines.find(r => r.id === Number(rId));
-      if (routine) {
-        const calculatedD = cat === "set" ? 0 : routine.skillIds.reduce((acc, sId) => {
-          const skill = allSkills.find(s => s.id === sId);
-          return acc + (skill?.difficulty || 0);
-        }, 0);
-        
-        if (calculatedD !== Number(d)) {
+    // Auto-calculate Difficulty for Set/Single Vol only when routine changes
+    if (rId !== lastRoutineId) {
+      setLastRoutineId(rId);
+      if (rId && routines && allSkills) {
+        const routine = routines.find(r => r.id === Number(rId));
+        if (routine) {
+          const calculatedD = cat === "set" ? 0 : routine.skillIds.reduce((acc, sId) => {
+            const skill = allSkills.find(s => s.id === sId);
+            return acc + (skill?.difficulty || 0);
+          }, 0);
           form.setValue("difficulty", Number(calculatedD.toFixed(1)));
         }
       }
     }
 
-    // Auto-calculate Difficulty for Vol (when in Set & Vol mode)
-    if (cat === "both" && rIdVol && routines && allSkills) {
-      const routineVol = routines.find(r => r.id === Number(rIdVol));
-      if (routineVol) {
-        const calculatedDVol = routineVol.skillIds.reduce((acc, sId) => {
-          const skill = allSkills.find(s => s.id === sId);
-          return acc + (skill?.difficulty || 0);
-        }, 0);
-        
-        if (calculatedDVol !== Number(d2)) {
+    // Auto-calculate Difficulty for Vol only when routine changes
+    if (cat === "both" && rIdVol !== lastRoutineIdVol) {
+      setLastRoutineIdVol(rIdVol);
+      if (rIdVol && routines && allSkills) {
+        const routineVol = routines.find(r => r.id === Number(rIdVol));
+        if (routineVol) {
+          const calculatedDVol = routineVol.skillIds.reduce((acc, sId) => {
+            const skill = allSkills.find(s => s.id === sId);
+            return acc + (skill?.difficulty || 0);
+          }, 0);
           form.setValue("difficultyVol", Number(calculatedDVol.toFixed(1)));
         }
       }
@@ -117,7 +120,7 @@ export default function ScorePage() {
       const total2 = Number(e2 || 0) + Number(d2 || 0) + Number(h2 || 0) + Number(t2 || 0);
       form.setValue("totalVol", Number(total2.toFixed(2)));
     }
-  }, [watchFields, routines, allSkills, form]);
+  }, [watchFields, routines, allSkills, form, lastRoutineId, lastRoutineIdVol]);
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
