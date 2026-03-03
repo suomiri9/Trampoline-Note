@@ -303,12 +303,12 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       </Popover>
                     </FormItem>
                   )} />
-                  <div className="flex gap-2 items-end">
+                  <div className="flex gap-2 items-end flex-1">
                     <FormField control={form.control} name="startTime" render={({ field }) => (
-                      <FormItem className="w-24"><FormLabel>Start</FormLabel><FormControl><Input type="time" className="rounded-xl h-11" {...field} value={field.value || ""} /></FormControl></FormItem>
+                      <FormItem className="flex-1 min-w-0"><FormLabel>Start</FormLabel><FormControl><Input type="time" className="rounded-xl h-11 px-2 sm:px-3 text-xs sm:text-sm" {...field} value={field.value || ""} /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="endTime" render={({ field }) => (
-                      <FormItem className="w-24"><FormLabel>End</FormLabel><FormControl><Input type="time" className="rounded-xl h-11" {...field} value={field.value || ""} /></FormControl></FormItem>
+                      <FormItem className="flex-1 min-w-0"><FormLabel>End</FormLabel><FormControl><Input type="time" className="rounded-xl h-11 px-2 sm:px-3 text-xs sm:text-sm" {...field} value={field.value || ""} /></FormControl></FormItem>
                     )} />
                   </div>
                 </div>
