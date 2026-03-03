@@ -53,7 +53,7 @@ const formSchema = z.object({
   content: z.string().min(1, "Notes cannot be empty."),
   skills: z.string().optional().nullable(), // Store as comma-separated IDs
   rating: z.number().min(1).max(5).optional().nullable(),
-  sleepScore: z.number().min(1).max(5).optional().nullable(),
+  sleepScore: z.number().min(0).max(100).optional().nullable(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -320,8 +320,17 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   <FormItem>
                     <FormLabel>Sleep</FormLabel>
                     <FormControl>
-                      <div className="h-11 flex items-center bg-secondary/20 rounded-xl px-3 border border-border/50 w-fit">
-                        <StarRating value={field.value} onChange={field.onChange} />
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          placeholder="—"
+                          className="rounded-xl h-11 w-20 px-3 text-sm"
+                          value={field.value ?? ""}
+                          onChange={e => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
+                        />
+                        <span className="text-xs text-muted-foreground">/100</span>
                       </div>
                     </FormControl>
                   </FormItem>
