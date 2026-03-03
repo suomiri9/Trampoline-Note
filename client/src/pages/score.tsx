@@ -144,44 +144,46 @@ export default function ScorePage() {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-4">
                   <FormField control={form.control} name="date" render={({ field }) => (
-                    <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} className="rounded-xl" /></FormControl></FormItem>
+                    <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} className="rounded-xl h-11" /></FormControl></FormItem>
                   )} />
-                  <FormField control={form.control} name="type" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Type</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          <SelectItem value="practice">Practice</SelectItem>
-                          <SelectItem value="competition">Competition</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="category" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Score Category</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          <SelectItem value="set">Set Only</SelectItem>
-                          <SelectItem value="vol">Vol Only</SelectItem>
-                          <SelectItem value="both">Set and Vol</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormItem>
-                  )} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="type" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Type</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="practice">Practice</SelectItem>
+                            <SelectItem value="competition">Competition</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="category" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Score Category</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="set">Set Only</SelectItem>
+                            <SelectItem value="vol">Vol Only</SelectItem>
+                            <SelectItem value="both">Set and Vol</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+                  </div>
                 </div>
 
                 {form.watch("type") === "competition" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="competitionName" render={({ field }) => (
-                      <FormItem><FormLabel>Competition Name</FormLabel><FormControl><Input {...field} placeholder="e.g. State Championships" className="rounded-xl" /></FormControl></FormItem>
+                      <FormItem><FormLabel>Competition Name</FormLabel><FormControl><Input {...field} placeholder="e.g. State Championships" className="rounded-xl h-11" /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="rank" render={({ field }) => (
-                      <FormItem><FormLabel>Rank</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 1" className="rounded-xl" /></FormControl></FormItem>
+                      <FormItem><FormLabel>Rank</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 1" className="rounded-xl h-11" /></FormControl></FormItem>
                     )} />
                   </div>
                 )}
@@ -195,7 +197,7 @@ export default function ScorePage() {
                       <FormItem>
                         <FormLabel>Routine</FormLabel>
                         <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value?.toString()}>
-                          <FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
+                          <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
                           <SelectContent>
                             {routines?.map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>)}
                           </SelectContent>
@@ -203,7 +205,7 @@ export default function ScorePage() {
                       </FormItem>
                     )} />
                   </div>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-4">
                     <FormField control={form.control} name="execution" render={({ field }) => (
                       <FormItem><FormLabel className="text-[10px] sm:text-xs">E</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 ? "" : field.value} onChange={e => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm" /></FormControl></FormItem>
                     )} />
@@ -230,7 +232,7 @@ export default function ScorePage() {
                         <FormItem>
                           <FormLabel>Routine (Vol)</FormLabel>
                           <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value?.toString()}>
-                            <FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
+                            <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
                             <SelectContent>
                               {routines?.map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>)}
                             </SelectContent>
@@ -258,7 +260,7 @@ export default function ScorePage() {
                   </div>
                 )}
                 
-                <Button type="submit" className="w-full rounded-xl" disabled={createMutation.isPending}>Save Score</Button>
+                <Button type="submit" className="w-full h-11 rounded-xl" disabled={createMutation.isPending}>Save Score</Button>
               </form>
             </Form>
           </CardContent>
