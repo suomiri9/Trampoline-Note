@@ -93,7 +93,10 @@ export default function ScorePage() {
             const skill = allSkills.find(s => s.id === sId);
             return acc + (skill?.difficulty || 0);
           }, 0);
-          form.setValue("difficulty", Number(calculatedD.toFixed(1)));
+          // Use setTimeout to avoid collision with other form updates
+          setTimeout(() => {
+            form.setValue("difficulty", Number(calculatedD.toFixed(1)));
+          }, 0);
         }
       }
     }
@@ -108,7 +111,10 @@ export default function ScorePage() {
             const skill = allSkills.find(s => s.id === sId);
             return acc + (skill?.difficulty || 0);
           }, 0);
-          form.setValue("difficultyVol", Number(calculatedDVol.toFixed(1)));
+          // Use setTimeout to avoid collision with other form updates
+          setTimeout(() => {
+            form.setValue("difficultyVol", Number(calculatedDVol.toFixed(1)));
+          }, 0);
         }
       }
     }
