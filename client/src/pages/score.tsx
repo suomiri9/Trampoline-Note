@@ -298,23 +298,23 @@ export default function ScorePage() {
                       <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">
                         {score.category === "both" ? "Set Score" : "Scores"}
                       </p>
-                      <div className="flex gap-4 text-xs font-mono">
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono">
                         <span>E: {score.execution.toFixed(1)}</span>
                         <span>D: {score.difficulty.toFixed(1)}</span>
                         <span>H: {score.horizontal.toFixed(1)}</span>
                         <span>T: {score.timeOfFlight.toFixed(2)}</span>
-                        <span className="font-bold text-primary ml-auto">Total: {score.total.toFixed(2)}</span>
+                        <span className="font-bold text-primary">Total: {score.total.toFixed(2)}</span>
                       </div>
                     </div>
                     {score.category === "both" && (
                       <div className="bg-primary/5 p-2 rounded-lg">
                         <p className="text-[10px] font-bold text-primary/60 uppercase mb-1">Vol Score</p>
-                        <div className="flex gap-4 text-xs font-mono">
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono">
                           <span>E: {score.executionVol?.toFixed(1)}</span>
                           <span>D: {score.difficultyVol?.toFixed(1)}</span>
                           <span>H: {score.horizontalVol?.toFixed(1)}</span>
                           <span>T: {score.timeOfFlightVol?.toFixed(2)}</span>
-                          <span className="font-bold text-primary ml-auto">Total: {score.totalVol?.toFixed(2)}</span>
+                          <span className="font-bold text-primary">Total: {score.totalVol?.toFixed(2)}</span>
                         </div>
                       </div>
                     )}
