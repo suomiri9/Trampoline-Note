@@ -260,8 +260,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     }
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen && (form.getValues("content") || selectedSkills.length > 0)) {
+      if (confirm("Are you sure you want to close? Your changes will be lost.")) {
+        onOpenChange(false);
+      }
+    } else {
+      onOpenChange(newOpen);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px] w-[calc(100vw-32px)] p-0 overflow-hidden rounded-[24px] border-border/50 max-h-[90vh] flex flex-col">
         <div className="p-6 pb-4 flex-none">
           <DialogHeader>
