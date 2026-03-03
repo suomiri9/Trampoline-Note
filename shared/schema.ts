@@ -10,6 +10,7 @@ export const notes = pgTable("notes", {
   content: text("content").notNull(),
   skills: text("skills"), // JSON string: [{"id": 1, "reps": 5}, {"id": -1}, {"id": 2, "reps": 10}]
   rating: integer("rating"), // 1 to 5
+  sleepScore: integer("sleep_score"), // 1 to 5
 });
 
 export const skills = pgTable("skills", {

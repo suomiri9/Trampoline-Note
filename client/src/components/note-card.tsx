@@ -108,6 +108,14 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
+            {note.sleepScore ? (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider">Sleep</span>
+                <div className="scale-90 sm:scale-100 origin-right">
+                  <StarRating value={note.sleepScore} onChange={() => {}} readonly />
+                </div>
+              </div>
+            ) : null}
             {note.rating ? (
               <div className="shrink-0 scale-90 sm:scale-100 origin-right">
                 <StarRating value={note.rating} onChange={() => {}} readonly />

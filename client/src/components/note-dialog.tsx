@@ -53,6 +53,7 @@ const formSchema = z.object({
   content: z.string().min(1, "Notes cannot be empty."),
   skills: z.string().optional().nullable(), // Store as comma-separated IDs
   rating: z.number().min(1).max(5).optional().nullable(),
+  sleepScore: z.number().min(1).max(5).optional().nullable(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -87,6 +88,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       content: "",
       skills: "",
       rating: null,
+      sleepScore: null,
     },
   });
 
@@ -111,6 +113,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
           content: noteToEdit.content,
           skills: noteToEdit.skills || "",
           rating: noteToEdit.rating || null,
+          sleepScore: noteToEdit.sleepScore || null,
         });
       } else {
         setSelectedSkills([]);
@@ -122,6 +125,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
           content: "",
           skills: "",
           rating: null,
+          sleepScore: null,
         });
       }
     }
@@ -225,6 +229,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       endTime: values.endTime || null,
       skills: JSON.stringify(selectedSkills) || null,
       rating: values.rating || null,
+      sleepScore: values.sleepScore || null,
     };
 
     if (isEditing && noteToEdit) {
@@ -300,16 +305,28 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 </div>
               </div>
 
-              <FormField control={form.control} name="rating" render={({ field }) => (
-                <FormItem className="flex-1">
-                  <FormLabel>Rating</FormLabel>
-                  <FormControl>
-                    <div className="h-11 flex items-center bg-secondary/20 rounded-xl px-3 border border-border/50 w-fit">
-                      <StarRating value={field.value} onChange={field.onChange} />
-                    </div>
-                  </FormControl>
-                </FormItem>
-              )} />
+              <div className="flex gap-6">
+                <FormField control={form.control} name="rating" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Session</FormLabel>
+                    <FormControl>
+                      <div className="h-11 flex items-center bg-secondary/20 rounded-xl px-3 border border-border/50 w-fit">
+                        <StarRating value={field.value} onChange={field.onChange} />
+                      </div>
+                    </FormControl>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="sleepScore" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sleep</FormLabel>
+                    <FormControl>
+                      <div className="h-11 flex items-center bg-secondary/20 rounded-xl px-3 border border-border/50 w-fit">
+                        <StarRating value={field.value} onChange={field.onChange} />
+                      </div>
+                    </FormControl>
+                  </FormItem>
+                )} />
+              </div>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
