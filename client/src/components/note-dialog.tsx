@@ -364,32 +364,67 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       <span className="text-xs font-mono font-bold text-primary">{totalDifficulty.toFixed(1)}</span>
                     </div>
                   </div>
-                  <div className="divide-y divide-border/30 max-h-[300px] overflow-scroll-touch">
-                    {/* Simplified List for brevity - maintaining functionality */}
-                    {selectedSkills.map((item, idx) => {
-                       if (item.id === -1) return null;
-                       const skill = allItems?.find(s => s.id === item.id);
-                       if (item.id === -2) {
-                         return <div key={idx} className="p-3 text-sm font-bold text-primary flex justify-between items-center">
-                           <span>Routine: {item.routineName}</span>
-                           <Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(idx)}><Trash2 className="h-4 w-4" /></Button>
-                         </div>;
-                       }
-                       return <div key={idx} className="p-3 flex justify-between items-center">
-                         <div className="flex gap-2 items-center">
-                           <Badge variant="outline">{skill?.code}</Badge>
-                           <span className="text-sm">{skill?.name}</span>
-                         </div>
-                         <div className="flex items-center gap-2">
-                            <div className="flex items-center border rounded-md">
-                               <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) - 1)}>-</button>
-                               <span className="px-2 text-xs font-bold">{item.reps || 1}</span>
-                               <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) + 1)}>+</button>
-                            </div>
-                            <Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(idx)}><Trash2 className="h-4 w-4" /></Button>
-                         </div>
-                       </div>;
-                    })}
+                  <div className="max-h-[300px] overflow-scroll-touch divide-y divide-border/30">
+                    {(() => {
+                      const groups: Array<{ items: typeof selectedSkills; indices: number[] }> = [];
+                      let curItems: typeof selectedSkills = [];
+                      let curIndices: number[] = [];
+                      selectedSkills.forEach((item, idx) => {
+                        if (item.id === -1) {
+                          groups.push({ items: curItems, indices: curIndices });
+                          curItems = []; curIndices = [];
+                        } else {
+                          curItems.push(item); curIndices.push(idx);
+                        }
+                      });
+                      groups.push({ items: curItems, indices: curIndices });
+
+                      return groups.map((group, gIdx) => {
+                        if (group.items.length === 0) return null;
+                        const isConnected = group.items.length > 1 && group.items[0].id !== -2;
+
+                        return (
+                          <div key={gIdx} className={cn(isConnected ? "border-l-[3px] border-primary bg-primary/5" : "border-l-[3px] border-transparent")}>
+                            {group.items.map((item, iIdx) => {
+                              const idx = group.indices[iIdx];
+                              if (item.id === -2) {
+                                return (
+                                  <div key={idx} className="px-3 py-2 text-sm font-bold text-primary flex justify-between items-center">
+                                    <span>Routine: {item.routineName}</span>
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(idx)}><Trash2 className="h-4 w-4" /></Button>
+                                  </div>
+                                );
+                              }
+                              const skill = allItems?.find(s => s.id === item.id);
+                              const showReps = !isConnected || iIdx === 0;
+                              return (
+                                <div key={idx} className={cn("px-3 py-2 flex justify-between items-center", iIdx > 0 && isConnected ? "border-t border-border/20" : "")}>
+                                  <div className="flex gap-2 items-center min-w-0">
+                                    {isConnected && (
+                                      <span className={cn("text-[9px] font-black uppercase tracking-wider shrink-0", iIdx === 0 ? "text-primary" : "text-primary/50 pl-1")}>
+                                        {iIdx === 0 ? "FC" : "└"}
+                                      </span>
+                                    )}
+                                    <Badge variant="outline" className={cn(isConnected ? "border-primary/40 text-primary" : "")}>{skill?.code}</Badge>
+                                    <span className="text-sm truncate">{skill?.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    {showReps && (
+                                      <div className="flex items-center border rounded-md">
+                                        <button type="button" className="px-2" onClick={() => updateReps(group.indices, (item.reps || 1) - 1)}>-</button>
+                                        <span className="px-2 text-xs font-bold">{item.reps || 1}</span>
+                                        <button type="button" className="px-2" onClick={() => updateReps(group.indices, (item.reps || 1) + 1)}>+</button>
+                                      </div>
+                                    )}
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(idx)}><Trash2 className="h-4 w-4" /></Button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
               </div>
