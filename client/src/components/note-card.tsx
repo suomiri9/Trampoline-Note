@@ -71,9 +71,10 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
         currentGroupDD = 0;
         currentGroupReps = 1;
       } else if (item.id === -2) {
-        const routine = routines?.find(r => r.id === item.routineId);
+        const routine = routines?.find(r => r.id === (item as any).routineId);
         if (routine) {
-          total += routine.skillIds.reduce((acc, sId) => {
+          const count = (item as any).attempt ?? routine.skillIds.length;
+          total += routine.skillIds.slice(0, count).reduce((acc, sId) => {
             const skill = allItems?.find(s => s.id === sId);
             return acc + (skill?.difficulty || 0);
           }, 0);
@@ -161,16 +162,22 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                     if (group.length === 1 && (group[0] as any).id === -2) {
                       const item = group[0] as any;
                       const routine = routines?.find(r => r.id === item.routineId);
-                      const routineDD = routine?.skillIds.reduce((acc, sId) => {
+                      const maxSkills = routine?.skillIds.length ?? 10;
+                      const count = item.attempt ?? maxSkills;
+                      const routineDD = routine?.skillIds.slice(0, count).reduce((acc, sId) => {
                         const skill = allItems?.find(s => s.id === sId);
                         return acc + (skill?.difficulty || 0);
                       }, 0) || 0;
+                      const isPartial = item.attempt != null && item.attempt < maxSkills;
 
                       return (
                         <div key={`routine-${groupIdx}`} className="flex items-center justify-between py-2 px-3 rounded-xl border border-primary/20 bg-primary/5 shadow-sm">
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none">ROUTINE</Badge>
                             <span className="text-sm font-bold text-primary">{item.routineName || "Routine"}</span>
+                            {isPartial && (
+                              <span className="text-[11px] font-mono text-muted-foreground">{item.attempt}/{maxSkills}</span>
+                            )}
                           </div>
                           <span className="text-[11px] font-mono font-bold text-primary">{routineDD.toFixed(1)}</span>
                         </div>
