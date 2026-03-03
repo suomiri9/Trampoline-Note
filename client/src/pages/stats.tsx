@@ -8,8 +8,8 @@ import { Loader2, TrendingUp } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import {
   format, parseISO, eachDayOfInterval, eachMonthOfInterval,
-  startOfDay, startOfWeek, startOfMonth, endOfMonth,
-  subDays, subMonths, subYears,
+  startOfDay, startOfWeek, endOfWeek, startOfMonth,
+  subDays, subMonths,
 } from "date-fns";
 
 type Range = "week" | "month" | "year" | "all";
@@ -84,12 +84,14 @@ export default function StatsPage() {
 
   if (range === "week") {
     const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
-    const days = eachDayOfInterval({ start: weekStart, end: today });
+    const weekEnd = endOfWeek(today, { weekStartsOn: 1 });     // Sunday
+    const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
     xDateFormat = "EEE";
     chartData = days.map(day => {
       const key = format(day, "yyyy-MM-dd");
       const found = ddByDate[key];
-      return { date: format(day, "EEE"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0 };
+      const isFuture = day > today;
+      return { date: format(day, "EEE"), difficulty: found?.difficulty ?? (isFuture ? null : null), sessions: found?.sessions ?? 0 };
     });
   } else if (range === "month") {
     const monthStart = subDays(today, 29);
