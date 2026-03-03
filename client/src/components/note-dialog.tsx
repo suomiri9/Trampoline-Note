@@ -281,12 +281,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     </Popover>
                   </FormItem>
                 )} />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-2">
                   <FormField control={form.control} name="startTime" render={({ field }) => (
-                    <FormItem className="min-w-0"><FormLabel>Start</FormLabel><FormControl><Input type="time" className="rounded-xl h-11 px-3 text-sm" {...field} value={field.value || ""} /></FormControl></FormItem>
+                    <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
+                      <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Start</span>
+                      <FormControl><Input type="time" className="rounded-xl h-9 px-2 text-sm flex-1 min-w-0" {...field} value={field.value || ""} /></FormControl>
+                    </FormItem>
                   )} />
+                  <span className="text-muted-foreground text-sm">→</span>
                   <FormField control={form.control} name="endTime" render={({ field }) => (
-                    <FormItem className="min-w-0"><FormLabel>End</FormLabel><FormControl><Input type="time" className="rounded-xl h-11 px-3 text-sm" {...field} value={field.value || ""} /></FormControl></FormItem>
+                    <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
+                      <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">End</span>
+                      <FormControl><Input type="time" className="rounded-xl h-9 px-2 text-sm flex-1 min-w-0" {...field} value={field.value || ""} /></FormControl>
+                    </FormItem>
                   )} />
                 </div>
               </div>
