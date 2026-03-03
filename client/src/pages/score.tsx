@@ -58,6 +58,7 @@ export default function ScorePage() {
       date: new Date().toISOString().split('T')[0],
       routineId: undefined,
       type: "practice",
+      category: "vol",
       competitionName: "",
       rank: undefined,
       execution: 0,
@@ -65,15 +66,19 @@ export default function ScorePage() {
       horizontal: 0,
       timeOfFlight: 0,
       total: 0,
+      executionVol: 0,
+      difficultyVol: 0,
+      horizontalVol: 0,
+      timeOfFlightVol: 0,
+      totalVol: 0,
     }
   });
 
-  const watchFields = form.watch(["execution", "difficulty", "horizontal", "timeOfFlight", "routineId"]);
+  const watchFields = form.watch(["execution", "difficulty", "horizontal", "timeOfFlight", "routineId", "category", "executionVol", "difficultyVol", "horizontalVol", "timeOfFlightVol"]);
 
   useEffect(() => {
-    const [e, d, h, t, rId] = watchFields;
+    const [e, d, h, t, rId, cat, e2, d2, h2, t2] = watchFields;
     
-    // Auto-calculate Difficulty if routine is selected
     if (rId && routines && allSkills) {
       const routine = routines.find(r => r.id === Number(rId));
       if (routine) {
@@ -81,14 +86,26 @@ export default function ScorePage() {
           const skill = allSkills.find(s => s.id === sId);
           return acc + (skill?.difficulty || 0);
         }, 0);
-        if (calculatedD !== Number(d)) {
-          form.setValue("difficulty", Number(calculatedD.toFixed(1)));
+        
+        if (cat === "set") {
+          // Typically set has fixed/limited difficulty, but let's default it
+          if (calculatedD !== Number(d)) form.setValue("difficulty", Number(calculatedD.toFixed(1)));
+        } else if (cat === "vol") {
+          if (calculatedD !== Number(d)) form.setValue("difficulty", Number(calculatedD.toFixed(1)));
+        } else {
+          // both
+          if (calculatedD !== Number(d2)) form.setValue("difficultyVol", Number(calculatedD.toFixed(1)));
         }
       }
     }
 
     const total = Number(e || 0) + Number(d || 0) + Number(h || 0) + Number(t || 0);
     form.setValue("total", Number(total.toFixed(2)));
+
+    if (cat === "both") {
+      const total2 = Number(e2 || 0) + Number(d2 || 0) + Number(h2 || 0) + Number(t2 || 0);
+      form.setValue("totalVol", Number(total2.toFixed(2)));
+    }
   }, [watchFields, routines, allSkills, form]);
 
   return (
@@ -110,8 +127,8 @@ export default function ScorePage() {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField control={form.control} name="date" render={({ field }) => (
                     <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} className="rounded-xl" /></FormControl></FormItem>
                   )} />
@@ -123,6 +140,19 @@ export default function ScorePage() {
                         <SelectContent>
                           <SelectItem value="practice">Practice</SelectItem>
                           <SelectItem value="competition">Competition</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="category" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Score Category</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="set">Set Only</SelectItem>
+                          <SelectItem value="vol">Vol Only</SelectItem>
+                          <SelectItem value="both">Set and Vol</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormItem>
@@ -140,37 +170,65 @@ export default function ScorePage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField control={form.control} name="routineId" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Routine</FormLabel>
-                      <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value?.toString()}>
-                        <FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          {routines?.map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </FormItem>
-                  )} />
+                <div className="space-y-4">
+                  <h3 className="font-bold text-sm uppercase tracking-wider text-primary/60">
+                    {form.watch("category") === "both" ? "Set Score" : "Score Details"}
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="routineId" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Routine</FormLabel>
+                        <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value?.toString()}>
+                          <FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {routines?.map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <FormField control={form.control} name="execution" render={({ field }) => (
+                      <FormItem><FormLabel>E</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="difficulty" render={({ field }) => (
+                      <FormItem><FormLabel>D</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="horizontal" render={({ field }) => (
+                      <FormItem><FormLabel>H</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="timeOfFlight" render={({ field }) => (
+                      <FormItem><FormLabel>T</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="total" render={({ field }) => (
+                      <FormItem><FormLabel>Total</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl bg-background font-bold text-primary" /></FormControl></FormItem>
+                    )} />
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <FormField control={form.control} name="execution" render={({ field }) => (
-                    <FormItem><FormLabel>E (Execution)</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
-                  )} />
-                  <FormField control={form.control} name="difficulty" render={({ field }) => (
-                    <FormItem><FormLabel>D (Difficulty)</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
-                  )} />
-                  <FormField control={form.control} name="horizontal" render={({ field }) => (
-                    <FormItem><FormLabel>H (Horizontal)</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
-                  )} />
-                  <FormField control={form.control} name="timeOfFlight" render={({ field }) => (
-                    <FormItem><FormLabel>T (Flight Time)</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
-                  )} />
-                  <FormField control={form.control} name="total" render={({ field }) => (
-                    <FormItem><FormLabel>Total Score</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl bg-background font-bold text-primary" /></FormControl></FormItem>
-                  )} />
-                </div>
+                {form.watch("category") === "both" && (
+                  <div className="space-y-4 pt-4 border-t border-primary/10">
+                    <h3 className="font-bold text-sm uppercase tracking-wider text-primary/60">Vol Score</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                      <FormField control={form.control} name="executionVol" render={({ field }) => (
+                        <FormItem><FormLabel>E</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
+                      )} />
+                      <FormField control={form.control} name="difficultyVol" render={({ field }) => (
+                        <FormItem><FormLabel>D</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
+                      )} />
+                      <FormField control={form.control} name="horizontalVol" render={({ field }) => (
+                        <FormItem><FormLabel>H</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
+                      )} />
+                      <FormField control={form.control} name="timeOfFlightVol" render={({ field }) => (
+                        <FormItem><FormLabel>T</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
+                      )} />
+                      <FormField control={form.control} name="totalVol" render={({ field }) => (
+                        <FormItem><FormLabel>Total</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl bg-background font-bold text-primary" /></FormControl></FormItem>
+                      )} />
+                    </div>
+                  </div>
+                )}
+                
                 <Button type="submit" className="w-full rounded-xl" disabled={createMutation.isPending}>Save Score</Button>
               </form>
             </Form>
@@ -184,13 +242,16 @@ export default function ScorePage() {
           return (
             <Card key={score.id} className="rounded-2xl border-border/50 overflow-hidden">
               <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
+                <div className="space-y-1 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-lg">{format(new Date(score.date), "MMM d, yyyy")}</span>
-                    <Badge variant={score.type === "competition" ? "default" : "outline"} className="rounded-lg capitalize">
+                    <Badge variant={score.type === "competition" ? "default" : "outline"} className="rounded-lg capitalize text-[10px]">
                       {score.type}
                     </Badge>
-                    {routine && <Badge variant="secondary" className="rounded-lg">{routine.name}</Badge>}
+                    <Badge variant="secondary" className="rounded-lg capitalize text-[10px]">
+                      {score.category === "both" ? "Set & Vol" : score.category}
+                    </Badge>
+                    {routine && <Badge variant="secondary" className="rounded-lg text-[10px]">{routine.name}</Badge>}
                   </div>
                   {score.type === "competition" && (
                     <div className="text-sm font-medium text-primary flex items-center gap-2">
@@ -198,18 +259,43 @@ export default function ScorePage() {
                       {score.rank && <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/20 hover:bg-yellow-500/20">#{score.rank}</Badge>}
                     </div>
                   )}
-                  <div className="flex gap-4 text-xs text-muted-foreground font-mono">
-                    <span>E: {score.execution.toFixed(1)}</span>
-                    <span>D: {score.difficulty.toFixed(1)}</span>
-                    <span>H: {score.horizontal.toFixed(1)}</span>
-                    <span>T: {score.timeOfFlight.toFixed(2)}</span>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                    <div className="bg-secondary/5 p-2 rounded-lg">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">
+                        {score.category === "both" ? "Set Score" : "Scores"}
+                      </p>
+                      <div className="flex gap-4 text-xs font-mono">
+                        <span>E: {score.execution.toFixed(1)}</span>
+                        <span>D: {score.difficulty.toFixed(1)}</span>
+                        <span>H: {score.horizontal.toFixed(1)}</span>
+                        <span>T: {score.timeOfFlight.toFixed(2)}</span>
+                        <span className="font-bold text-primary ml-auto">Total: {score.total.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    {score.category === "both" && (
+                      <div className="bg-primary/5 p-2 rounded-lg">
+                        <p className="text-[10px] font-bold text-primary/60 uppercase mb-1">Vol Score</p>
+                        <div className="flex gap-4 text-xs font-mono">
+                          <span>E: {score.executionVol?.toFixed(1)}</span>
+                          <span>D: {score.difficultyVol?.toFixed(1)}</span>
+                          <span>H: {score.horizontalVol?.toFixed(1)}</span>
+                          <span>T: {score.timeOfFlightVol?.toFixed(2)}</span>
+                          <span className="font-bold text-primary ml-auto">Total: {score.totalVol?.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-6">
-                  <div className="text-right">
-                    <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider leading-none mb-1">Total Score</p>
-                    <p className="text-2xl font-display font-black text-primary leading-none">{score.total.toFixed(2)}</p>
-                  </div>
+                <div className="flex items-center gap-6 sm:pl-4">
+                  {score.category === "both" && (
+                    <div className="text-right">
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider leading-none mb-1">Grand Total</p>
+                      <p className="text-2xl font-display font-black text-primary leading-none">
+                        {(score.total + (score.totalVol || 0)).toFixed(2)}
+                      </p>
+                    </div>
+                  )}
                   <Button variant="ghost" size="icon" className="text-destructive h-9 w-9" onClick={() => deleteMutation.mutate(score.id)}>
                     <Trash2 className="w-4 h-4" />
                   </Button>

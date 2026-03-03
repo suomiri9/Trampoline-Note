@@ -32,13 +32,21 @@ export const scores = pgTable("scores", {
   date: date("date").notNull(),
   routineId: integer("routine_id").references(() => routines.id),
   type: text("type").notNull().default("practice"), // "practice" or "competition"
+  category: text("category").notNull().default("vol"), // "set", "vol", or "both"
   competitionName: text("competition_name"),
   rank: integer("rank"),
-  execution: real("execution").notNull().default(0), // E score
-  difficulty: real("difficulty").notNull().default(0), // D score
-  horizontal: real("horizontal").notNull().default(0), // H score
-  timeOfFlight: real("time_of_flight").notNull().default(0), // T score
+  // Set scores (also used for single vol)
+  execution: real("execution").notNull().default(0),
+  difficulty: real("difficulty").notNull().default(0),
+  horizontal: real("horizontal").notNull().default(0),
+  timeOfFlight: real("time_of_flight").notNull().default(0),
   total: real("total").notNull().default(0),
+  // Vol scores (only used when category is "both")
+  executionVol: real("execution_vol"),
+  difficultyVol: real("difficulty_vol"),
+  horizontalVol: real("horizontal_vol"),
+  timeOfFlightVol: real("time_of_flight_vol"),
+  totalVol: real("total_vol"),
 });
 
 export const insertNoteSchema = createInsertSchema(notes).omit({ id: true });
