@@ -83,7 +83,6 @@ export default function ScorePage() {
   useEffect(() => {
     const [e, d, h, t, rId, cat, e2, d2, h2, t2, rIdVol] = watchFields;
     
-    // Auto-calculate Difficulty for Set/Single Vol only when routine changes
     if (rId !== lastRoutineId) {
       setLastRoutineId(rId);
       if (rId && routines && allSkills) {
@@ -93,7 +92,6 @@ export default function ScorePage() {
             const skill = allSkills.find(s => s.id === sId);
             return acc + (skill?.difficulty || 0);
           }, 0);
-          // Use setTimeout to avoid collision with other form updates
           setTimeout(() => {
             form.setValue("difficulty", Number(calculatedD.toFixed(1)));
           }, 0);
@@ -101,7 +99,6 @@ export default function ScorePage() {
       }
     }
 
-    // Auto-calculate Difficulty for Vol only when routine changes
     if (cat === "both" && rIdVol !== lastRoutineIdVol) {
       setLastRoutineIdVol(rIdVol);
       if (rIdVol && routines && allSkills) {
@@ -111,7 +108,6 @@ export default function ScorePage() {
             const skill = allSkills.find(s => s.id === sId);
             return acc + (skill?.difficulty || 0);
           }, 0);
-          // Use setTimeout to avoid collision with other form updates
           setTimeout(() => {
             form.setValue("difficultyVol", Number(calculatedDVol.toFixed(1)));
           }, 0);
@@ -209,16 +205,16 @@ export default function ScorePage() {
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                     <FormField control={form.control} name="execution" render={({ field }) => (
-                      <FormItem><FormLabel>E</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
+                      <FormItem><FormLabel>E</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 ? "" : field.value} onChange={e => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="difficulty" render={({ field }) => (
-                      <FormItem><FormLabel>D</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
+                      <FormItem><FormLabel>D</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 ? "" : field.value} onChange={e => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="horizontal" render={({ field }) => (
-                      <FormItem><FormLabel>H</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
+                      <FormItem><FormLabel>H</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 ? "" : field.value} onChange={e => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="timeOfFlight" render={({ field }) => (
-                      <FormItem><FormLabel>T</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
+                      <FormItem><FormLabel>T</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 ? "" : field.value} onChange={e => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="total" render={({ field }) => (
                       <FormItem><FormLabel>Total</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl bg-background font-bold text-primary" /></FormControl></FormItem>
@@ -244,16 +240,16 @@ export default function ScorePage() {
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                       <FormField control={form.control} name="executionVol" render={({ field }) => (
-                        <FormItem><FormLabel>E</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
+                        <FormItem><FormLabel>E</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 ? "" : field.value} onChange={e => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
                       )} />
                       <FormField control={form.control} name="difficultyVol" render={({ field }) => (
-                        <FormItem><FormLabel>D</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
+                        <FormItem><FormLabel>D</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 ? "" : field.value} onChange={e => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
                       )} />
                       <FormField control={form.control} name="horizontalVol" render={({ field }) => (
-                        <FormItem><FormLabel>H</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
+                        <FormItem><FormLabel>H</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 ? "" : field.value} onChange={e => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
                       )} />
                       <FormField control={form.control} name="timeOfFlightVol" render={({ field }) => (
-                        <FormItem><FormLabel>T</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
+                        <FormItem><FormLabel>T</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 ? "" : field.value} onChange={e => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
                       )} />
                       <FormField control={form.control} name="totalVol" render={({ field }) => (
                         <FormItem><FormLabel>Total</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl bg-background font-bold text-primary" /></FormControl></FormItem>
