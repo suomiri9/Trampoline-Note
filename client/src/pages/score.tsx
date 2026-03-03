@@ -10,9 +10,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { Trash2, Plus, Trophy } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { Trash2, Plus, Trophy, CalendarIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 export default function ScorePage() {
   const { toast } = useToast();
@@ -146,7 +149,28 @@ export default function ScorePage() {
               <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
                 <div className="space-y-4">
                   <FormField control={form.control} name="date" render={({ field }) => (
-                    <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} className="rounded-xl h-11" /></FormControl></FormItem>
+                    <FormItem>
+                      <FormLabel>Date</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button variant="outline" className={cn("w-full text-left font-normal rounded-xl h-11", !field.value && "text-muted-foreground")}>
+                              {field.value ? format(parseISO(field.value), "PPP") : "Pick a date"}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value ? parseISO(field.value) : undefined}
+                            onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                            disabled={(date) => date > new Date()}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </FormItem>
                   )} />
                   <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="type" render={({ field }) => (
