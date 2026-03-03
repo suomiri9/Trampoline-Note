@@ -89,7 +89,7 @@ export default function ScorePage() {
       if (rId && routines && allSkills) {
         const routine = routines.find(r => r.id === Number(rId));
         if (routine) {
-          const calculatedD = cat === "set" ? 0 : routine.skillIds.reduce((acc, sId) => {
+          const calculatedD = (cat === "set" || cat === "both") ? 0 : routine.skillIds.reduce((acc, sId) => {
             const skill = allSkills.find(s => s.id === sId);
             return acc + (skill?.difficulty || 0);
           }, 0);
