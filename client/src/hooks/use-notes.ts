@@ -65,17 +65,16 @@ export function useCreateNote() {
 export function useUpdateNote() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...updates }: { id: number } & NoteUpdateInput) => {
-      const validated = api.notes.update.input.parse(updates);
+    mutationFn: async ({ id, ...updates }: { id: number } & Record<string, any>) => {
       const url = buildUrl(api.notes.update.path, { id });
       const res = await fetch(url, {
         method: api.notes.update.method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(validated),
+        body: JSON.stringify(updates),
         credentials: "include",
       });
       const responseData = await handleResponse(res, "Failed to update note");
-      return api.notes.update.responses[200].parse(responseData);
+      return responseData;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [api.notes.list.path] });
