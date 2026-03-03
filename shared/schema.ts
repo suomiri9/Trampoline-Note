@@ -31,6 +31,7 @@ export const scores = pgTable("scores", {
   id: serial("id").primaryKey(),
   date: date("date").notNull(),
   routineId: integer("routine_id").references(() => routines.id),
+  routineIdVol: integer("routine_id_vol").references(() => routines.id),
   type: text("type").notNull().default("practice"), // "practice" or "competition"
   category: text("category").notNull().default("vol"), // "set", "vol", or "both"
   competitionName: text("competition_name"),

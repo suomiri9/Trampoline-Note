@@ -57,6 +57,7 @@ export default function ScorePage() {
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       routineId: undefined,
+      routineIdVol: undefined,
       type: "practice",
       category: "vol",
       competitionName: "",
@@ -74,11 +75,12 @@ export default function ScorePage() {
     }
   });
 
-  const watchFields = form.watch(["execution", "difficulty", "horizontal", "timeOfFlight", "routineId", "category", "executionVol", "difficultyVol", "horizontalVol", "timeOfFlightVol"]);
+  const watchFields = form.watch(["execution", "difficulty", "horizontal", "timeOfFlight", "routineId", "category", "executionVol", "difficultyVol", "horizontalVol", "timeOfFlightVol", "routineIdVol"]);
 
   useEffect(() => {
-    const [e, d, h, t, rId, cat, e2, d2, h2, t2] = watchFields;
+    const [e, d, h, t, rId, cat, e2, d2, h2, t2, rIdVol] = watchFields;
     
+    // Auto-calculate Difficulty for Set/Single Vol
     if (rId && routines && allSkills) {
       const routine = routines.find(r => r.id === Number(rId));
       if (routine) {
@@ -87,14 +89,23 @@ export default function ScorePage() {
           return acc + (skill?.difficulty || 0);
         }, 0);
         
-        if (cat === "set") {
-          // Typically set has fixed/limited difficulty, but let's default it
-          if (calculatedD !== Number(d)) form.setValue("difficulty", Number(calculatedD.toFixed(1)));
-        } else if (cat === "vol") {
-          if (calculatedD !== Number(d)) form.setValue("difficulty", Number(calculatedD.toFixed(1)));
-        } else {
-          // both
-          if (calculatedD !== Number(d2)) form.setValue("difficultyVol", Number(calculatedD.toFixed(1)));
+        if (calculatedD !== Number(d)) {
+          form.setValue("difficulty", Number(calculatedD.toFixed(1)));
+        }
+      }
+    }
+
+    // Auto-calculate Difficulty for Vol (when in Set & Vol mode)
+    if (cat === "both" && rIdVol && routines && allSkills) {
+      const routineVol = routines.find(r => r.id === Number(rIdVol));
+      if (routineVol) {
+        const calculatedDVol = routineVol.skillIds.reduce((acc, sId) => {
+          const skill = allSkills.find(s => s.id === sId);
+          return acc + (skill?.difficulty || 0);
+        }, 0);
+        
+        if (calculatedDVol !== Number(d2)) {
+          form.setValue("difficultyVol", Number(calculatedDVol.toFixed(1)));
         }
       }
     }
@@ -209,6 +220,19 @@ export default function ScorePage() {
                 {form.watch("category") === "both" && (
                   <div className="space-y-4 pt-4 border-t border-primary/10">
                     <h3 className="font-bold text-sm uppercase tracking-wider text-primary/60">Vol Score</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField control={form.control} name="routineIdVol" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Routine (Vol)</FormLabel>
+                          <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value?.toString()}>
+                            <FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {routines?.map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )} />
+                    </div>
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                       <FormField control={form.control} name="executionVol" render={({ field }) => (
                         <FormItem><FormLabel>E</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} className="rounded-xl" /></FormControl></FormItem>
@@ -239,6 +263,7 @@ export default function ScorePage() {
       <div className="space-y-4">
         {scores?.map((score) => {
           const routine = routines?.find(r => r.id === score.routineId);
+          const routineVol = routines?.find(r => r.id === score.routineIdVol);
           return (
             <Card key={score.id} className="rounded-2xl border-border/50 overflow-hidden">
               <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -252,6 +277,7 @@ export default function ScorePage() {
                       {score.category === "both" ? "Set & Vol" : score.category}
                     </Badge>
                     {routine && <Badge variant="secondary" className="rounded-lg text-[10px]">{routine.name}</Badge>}
+                    {routineVol && score.category === "both" && <Badge variant="secondary" className="rounded-lg text-[10px]">Vol: {routineVol.name}</Badge>}
                   </div>
                   {score.type === "competition" && (
                     <div className="text-sm font-medium text-primary flex items-center gap-2">
