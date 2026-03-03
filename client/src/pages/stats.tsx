@@ -3,7 +3,7 @@ import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, TrendingUp } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format, parseISO } from "date-fns";
 
 export default function StatsPage() {
@@ -92,7 +92,7 @@ export default function StatsPage() {
           <CardContent>
             <div className="h-[300px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
+                <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
                   <XAxis 
                     dataKey="date" 
@@ -113,15 +113,17 @@ export default function StatsPage() {
                       boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
                       fontSize: '12px'
                     }}
-                    cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                    cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '4 4' }}
                   />
-                  <Bar 
-                    dataKey="difficulty" 
-                    fill="hsl(var(--primary))" 
-                    radius={[4, 4, 0, 0]} 
-                    barSize={32}
+                  <Line 
+                    type="monotone"
+                    dataKey="difficulty"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2.5}
+                    dot={{ fill: 'hsl(var(--primary))', r: 4, strokeWidth: 0 }}
+                    activeDot={{ r: 6, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
                   />
-                </BarChart>
+                </LineChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
