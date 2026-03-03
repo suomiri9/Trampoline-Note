@@ -218,7 +218,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const onSubmit = (values: FormValues) => {
     const payload = {
       ...values,
-      date: values.date.toISOString(), 
+      date: format(values.date, "yyyy-MM-dd"),
       startTime: values.startTime || null,
       endTime: values.endTime || null,
       skills: JSON.stringify(selectedSkills) || null,
