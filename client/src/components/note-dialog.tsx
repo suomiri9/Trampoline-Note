@@ -63,7 +63,7 @@ interface NoteDialogProps {
   noteToEdit?: Note | null;
 }
 
-type SkillItem = { id: number; reps?: number };
+type SkillItem = { id: number; reps?: number; routineId?: number; routineName?: string; attempt?: number };
 
 export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) {
   const { toast } = useToast();
@@ -74,6 +74,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   
   const [selectedSkills, setSelectedSkills] = useState<SkillItem[]>([]);
   const [isConnectMode, setIsConnectMode] = useState(false);
+  const [editingRoutineIdx, setEditingRoutineIdx] = useState<number | null>(null);
 
   const isEditing = !!noteToEdit;
 
@@ -194,7 +195,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     if (item.id === -2) {
       const routine = routines?.find(r => r.id === item.routineId);
       if (!routine) return sum;
-      const routineDD = routine.skillIds.reduce((acc, sId) => {
+      const count = item.attempt ?? routine.skillIds.length;
+      const routineDD = routine.skillIds.slice(0, count).reduce((acc, sId) => {
         const skill = allItems?.find(s => s.id === sId);
         return acc + (skill?.difficulty || 0);
       }, 0);
@@ -356,7 +358,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </Select>
                 )}
 
-                <div className="min-h-[150px] bg-secondary/10 rounded-xl border border-border/50 overflow-hidden">
+                <div className="min-h-[150px] bg-secondary/10 rounded-xl border border-border/50 overflow-hidden relative">
                   <div className="bg-secondary/20 px-3 py-1.5 border-b border-border/50 flex justify-between items-center">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Practice List</span>
                     <div className="flex items-center gap-2">
@@ -364,6 +366,65 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       <span className="text-xs font-mono font-bold text-primary">{totalDifficulty.toFixed(1)}</span>
                     </div>
                   </div>
+
+                  {editingRoutineIdx !== null && (() => {
+                    const rItem = selectedSkills[editingRoutineIdx];
+                    const routine = routines?.find(r => r.id === rItem.routineId);
+                    const maxSkills = routine?.skillIds.length ?? 10;
+                    return (
+                      <div className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 flex flex-col p-4 rounded-xl">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-bold text-sm">{rItem.routineName}</span>
+                          <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setEditingRoutineIdx(null)}>Done</Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-4">How many skills did you complete? (1–{maxSkills})</p>
+                        <div className="grid grid-cols-5 gap-2">
+                          {Array.from({ length: maxSkills }, (_, i) => i + 1).map(n => (
+                            <button
+                              key={n}
+                              type="button"
+                              onClick={() => {
+                                setSelectedSkills(prev => {
+                                  const newSkills = [...prev];
+                                  newSkills[editingRoutineIdx] = { ...newSkills[editingRoutineIdx], attempt: n };
+                                  form.setValue('skills', JSON.stringify(newSkills));
+                                  return newSkills;
+                                });
+                                setEditingRoutineIdx(null);
+                              }}
+                              className={cn(
+                                "h-10 rounded-lg font-bold text-sm border transition-all",
+                                rItem.attempt === n
+                                  ? "bg-primary text-primary-foreground border-primary"
+                                  : "bg-secondary/30 border-border hover:bg-secondary"
+                              )}
+                            >
+                              {n}
+                            </button>
+                          ))}
+                        </div>
+                        {rItem.attempt && (
+                          <button
+                            type="button"
+                            className="mt-3 text-xs text-muted-foreground underline text-left"
+                            onClick={() => {
+                              setSelectedSkills(prev => {
+                                const newSkills = [...prev];
+                                const { attempt: _, ...rest } = newSkills[editingRoutineIdx];
+                                newSkills[editingRoutineIdx] = rest;
+                                form.setValue('skills', JSON.stringify(newSkills));
+                                return newSkills;
+                              });
+                              setEditingRoutineIdx(null);
+                            }}
+                          >
+                            Reset to full routine
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   <div className="max-h-[300px] overflow-scroll-touch divide-y divide-border/30">
                     {(() => {
                       const groups: Array<{ items: typeof selectedSkills; indices: number[] }> = [];
@@ -388,11 +449,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             {group.items.map((item, iIdx) => {
                               const idx = group.indices[iIdx];
                               if (item.id === -2) {
+                                const routine = routines?.find(r => r.id === item.routineId);
+                                const maxSkills = routine?.skillIds.length ?? 10;
                                 return (
-                                  <div key={idx} className="px-3 py-2 text-sm font-bold text-primary flex justify-between items-center">
-                                    <span>Routine: {item.routineName}</span>
-                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(idx)}><Trash2 className="h-4 w-4" /></Button>
-                                  </div>
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    className="w-full px-3 py-2 text-sm flex justify-between items-center hover:bg-secondary/20 active:bg-secondary/40 transition-colors text-left"
+                                    onClick={() => setEditingRoutineIdx(idx)}
+                                  >
+                                    <span className="font-bold text-primary">
+                                      {item.routineName}{" "}
+                                      <span className="font-normal text-muted-foreground">
+                                        attempt{item.attempt != null ? `: ${item.attempt}/${maxSkills}` : ""}
+                                      </span>
+                                    </span>
+                                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                      <Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(idx)}><Trash2 className="h-4 w-4" /></Button>
+                                    </div>
+                                  </button>
                                 );
                               }
                               const skill = allItems?.find(s => s.id === item.id);
