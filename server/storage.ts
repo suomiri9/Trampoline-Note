@@ -3,15 +3,18 @@ import {
   notes,
   skills,
   routines,
+  scores,
   type CreateNoteRequest,
   type UpdateNoteRequest,
   type NoteResponse,
   type Skill,
   type InsertSkill,
   type Routine,
-  type InsertRoutine
+  type InsertRoutine,
+  type Score,
+  type InsertScore
 } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   // Notes
@@ -32,6 +35,11 @@ export interface IStorage {
   createRoutine(routine: InsertRoutine): Promise<Routine>;
   updateRoutine(id: number, updates: Partial<InsertRoutine>): Promise<Routine | undefined>;
   deleteRoutine(id: number): Promise<void>;
+
+  // Scores
+  getScores(): Promise<Score[]>;
+  createScore(score: InsertScore): Promise<Score>;
+  deleteScore(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -101,6 +109,19 @@ export class DatabaseStorage implements IStorage {
 
   async deleteRoutine(id: number): Promise<void> {
     await db.delete(routines).where(eq(routines.id, id));
+  }
+
+  async getScores(): Promise<Score[]> {
+    return await db.select().from(scores).orderBy(desc(scores.date));
+  }
+
+  async createScore(insertScore: InsertScore): Promise<Score> {
+    const [score] = await db.insert(scores).values(insertScore).returning();
+    return score;
+  }
+
+  async deleteScore(id: number): Promise<void> {
+    await db.delete(scores).where(eq(scores.id, id));
   }
 }
 

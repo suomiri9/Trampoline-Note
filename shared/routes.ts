@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertNoteSchema, notes, skills, routines, insertSkillSchema, insertRoutineSchema } from './schema';
+import { insertNoteSchema, notes, skills, routines, scores, insertSkillSchema, insertRoutineSchema, insertScoreSchema } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -127,6 +127,32 @@ export const api = {
       responses: {
         200: z.custom<typeof routines.$inferSelect>(),
         400: errorSchemas.validation,
+        404: errorSchemas.notFound,
+      },
+    },
+  },
+  scores: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/scores' as const,
+      responses: {
+        200: z.array(z.custom<typeof scores.$inferSelect>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/scores' as const,
+      input: insertScoreSchema,
+      responses: {
+        201: z.custom<typeof scores.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/scores/:id' as const,
+      responses: {
+        204: z.void(),
         404: errorSchemas.notFound,
       },
     },

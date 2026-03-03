@@ -27,9 +27,21 @@ export const routines = pgTable("routines", {
   skillIds: integer("skill_ids").array().notNull(), // Array of 10 skill IDs
 });
 
+export const scores = pgTable("scores", {
+  id: serial("id").primaryKey(),
+  date: date("date").notNull(),
+  routineId: integer("routine_id").references(() => routines.id),
+  execution: real("execution").notNull().default(0), // E score
+  difficulty: real("difficulty").notNull().default(0), // D score
+  horizontal: real("horizontal").notNull().default(0), // H score
+  timeOfFlight: real("time_of_flight").notNull().default(0), // T score
+  total: real("total").notNull().default(0),
+});
+
 export const insertNoteSchema = createInsertSchema(notes).omit({ id: true });
 export const insertSkillSchema = createInsertSchema(skills).omit({ id: true });
 export const insertRoutineSchema = createInsertSchema(routines).omit({ id: true });
+export const insertScoreSchema = createInsertSchema(scores).omit({ id: true });
 
 export type InsertNote = z.infer<typeof insertNoteSchema>;
 export type Note = typeof notes.$inferSelect;
@@ -39,6 +51,9 @@ export type InsertSkill = z.infer<typeof insertSkillSchema>;
 
 export type Routine = typeof routines.$inferSelect;
 export type InsertRoutine = z.infer<typeof insertRoutineSchema>;
+
+export type Score = typeof scores.$inferSelect;
+export type InsertScore = z.infer<typeof insertScoreSchema>;
 
 export type CreateNoteRequest = InsertNote;
 export type UpdateNoteRequest = Partial<InsertNote>;

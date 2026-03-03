@@ -9,13 +9,15 @@ import SkillsPage from "@/pages/skills";
 import RoutinesPage from "@/pages/routines";
 import StatsPage from "@/pages/stats";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Target, Layers, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Target, Layers, BarChart3, Trophy } from "lucide-react";
+import ScorePage from "@/pages/score";
 
 function Navigation() {
   const [location] = useLocation();
 
   const navItems = [
     { href: "/", label: "Training", icon: LayoutDashboard },
+    { href: "/score", label: "Score", icon: Trophy },
     { href: "/stats", label: "Progress", icon: BarChart3 },
     { href: "/skills", label: "Skills", icon: Target },
     { href: "/routines", label: "Routines", icon: Layers },
@@ -45,9 +47,10 @@ function Router() {
     <div className="pb-24">
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/score" component={ScorePage} />
+        <Route path="/stats" component={StatsPage} />
         <Route path="/skills" component={SkillsPage} />
         <Route path="/routines" component={RoutinesPage} />
-        <Route path="/stats" component={StatsPage} />
         <Route component={NotFound} />
       </Switch>
     </div>

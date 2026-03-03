@@ -173,5 +173,32 @@ export async function registerRoutes(
     }
   });
 
+  // Scores
+  app.get(api.scores.list.path, async (req, res) => {
+    const scoresList = await storage.getScores();
+    res.json(scoresList);
+  });
+
+  app.post(api.scores.create.path, async (req, res) => {
+    try {
+      const input = api.scores.create.input.parse(req.body);
+      const score = await storage.createScore(input);
+      res.status(201).json(score);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete(api.scores.delete.path, async (req, res) => {
+    await storage.deleteScore(Number(req.params.id));
+    res.status(204).send();
+  });
+
   return httpServer;
 }
