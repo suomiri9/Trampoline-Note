@@ -402,7 +402,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                   <div className="flex gap-2 items-center min-w-0">
                                     {isConnected && (
                                       <span className={cn("text-[9px] font-black uppercase tracking-wider shrink-0", iIdx === 0 ? "text-primary" : "text-primary/50 pl-1")}>
-                                        {iIdx === 0 ? "FC" : "└"}
+                                        {iIdx === 0 ? "C" : "└"}
                                       </span>
                                     )}
                                     <Badge variant="outline" className={cn(isConnected ? "border-primary/40 text-primary" : "")}>{skill?.code}</Badge>
