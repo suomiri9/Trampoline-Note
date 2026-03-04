@@ -14,7 +14,7 @@ import {
   type Score,
   type InsertScore
 } from "@shared/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, isNull } from "drizzle-orm";
 
 export interface IStorage {
   // Notes
@@ -40,6 +40,9 @@ export interface IStorage {
   getScores(userId: string): Promise<Score[]>;
   createScore(userId: string, score: InsertScore): Promise<Score>;
   deleteScore(id: number, userId: string): Promise<void>;
+
+  // Data migration
+  claimLegacyData(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -124,6 +127,15 @@ export class DatabaseStorage implements IStorage {
 
   async deleteScore(id: number, userId: string): Promise<void> {
     await db.delete(scores).where(and(eq(scores.id, id), eq(scores.userId, userId)));
+  }
+
+  async claimLegacyData(userId: string): Promise<void> {
+    await Promise.all([
+      db.update(notes).set({ userId }).where(isNull(notes.userId)),
+      db.update(skills).set({ userId }).where(isNull(skills.userId)),
+      db.update(routines).set({ userId }).where(isNull(routines.userId)),
+      db.update(scores).set({ userId }).where(isNull(scores.userId)),
+    ]);
   }
 }
 

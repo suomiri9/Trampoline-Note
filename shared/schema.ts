@@ -4,7 +4,7 @@ import { z } from "zod";
 
 export const notes = pgTable("notes", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id"),
   date: date("date").notNull(),
   startTime: text("start_time"), // Store as HH:mm
   endTime: text("end_time"), // Store as HH:mm
@@ -16,7 +16,7 @@ export const notes = pgTable("notes", {
 
 export const skills = pgTable("skills", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id"),
   name: text("name").notNull(),
   code: text("code").notNull(),
   difficulty: real("difficulty").notNull(),
@@ -26,14 +26,14 @@ export const skills = pgTable("skills", {
 
 export const routines = pgTable("routines", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id"),
   name: text("name").notNull(),
   skillIds: integer("skill_ids").array().notNull(), // Array of 10 skill IDs
 });
 
 export const scores = pgTable("scores", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id"),
   date: date("date").notNull(),
   routineId: integer("routine_id").references(() => routines.id),
   routineIdVol: integer("routine_id_vol").references(() => routines.id),
