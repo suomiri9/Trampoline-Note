@@ -12,7 +12,8 @@ import LoginPage from "@/pages/login";
 import ScorePage from "@/pages/score";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Target, Layers, BarChart3, Trophy, LogOut, Loader2 } from "lucide-react";
+import { LayoutDashboard, Target, Layers, BarChart3, Trophy, LogOut, Loader2, UserCircle } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 
 function Navigation() {
@@ -42,17 +43,37 @@ function Navigation() {
           </div>
         </Link>
       ))}
+
       {user && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 text-muted-foreground hover:bg-secondary rounded-xl ml-1"
-          onClick={() => logout()}
-          disabled={isLoggingOut}
-          title={`Sign out (${user.email ?? user.firstName ?? ""})`}
-        >
-          {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
-        </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer text-muted-foreground hover:bg-secondary ml-1">
+              <UserCircle className="w-4 h-4" />
+              <span className="hidden sm:inline max-w-[80px] truncate">
+                {user.firstName ?? user.email?.split("@")[0] ?? "Account"}
+              </span>
+            </div>
+          </PopoverTrigger>
+          <PopoverContent align="end" side="top" className="w-56 rounded-2xl p-3 mb-2">
+            <div className="mb-3 px-1">
+              <p className="text-xs font-semibold text-foreground truncate">
+                {user.firstName ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}` : "My Account"}
+              </p>
+              {user.email && (
+                <p className="text-xs text-muted-foreground truncate mt-0.5">{user.email}</p>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-2 h-9 rounded-xl text-sm text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => logout()}
+              disabled={isLoggingOut}
+            >
+              {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+              Sign out
+            </Button>
+          </PopoverContent>
+        </Popover>
       )}
     </nav>
   );
