@@ -305,7 +305,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 </div>
               </div>
 
-              <div className="flex gap-6">
+              <div className="flex flex-wrap gap-4">
                 <FormField control={form.control} name="rating" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Session</FormLabel>
