@@ -240,7 +240,7 @@ export default function ScorePage() {
                     )} />
                     <FormField control={form.control} name="attempt" render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs">Attempt</FormLabel>
+                        <FormLabel className="text-xs">Skill</FormLabel>
                         <Select
                           value={field.value == null ? "full" : String(field.value)}
                           onValueChange={(val) => field.onChange(val === "full" ? null : Number(val))}
@@ -289,7 +289,7 @@ export default function ScorePage() {
                       )} />
                       <FormField control={form.control} name="attemptVol" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs">Attempt</FormLabel>
+                          <FormLabel className="text-xs">Skill</FormLabel>
                           <Select
                             value={field.value == null ? "full" : String(field.value)}
                             onValueChange={(val) => field.onChange(val === "full" ? null : Number(val))}
