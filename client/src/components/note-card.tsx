@@ -95,7 +95,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
     <>
       <div className={`group relative bg-card p-6 rounded-2xl border border-border/50 hover:border-border hover:shadow-lg transition-all animate-fade-in-up opacity-0 ${staggerClass}`}>
         <div className="flex justify-between items-center mb-4 gap-4">
-          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground font-medium min-w-0">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground font-medium min-w-0">
             <div className="flex items-center gap-2 shrink-0">
               <div className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary text-secondary-foreground shrink-0">
                 <Calendar className="w-4 h-4" />
@@ -106,15 +106,14 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
               <Activity className="w-3 h-3 shrink-0" />
               <span className="whitespace-nowrap">{note.startTime || "??:??"} - {note.endTime || "??:??"}</span>
             </div>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
             {note.sleepScore != null ? (
-              <div className="flex items-center gap-1 shrink-0 bg-secondary/50 px-2.5 py-1 rounded-lg">
+              <div className="flex items-center gap-1 bg-secondary/50 px-2.5 py-1 rounded-lg w-fit">
                 <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider">Sleep</span>
-                <span className="text-xs font-mono font-bold text-foreground">{note.sleepScore}</span>
-                <span className="text-[10px] text-muted-foreground/50">/100</span>
+                <span className="text-xs font-mono font-bold text-foreground">{note.sleepScore}/100</span>
               </div>
             ) : null}
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
             {note.rating ? (
               <div className="shrink-0 scale-90 sm:scale-100 origin-right">
                 <StarRating value={note.rating} onChange={() => {}} readonly />
