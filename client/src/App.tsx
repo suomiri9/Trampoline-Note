@@ -66,7 +66,7 @@ function Navigation() {
             <Button
               variant="ghost"
               className="w-full justify-start gap-2 h-9 rounded-xl text-sm text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={() => logout()}
+              onClick={() => { if (window.confirm("Are you sure you want to sign out?")) logout(); }}
               disabled={isLoggingOut}
             >
               {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
