@@ -183,6 +183,20 @@ export async function registerRoutes(
     }
   });
 
+  app.put(api.scores.update.path, isAuthenticated, async (req, res) => {
+    try {
+      const input = api.scores.update.input.parse(req.body);
+      const score = await storage.updateScore(Number(req.params.id), getUserId(req), input);
+      if (!score) return res.status(404).json({ message: "Score not found" });
+      res.json(score);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.delete(api.scores.delete.path, isAuthenticated, async (req, res) => {
     await storage.deleteScore(Number(req.params.id), getUserId(req));
     res.status(204).send();

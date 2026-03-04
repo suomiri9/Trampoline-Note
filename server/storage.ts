@@ -39,6 +39,7 @@ export interface IStorage {
   // Scores
   getScores(userId: string): Promise<Score[]>;
   createScore(userId: string, score: InsertScore): Promise<Score>;
+  updateScore(id: number, userId: string, updates: Partial<InsertScore>): Promise<Score | undefined>;
   deleteScore(id: number, userId: string): Promise<void>;
 
   // Data migration
@@ -123,6 +124,14 @@ export class DatabaseStorage implements IStorage {
   async createScore(userId: string, insertScore: InsertScore): Promise<Score> {
     const [score] = await db.insert(scores).values({ ...insertScore, userId }).returning();
     return score;
+  }
+
+  async updateScore(id: number, userId: string, updates: Partial<InsertScore>): Promise<Score | undefined> {
+    const [updated] = await db.update(scores)
+      .set(updates)
+      .where(and(eq(scores.id, id), eq(scores.userId, userId)))
+      .returning();
+    return updated;
   }
 
   async deleteScore(id: number, userId: string): Promise<void> {

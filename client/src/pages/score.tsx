@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
-import { Trash2, Plus, Trophy, CalendarIcon } from "lucide-react";
+import { Trash2, Plus, Trophy, CalendarIcon, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -28,6 +28,7 @@ function calcDD(routine: Routine, skills: Skill[], attempt: number | null | unde
 export default function ScorePage() {
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
+  const [editingScore, setEditingScore] = useState<Score | null>(null);
 
   const { data: scores } = useQuery<Score[]>({ queryKey: ["/api/scores"] });
   const { data: routines } = useQuery<Routine[]>({ queryKey: ["/api/routines"] });
@@ -45,6 +46,19 @@ export default function ScorePage() {
     }
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, values }: { id: number; values: any }) => {
+      const res = await apiRequest("PUT", `/api/scores/${id}`, values);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
+      setEditingScore(null);
+      setIsAdding(false);
+      toast({ title: "Score updated!" });
+    }
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("DELETE", `/api/scores/${id}`);
@@ -54,6 +68,32 @@ export default function ScorePage() {
       toast({ title: "Score deleted" });
     }
   });
+
+  function startEdit(score: Score) {
+    setEditingScore(score);
+    setIsAdding(true);
+    form.reset({
+      date: score.date,
+      routineId: score.routineId ?? undefined,
+      routineIdVol: score.routineIdVol ?? undefined,
+      attempt: score.attempt ?? null,
+      attemptVol: score.attemptVol ?? null,
+      type: score.type as any,
+      category: score.category as any,
+      competitionName: score.competitionName ?? "",
+      rank: score.rank ?? undefined,
+      execution: score.execution,
+      difficulty: score.difficulty,
+      horizontal: score.horizontal,
+      timeOfFlight: score.timeOfFlight,
+      total: score.total,
+      executionVol: score.executionVol ?? 0,
+      difficultyVol: score.difficultyVol ?? 0,
+      horizontalVol: score.horizontalVol ?? 0,
+      timeOfFlightVol: score.timeOfFlightVol ?? 0,
+      totalVol: score.totalVol ?? 0,
+    });
+  }
 
   const form = useForm({
     resolver: zodResolver(insertScoreSchema),
@@ -146,17 +186,23 @@ export default function ScorePage() {
           <h1 className="text-3xl font-display font-bold">Scoring</h1>
           <p className="text-muted-foreground">Track your routine scores and competition results.</p>
         </div>
-        <Button onClick={() => setIsAdding(!isAdding)} className="rounded-xl">
+        <Button onClick={() => { setIsAdding(!isAdding); setEditingScore(null); form.reset(); }} className="rounded-xl">
           {isAdding ? "Cancel" : <><Plus className="w-4 h-4 mr-2" /> New Score</>}
         </Button>
       </div>
 
       {isAdding && (
         <Card className="mb-8 rounded-2xl border-primary/20 bg-primary/5">
-          <CardHeader><CardTitle>Add New Score</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{editingScore ? "Edit Score" : "Add New Score"}</CardTitle></CardHeader>
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
+              <form onSubmit={form.handleSubmit((data) => {
+                if (editingScore) {
+                  updateMutation.mutate({ id: editingScore.id, values: data });
+                } else {
+                  createMutation.mutate(data);
+                }
+              })} className="space-y-6">
                 <div className="space-y-4">
                   <FormField control={form.control} name="date" render={({ field }) => (
                     <FormItem>
@@ -322,7 +368,9 @@ export default function ScorePage() {
                   </div>
                 )}
 
-                <Button type="submit" className="w-full h-11 rounded-xl" disabled={createMutation.isPending}>Save Score</Button>
+                <Button type="submit" className="w-full h-11 rounded-xl" disabled={createMutation.isPending || updateMutation.isPending}>
+                  {editingScore ? "Save Changes" : "Save Score"}
+                </Button>
               </form>
             </Form>
           </CardContent>
@@ -398,6 +446,9 @@ export default function ScorePage() {
                       </p>
                     </div>
                   )}
+                  <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground" onClick={() => startEdit(score)}>
+                    <Pencil className="w-4 h-4" />
+                  </Button>
                   <Button variant="ghost" size="icon" className="text-destructive h-9 w-9" onClick={() => deleteMutation.mutate(score.id)}>
                     <Trash2 className="w-4 h-4" />
                   </Button>

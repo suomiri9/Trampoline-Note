@@ -148,6 +148,16 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/scores/:id' as const,
+      input: insertScoreSchema.partial(),
+      responses: {
+        200: z.custom<typeof scores.$inferSelect>(),
+        400: errorSchemas.validation,
+        404: errorSchemas.notFound,
+      },
+    },
     delete: {
       method: 'DELETE' as const,
       path: '/api/scores/:id' as const,
