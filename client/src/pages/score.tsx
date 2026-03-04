@@ -25,6 +25,28 @@ function calcDD(routine: Routine, skills: Skill[], attempt: number | null | unde
   }, 0);
 }
 
+const scoreDefaults = {
+  date: new Date().toISOString().split('T')[0],
+  routineId: undefined as number | undefined,
+  routineIdVol: undefined as number | undefined,
+  attempt: null as number | null,
+  attemptVol: null as number | null,
+  type: "practice" as const,
+  category: "vol" as const,
+  competitionName: "",
+  rank: undefined as number | undefined,
+  execution: 0,
+  difficulty: 0,
+  horizontal: 0,
+  timeOfFlight: 0,
+  total: 0,
+  executionVol: 0,
+  difficultyVol: 0,
+  horizontalVol: 0,
+  timeOfFlightVol: 0,
+  totalVol: 0,
+};
+
 export default function ScorePage() {
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
@@ -42,6 +64,7 @@ export default function ScorePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
       setIsAdding(false);
+      form.reset({ ...scoreDefaults, date: new Date().toISOString().split('T')[0] });
       toast({ title: "Score saved!" });
     }
   });
@@ -97,27 +120,7 @@ export default function ScorePage() {
 
   const form = useForm({
     resolver: zodResolver(insertScoreSchema),
-    defaultValues: {
-      date: new Date().toISOString().split('T')[0],
-      routineId: undefined,
-      routineIdVol: undefined,
-      attempt: null,
-      attemptVol: null,
-      type: "practice",
-      category: "vol",
-      competitionName: "",
-      rank: undefined,
-      execution: 0,
-      difficulty: 0,
-      horizontal: 0,
-      timeOfFlight: 0,
-      total: 0,
-      executionVol: 0,
-      difficultyVol: 0,
-      horizontalVol: 0,
-      timeOfFlightVol: 0,
-      totalVol: 0,
-    }
+    defaultValues: scoreDefaults,
   });
 
   const [lastRoutineId, setLastRoutineId] = useState<number | undefined>();
@@ -186,7 +189,7 @@ export default function ScorePage() {
           <h1 className="text-3xl font-display font-bold">Scoring</h1>
           <p className="text-muted-foreground">Track your routine scores and competition results.</p>
         </div>
-        <Button onClick={() => { setIsAdding(!isAdding); setEditingScore(null); form.reset(); }} className="rounded-xl">
+        <Button onClick={() => { setIsAdding(v => !v); setEditingScore(null); form.reset({ ...scoreDefaults, date: new Date().toISOString().split('T')[0] }); }} className="rounded-xl">
           {isAdding ? "Cancel" : <><Plus className="w-4 h-4 mr-2" /> New Score</>}
         </Button>
       </div>
