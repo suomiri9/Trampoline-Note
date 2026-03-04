@@ -43,12 +43,14 @@ export const scores = pgTable("scores", {
   horizontal: real("horizontal").notNull().default(0),
   timeOfFlight: real("time_of_flight").notNull().default(0),
   total: real("total").notNull().default(0),
+  attempt: integer("attempt"), // null = full 10 skills, 1-9 = partial attempt
   // Vol scores (only used when category is "both")
   executionVol: real("execution_vol"),
   difficultyVol: real("difficulty_vol"),
   horizontalVol: real("horizontal_vol"),
   timeOfFlightVol: real("time_of_flight_vol"),
   totalVol: real("total_vol"),
+  attemptVol: integer("attempt_vol"), // null = full 10 skills, 1-9 = partial attempt
 });
 
 export const insertNoteSchema = createInsertSchema(notes).omit({ id: true });

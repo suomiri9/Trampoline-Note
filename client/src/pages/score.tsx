@@ -6,7 +6,7 @@ import { insertScoreSchema, type Score, type Routine, type Skill } from "@shared
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -17,21 +17,21 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
+function calcDD(routine: Routine, skills: Skill[], attempt: number | null | undefined) {
+  const count = attempt ?? routine.skillIds.length;
+  return routine.skillIds.slice(0, count).reduce((acc, sId) => {
+    const sk = skills.find(s => s.id === sId);
+    return acc + (sk?.difficulty || 0);
+  }, 0);
+}
+
 export default function ScorePage() {
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
 
-  const { data: scores, isLoading: loadingScores } = useQuery<Score[]>({ 
-    queryKey: ["/api/scores"] 
-  });
-  
-  const { data: routines } = useQuery<Routine[]>({ 
-    queryKey: ["/api/routines"] 
-  });
-
-  const { data: allSkills } = useQuery<Skill[]>({ 
-    queryKey: ["/api/skills"] 
-  });
+  const { data: scores } = useQuery<Score[]>({ queryKey: ["/api/scores"] });
+  const { data: routines } = useQuery<Routine[]>({ queryKey: ["/api/routines"] });
+  const { data: allSkills } = useQuery<Skill[]>({ queryKey: ["/api/skills"] });
 
   const createMutation = useMutation({
     mutationFn: async (values: any) => {
@@ -61,6 +61,8 @@ export default function ScorePage() {
       date: new Date().toISOString().split('T')[0],
       routineId: undefined,
       routineIdVol: undefined,
+      attempt: null,
+      attemptVol: null,
       type: "practice",
       category: "vol",
       competitionName: "",
@@ -80,41 +82,46 @@ export default function ScorePage() {
 
   const [lastRoutineId, setLastRoutineId] = useState<number | undefined>();
   const [lastRoutineIdVol, setLastRoutineIdVol] = useState<number | undefined>();
+  const [lastAttempt, setLastAttempt] = useState<number | null | undefined>(null);
+  const [lastAttemptVol, setLastAttemptVol] = useState<number | null | undefined>(null);
 
-  const watchFields = form.watch(["execution", "difficulty", "horizontal", "timeOfFlight", "routineId", "category", "executionVol", "difficultyVol", "horizontalVol", "timeOfFlightVol", "routineIdVol"]);
+  const watchFields = form.watch([
+    "execution", "difficulty", "horizontal", "timeOfFlight",
+    "routineId", "category", "attempt",
+    "executionVol", "difficultyVol", "horizontalVol", "timeOfFlightVol",
+    "routineIdVol", "attemptVol"
+  ]);
 
   useEffect(() => {
-    const [e, d, h, t, rId, cat, e2, d2, h2, t2, rIdVol] = watchFields;
-    
-    if (rId !== lastRoutineId) {
-      setLastRoutineId(rId);
-      if (rId && routines && allSkills) {
-        const routine = routines.find(r => r.id === Number(rId));
-        if (routine) {
-          const calculatedD = (cat === "set" || cat === "both") ? 0 : routine.skillIds.reduce((acc, sId) => {
-            const skill = allSkills.find(s => s.id === sId);
-            return acc + (skill?.difficulty || 0);
-          }, 0);
-          setTimeout(() => {
-            form.setValue("difficulty", Number(calculatedD.toFixed(1)));
-          }, 0);
-        }
+    const [e, d, h, t, rId, cat, attempt, e2, d2, h2, t2, rIdVol, attemptVol] = watchFields;
+
+    const routineChanged = rId !== lastRoutineId;
+    const attemptChanged = attempt !== lastAttempt;
+
+    if (routineChanged) setLastRoutineId(rId);
+    if (attemptChanged) setLastAttempt(attempt);
+
+    if ((routineChanged || attemptChanged) && rId && routines && allSkills) {
+      const routine = routines.find(r => r.id === Number(rId));
+      if (routine) {
+        const calculatedD = (cat === "set" || cat === "both")
+          ? 0
+          : Number(calcDD(routine, allSkills, attempt).toFixed(1));
+        setTimeout(() => form.setValue("difficulty", calculatedD), 0);
       }
     }
 
-    if (cat === "both" && rIdVol !== lastRoutineIdVol) {
-      setLastRoutineIdVol(rIdVol);
-      if (rIdVol && routines && allSkills) {
-        const routineVol = routines.find(r => r.id === Number(rIdVol));
-        if (routineVol) {
-          const calculatedDVol = routineVol.skillIds.reduce((acc, sId) => {
-            const skill = allSkills.find(s => s.id === sId);
-            return acc + (skill?.difficulty || 0);
-          }, 0);
-          setTimeout(() => {
-            form.setValue("difficultyVol", Number(calculatedDVol.toFixed(1)));
-          }, 0);
-        }
+    const routineVolChanged = rIdVol !== lastRoutineIdVol;
+    const attemptVolChanged = attemptVol !== lastAttemptVol;
+
+    if (routineVolChanged) setLastRoutineIdVol(rIdVol);
+    if (attemptVolChanged) setLastAttemptVol(attemptVol);
+
+    if (cat === "both" && (routineVolChanged || attemptVolChanged) && rIdVol && routines && allSkills) {
+      const routineV = routines.find(r => r.id === Number(rIdVol));
+      if (routineV) {
+        const calculatedDVol = Number(calcDD(routineV, allSkills, attemptVol).toFixed(1));
+        setTimeout(() => form.setValue("difficultyVol", calculatedDVol), 0);
       }
     }
 
@@ -125,7 +132,12 @@ export default function ScorePage() {
       const total2 = Number(e2 || 0) + Number(d2 || 0) + Number(h2 || 0) + Number(t2 || 0);
       form.setValue("totalVol", Number(total2.toFixed(2)));
     }
-  }, [watchFields, routines, allSkills, form, lastRoutineId, lastRoutineIdVol]);
+  }, [watchFields, routines, allSkills, form, lastRoutineId, lastRoutineIdVol, lastAttempt, lastAttemptVol]);
+
+  const attemptOptions = [
+    { value: "full", label: "Full" },
+    ...Array.from({ length: 9 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })),
+  ];
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
@@ -141,9 +153,7 @@ export default function ScorePage() {
 
       {isAdding && (
         <Card className="mb-8 rounded-2xl border-primary/20 bg-primary/5">
-          <CardHeader>
-            <CardTitle>Add New Score</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Add New Score</CardTitle></CardHeader>
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
@@ -177,7 +187,7 @@ export default function ScorePage() {
                       <FormItem>
                         <FormLabel>Type</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                          <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger></FormControl>
                           <SelectContent>
                             <SelectItem value="practice">Practice</SelectItem>
                             <SelectItem value="competition">Competition</SelectItem>
@@ -187,9 +197,9 @@ export default function ScorePage() {
                     )} />
                     <FormField control={form.control} name="category" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Score Category</FormLabel>
+                        <FormLabel>Category</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
+                          <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger></FormControl>
                           <SelectContent>
                             <SelectItem value="set">Set Only</SelectItem>
                             <SelectItem value="vol">Vol Only</SelectItem>
@@ -216,7 +226,7 @@ export default function ScorePage() {
                   <h3 className="font-bold text-sm uppercase tracking-wider text-primary/60">
                     {form.watch("category") === "both" ? "Set Score" : "Score Details"}
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
                     <FormField control={form.control} name="routineId" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Routine</FormLabel>
@@ -224,6 +234,20 @@ export default function ScorePage() {
                           <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
                           <SelectContent>
                             {routines?.map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="attempt" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Attempt</FormLabel>
+                        <Select
+                          value={field.value == null ? "full" : String(field.value)}
+                          onValueChange={(val) => field.onChange(val === "full" ? null : Number(val))}
+                        >
+                          <FormControl><SelectTrigger className="rounded-xl h-11 w-24"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {attemptOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </FormItem>
@@ -251,7 +275,7 @@ export default function ScorePage() {
                 {form.watch("category") === "both" && (
                   <div className="space-y-4 pt-4 border-t border-primary/10">
                     <h3 className="font-bold text-sm uppercase tracking-wider text-primary/60">Vol Score</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
                       <FormField control={form.control} name="routineIdVol" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Routine (Vol)</FormLabel>
@@ -259,6 +283,20 @@ export default function ScorePage() {
                             <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
                             <SelectContent>
                               {routines?.map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="attemptVol" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Attempt</FormLabel>
+                          <Select
+                            value={field.value == null ? "full" : String(field.value)}
+                            onValueChange={(val) => field.onChange(val === "full" ? null : Number(val))}
+                          >
+                            <FormControl><SelectTrigger className="rounded-xl h-11 w-24"><SelectValue /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {attemptOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </FormItem>
@@ -283,7 +321,7 @@ export default function ScorePage() {
                     </div>
                   </div>
                 )}
-                
+
                 <Button type="submit" className="w-full h-11 rounded-xl" disabled={createMutation.isPending}>Save Score</Button>
               </form>
             </Form>
@@ -307,8 +345,16 @@ export default function ScorePage() {
                     <Badge variant="secondary" className="rounded-lg capitalize text-[10px]">
                       {score.category === "both" ? "Set & Vol" : score.category}
                     </Badge>
-                    {routine && <Badge variant="secondary" className="rounded-lg text-[10px]">{routine.name}</Badge>}
-                    {routineVol && score.category === "both" && <Badge variant="secondary" className="rounded-lg text-[10px]">Vol: {routineVol.name}</Badge>}
+                    {routine && (
+                      <Badge variant="secondary" className="rounded-lg text-[10px]">
+                        {routine.name}{score.attempt != null ? ` (attempt ${score.attempt})` : ""}
+                      </Badge>
+                    )}
+                    {routineVol && score.category === "both" && (
+                      <Badge variant="secondary" className="rounded-lg text-[10px]">
+                        Vol: {routineVol.name}{score.attemptVol != null ? ` (attempt ${score.attemptVol})` : ""}
+                      </Badge>
+                    )}
                   </div>
                   {score.type === "competition" && (
                     <div className="text-sm font-medium text-primary flex items-center gap-2">
@@ -316,7 +362,6 @@ export default function ScorePage() {
                       {score.rank && <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/20 hover:bg-yellow-500/20">#{score.rank}</Badge>}
                     </div>
                   )}
-                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                     <div className="bg-secondary/5 p-2 rounded-lg">
                       <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">
