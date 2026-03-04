@@ -14,37 +14,37 @@ import {
   type Score,
   type InsertScore
 } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 export interface IStorage {
   // Notes
-  getNotes(): Promise<NoteResponse[]>;
+  getNotes(userId: string): Promise<NoteResponse[]>;
   getNote(id: number): Promise<NoteResponse | undefined>;
-  createNote(note: CreateNoteRequest): Promise<NoteResponse>;
-  updateNote(id: number, updates: UpdateNoteRequest): Promise<NoteResponse>;
-  deleteNote(id: number): Promise<void>;
-  
+  createNote(userId: string, note: CreateNoteRequest): Promise<NoteResponse>;
+  updateNote(id: number, userId: string, updates: UpdateNoteRequest): Promise<NoteResponse>;
+  deleteNote(id: number, userId: string): Promise<void>;
+
   // Skills
-  getSkills(): Promise<Skill[]>;
-  createSkill(skill: InsertSkill): Promise<Skill>;
-  updateSkill(id: number, updates: Partial<InsertSkill>): Promise<Skill | undefined>;
-  deleteSkill(id: number): Promise<void>;
-  
+  getSkills(userId: string): Promise<Skill[]>;
+  createSkill(userId: string, skill: InsertSkill): Promise<Skill>;
+  updateSkill(id: number, userId: string, updates: Partial<InsertSkill>): Promise<Skill | undefined>;
+  deleteSkill(id: number, userId: string): Promise<void>;
+
   // Routines
-  getRoutines(): Promise<Routine[]>;
-  createRoutine(routine: InsertRoutine): Promise<Routine>;
-  updateRoutine(id: number, updates: Partial<InsertRoutine>): Promise<Routine | undefined>;
-  deleteRoutine(id: number): Promise<void>;
+  getRoutines(userId: string): Promise<Routine[]>;
+  createRoutine(userId: string, routine: InsertRoutine): Promise<Routine>;
+  updateRoutine(id: number, userId: string, updates: Partial<InsertRoutine>): Promise<Routine | undefined>;
+  deleteRoutine(id: number, userId: string): Promise<void>;
 
   // Scores
-  getScores(): Promise<Score[]>;
-  createScore(score: InsertScore): Promise<Score>;
-  deleteScore(id: number): Promise<void>;
+  getScores(userId: string): Promise<Score[]>;
+  createScore(userId: string, score: InsertScore): Promise<Score>;
+  deleteScore(id: number, userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
-  async getNotes(): Promise<NoteResponse[]> {
-    return await db.select().from(notes);
+  async getNotes(userId: string): Promise<NoteResponse[]> {
+    return await db.select().from(notes).where(eq(notes.userId, userId));
   }
 
   async getNote(id: number): Promise<NoteResponse | undefined> {
@@ -52,76 +52,78 @@ export class DatabaseStorage implements IStorage {
     return note;
   }
 
-  async createNote(insertNote: CreateNoteRequest): Promise<NoteResponse> {
-    const [note] = await db.insert(notes).values(insertNote).returning();
+  async createNote(userId: string, insertNote: CreateNoteRequest): Promise<NoteResponse> {
+    const [note] = await db.insert(notes).values({ ...insertNote, userId }).returning();
     return note;
   }
 
-  async updateNote(id: number, updates: UpdateNoteRequest): Promise<NoteResponse> {
+  async updateNote(id: number, userId: string, updates: UpdateNoteRequest): Promise<NoteResponse> {
     const [updated] = await db.update(notes)
       .set(updates)
-      .where(eq(notes.id, id))
+      .where(and(eq(notes.id, id), eq(notes.userId, userId)))
       .returning();
     return updated;
   }
 
-  async deleteNote(id: number): Promise<void> {
-    await db.delete(notes).where(eq(notes.id, id));
+  async deleteNote(id: number, userId: string): Promise<void> {
+    await db.delete(notes).where(and(eq(notes.id, id), eq(notes.userId, userId)));
   }
 
-  async getSkills(): Promise<Skill[]> {
-    return await db.select().from(skills);
+  async getSkills(userId: string): Promise<Skill[]> {
+    return await db.select().from(skills).where(eq(skills.userId, userId));
   }
 
-  async createSkill(insertSkill: InsertSkill): Promise<Skill> {
-    const [skill] = await db.insert(skills).values(insertSkill).returning();
+  async createSkill(userId: string, insertSkill: InsertSkill): Promise<Skill> {
+    const [skill] = await db.insert(skills).values({ ...insertSkill, userId }).returning();
     return skill;
   }
 
-  async updateSkill(id: number, updates: Partial<InsertSkill>): Promise<Skill | undefined> {
+  async updateSkill(id: number, userId: string, updates: Partial<InsertSkill>): Promise<Skill | undefined> {
     const [updated] = await db.update(skills)
       .set(updates)
-      .where(eq(skills.id, id))
+      .where(and(eq(skills.id, id), eq(skills.userId, userId)))
       .returning();
     return updated;
   }
 
-  async deleteSkill(id: number): Promise<void> {
-    await db.delete(skills).where(eq(skills.id, id));
+  async deleteSkill(id: number, userId: string): Promise<void> {
+    await db.delete(skills).where(and(eq(skills.id, id), eq(skills.userId, userId)));
   }
 
-  async getRoutines(): Promise<Routine[]> {
-    return await db.select().from(routines);
+  async getRoutines(userId: string): Promise<Routine[]> {
+    return await db.select().from(routines).where(eq(routines.userId, userId));
   }
 
-  async createRoutine(insertRoutine: InsertRoutine): Promise<Routine> {
-    const [routine] = await db.insert(routines).values(insertRoutine).returning();
+  async createRoutine(userId: string, insertRoutine: InsertRoutine): Promise<Routine> {
+    const [routine] = await db.insert(routines).values({ ...insertRoutine, userId }).returning();
     return routine;
   }
 
-  async updateRoutine(id: number, updates: Partial<InsertRoutine>): Promise<Routine | undefined> {
+  async updateRoutine(id: number, userId: string, updates: Partial<InsertRoutine>): Promise<Routine | undefined> {
     const [updated] = await db.update(routines)
       .set(updates)
-      .where(eq(routines.id, id))
+      .where(and(eq(routines.id, id), eq(routines.userId, userId)))
       .returning();
     return updated;
   }
 
-  async deleteRoutine(id: number): Promise<void> {
-    await db.delete(routines).where(eq(routines.id, id));
+  async deleteRoutine(id: number, userId: string): Promise<void> {
+    await db.delete(routines).where(and(eq(routines.id, id), eq(routines.userId, userId)));
   }
 
-  async getScores(): Promise<Score[]> {
-    return await db.select().from(scores).orderBy(desc(scores.date));
+  async getScores(userId: string): Promise<Score[]> {
+    return await db.select().from(scores)
+      .where(eq(scores.userId, userId))
+      .orderBy(desc(scores.date));
   }
 
-  async createScore(insertScore: InsertScore): Promise<Score> {
-    const [score] = await db.insert(scores).values(insertScore).returning();
+  async createScore(userId: string, insertScore: InsertScore): Promise<Score> {
+    const [score] = await db.insert(scores).values({ ...insertScore, userId }).returning();
     return score;
   }
 
-  async deleteScore(id: number): Promise<void> {
-    await db.delete(scores).where(eq(scores.id, id));
+  async deleteScore(id: number, userId: string): Promise<void> {
+    await db.delete(scores).where(and(eq(scores.id, id), eq(scores.userId, userId)));
   }
 }
 

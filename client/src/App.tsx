@@ -8,12 +8,16 @@ import Home from "@/pages/home";
 import SkillsPage from "@/pages/skills";
 import RoutinesPage from "@/pages/routines";
 import StatsPage from "@/pages/stats";
-import { cn } from "@/lib/utils";
-import { LayoutDashboard, Target, Layers, BarChart3, Trophy } from "lucide-react";
+import LoginPage from "@/pages/login";
 import ScorePage from "@/pages/score";
+import { useAuth } from "@/hooks/use-auth";
+import { cn } from "@/lib/utils";
+import { LayoutDashboard, Target, Layers, BarChart3, Trophy, LogOut, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 function Navigation() {
   const [location] = useLocation();
+  const { user, logout, isLoggingOut } = useAuth();
 
   const navItems = [
     { href: "/", label: "Training", icon: LayoutDashboard },
@@ -24,13 +28,13 @@ function Navigation() {
   ];
 
   return (
-    <nav className="fixed left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-md border border-border px-4 py-2 rounded-2xl shadow-2xl flex items-center gap-2 z-50" style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}>
+    <nav className="fixed left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-md border border-border px-3 py-2 rounded-2xl shadow-2xl flex items-center gap-1 z-50" style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}>
       {navItems.map((item) => (
         <Link key={item.href} href={item.href}>
           <div className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer",
-            location === item.href 
-              ? "bg-foreground text-background shadow-lg" 
+            "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer",
+            location === item.href
+              ? "bg-foreground text-background shadow-lg"
               : "text-muted-foreground hover:bg-secondary"
           )}>
             <item.icon className="w-4 h-4" />
@@ -38,6 +42,18 @@ function Navigation() {
           </div>
         </Link>
       ))}
+      {user && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-muted-foreground hover:bg-secondary rounded-xl ml-1"
+          onClick={() => logout()}
+          disabled={isLoggingOut}
+          title={`Sign out (${user.email ?? user.firstName ?? ""})`}
+        >
+          {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+        </Button>
+      )}
     </nav>
   );
 }
@@ -57,12 +73,34 @@ function Router() {
   );
 }
 
+function AppContent() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[100svh] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  return (
+    <>
+      <Navigation />
+      <Router />
+    </>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Navigation />
-        <Router />
+        <AppContent />
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

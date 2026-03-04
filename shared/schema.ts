@@ -1,20 +1,22 @@
-import { pgTable, text, serial, integer, date, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, date, real, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const notes = pgTable("notes", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
   date: date("date").notNull(),
   startTime: text("start_time"), // Store as HH:mm
   endTime: text("end_time"), // Store as HH:mm
   content: text("content").notNull(),
   skills: text("skills"), // JSON string: [{"id": 1, "reps": 5}, {"id": -1}, {"id": 2, "reps": 10}]
   rating: integer("rating"), // 1 to 5
-  sleepScore: integer("sleep_score"), // 1 to 5
+  sleepScore: integer("sleep_score"), // 0 to 100
 });
 
 export const skills = pgTable("skills", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
   name: text("name").notNull(),
   code: text("code").notNull(),
   difficulty: real("difficulty").notNull(),
@@ -24,12 +26,14 @@ export const skills = pgTable("skills", {
 
 export const routines = pgTable("routines", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
   name: text("name").notNull(),
   skillIds: integer("skill_ids").array().notNull(), // Array of 10 skill IDs
 });
 
 export const scores = pgTable("scores", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
   date: date("date").notNull(),
   routineId: integer("routine_id").references(() => routines.id),
   routineIdVol: integer("routine_id_vol").references(() => routines.id),

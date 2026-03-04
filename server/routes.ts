@@ -3,45 +3,33 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
+import { isAuthenticated } from "./replit_integrations/auth";
+import { registerAuthRoutes } from "./replit_integrations/auth";
 
-async function seedDatabase() {
-  const existingNotes = await storage.getNotes();
-  if (existingNotes.length === 0) {
-    const today = new Date().toISOString().split('T')[0];
-    await storage.createNote({
-      date: today,
-      content: "Great session today! Focused on basics and height.",
-      skills: "straight jump, tuck jump, straddle jump",
-      rating: 4
-    });
-    
-    // Seed some skills
-    await storage.createSkill({ name: "Back Tuck", code: "BT", difficulty: 0.5 });
-    await storage.createSkill({ name: "Front Flip", code: "FF", difficulty: 0.5 });
-    await storage.createSkill({ name: "Barani", code: "Ba", difficulty: 0.6 });
-  }
+function getUserId(req: any): string {
+  return req.user.claims.sub;
 }
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  
-  seedDatabase().catch(console.error);
+
+  registerAuthRoutes(app);
 
   // Notes
-  app.get(api.notes.list.path, async (req, res) => {
-    const notesList = await storage.getNotes();
+  app.get(api.notes.list.path, isAuthenticated, async (req, res) => {
+    const notesList = await storage.getNotes(getUserId(req));
     res.json(notesList);
   });
 
-  app.post(api.notes.create.path, async (req, res) => {
+  app.post(api.notes.create.path, isAuthenticated, async (req, res) => {
     try {
       const bodySchema = api.notes.create.input.extend({
         rating: z.coerce.number().optional().nullable(),
       });
       const input = bodySchema.parse(req.body);
-      const note = await storage.createNote(input);
+      const note = await storage.createNote(getUserId(req), input);
       res.status(201).json(note);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -54,18 +42,18 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.notes.delete.path, async (req, res) => {
-    await storage.deleteNote(Number(req.params.id));
+  app.delete(api.notes.delete.path, isAuthenticated, async (req, res) => {
+    await storage.deleteNote(Number(req.params.id), getUserId(req));
     res.status(204).send();
   });
 
-  app.put(api.notes.update.path, async (req, res) => {
+  app.put(api.notes.update.path, isAuthenticated, async (req, res) => {
     try {
       const bodySchema = api.notes.update.input.extend({
         rating: z.coerce.number().optional().nullable(),
       });
       const input = bodySchema.parse(req.body);
-      const note = await storage.updateNote(Number(req.params.id), input);
+      const note = await storage.updateNote(Number(req.params.id), getUserId(req), input);
       if (!note) {
         return res.status(404).json({ message: "Note not found" });
       }
@@ -82,15 +70,15 @@ export async function registerRoutes(
   });
 
   // Skills
-  app.get(api.skills.list.path, async (req, res) => {
-    const skillsList = await storage.getSkills();
+  app.get(api.skills.list.path, isAuthenticated, async (req, res) => {
+    const skillsList = await storage.getSkills(getUserId(req));
     res.json(skillsList);
   });
 
-  app.post(api.skills.create.path, async (req, res) => {
+  app.post(api.skills.create.path, isAuthenticated, async (req, res) => {
     try {
       const input = api.skills.create.input.parse(req.body);
-      const skill = await storage.createSkill(input);
+      const skill = await storage.createSkill(getUserId(req), input);
       res.status(201).json(skill);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -103,15 +91,15 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.skills.delete.path, async (req, res) => {
-    await storage.deleteSkill(Number(req.params.id));
+  app.delete(api.skills.delete.path, isAuthenticated, async (req, res) => {
+    await storage.deleteSkill(Number(req.params.id), getUserId(req));
     res.status(204).send();
   });
 
-  app.put(api.skills.update.path, async (req, res) => {
+  app.put(api.skills.update.path, isAuthenticated, async (req, res) => {
     try {
       const input = api.skills.update.input.parse(req.body);
-      const skill = await storage.updateSkill(Number(req.params.id), input);
+      const skill = await storage.updateSkill(Number(req.params.id), getUserId(req), input);
       if (!skill) {
         return res.status(404).json({ message: "Skill not found" });
       }
@@ -128,15 +116,15 @@ export async function registerRoutes(
   });
 
   // Routines
-  app.get(api.routines.list.path, async (req, res) => {
-    const routinesList = await storage.getRoutines();
+  app.get(api.routines.list.path, isAuthenticated, async (req, res) => {
+    const routinesList = await storage.getRoutines(getUserId(req));
     res.json(routinesList);
   });
 
-  app.post(api.routines.create.path, async (req, res) => {
+  app.post(api.routines.create.path, isAuthenticated, async (req, res) => {
     try {
       const input = api.routines.create.input.parse(req.body);
-      const routine = await storage.createRoutine(input);
+      const routine = await storage.createRoutine(getUserId(req), input);
       res.status(201).json(routine);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -149,15 +137,15 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.routines.delete.path, async (req, res) => {
-    await storage.deleteRoutine(Number(req.params.id));
+  app.delete(api.routines.delete.path, isAuthenticated, async (req, res) => {
+    await storage.deleteRoutine(Number(req.params.id), getUserId(req));
     res.status(204).send();
   });
 
-  app.put(api.routines.update.path, async (req, res) => {
+  app.put(api.routines.update.path, isAuthenticated, async (req, res) => {
     try {
       const input = api.routines.update.input.parse(req.body);
-      const routine = await storage.updateRoutine(Number(req.params.id), input);
+      const routine = await storage.updateRoutine(Number(req.params.id), getUserId(req), input);
       if (!routine) {
         return res.status(404).json({ message: "Routine not found" });
       }
@@ -174,15 +162,15 @@ export async function registerRoutes(
   });
 
   // Scores
-  app.get(api.scores.list.path, async (req, res) => {
-    const scoresList = await storage.getScores();
+  app.get(api.scores.list.path, isAuthenticated, async (req, res) => {
+    const scoresList = await storage.getScores(getUserId(req));
     res.json(scoresList);
   });
 
-  app.post(api.scores.create.path, async (req, res) => {
+  app.post(api.scores.create.path, isAuthenticated, async (req, res) => {
     try {
       const input = api.scores.create.input.parse(req.body);
-      const score = await storage.createScore(input);
+      const score = await storage.createScore(getUserId(req), input);
       res.status(201).json(score);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -195,8 +183,8 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.scores.delete.path, async (req, res) => {
-    await storage.deleteScore(Number(req.params.id));
+  app.delete(api.scores.delete.path, isAuthenticated, async (req, res) => {
+    await storage.deleteScore(Number(req.params.id), getUserId(req));
     res.status(204).send();
   });
 
