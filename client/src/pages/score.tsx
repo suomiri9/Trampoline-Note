@@ -398,12 +398,12 @@ export default function ScorePage() {
                     </Badge>
                     {routine && (
                       <Badge variant="secondary" className="rounded-lg text-[10px]">
-                        {routine.name}{score.attempt != null ? ` (attempt ${score.attempt})` : ""}
+                        {routine.name} · {score.attempt != null ? `${score.attempt}/${routine.skillIds.length}` : `${routine.skillIds.length}/${routine.skillIds.length}`} skills
                       </Badge>
                     )}
                     {routineVol && score.category === "both" && (
                       <Badge variant="secondary" className="rounded-lg text-[10px]">
-                        Vol: {routineVol.name}{score.attemptVol != null ? ` (attempt ${score.attemptVol})` : ""}
+                        Vol: {routineVol.name} · {score.attemptVol != null ? `${score.attemptVol}/${routineVol.skillIds.length}` : `${routineVol.skillIds.length}/${routineVol.skillIds.length}`} skills
                       </Badge>
                     )}
                   </div>
