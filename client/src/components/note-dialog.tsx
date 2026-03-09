@@ -528,7 +528,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             </div>
                           </SortableContext>
                         </DndContext>
-                        <Select onValueChange={addSkillToRoutine}>
+                        <Select key={displaySkillIds.length} onValueChange={addSkillToRoutine}>
                           <SelectTrigger className="h-9 text-xs rounded-xl border-primary/20 bg-background">
                             <SelectValue placeholder="Add skill..." />
                           </SelectTrigger>
