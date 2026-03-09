@@ -3,7 +3,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Plus, Trash2, GripVertical, ChevronDown, X, ArrowUp, ArrowDown } from "lucide-react";
+import { CalendarIcon, Plus, Trash2, GripVertical, X } from "lucide-react";
+import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { type Note, type Skill } from "@shared/schema";
 import { useCreateNote, useUpdateNote } from "@/hooks/use-notes";
 import { useSkills } from "@/hooks/use-skills";
@@ -66,6 +69,28 @@ interface NoteDialogProps {
 
 type SkillItem = { id: number; reps?: number; routineId?: number; routineName?: string; attempt?: number; customSkillIds?: number[] };
 
+function SortableRoutineSkill({ uid, code, name, onRemove }: { uid: string; code?: string; name?: string; onRemove: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: uid });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
+      className="flex items-center gap-1 py-0.5 touch-none"
+    >
+      <button type="button" className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1" {...attributes} {...listeners}>
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <Badge variant="outline" className="font-mono text-[10px] border-primary/30 text-primary shrink-0">{code}</Badge>
+        <span className="text-xs truncate">{name}</span>
+      </div>
+      <button type="button" onClick={onRemove} className="h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-destructive shrink-0">
+        <X className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
 export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) {
   const { toast } = useToast();
   const createNote = useCreateNote();
@@ -76,6 +101,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [selectedSkills, setSelectedSkills] = useState<SkillItem[]>([]);
   const [isConnectMode, setIsConnectMode] = useState(false);
   const [editingRoutineIdx, setEditingRoutineIdx] = useState<number | null>(null);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 5 } }));
 
   const isEditing = !!noteToEdit;
 
@@ -397,11 +424,12 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     const routine = routines?.find(r => r.id === rItem.routineId);
                     const displaySkillIds = rItem.customSkillIds ?? routine?.skillIds ?? [];
 
-                    const moveSkill = (sIdx: number, dir: -1 | 1) => {
-                      const newIds = [...displaySkillIds];
-                      const target = sIdx + dir;
-                      if (target < 0 || target >= newIds.length) return;
-                      [newIds[sIdx], newIds[target]] = [newIds[target], newIds[sIdx]];
+                    const handleDragEnd = (event: DragEndEvent) => {
+                      const { active, over } = event;
+                      if (!over || active.id === over.id) return;
+                      const oldIdx = displaySkillIds.findIndex((_, i) => `skill-${i}` === active.id);
+                      const newIdx = displaySkillIds.findIndex((_, i) => `skill-${i}` === over.id);
+                      const newIds = arrayMove(displaySkillIds, oldIdx, newIdx);
                       setSelectedSkills(prev => {
                         const ns = [...prev];
                         ns[editingRoutineIdx] = { ...ns[editingRoutineIdx], customSkillIds: newIds };
@@ -436,33 +464,24 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           <span className="font-bold text-sm">{rItem.routineName}</span>
                           <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setEditingRoutineIdx(null)}>Done</Button>
                         </div>
-                        <div className="flex-1 overflow-y-auto space-y-1 mb-3">
-                          {displaySkillIds.map((sId, sIdx) => {
-                            const sk = allItems?.find(s => s.id === sId);
-                            return (
-                              <div key={sIdx} className="flex items-center gap-1 py-0.5">
-                                <div className="flex flex-col gap-0">
-                                  <button type="button" onClick={() => moveSkill(sIdx, -1)} disabled={sIdx === 0}
-                                    className="h-4 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-20">
-                                    <ArrowUp className="h-2.5 w-2.5" />
-                                  </button>
-                                  <button type="button" onClick={() => moveSkill(sIdx, 1)} disabled={sIdx === displaySkillIds.length - 1}
-                                    className="h-4 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-20">
-                                    <ArrowDown className="h-2.5 w-2.5" />
-                                  </button>
-                                </div>
-                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                  <Badge variant="outline" className="font-mono text-[10px] border-primary/30 text-primary shrink-0">{sk?.code}</Badge>
-                                  <span className="text-xs truncate">{sk?.name}</span>
-                                </div>
-                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0"
-                                  onClick={() => removeSkillFromRoutine(sIdx)}>
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            );
-                          })}
-                        </div>
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                          <SortableContext items={displaySkillIds.map((_, i) => `skill-${i}`)} strategy={verticalListSortingStrategy}>
+                            <div className="flex-1 overflow-y-auto space-y-0.5 mb-3">
+                              {displaySkillIds.map((sId, sIdx) => {
+                                const sk = allItems?.find(s => s.id === sId);
+                                return (
+                                  <SortableRoutineSkill
+                                    key={`skill-${sIdx}`}
+                                    uid={`skill-${sIdx}`}
+                                    code={sk?.code}
+                                    name={sk?.name}
+                                    onRemove={() => removeSkillFromRoutine(sIdx)}
+                                  />
+                                );
+                              })}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
                         <Select onValueChange={addSkillToRoutine}>
                           <SelectTrigger className="h-9 text-xs rounded-xl border-primary/20 bg-background">
                             <SelectValue placeholder="Add skill..." />
