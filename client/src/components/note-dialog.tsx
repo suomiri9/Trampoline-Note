@@ -516,7 +516,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                   >
                                     <span className="font-bold text-primary">
                                       {item.routineName}
-                                      <span className="font-normal text-muted-foreground text-xs ml-1.5">{displaySkillIds.length} skills</span>
+                                      {displaySkillIds.length !== 10 && <span className="font-normal text-muted-foreground text-xs ml-1.5">{displaySkillIds.length} skills</span>}
                                     </span>
                                     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                                       <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /></Button>
