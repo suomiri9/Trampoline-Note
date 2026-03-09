@@ -11,18 +11,39 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
-import { Trash2, Plus, Trophy, CalendarIcon, Pencil } from "lucide-react";
+import { Trash2, Plus, Trophy, CalendarIcon, Pencil, GripVertical, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
-function calcDD(routine: Routine, skills: Skill[], attempt: number | null | undefined) {
-  const count = attempt ?? routine.skillIds.length;
-  return routine.skillIds.slice(0, count).reduce((acc, sId) => {
+function calcDDFromIds(skillIds: number[], skills: Skill[]) {
+  return skillIds.reduce((acc, sId) => {
     const sk = skills.find(s => s.id === sId);
     return acc + (sk?.difficulty || 0);
   }, 0);
+}
+
+function SortableScoreSkill({ uid, code, name, onRemove }: { uid: string; code?: string; name?: string; onRemove: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: uid });
+  return (
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
+      className="flex items-center gap-1 py-0.5 touch-none">
+      <button type="button" className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1" {...attributes} {...listeners}>
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <Badge variant="outline" className="font-mono text-[10px] border-primary/30 text-primary shrink-0">{code}</Badge>
+        <span className="text-xs truncate">{name}</span>
+      </div>
+      <button type="button" onClick={onRemove} className="h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-destructive shrink-0">
+        <X className="h-3 w-3" />
+      </button>
+    </div>
+  );
 }
 
 const scoreDefaults = {
@@ -51,6 +72,10 @@ export default function ScorePage() {
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
   const [editingScore, setEditingScore] = useState<Score | null>(null);
+  const [customSkillIds, setCustomSkillIds] = useState<number[] | null>(null);
+  const [customSkillIdsVol, setCustomSkillIdsVol] = useState<number[] | null>(null);
+  const [editingRoutine, setEditingRoutine] = useState<"set" | "vol" | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 5 } }));
 
   const { data: scores } = useQuery<Score[]>({ queryKey: ["/api/scores"] });
   const { data: routines } = useQuery<Routine[]>({ queryKey: ["/api/routines"] });
@@ -64,6 +89,8 @@ export default function ScorePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
       setIsAdding(false);
+      setCustomSkillIds(null);
+      setCustomSkillIdsVol(null);
       form.reset({ ...scoreDefaults, date: new Date().toISOString().split('T')[0] });
       toast({ title: "Score saved!" });
     }
@@ -78,6 +105,8 @@ export default function ScorePage() {
       queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
       setEditingScore(null);
       setIsAdding(false);
+      setCustomSkillIds(null);
+      setCustomSkillIdsVol(null);
       toast({ title: "Score updated!" });
     }
   });
@@ -99,8 +128,8 @@ export default function ScorePage() {
       date: score.date,
       routineId: score.routineId ?? undefined,
       routineIdVol: score.routineIdVol ?? undefined,
-      attempt: score.attempt ?? null,
-      attemptVol: score.attemptVol ?? null,
+      attempt: null,
+      attemptVol: null,
       type: score.type as any,
       category: score.category as any,
       competitionName: score.competitionName ?? "",
@@ -116,6 +145,22 @@ export default function ScorePage() {
       timeOfFlightVol: score.timeOfFlightVol ?? 0,
       totalVol: score.totalVol ?? 0,
     });
+    const r = routines?.find(x => x.id === score.routineId);
+    if (r) {
+      const count = score.attempt ?? r.skillIds.length;
+      setCustomSkillIds(r.skillIds.slice(0, count));
+      setLastRoutineId(score.routineId ?? undefined);
+    } else {
+      setCustomSkillIds(null);
+    }
+    const rv = routines?.find(x => x.id === score.routineIdVol);
+    if (rv) {
+      const countV = score.attemptVol ?? rv.skillIds.length;
+      setCustomSkillIdsVol(rv.skillIds.slice(0, countV));
+      setLastRoutineIdVol(score.routineIdVol ?? undefined);
+    } else {
+      setCustomSkillIdsVol(null);
+    }
   }
 
   const form = useForm({
@@ -125,46 +170,36 @@ export default function ScorePage() {
 
   const [lastRoutineId, setLastRoutineId] = useState<number | undefined>();
   const [lastRoutineIdVol, setLastRoutineIdVol] = useState<number | undefined>();
-  const [lastAttempt, setLastAttempt] = useState<number | null | undefined>(null);
-  const [lastAttemptVol, setLastAttemptVol] = useState<number | null | undefined>(null);
 
   const watchFields = form.watch([
     "execution", "difficulty", "horizontal", "timeOfFlight",
-    "routineId", "category", "attempt",
+    "routineId", "category",
     "executionVol", "difficultyVol", "horizontalVol", "timeOfFlightVol",
-    "routineIdVol", "attemptVol"
+    "routineIdVol",
   ]);
 
   useEffect(() => {
-    const [e, d, h, t, rId, cat, attempt, e2, d2, h2, t2, rIdVol, attemptVol] = watchFields;
+    const [e, d, h, t, rId, cat, e2, d2, h2, t2, rIdVol] = watchFields;
 
     const routineChanged = rId !== lastRoutineId;
-    const attemptChanged = attempt !== lastAttempt;
-
-    if (routineChanged) setLastRoutineId(rId);
-    if (attemptChanged) setLastAttempt(attempt);
-
-    if ((routineChanged || attemptChanged) && rId && routines && allSkills) {
-      const routine = routines.find(r => r.id === Number(rId));
-      if (routine) {
-        const calculatedD = (cat === "set" || cat === "both")
-          ? 0
-          : Number(calcDD(routine, allSkills, attempt).toFixed(1));
-        setTimeout(() => form.setValue("difficulty", calculatedD), 0);
+    if (routineChanged) {
+      setLastRoutineId(rId);
+      if (rId && routines) {
+        const routine = routines.find(r => r.id === Number(rId));
+        if (routine) setCustomSkillIds([...routine.skillIds]);
+      } else {
+        setCustomSkillIds(null);
       }
     }
 
     const routineVolChanged = rIdVol !== lastRoutineIdVol;
-    const attemptVolChanged = attemptVol !== lastAttemptVol;
-
-    if (routineVolChanged) setLastRoutineIdVol(rIdVol);
-    if (attemptVolChanged) setLastAttemptVol(attemptVol);
-
-    if (cat === "both" && (routineVolChanged || attemptVolChanged) && rIdVol && routines && allSkills) {
-      const routineV = routines.find(r => r.id === Number(rIdVol));
-      if (routineV) {
-        const calculatedDVol = Number(calcDD(routineV, allSkills, attemptVol).toFixed(1));
-        setTimeout(() => form.setValue("difficultyVol", calculatedDVol), 0);
+    if (routineVolChanged) {
+      setLastRoutineIdVol(rIdVol);
+      if (rIdVol && routines) {
+        const routineV = routines.find(r => r.id === Number(rIdVol));
+        if (routineV) setCustomSkillIdsVol([...routineV.skillIds]);
+      } else {
+        setCustomSkillIdsVol(null);
       }
     }
 
@@ -175,12 +210,19 @@ export default function ScorePage() {
       const total2 = Number(e2 || 0) + Number(d2 || 0) + Number(h2 || 0) + Number(t2 || 0);
       form.setValue("totalVol", Number(total2.toFixed(2)));
     }
-  }, [watchFields, routines, allSkills, form, lastRoutineId, lastRoutineIdVol, lastAttempt, lastAttemptVol]);
+  }, [watchFields, routines, allSkills, form, lastRoutineId, lastRoutineIdVol]);
 
-  const attemptOptions = [
-    { value: "full", label: "Full" },
-    ...Array.from({ length: 9 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })),
-  ];
+  useEffect(() => {
+    if (!customSkillIds || !allSkills) return;
+    const cat = form.getValues("category");
+    const d = (cat === "set" || cat === "both") ? 0 : Number(calcDDFromIds(customSkillIds, allSkills).toFixed(1));
+    form.setValue("difficulty", d);
+  }, [customSkillIds, allSkills]);
+
+  useEffect(() => {
+    if (!customSkillIdsVol || !allSkills) return;
+    form.setValue("difficultyVol", Number(calcDDFromIds(customSkillIdsVol, allSkills).toFixed(1)));
+  }, [customSkillIdsVol, allSkills]);
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
@@ -189,7 +231,7 @@ export default function ScorePage() {
           <h1 className="text-3xl font-display font-bold">Scoring</h1>
           <p className="text-muted-foreground">Track your routine scores and competition results.</p>
         </div>
-        <Button onClick={() => { setIsAdding(v => !v); setEditingScore(null); form.reset({ ...scoreDefaults, date: new Date().toISOString().split('T')[0] }); }} className="rounded-xl">
+        <Button onClick={() => { setIsAdding(v => !v); setEditingScore(null); setCustomSkillIds(null); setCustomSkillIdsVol(null); form.reset({ ...scoreDefaults, date: new Date().toISOString().split('T')[0] }); }} className="rounded-xl">
           {isAdding ? "Cancel" : <><Plus className="w-4 h-4 mr-2" /> New Score</>}
         </Button>
       </div>
@@ -271,13 +313,13 @@ export default function ScorePage() {
                   </div>
                 )}
 
-                <div className="space-y-4">
+                <div className="space-y-4 relative">
                   <h3 className="font-bold text-sm uppercase tracking-wider text-primary/60">
                     {form.watch("category") === "both" ? "Set Score" : "Score Details"}
                   </h3>
-                  <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
+                  <div className="flex gap-2 items-end">
                     <FormField control={form.control} name="routineId" render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="flex-1">
                         <FormLabel>Routine</FormLabel>
                         <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value?.toString()}>
                           <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
@@ -287,21 +329,63 @@ export default function ScorePage() {
                         </Select>
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="attempt" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Skill</FormLabel>
-                        <Select
-                          value={field.value == null ? "full" : String(field.value)}
-                          onValueChange={(val) => field.onChange(val === "full" ? null : Number(val))}
-                        >
-                          <FormControl><SelectTrigger className="rounded-xl h-11 w-24"><SelectValue /></SelectTrigger></FormControl>
+                    {form.watch("routineId") && customSkillIds && (
+                      <Button type="button" variant="outline" size="sm"
+                        className="h-11 rounded-xl border-primary/20 text-xs gap-1.5 shrink-0"
+                        onClick={() => setEditingRoutine("set")}>
+                        <Pencil className="h-3 w-3" />
+                        Skills ({customSkillIds.length})
+                      </Button>
+                    )}
+                  </div>
+                  {editingRoutine === "set" && customSkillIds && allSkills && (() => {
+                    const uids = customSkillIds.map((id, i) => `skill-${id}-${i}`);
+                    return (
+                      <div className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 flex flex-col rounded-xl border border-primary/20 p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-semibold text-sm">Edit Skills</span>
+                          <button type="button" onClick={() => setEditingRoutine(null)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto min-h-0">
+                          <DndContext sensors={sensors} collisionDetection={closestCenter}
+                            onDragEnd={(event: DragEndEvent) => {
+                              const { active, over } = event;
+                              if (over && active.id !== over.id) {
+                                const oldIdx = uids.indexOf(active.id as string);
+                                const newIdx = uids.indexOf(over.id as string);
+                                setCustomSkillIds(prev => prev ? arrayMove(prev, oldIdx, newIdx) : prev);
+                              }
+                            }}>
+                            <SortableContext items={uids} strategy={verticalListSortingStrategy}>
+                              {customSkillIds.map((sid, i) => {
+                                const sk = allSkills.find(s => s.id === sid);
+                                return (
+                                  <SortableScoreSkill key={uids[i]} uid={uids[i]}
+                                    code={sk?.code} name={sk?.name}
+                                    onRemove={() => setCustomSkillIds(prev => prev ? prev.filter((_, idx) => idx !== i) : prev)} />
+                                );
+                              })}
+                            </SortableContext>
+                          </DndContext>
+                        </div>
+                        <Select key={customSkillIds.length} onValueChange={(val) => setCustomSkillIds(prev => [...(prev || []), parseInt(val)])}>
+                          <SelectTrigger className="h-9 text-xs rounded-xl border-primary/20 bg-background mt-2">
+                            <SelectValue placeholder="Add skill..." />
+                          </SelectTrigger>
                           <SelectContent>
-                            {attemptOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                            {allSkills?.filter(s => s.isDrill !== 1).sort((a, b) => b.difficulty - a.difficulty).map(s => (
+                              <SelectItem key={s.id} value={s.id.toString()}>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="font-mono text-[10px]">{s.code}</Badge>
+                                  <span className="text-xs">{s.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
-                      </FormItem>
-                    )} />
-                  </div>
+                      </div>
+                    );
+                  })()}
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-4">
                     <FormField control={form.control} name="execution" render={({ field }) => (
                       <FormItem><FormLabel className="text-[10px] sm:text-xs">E</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 ? "" : field.value} onChange={e => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm" /></FormControl></FormItem>
@@ -322,11 +406,11 @@ export default function ScorePage() {
                 </div>
 
                 {form.watch("category") === "both" && (
-                  <div className="space-y-4 pt-4 border-t border-primary/10">
+                  <div className="space-y-4 pt-4 border-t border-primary/10 relative">
                     <h3 className="font-bold text-sm uppercase tracking-wider text-primary/60">Vol Score</h3>
-                    <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
+                    <div className="flex gap-2 items-end">
                       <FormField control={form.control} name="routineIdVol" render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex-1">
                           <FormLabel>Routine (Vol)</FormLabel>
                           <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value?.toString()}>
                             <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
@@ -336,21 +420,63 @@ export default function ScorePage() {
                           </Select>
                         </FormItem>
                       )} />
-                      <FormField control={form.control} name="attemptVol" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Skill</FormLabel>
-                          <Select
-                            value={field.value == null ? "full" : String(field.value)}
-                            onValueChange={(val) => field.onChange(val === "full" ? null : Number(val))}
-                          >
-                            <FormControl><SelectTrigger className="rounded-xl h-11 w-24"><SelectValue /></SelectTrigger></FormControl>
+                      {form.watch("routineIdVol") && customSkillIdsVol && (
+                        <Button type="button" variant="outline" size="sm"
+                          className="h-11 rounded-xl border-primary/20 text-xs gap-1.5 shrink-0"
+                          onClick={() => setEditingRoutine("vol")}>
+                          <Pencil className="h-3 w-3" />
+                          Skills ({customSkillIdsVol.length})
+                        </Button>
+                      )}
+                    </div>
+                    {editingRoutine === "vol" && customSkillIdsVol && allSkills && (() => {
+                      const uids = customSkillIdsVol.map((id, i) => `vskill-${id}-${i}`);
+                      return (
+                        <div className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 flex flex-col rounded-xl border border-primary/20 p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="font-semibold text-sm">Edit Skills (Vol)</span>
+                            <button type="button" onClick={() => setEditingRoutine(null)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+                          </div>
+                          <div className="flex-1 overflow-y-auto min-h-0">
+                            <DndContext sensors={sensors} collisionDetection={closestCenter}
+                              onDragEnd={(event: DragEndEvent) => {
+                                const { active, over } = event;
+                                if (over && active.id !== over.id) {
+                                  const oldIdx = uids.indexOf(active.id as string);
+                                  const newIdx = uids.indexOf(over.id as string);
+                                  setCustomSkillIdsVol(prev => prev ? arrayMove(prev, oldIdx, newIdx) : prev);
+                                }
+                              }}>
+                              <SortableContext items={uids} strategy={verticalListSortingStrategy}>
+                                {customSkillIdsVol.map((sid, i) => {
+                                  const sk = allSkills.find(s => s.id === sid);
+                                  return (
+                                    <SortableScoreSkill key={uids[i]} uid={uids[i]}
+                                      code={sk?.code} name={sk?.name}
+                                      onRemove={() => setCustomSkillIdsVol(prev => prev ? prev.filter((_, idx) => idx !== i) : prev)} />
+                                  );
+                                })}
+                              </SortableContext>
+                            </DndContext>
+                          </div>
+                          <Select key={customSkillIdsVol.length} onValueChange={(val) => setCustomSkillIdsVol(prev => [...(prev || []), parseInt(val)])}>
+                            <SelectTrigger className="h-9 text-xs rounded-xl border-primary/20 bg-background mt-2">
+                              <SelectValue placeholder="Add skill..." />
+                            </SelectTrigger>
                             <SelectContent>
-                              {attemptOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                              {allSkills?.filter(s => s.isDrill !== 1).sort((a, b) => b.difficulty - a.difficulty).map(s => (
+                                <SelectItem key={s.id} value={s.id.toString()}>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="font-mono text-[10px]">{s.code}</Badge>
+                                    <span className="text-xs">{s.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
-                        </FormItem>
-                      )} />
-                    </div>
+                        </div>
+                      );
+                    })()}
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-4">
                       <FormField control={form.control} name="executionVol" render={({ field }) => (
                         <FormItem><FormLabel className="text-[10px] sm:text-xs">E</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 ? "" : field.value} onChange={e => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm" /></FormControl></FormItem>
