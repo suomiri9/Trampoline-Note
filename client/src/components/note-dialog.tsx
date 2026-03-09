@@ -395,58 +395,37 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
                   {editingRoutineIdx !== null && selectedSkills[editingRoutineIdx]?.id === -2 && (() => {
                     const rItem = selectedSkills[editingRoutineIdx];
-                    const routine = routines?.find(r => r.id === rItem.routineId);
-                    const maxSkills = routine?.skillIds.length ?? 10;
                     return (
                       <div className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 flex flex-col p-4 rounded-xl">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="font-bold text-sm">{rItem.routineName}</span>
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="font-bold text-sm">Change Routine</span>
                           <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setEditingRoutineIdx(null)}>Done</Button>
                         </div>
-                        <p className="text-xs text-muted-foreground mb-4">How many skills did you complete? (1–{maxSkills})</p>
-                        <div className="grid grid-cols-5 gap-2">
-                          {Array.from({ length: maxSkills }, (_, i) => i + 1).map(n => (
+                        <div className="flex flex-col gap-2 overflow-y-auto">
+                          {routines?.map(r => (
                             <button
-                              key={n}
+                              key={r.id}
                               type="button"
                               onClick={() => {
                                 setSelectedSkills(prev => {
                                   const newSkills = [...prev];
-                                  newSkills[editingRoutineIdx] = { ...newSkills[editingRoutineIdx], attempt: n };
+                                  newSkills[editingRoutineIdx] = { id: -2, routineId: r.id, routineName: r.name };
                                   form.setValue('skills', JSON.stringify(newSkills));
                                   return newSkills;
                                 });
                                 setEditingRoutineIdx(null);
                               }}
                               className={cn(
-                                "h-10 rounded-lg font-bold text-sm border transition-all",
-                                rItem.attempt === n
+                                "w-full text-left px-3 py-2.5 rounded-xl font-medium text-sm border transition-all",
+                                rItem.routineId === r.id
                                   ? "bg-primary text-primary-foreground border-primary"
                                   : "bg-secondary/30 border-border hover:bg-secondary"
                               )}
                             >
-                              {n}
+                              {r.name}
                             </button>
                           ))}
                         </div>
-                        {rItem.attempt && (
-                          <button
-                            type="button"
-                            className="mt-3 text-xs text-muted-foreground underline text-left"
-                            onClick={() => {
-                              setSelectedSkills(prev => {
-                                const newSkills = [...prev];
-                                const { attempt: _, ...rest } = newSkills[editingRoutineIdx];
-                                newSkills[editingRoutineIdx] = rest;
-                                form.setValue('skills', JSON.stringify(newSkills));
-                                return newSkills;
-                              });
-                              setEditingRoutineIdx(null);
-                            }}
-                          >
-                            Reset to full routine
-                          </button>
-                        )}
                       </div>
                     );
                   })()}
