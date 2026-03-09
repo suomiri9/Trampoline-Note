@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Plus, Trash2, GripVertical, ChevronDown, X } from "lucide-react";
+import { CalendarIcon, Plus, Trash2, GripVertical, ChevronDown, X, ArrowUp, ArrowDown } from "lucide-react";
 import { type Note, type Skill } from "@shared/schema";
 import { useCreateNote, useUpdateNote } from "@/hooks/use-notes";
 import { useSkills } from "@/hooks/use-skills";
@@ -392,6 +392,95 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     </div>
                   </div>
 
+                  {editingRoutineIdx !== null && selectedSkills[editingRoutineIdx]?.id === -2 && (() => {
+                    const rItem = selectedSkills[editingRoutineIdx];
+                    const routine = routines?.find(r => r.id === rItem.routineId);
+                    const displaySkillIds = rItem.customSkillIds ?? routine?.skillIds ?? [];
+
+                    const moveSkill = (sIdx: number, dir: -1 | 1) => {
+                      const newIds = [...displaySkillIds];
+                      const target = sIdx + dir;
+                      if (target < 0 || target >= newIds.length) return;
+                      [newIds[sIdx], newIds[target]] = [newIds[target], newIds[sIdx]];
+                      setSelectedSkills(prev => {
+                        const ns = [...prev];
+                        ns[editingRoutineIdx] = { ...ns[editingRoutineIdx], customSkillIds: newIds };
+                        form.setValue('skills', JSON.stringify(ns));
+                        return ns;
+                      });
+                    };
+
+                    const removeSkillFromRoutine = (sIdx: number) => {
+                      const newIds = displaySkillIds.filter((_, i) => i !== sIdx);
+                      setSelectedSkills(prev => {
+                        const ns = [...prev];
+                        ns[editingRoutineIdx] = { ...ns[editingRoutineIdx], customSkillIds: newIds };
+                        form.setValue('skills', JSON.stringify(ns));
+                        return ns;
+                      });
+                    };
+
+                    const addSkillToRoutine = (val: string) => {
+                      const newIds = [...displaySkillIds, parseInt(val)];
+                      setSelectedSkills(prev => {
+                        const ns = [...prev];
+                        ns[editingRoutineIdx] = { ...ns[editingRoutineIdx], customSkillIds: newIds };
+                        form.setValue('skills', JSON.stringify(ns));
+                        return ns;
+                      });
+                    };
+
+                    return (
+                      <div className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 flex flex-col p-4 rounded-xl">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="font-bold text-sm">{rItem.routineName}</span>
+                          <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setEditingRoutineIdx(null)}>Done</Button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto space-y-1 mb-3">
+                          {displaySkillIds.map((sId, sIdx) => {
+                            const sk = allItems?.find(s => s.id === sId);
+                            return (
+                              <div key={sIdx} className="flex items-center gap-1 py-0.5">
+                                <div className="flex flex-col gap-0">
+                                  <button type="button" onClick={() => moveSkill(sIdx, -1)} disabled={sIdx === 0}
+                                    className="h-4 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-20">
+                                    <ArrowUp className="h-2.5 w-2.5" />
+                                  </button>
+                                  <button type="button" onClick={() => moveSkill(sIdx, 1)} disabled={sIdx === displaySkillIds.length - 1}
+                                    className="h-4 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-20">
+                                    <ArrowDown className="h-2.5 w-2.5" />
+                                  </button>
+                                </div>
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <Badge variant="outline" className="font-mono text-[10px] border-primary/30 text-primary shrink-0">{sk?.code}</Badge>
+                                  <span className="text-xs truncate">{sk?.name}</span>
+                                </div>
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0"
+                                  onClick={() => removeSkillFromRoutine(sIdx)}>
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <Select onValueChange={addSkillToRoutine}>
+                          <SelectTrigger className="h-9 text-xs rounded-xl border-primary/20 bg-background">
+                            <SelectValue placeholder="Add skill..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allItems?.sort((a, b) => b.difficulty - a.difficulty).map(s => (
+                              <SelectItem key={s.id} value={s.id.toString()}>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="font-mono text-[10px]">{s.code}</Badge>
+                                  <span>{s.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  })()}
 
                   <div className="max-h-[300px] overflow-scroll-touch divide-y divide-border/30">
                     {(() => {
@@ -419,71 +508,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               if (item.id === -2) {
                                 const routine = routines?.find(r => r.id === item.routineId);
                                 const displaySkillIds = item.customSkillIds ?? routine?.skillIds ?? [];
-                                const isExpanded = editingRoutineIdx === idx;
                                 return (
-                                  <div key={idx} className="border-b border-border/30 last:border-0">
-                                    <div
-                                      className="w-full px-3 py-2 text-sm flex justify-between items-center hover:bg-secondary/20 active:bg-secondary/40 transition-colors cursor-pointer"
-                                      onClick={() => setEditingRoutineIdx(isExpanded ? null : idx)}
-                                    >
-                                      <span className="font-bold text-primary flex items-center gap-1">
-                                        {item.routineName}
-                                        <ChevronDown className={cn("w-3 h-3 transition-transform text-primary/60", isExpanded && "rotate-180")} />
-                                      </span>
-                                      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                                      </div>
+                                  <div
+                                    key={idx}
+                                    className="w-full px-3 py-2 text-sm flex justify-between items-center hover:bg-secondary/20 active:bg-secondary/40 transition-colors cursor-pointer"
+                                    onClick={() => setEditingRoutineIdx(idx)}
+                                  >
+                                    <span className="font-bold text-primary">
+                                      {item.routineName}
+                                      <span className="font-normal text-muted-foreground text-xs ml-1.5">{displaySkillIds.length} skills</span>
+                                    </span>
+                                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /></Button>
                                     </div>
-                                    {isExpanded && (
-                                      <div className="bg-primary/5 border-t border-primary/10 px-3 py-2 space-y-1">
-                                        {displaySkillIds.map((sId, sIdx) => {
-                                          const sk = allItems?.find(s => s.id === sId);
-                                          return (
-                                            <div key={sIdx} className="flex items-center justify-between py-0.5">
-                                              <div className="flex items-center gap-2 min-w-0">
-                                                <Badge variant="outline" className="font-mono text-[10px] border-primary/30 text-primary shrink-0">{sk?.code}</Badge>
-                                                <span className="text-xs truncate">{sk?.name}</span>
-                                              </div>
-                                              <Button
-                                                type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0"
-                                                onClick={() => {
-                                                  const newIds = displaySkillIds.filter((_, i) => i !== sIdx);
-                                                  setSelectedSkills(prev => {
-                                                    const ns = [...prev];
-                                                    ns[idx] = { ...ns[idx], customSkillIds: newIds };
-                                                    form.setValue('skills', JSON.stringify(ns));
-                                                    return ns;
-                                                  });
-                                                }}
-                                              ><X className="h-3 w-3" /></Button>
-                                            </div>
-                                          );
-                                        })}
-                                        <Select onValueChange={(val) => {
-                                          const newIds = [...displaySkillIds, parseInt(val)];
-                                          setSelectedSkills(prev => {
-                                            const ns = [...prev];
-                                            ns[idx] = { ...ns[idx], customSkillIds: newIds };
-                                            form.setValue('skills', JSON.stringify(ns));
-                                            return ns;
-                                          });
-                                        }}>
-                                          <SelectTrigger className="h-8 text-xs rounded-lg mt-2 border-primary/20 bg-background">
-                                            <SelectValue placeholder="Add skill..." />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {allItems?.sort((a, b) => b.difficulty - a.difficulty).map(s => (
-                                              <SelectItem key={s.id} value={s.id.toString()}>
-                                                <div className="flex items-center gap-2">
-                                                  <Badge variant="outline" className="font-mono text-[10px]">{s.code}</Badge>
-                                                  <span>{s.name}</span>
-                                                </div>
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    )}
                                   </div>
                                 );
                               }
