@@ -69,6 +69,27 @@ interface NoteDialogProps {
 
 type SkillItem = { id: number; reps?: number; routineId?: number; routineName?: string; attempt?: number; customSkillIds?: number[] };
 
+function SortablePracticeGroup({ gId, isConnected, children }: { gId: string; isConnected: boolean; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: gId });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
+      className={cn("flex items-stretch border-b border-border/30 last:border-0", isConnected ? "border-l-[3px] border-primary bg-primary/5" : "border-l-[3px] border-transparent")}
+    >
+      <button
+        type="button"
+        className="touch-none cursor-grab active:cursor-grabbing flex items-center justify-center w-5 shrink-0 text-muted-foreground/30 hover:text-muted-foreground"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-3.5 w-3.5" />
+      </button>
+      <div className="flex-1 min-w-0">{children}</div>
+    </div>
+  );
+}
+
 function SortableRoutineSkill({ uid, code, name, onRemove }: { uid: string; code?: string; name?: string; onRemove: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: uid });
   return (
@@ -103,6 +124,31 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [editingRoutineIdx, setEditingRoutineIdx] = useState<number | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 5 } }));
+
+  const buildGroups = (skills: SkillItem[]) => {
+    const groups: Array<{ items: SkillItem[] }> = [];
+    let cur: SkillItem[] = [];
+    skills.forEach(item => {
+      if (item.id === -1) { groups.push({ items: cur }); cur = []; }
+      else cur.push(item);
+    });
+    groups.push({ items: cur });
+    return groups.filter(g => g.items.length > 0);
+  };
+
+  const handlePracticeListDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const groups = buildGroups(selectedSkills);
+    const oldIdx = groups.findIndex((_, i) => `group-${i}` === active.id);
+    const newIdx = groups.findIndex((_, i) => `group-${i}` === over.id);
+    if (oldIdx === -1 || newIdx === -1) return;
+    const reordered = arrayMove(groups, oldIdx, newIdx);
+    const newSkills: SkillItem[] = [];
+    reordered.forEach((g, i) => { if (i > 0) newSkills.push({ id: -1 }); newSkills.push(...g.items); });
+    setSelectedSkills(newSkills);
+    form.setValue('skills', JSON.stringify(newSkills));
+  };
 
   const isEditing = !!noteToEdit;
 
@@ -501,7 +547,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     );
                   })()}
 
-                  <div className="max-h-[300px] overflow-scroll-touch divide-y divide-border/30">
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handlePracticeListDragEnd}>
+                  <div className="max-h-[300px] overflow-scroll-touch">
                     {(() => {
                       const groups: Array<{ items: typeof selectedSkills; indices: number[] }> = [];
                       let curItems: typeof selectedSkills = [];
@@ -515,13 +562,14 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         }
                       });
                       groups.push({ items: curItems, indices: curIndices });
+                      const nonEmpty = groups.filter(g => g.items.length > 0);
 
-                      return groups.map((group, gIdx) => {
-                        if (group.items.length === 0) return null;
-                        const isConnected = group.items.length > 1 && group.items[0].id !== -2;
-
-                        return (
-                          <div key={gIdx} className={cn(isConnected ? "border-l-[3px] border-primary bg-primary/5" : "border-l-[3px] border-transparent")}>
+                      return (
+                        <SortableContext items={nonEmpty.map((_, i) => `group-${i}`)} strategy={verticalListSortingStrategy}>
+                          {nonEmpty.map((group, gIdx) => {
+                            const isConnected = group.items.length > 1 && group.items[0].id !== -2;
+                            return (
+                              <SortablePracticeGroup key={`group-${gIdx}`} gId={`group-${gIdx}`} isConnected={isConnected}>
                             {group.items.map((item, iIdx) => {
                               const idx = group.indices[iIdx];
                               if (item.id === -2) {
@@ -569,11 +617,14 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                 </div>
                               );
                             })}
-                          </div>
-                        );
-                      });
+                              </SortablePracticeGroup>
+                            );
+                          })}
+                        </SortableContext>
+                      );
                     })()}
                   </div>
+                  </DndContext>
                 </div>
               </div>
 
