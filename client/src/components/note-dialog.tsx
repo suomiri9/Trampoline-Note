@@ -383,7 +383,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </Select>
                 )}
 
-                <div className="min-h-[220px] bg-secondary/10 rounded-xl border border-border/50 overflow-hidden relative">
+                <div className="bg-secondary/10 rounded-xl border border-border/50 overflow-hidden relative">
                   <div className="bg-secondary/20 px-3 py-1.5 border-b border-border/50 flex justify-between items-center">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Practice List</span>
                     <div className="flex items-center gap-2">
@@ -482,7 +482,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     );
                   })()}
 
-                  <div className="max-h-[300px] overflow-scroll-touch divide-y divide-border/30">
+                  <div className="divide-y divide-border/30">
                     {(() => {
                       const groups: Array<{ items: typeof selectedSkills; indices: number[] }> = [];
                       let curItems: typeof selectedSkills = [];
