@@ -203,12 +203,12 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                         "flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl border border-border/30 shadow-sm",
                         isSingle ? "bg-secondary/5" : "bg-primary/5 border-primary/20"
                       )}>
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
                           {group.map((skillItem, skillIdx) => {
                             const skill = allItems?.find(s => s.id === skillItem.id);
                             if (!skill) return null;
                             return (
-                              <div key={skillIdx} className="flex items-center gap-2">
+                              <div key={skillIdx} className="flex items-center gap-1.5">
                                 <Badge variant="outline" className={cn(
                                   "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
                                   isSingle ? "border-border/60 text-muted-foreground" : "border-primary/30 text-primary"
