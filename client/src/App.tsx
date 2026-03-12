@@ -115,6 +115,39 @@ function Router() {
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
 
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let savedY = 0;
+    let rafId = 0;
+
+    const onFocusIn = () => {
+      savedY = window.scrollY;
+    };
+
+    const onVVResize = () => {
+      const hidden = window.innerHeight - vv.height - vv.offsetTop;
+      const nowOpen = hidden > 80;
+      // Only snap scroll back when keyboard first opens (or suggestion bar shifts it)
+      if (nowOpen) {
+        cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+          if (Math.abs(window.scrollY - savedY) < 300) {
+            window.scrollTo(0, savedY);
+          }
+        });
+      }
+    };
+
+    document.addEventListener("focusin", onFocusIn, true);
+    vv.addEventListener("resize", onVVResize);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn, true);
+      vv.removeEventListener("resize", onVVResize);
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
+
   if (isLoading) {
     return (
       <div className="min-h-[100svh] flex items-center justify-center">
