@@ -118,15 +118,16 @@ function AppContent() {
   useEffect(() => {
     const vv = window.visualViewport;
     let rafId = 0;
+    let savedY = 0;
 
     const onFocusIn = (e: FocusEvent) => {
       const el = e.target as HTMLElement;
       if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement)) return;
-      // If the element is already fully visible, prevent Safari from scrolling to it
+      // Save scroll position at the moment of focus (before any Safari auto-scroll)
+      savedY = window.scrollY;
       const rect = el.getBoundingClientRect();
       const viewH = vv ? vv.height : window.innerHeight;
       if (rect.top >= 0 && rect.bottom <= viewH) {
-        const savedY = window.scrollY;
         cancelAnimationFrame(rafId);
         rafId = requestAnimationFrame(() => {
           if (window.scrollY !== savedY) window.scrollTo(0, savedY);
@@ -134,13 +135,14 @@ function AppContent() {
       }
     };
 
+    // Covers virtual keyboard open, suggestion bar, AND autofill bar appearing
     const onVVResize = () => {
       if (!vv) return;
       const hidden = window.innerHeight - vv.height - vv.offsetTop;
-      if (hidden > 80) {
+      if (hidden > 0) {
         cancelAnimationFrame(rafId);
-        const savedY = window.scrollY;
         rafId = requestAnimationFrame(() => {
+          // Use savedY from focus time, not current scroll, so autofill bar can't shift the page
           if (Math.abs(window.scrollY - savedY) < 300) window.scrollTo(0, savedY);
         });
       }
