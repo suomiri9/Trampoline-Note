@@ -168,21 +168,21 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                     if (group.length === 1 && (group[0] as any).id === -2) {
                       const item = group[0] as any;
                       const routine = routines?.find(r => r.id === item.routineId);
-                      const maxSkills = routine?.skillIds.length ?? 10;
-                      const count = item.attempt ?? maxSkills;
-                      const routineDD = routine?.skillIds.slice(0, count).reduce((acc, sId) => {
+                      const baseSkillIds: number[] = routine?.skillIds ?? [];
+                      const displaySkillIds: number[] = item.customSkillIds ?? (item.attempt != null ? baseSkillIds.slice(0, item.attempt) : baseSkillIds);
+                      const routineDD = displaySkillIds.reduce((acc, sId) => {
                         const skill = allItems?.find(s => s.id === sId);
                         return acc + (skill?.difficulty || 0);
-                      }, 0) || 0;
-                      const isPartial = item.attempt != null && item.attempt < maxSkills;
+                      }, 0);
+                      const isCustom = displaySkillIds.length !== baseSkillIds.length || (item.customSkillIds && JSON.stringify(item.customSkillIds) !== JSON.stringify(baseSkillIds));
 
                       return (
                         <div key={`routine-${groupIdx}`} className="flex items-center justify-between py-2 px-3 rounded-xl border border-primary/20 bg-primary/5 shadow-sm">
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none">ROUTINE</Badge>
                             <span className="text-sm font-bold text-primary">{item.routineName || "Routine"}</span>
-                            {isPartial && (
-                              <span className="text-[11px] font-mono text-muted-foreground">attempt {item.attempt}/{maxSkills}</span>
+                            {isCustom && (
+                              <span className="text-[11px] font-mono text-muted-foreground">{displaySkillIds.length} skills</span>
                             )}
                           </div>
                           <span className="text-[11px] font-mono font-bold text-primary">{routineDD.toFixed(1)}</span>
