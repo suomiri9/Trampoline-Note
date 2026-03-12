@@ -15,10 +15,27 @@ import { cn } from "@/lib/utils";
 import { LayoutDashboard, Target, Layers, BarChart3, Trophy, LogOut, Loader2, UserCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 
 function Navigation() {
   const [location] = useLocation();
   const { user, logout, isLoggingOut } = useAuth();
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const hidden = window.innerHeight - vv.height - vv.offsetTop;
+      setKeyboardOffset(Math.max(0, hidden));
+    };
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
 
   const navItems = [
     { href: "/", label: "Training", icon: LayoutDashboard },
@@ -29,7 +46,8 @@ function Navigation() {
   ];
 
   return (
-    <nav className="fixed left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-md border border-border px-3 py-2 rounded-2xl shadow-2xl flex items-center gap-1 z-50" style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}>
+    <nav className="fixed left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-md border border-border px-3 py-2 rounded-2xl shadow-2xl flex items-center gap-1 z-50 transition-[bottom] duration-100"
+      style={{ bottom: keyboardOffset > 0 ? `${keyboardOffset + 16}px` : 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}>
       {navItems.map((item) => (
         <Link key={item.href} href={item.href}>
           <div className={cn(
