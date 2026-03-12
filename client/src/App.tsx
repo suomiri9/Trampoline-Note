@@ -117,33 +117,40 @@ function AppContent() {
 
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!vv) return;
-    let savedY = 0;
     let rafId = 0;
 
-    const onFocusIn = () => {
-      savedY = window.scrollY;
+    const onFocusIn = (e: FocusEvent) => {
+      const el = e.target as HTMLElement;
+      if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement)) return;
+      // If the element is already fully visible, prevent Safari from scrolling to it
+      const rect = el.getBoundingClientRect();
+      const viewH = vv ? vv.height : window.innerHeight;
+      if (rect.top >= 0 && rect.bottom <= viewH) {
+        const savedY = window.scrollY;
+        cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+          if (window.scrollY !== savedY) window.scrollTo(0, savedY);
+        });
+      }
     };
 
     const onVVResize = () => {
+      if (!vv) return;
       const hidden = window.innerHeight - vv.height - vv.offsetTop;
-      const nowOpen = hidden > 80;
-      // Only snap scroll back when keyboard first opens (or suggestion bar shifts it)
-      if (nowOpen) {
+      if (hidden > 80) {
         cancelAnimationFrame(rafId);
+        const savedY = window.scrollY;
         rafId = requestAnimationFrame(() => {
-          if (Math.abs(window.scrollY - savedY) < 300) {
-            window.scrollTo(0, savedY);
-          }
+          if (Math.abs(window.scrollY - savedY) < 300) window.scrollTo(0, savedY);
         });
       }
     };
 
     document.addEventListener("focusin", onFocusIn, true);
-    vv.addEventListener("resize", onVVResize);
+    vv?.addEventListener("resize", onVVResize);
     return () => {
       document.removeEventListener("focusin", onFocusIn, true);
-      vv.removeEventListener("resize", onVVResize);
+      vv?.removeEventListener("resize", onVVResize);
       cancelAnimationFrame(rafId);
     };
   }, []);
