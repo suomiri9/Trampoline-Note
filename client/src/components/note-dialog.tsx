@@ -437,7 +437,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           <Badge variant="outline" className="font-mono text-[10px]">{item.code}</Badge>
                           <span>{item.name}</span>
                           {item.isDrill === 1 && <span className="text-[10px] text-red-500 ml-auto font-medium">(Drill)</span>}
-                          {item.isDrill === 2 && <span className="text-[10px] text-amber-500 ml-auto font-medium">(FC)</span>}
+                          {item.isDrill === 2 && <span className="text-[10px] text-yellow-500 ml-auto font-medium">(FC)</span>}
                         </div>
                       </SelectItem>
                     ))}
@@ -607,7 +607,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     <Badge variant="outline" className={cn(
                                       isConnected ? "border-primary/40 text-primary" :
                                       skill?.isDrill === 1 ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400" :
-                                      skill?.isDrill === 2 ? "border-amber-300 text-amber-600 dark:border-amber-700 dark:text-amber-400" : ""
+                                      skill?.isDrill === 2 ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400" : ""
                                     )}>{skill?.code}</Badge>
                                     <span className="text-sm truncate">{skill?.name}</span>
                                   </div>

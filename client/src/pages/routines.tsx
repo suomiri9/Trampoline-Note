@@ -68,8 +68,8 @@ export default function RoutinesPage() {
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex items-center gap-3 mb-8">
-        <div className="p-3 bg-violet-50 dark:bg-violet-950/30 rounded-2xl shrink-0">
-          <Layers className="w-6 h-6 text-violet-500" />
+        <div className="p-3 bg-zinc-100 dark:bg-zinc-800/30 rounded-2xl shrink-0">
+          <Layers className="w-6 h-6 text-zinc-600" />
         </div>
         <div>
           <h1 className="text-3xl font-display font-bold">Routines</h1>

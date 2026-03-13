@@ -39,7 +39,7 @@ function SortableScoreSkill({ uid, code, name, isDrill, onRemove }: { uid: strin
         <Badge variant="outline" className={cn(
           "font-mono text-[10px] shrink-0",
           isDrill === 1 ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400" :
-          isDrill === 2 ? "border-amber-300 text-amber-600 dark:border-amber-700 dark:text-amber-400" :
+          isDrill === 2 ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400" :
           "border-primary/30 text-primary"
         )}>{code}</Badge>
         <span className="text-xs truncate">{name}</span>
@@ -236,8 +236,8 @@ export default function ScorePage() {
     <div className="container mx-auto py-8 px-4 max-w-4xl">
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-2xl shrink-0">
-            <Trophy className="w-6 h-6 text-amber-500" />
+          <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-2xl shrink-0">
+            <Trophy className="w-6 h-6 text-yellow-500" />
           </div>
           <div>
             <h1 className="text-3xl font-display font-bold">Scoring</h1>
@@ -389,9 +389,9 @@ export default function ScorePage() {
                             {allSkills?.filter(s => s.isDrill !== 1).sort((a, b) => b.difficulty - a.difficulty).map(s => (
                               <SelectItem key={s.id} value={s.id.toString()}>
                                 <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className={cn("font-mono text-[10px]", s.isDrill === 2 ? "border-amber-300 text-amber-600" : "")}>{s.code}</Badge>
+                                  <Badge variant="outline" className={cn("font-mono text-[10px]", s.isDrill === 2 ? "border-yellow-300 text-yellow-600" : "")}>{s.code}</Badge>
                                   <span className="text-xs">{s.name}</span>
-                                  {s.isDrill === 2 && <span className="text-[10px] text-amber-500 font-medium">(FC)</span>}
+                                  {s.isDrill === 2 && <span className="text-[10px] text-yellow-500 font-medium">(FC)</span>}
                                 </div>
                               </SelectItem>
                             ))}
@@ -481,9 +481,9 @@ export default function ScorePage() {
                               {allSkills?.filter(s => s.isDrill !== 1).sort((a, b) => b.difficulty - a.difficulty).map(s => (
                                 <SelectItem key={s.id} value={s.id.toString()}>
                                   <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className={cn("font-mono text-[10px]", s.isDrill === 2 ? "border-amber-300 text-amber-600" : "")}>{s.code}</Badge>
+                                    <Badge variant="outline" className={cn("font-mono text-[10px]", s.isDrill === 2 ? "border-yellow-300 text-yellow-600" : "")}>{s.code}</Badge>
                                     <span className="text-xs">{s.name}</span>
-                                    {s.isDrill === 2 && <span className="text-[10px] text-amber-500 font-medium">(FC)</span>}
+                                    {s.isDrill === 2 && <span className="text-[10px] text-yellow-500 font-medium">(FC)</span>}
                                   </div>
                                 </SelectItem>
                               ))}
@@ -603,7 +603,7 @@ export default function ScorePage() {
         })}
         {scores?.length === 0 && (
           <div className="text-center py-20 bg-secondary/5 rounded-3xl border-2 border-dashed border-border/50">
-            <Trophy className="w-12 h-12 text-amber-300 dark:text-amber-600 mx-auto mb-4" />
+            <Trophy className="w-12 h-12 text-yellow-300 dark:text-yellow-600 mx-auto mb-4" />
             <p className="text-muted-foreground font-medium">No scores recorded yet.</p>
           </div>
         )}

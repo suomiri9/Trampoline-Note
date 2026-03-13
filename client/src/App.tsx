@@ -42,17 +42,17 @@ function Navigation() {
       activeClass: "bg-blue-50 dark:bg-blue-950/40 shadow-sm",
       colorClass: "text-blue-600 dark:text-blue-400" },
     { href: "/score", label: "Score", icon: Trophy,
-      activeClass: "bg-amber-50 dark:bg-amber-950/40 shadow-sm",
-      colorClass: "text-amber-500 dark:text-amber-400" },
+      activeClass: "bg-yellow-50 dark:bg-yellow-950/40 shadow-sm",
+      colorClass: "text-yellow-500 dark:text-yellow-400" },
     { href: "/stats", label: "Progress", icon: BarChart3,
-      activeClass: "bg-emerald-50 dark:bg-emerald-950/40 shadow-sm",
-      colorClass: "text-emerald-600 dark:text-emerald-400" },
+      activeClass: "bg-slate-100 dark:bg-slate-800/40 shadow-sm",
+      colorClass: "text-slate-500 dark:text-slate-400" },
     { href: "/skills", label: "Skills", icon: Target,
       activeClass: "bg-red-50 dark:bg-red-950/40 shadow-sm",
       colorClass: "text-red-500 dark:text-red-400" },
     { href: "/routines", label: "Routines", icon: Layers,
-      activeClass: "bg-violet-50 dark:bg-violet-950/40 shadow-sm",
-      colorClass: "text-violet-600 dark:text-violet-400" },
+      activeClass: "bg-zinc-100 dark:bg-zinc-800/40 shadow-sm",
+      colorClass: "text-zinc-600 dark:text-zinc-400" },
   ];
 
   return (

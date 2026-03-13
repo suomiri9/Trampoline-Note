@@ -97,19 +97,19 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
         <div className="flex justify-between items-center mb-4 gap-4">
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground font-medium min-w-0">
             <div className="flex items-center gap-2 shrink-0">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-950/30 shrink-0">
-                <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800/30 shrink-0">
+                <Calendar className="w-4 h-4 text-slate-500 dark:text-slate-400" />
               </div>
-              <span className="whitespace-nowrap text-emerald-700 dark:text-emerald-400">{format(new Date(note.date), "MMMM d, yyyy")}</span>
+              <span className="whitespace-nowrap text-slate-600 dark:text-slate-400">{format(new Date(note.date), "MMMM d, yyyy")}</span>
             </div>
-            <div className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-emerald-600 dark:text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 px-2.5 py-1 rounded-lg w-fit">
+            <div className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/20 border border-slate-200 dark:border-slate-700/30 px-2.5 py-1 rounded-lg w-fit">
               <Activity className="w-3 h-3 shrink-0" />
               <span className="whitespace-nowrap">{note.startTime || "??:??"} - {note.endTime || "??:??"}</span>
             </div>
             {note.sleepScore != null ? (
-              <div className="flex items-center gap-1 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700/40 px-2.5 py-1 rounded-lg w-fit">
-                <span className="text-[10px] font-bold text-violet-500 uppercase tracking-wider">Sleep</span>
-                <span className="text-xs font-mono font-bold text-violet-600 dark:text-violet-400">{note.sleepScore}/100</span>
+              <div className="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/40 px-2.5 py-1 rounded-lg w-fit">
+                <span className="text-[10px] font-bold text-yellow-600 uppercase tracking-wider">Sleep</span>
+                <span className="text-xs font-mono font-bold text-yellow-700 dark:text-yellow-400">{note.sleepScore}/100</span>
               </div>
             ) : null}
           </div>
@@ -203,7 +203,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                         "flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl border shadow-sm",
                         isSingle
                           ? "bg-secondary/5 border-border/30"
-                          : "bg-amber-50/60 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/30"
+                          : "bg-yellow-50/60 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800/30"
                       )}>
                         <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
                           {group.map((skillItem, skillIdx) => {
@@ -216,13 +216,13 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                                   skill.isDrill === 1
                                     ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
                                     : (!isSingle || skill.isDrill === 2)
-                                    ? "border-amber-300 text-amber-600 dark:border-amber-700 dark:text-amber-400"
+                                    ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400"
                                     : "border-border/60 text-muted-foreground"
                                 )}>
                                   {skill.code}
                                 </Badge>
                                 {skillIdx < group.length - 1 && (
-                                  <span className="text-amber-400/70 font-bold text-xs">+</span>
+                                  <span className="text-yellow-400/70 font-bold text-xs">+</span>
                                 )}
                               </div>
                             );
@@ -230,10 +230,10 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                         </div>
                         <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
                           <span className="text-muted-foreground">{lineDD.toFixed(1)}</span>
-                          <span className={isSingle ? "text-muted-foreground/40" : "text-amber-400/70"}>×</span>
-                          <span className={isSingle ? "text-foreground" : "text-amber-600 dark:text-amber-400"}>{reps}</span>
-                          <span className={isSingle ? "text-muted-foreground/40" : "text-amber-400/70"}>=</span>
-                          <span className={isSingle ? "text-foreground" : "text-amber-600 dark:text-amber-400"}>{(lineDD * reps).toFixed(1)}</span>
+                          <span className={isSingle ? "text-muted-foreground/40" : "text-yellow-400/70"}>×</span>
+                          <span className={isSingle ? "text-foreground" : "text-yellow-600 dark:text-yellow-400"}>{reps}</span>
+                          <span className={isSingle ? "text-muted-foreground/40" : "text-yellow-400/70"}>=</span>
+                          <span className={isSingle ? "text-foreground" : "text-yellow-600 dark:text-yellow-400"}>{(lineDD * reps).toFixed(1)}</span>
                         </div>
                       </div>
                     );
