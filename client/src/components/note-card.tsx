@@ -97,19 +97,19 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
         <div className="flex justify-between items-center mb-4 gap-4">
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground font-medium min-w-0">
             <div className="flex items-center gap-2 shrink-0">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary text-secondary-foreground shrink-0">
-                <Calendar className="w-4 h-4" />
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-950/30 shrink-0">
+                <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <span className="whitespace-nowrap">{format(new Date(note.date), "MMMM d, yyyy")}</span>
+              <span className="whitespace-nowrap text-emerald-700 dark:text-emerald-400">{format(new Date(note.date), "MMMM d, yyyy")}</span>
             </div>
-            <div className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-muted-foreground/60 bg-secondary/50 px-2.5 py-1 rounded-lg w-fit">
+            <div className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-emerald-600 dark:text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 px-2.5 py-1 rounded-lg w-fit">
               <Activity className="w-3 h-3 shrink-0" />
               <span className="whitespace-nowrap">{note.startTime || "??:??"} - {note.endTime || "??:??"}</span>
             </div>
             {note.sleepScore != null ? (
-              <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 px-2.5 py-1 rounded-lg w-fit">
-                <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">Sleep</span>
-                <span className="text-xs font-mono font-bold text-amber-600 dark:text-amber-400">{note.sleepScore}/100</span>
+              <div className="flex items-center gap-1 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700/40 px-2.5 py-1 rounded-lg w-fit">
+                <span className="text-[10px] font-bold text-violet-500 uppercase tracking-wider">Sleep</span>
+                <span className="text-xs font-mono font-bold text-violet-600 dark:text-violet-400">{note.sleepScore}/100</span>
               </div>
             ) : null}
           </div>
