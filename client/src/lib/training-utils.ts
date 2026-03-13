@@ -13,7 +13,11 @@ export function parseNoteSkills(skillsString: string | null | undefined): SkillI
   if (!skillsString) return [];
   try {
     const parsed = JSON.parse(skillsString);
-    if (Array.isArray(parsed)) return parsed;
+    if (Array.isArray(parsed)) {
+      return parsed.map((item: unknown) =>
+        typeof item === 'number' ? { id: item } : (item as SkillItem)
+      );
+    }
     return skillsString.split(',').map(s => ({ id: parseInt(s) }));
   } catch {
     return skillsString.split(',').map(s => ({ id: parseInt(s) }));

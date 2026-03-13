@@ -73,10 +73,7 @@ export default function SkillsPage() {
   const onConnectionSubmit = async () => {
     if (!connName || !connCode || connSkillIds.length === 0) return;
     
-    const totalDifficulty = connSkillIds.reduce((acc, id) => {
-      const s = skills?.find(sk => sk.id === id);
-      return acc + (s?.difficulty || 0);
-    }, 0);
+    const totalDifficulty = calcDDFromSkillIds(connSkillIds, skills || []);
 
     const payload = {
       name: connName,
