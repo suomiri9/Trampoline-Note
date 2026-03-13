@@ -42,8 +42,7 @@ function Navigation() {
   ];
 
   return (
-    <nav className="fixed left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-md border border-border px-3 py-2 rounded-2xl shadow-2xl flex items-center gap-1 z-50 transition-[bottom] duration-100"
-      style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}>
+    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-md border border-border px-3 py-2 rounded-2xl shadow-2xl flex items-center gap-1 z-50">
       {navItems.map((item) => (
         <Link key={item.href} href={item.href}>
           <div className={cn(
@@ -111,7 +110,7 @@ function Navigation() {
 
 function Router() {
   return (
-    <div style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
+    <div className="pb-20">
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/score" component={ScorePage} />
