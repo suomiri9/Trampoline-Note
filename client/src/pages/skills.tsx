@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useSkills } from "@/hooks/use-skills";
+import { calcDDFromSkillIds } from "@/lib/training-utils";
+import { PageLayout } from "@/components/page-layout";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Trash2, Plus, Pencil, X, Target } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -142,7 +144,7 @@ export default function SkillsPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+    <PageLayout>
       <div className="flex items-center gap-3 mb-8">
         <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-2xl shrink-0">
           <Target className="w-6 h-6 text-red-500" />
@@ -322,7 +324,7 @@ export default function SkillsPage() {
                   <div className="pt-2 flex justify-between items-center">
                     <span className="text-sm font-medium">Total DD:</span>
                     <span className="font-bold text-primary">
-                      {connSkillIds.reduce((acc, id) => acc + (skills?.find(s => s.id === id)?.difficulty || 0), 0).toFixed(1)}
+                      {calcDDFromSkillIds(connSkillIds, skills || []).toFixed(1)}
                     </span>
                   </div>
 
@@ -374,6 +376,6 @@ export default function SkillsPage() {
         onConfirm={() => { if (deleteTarget) { deleteSkill(deleteTarget.id); setDeleteTarget(null); } }}
         confirmLabel="Delete"
       />
-    </div>
+    </PageLayout>
   );
 }

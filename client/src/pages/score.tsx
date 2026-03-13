@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertScoreSchema, type Score, type Routine, type Skill } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { calcDDFromSkillIds } from "@/lib/training-utils";
-
+import { PageLayout } from "@/components/page-layout";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
 
@@ -202,7 +202,7 @@ export default function ScorePage() {
   }, [customSkillIdsVol, allSkills]);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+    <PageLayout>
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-2xl shrink-0">
@@ -514,6 +514,6 @@ export default function ScorePage() {
         onConfirm={() => { if (deleteScoreId !== null) { deleteMutation.mutate(deleteScoreId); setDeleteScoreId(null); } }}
         confirmLabel="Delete"
       />
-    </div>
+    </PageLayout>
   );
 }

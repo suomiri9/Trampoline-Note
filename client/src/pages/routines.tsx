@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
+import { calcDDFromSkillIds } from "@/lib/training-utils";
+import { PageLayout } from "@/components/page-layout";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Trash2, Plus, GripVertical, Pencil, X, Layers } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { type Routine } from "@shared/schema";
@@ -60,15 +62,9 @@ export default function RoutinesPage() {
     setSelectedSkillIds(new Array(10).fill(null));
   };
 
-  const calculateDifficulty = (ids: number[]) => {
-    return ids.reduce((acc, id) => {
-      const skill = skills?.find(s => s.id === id);
-      return acc + (skill?.difficulty || 0);
-    }, 0).toFixed(1);
-  };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+    <PageLayout>
       <div className="flex items-center gap-3 mb-8">
         <div className="p-3 bg-zinc-100 dark:bg-zinc-800/30 rounded-2xl shrink-0">
           <Layers className="w-6 h-6 text-zinc-600" />
@@ -126,7 +122,7 @@ export default function RoutinesPage() {
             <div className="pt-4 border-t flex justify-between items-center">
               <span className="text-sm font-medium text-muted-foreground">Total Difficulty</span>
               <span className="text-2xl font-bold text-primary">
-                {calculateDifficulty(selectedSkillIds.filter((id): id is number => id !== null))}
+                {calcDDFromSkillIds(selectedSkillIds.filter((id): id is number => id !== null), allItems || []).toFixed(1)}
               </span>
             </div>
             <div className="flex gap-2">
@@ -153,7 +149,7 @@ export default function RoutinesPage() {
                   <div className="p-4 flex items-center justify-between bg-muted/30">
                     <div>
                       <h3 className="font-bold text-lg">{routine.name}</h3>
-                      <p className="text-sm text-muted-foreground">Total Difficulty: {calculateDifficulty(routine.skillIds)}</p>
+                      <p className="text-sm text-muted-foreground">Total Difficulty: {calcDDFromSkillIds(routine.skillIds, allItems || []).toFixed(1)}</p>
                     </div>
                     <div className="space-x-2">
                       <Button variant="ghost" size="icon" onClick={() => startEditing(routine)}>
@@ -194,6 +190,6 @@ export default function RoutinesPage() {
         onConfirm={() => { if (deleteTarget) { deleteRoutine(deleteTarget.id); setDeleteTarget(null); } }}
         confirmLabel="Delete"
       />
-    </div>
+    </PageLayout>
   );
 }

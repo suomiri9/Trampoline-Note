@@ -2,6 +2,8 @@ import { useState, useRef } from "react";
 import { useNotes } from "@/hooks/use-notes";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
+import { parseNoteSkills, calculateTotalDD } from "@/lib/training-utils";
+import { PageLayout } from "@/components/page-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -36,43 +38,8 @@ export default function StatsPage() {
   const ddByDate: Record<string, { difficulty: number; sessions: number }> = {};
 
   notes?.forEach(note => {
-    let skillsData: any[] = [];
-    try {
-      skillsData = note.skills ? JSON.parse(note.skills) : [];
-      if (!Array.isArray(skillsData)) skillsData = note.skills.split(',').map((s: string) => ({ id: parseInt(s) }));
-    } catch (e) {
-      skillsData = note.skills ? note.skills.split(',').map((s: string) => ({ id: parseInt(s) })) : [];
-    }
-
-    let noteDD = 0;
-    let currentGroupDD = 0;
-    let currentGroupReps = 1;
-
-    skillsData.forEach((item: any) => {
-      if (item.id === -1) {
-        noteDD += currentGroupDD * currentGroupReps;
-        currentGroupDD = 0;
-        currentGroupReps = 1;
-      } else if (item.id === -2) {
-        noteDD += currentGroupDD * currentGroupReps;
-        currentGroupDD = 0;
-        currentGroupReps = 1;
-        const routine = routines?.find(r => r.id === item.routineId);
-        if (routine) {
-          const skillIds = item.customSkillIds ?? routine.skillIds;
-          const count = item.attempt ?? skillIds.length;
-          noteDD += skillIds.slice(0, count).reduce((acc: number, sId: number) => {
-            const skill = allItems?.find(s => s.id === sId);
-            return acc + (skill?.difficulty || 0);
-          }, 0);
-        }
-      } else {
-        const skill = allItems?.find(s => s.id === item.id);
-        currentGroupDD += (skill?.difficulty || 0);
-        currentGroupReps = item.reps || 1;
-      }
-    });
-    noteDD += currentGroupDD * currentGroupReps;
+    const skillsData = parseNoteSkills(note.skills);
+    const noteDD = calculateTotalDD(skillsData, allItems, routines);
 
     const key = note.date.substring(0, 10);
     if (!ddByDate[key]) ddByDate[key] = { difficulty: 0, sessions: 0 };
@@ -179,7 +146,7 @@ export default function StatsPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+    <PageLayout>
       <div className="flex items-center gap-3 mb-8">
         <div className="p-3 bg-slate-100 dark:bg-slate-800/30 rounded-2xl">
           <TrendingUp className="w-6 h-6 text-slate-500" />
@@ -308,6 +275,6 @@ export default function StatsPage() {
           </Card>
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }

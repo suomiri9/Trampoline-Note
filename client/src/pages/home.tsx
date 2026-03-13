@@ -3,6 +3,7 @@ import { Plus, BookOpen, Loader2, Activity, LayoutDashboard } from "lucide-react
 import { useNotes } from "@/hooks/use-notes";
 import { NoteCard } from "@/components/note-card";
 import { NoteDialog } from "@/components/note-dialog";
+import { PageLayout } from "@/components/page-layout";
 import { Button } from "@/components/ui/button";
 import { type Note } from "@shared/schema";
 
@@ -27,7 +28,7 @@ export default function Home() {
     : [];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+    <PageLayout>
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-2xl shrink-0">
@@ -94,6 +95,6 @@ export default function Home() {
         onOpenChange={setIsDialogOpen}
         noteToEdit={noteToEdit}
       />
-    </div>
+    </PageLayout>
   );
 }
