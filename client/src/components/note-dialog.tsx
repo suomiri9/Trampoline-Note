@@ -97,9 +97,9 @@ function SortableRoutineSkill({ uid, code, name, onRemove }: { uid: string; code
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      className="flex items-center gap-1 py-0.5 touch-none"
+      className="flex items-center gap-1 py-0.5"
     >
-      <button type="button" className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1" {...attributes} {...listeners}>
+      <button type="button" className="touch-none cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1" {...attributes} {...listeners}>
         <GripVertical className="h-4 w-4" />
       </button>
       <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -125,8 +125,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [editingRoutineIdx, setEditingRoutineIdx] = useState<number | null>(null);
 
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 20 } })
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { distance: 5 } })
   );
 
   const buildGroups = (skills: SkillItem[]) => {
