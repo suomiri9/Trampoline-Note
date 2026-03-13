@@ -193,7 +193,7 @@ export default function SkillsPage() {
             </Card>
             <Card className="md:col-span-2">
               <CardHeader><CardTitle>Skills Library</CardTitle></CardHeader>
-              <CardContent>
+              <CardContent className="max-h-[60vh] overflow-y-auto">
                 <Table>
                   <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Difficulty</TableHead><TableHead /></TableRow></TableHeader>
                   <TableBody>
@@ -248,7 +248,7 @@ export default function SkillsPage() {
             </Card>
             <Card className="md:col-span-2">
               <CardHeader><CardTitle>Drills Library</CardTitle></CardHeader>
-              <CardContent>
+              <CardContent className="max-h-[60vh] overflow-y-auto">
                 <Table>
                   <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Difficulty</TableHead><TableHead /></TableRow></TableHeader>
                   <TableBody>
@@ -335,7 +335,7 @@ export default function SkillsPage() {
             </Card>
             <Card className="md:col-span-2">
               <CardHeader><CardTitle>Connections Library</CardTitle></CardHeader>
-              <CardContent>
+              <CardContent className="max-h-[60vh] overflow-y-auto">
                 <Table>
                   <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Sequence</TableHead><TableHead>DD</TableHead><TableHead /></TableRow></TableHeader>
                   <TableBody>
