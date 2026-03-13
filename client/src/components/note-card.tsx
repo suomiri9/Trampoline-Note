@@ -107,9 +107,9 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
               <span className="whitespace-nowrap">{note.startTime || "??:??"} - {note.endTime || "??:??"}</span>
             </div>
             {note.sleepScore != null ? (
-              <div className="flex items-center gap-1 bg-secondary/50 px-2.5 py-1 rounded-lg w-fit">
-                <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider">Sleep</span>
-                <span className="text-xs font-mono font-bold text-foreground">{note.sleepScore}/100</span>
+              <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 px-2.5 py-1 rounded-lg w-fit">
+                <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">Sleep</span>
+                <span className="text-xs font-mono font-bold text-amber-600 dark:text-amber-400">{note.sleepScore}/100</span>
               </div>
             ) : null}
           </div>
@@ -211,7 +211,11 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                               <div key={skillIdx} className="flex items-center gap-1.5">
                                 <Badge variant="outline" className={cn(
                                   "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
-                                  isSingle ? "border-border/60 text-muted-foreground" : "border-primary/30 text-primary"
+                                  skill.isDrill === 1
+                                    ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
+                                    : skill.isDrill === 2
+                                    ? "border-amber-300 text-amber-600 dark:border-amber-700 dark:text-amber-400"
+                                    : isSingle ? "border-border/60 text-muted-foreground" : "border-primary/30 text-primary"
                                 )}>
                                   {skill.code}
                                 </Badge>

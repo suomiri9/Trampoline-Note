@@ -27,7 +27,7 @@ function calcDDFromIds(skillIds: number[], skills: Skill[]) {
   }, 0);
 }
 
-function SortableScoreSkill({ uid, code, name, onRemove }: { uid: string; code?: string; name?: string; onRemove: () => void }) {
+function SortableScoreSkill({ uid, code, name, isDrill, onRemove }: { uid: string; code?: string; name?: string; isDrill?: number; onRemove: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: uid });
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
@@ -36,7 +36,12 @@ function SortableScoreSkill({ uid, code, name, onRemove }: { uid: string; code?:
         <GripVertical className="h-4 w-4" />
       </button>
       <div className="flex items-center gap-2 flex-1 min-w-0">
-        <Badge variant="outline" className="font-mono text-[10px] border-primary/30 text-primary shrink-0">{code}</Badge>
+        <Badge variant="outline" className={cn(
+          "font-mono text-[10px] shrink-0",
+          isDrill === 1 ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400" :
+          isDrill === 2 ? "border-amber-300 text-amber-600 dark:border-amber-700 dark:text-amber-400" :
+          "border-primary/30 text-primary"
+        )}>{code}</Badge>
         <span className="text-xs truncate">{name}</span>
       </div>
       <button type="button" onClick={onRemove} className="h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-destructive shrink-0">
@@ -361,7 +366,7 @@ export default function ScorePage() {
                                 const sk = allSkills.find(s => s.id === sid);
                                 return (
                                   <SortableScoreSkill key={uids[i]} uid={uids[i]}
-                                    code={sk?.code} name={sk?.name}
+                                    code={sk?.code} name={sk?.name} isDrill={sk?.isDrill}
                                     onRemove={() => setCustomSkillIds(prev => prev ? prev.filter((_, idx) => idx !== i) : prev)} />
                                 );
                               })}
@@ -376,8 +381,9 @@ export default function ScorePage() {
                             {allSkills?.filter(s => s.isDrill !== 1).sort((a, b) => b.difficulty - a.difficulty).map(s => (
                               <SelectItem key={s.id} value={s.id.toString()}>
                                 <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="font-mono text-[10px]">{s.code}</Badge>
+                                  <Badge variant="outline" className={cn("font-mono text-[10px]", s.isDrill === 2 ? "border-amber-300 text-amber-600" : "")}>{s.code}</Badge>
                                   <span className="text-xs">{s.name}</span>
+                                  {s.isDrill === 2 && <span className="text-[10px] text-amber-500 font-medium">(FC)</span>}
                                 </div>
                               </SelectItem>
                             ))}
@@ -452,7 +458,7 @@ export default function ScorePage() {
                                   const sk = allSkills.find(s => s.id === sid);
                                   return (
                                     <SortableScoreSkill key={uids[i]} uid={uids[i]}
-                                      code={sk?.code} name={sk?.name}
+                                      code={sk?.code} name={sk?.name} isDrill={sk?.isDrill}
                                       onRemove={() => setCustomSkillIdsVol(prev => prev ? prev.filter((_, idx) => idx !== i) : prev)} />
                                   );
                                 })}
@@ -467,8 +473,9 @@ export default function ScorePage() {
                               {allSkills?.filter(s => s.isDrill !== 1).sort((a, b) => b.difficulty - a.difficulty).map(s => (
                                 <SelectItem key={s.id} value={s.id.toString()}>
                                   <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="font-mono text-[10px]">{s.code}</Badge>
+                                    <Badge variant="outline" className={cn("font-mono text-[10px]", s.isDrill === 2 ? "border-amber-300 text-amber-600" : "")}>{s.code}</Badge>
                                     <span className="text-xs">{s.name}</span>
+                                    {s.isDrill === 2 && <span className="text-[10px] text-amber-500 font-medium">(FC)</span>}
                                   </div>
                                 </SelectItem>
                               ))}

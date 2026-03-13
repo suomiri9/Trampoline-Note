@@ -38,8 +38,8 @@ export function StarRating({ value, onChange, readonly = false }: StarRatingProp
             className={cn(
               "w-5 h-5 transition-all duration-300",
               displayValue >= star 
-                ? "fill-primary text-primary" 
-                : "fill-transparent text-muted-foreground/30 hover:text-muted-foreground"
+                ? "fill-amber-400 text-amber-400" 
+                : "fill-transparent text-muted-foreground/30 hover:text-amber-300"
             )}
           />
         </button>
