@@ -28,8 +28,9 @@ function Navigation() {
     const vv = window.visualViewport;
     if (!vv) return;
     const update = () => {
-      const diff = window.innerHeight - vv.height - vv.offsetTop;
-      setViewportAdjust(diff > 0 && diff < window.innerHeight * 0.25 ? diff : 0);
+      const diff = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      const isVirtualKeyboard = diff > window.innerHeight * 0.25;
+      setViewportAdjust(isVirtualKeyboard ? 0 : diff);
     };
     vv.addEventListener("resize", update);
     vv.addEventListener("scroll", update);
