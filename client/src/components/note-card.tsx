@@ -94,48 +94,46 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
   return (
     <>
       <div className={`group relative bg-card p-6 rounded-2xl border border-border/50 hover:border-border hover:shadow-lg transition-all animate-fade-in-up opacity-0 ${staggerClass}`}>
-        <div className="flex justify-between items-center mb-4 gap-4">
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground font-medium min-w-0">
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800/30 shrink-0">
-                <Calendar className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-              </div>
-              <span className="whitespace-nowrap text-slate-600 dark:text-slate-400">{format(new Date(note.date), "MMMM d, yyyy")}</span>
+        <div className="flex justify-between items-center mb-2">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800/30 shrink-0">
+              <Calendar className="w-4 h-4 text-slate-500 dark:text-slate-400" />
             </div>
-            <div className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/20 border border-slate-200 dark:border-slate-700/30 px-2.5 py-1 rounded-lg w-fit">
-              <Activity className="w-3 h-3 shrink-0" />
-              <span className="whitespace-nowrap">{note.startTime || "??:??"} - {note.endTime || "??:??"}</span>
+            <span className="whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-400">{format(new Date(note.date), "MMMM d, yyyy")}</span>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground shrink-0">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40 rounded-xl">
+              <DropdownMenuItem onClick={() => onEdit(note)} className="cursor-pointer gap-2">
+                <Pencil className="h-4 w-4" /> Edit Session
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setShowDeleteAlert(true)} className="cursor-pointer gap-2 text-destructive focus:text-destructive">
+                <Trash2 className="h-4 w-4" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/20 border border-slate-200 dark:border-slate-700/30 px-2.5 py-1 rounded-lg w-fit">
+            <Activity className="w-3 h-3 shrink-0" />
+            <span className="whitespace-nowrap">{note.startTime || "??:??"} - {note.endTime || "??:??"}</span>
+          </div>
+          {note.sleepScore != null ? (
+            <div className="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/40 px-2.5 py-1 rounded-lg w-fit">
+              <span className="text-[10px] font-bold text-yellow-600 uppercase tracking-wider">Sleep</span>
+              <span className="text-xs font-mono font-bold text-yellow-700 dark:text-yellow-400">{note.sleepScore}/100</span>
             </div>
-            {note.sleepScore != null ? (
-              <div className="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/40 px-2.5 py-1 rounded-lg w-fit">
-                <span className="text-[10px] font-bold text-yellow-600 uppercase tracking-wider">Sleep</span>
-                <span className="text-xs font-mono font-bold text-yellow-700 dark:text-yellow-400">{note.sleepScore}/100</span>
-              </div>
-            ) : null}
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
-            {note.rating ? (
-              <div className="shrink-0 scale-90 sm:scale-100 origin-right">
-                <StarRating value={note.rating} onChange={() => {}} readonly />
-              </div>
-            ) : null}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground shrink-0">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 rounded-xl">
-                <DropdownMenuItem onClick={() => onEdit(note)} className="cursor-pointer gap-2">
-                  <Pencil className="h-4 w-4" /> Edit Session
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setShowDeleteAlert(true)} className="cursor-pointer gap-2 text-destructive focus:text-destructive">
-                  <Trash2 className="h-4 w-4" /> Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          ) : null}
+          {note.rating ? (
+            <div className="shrink-0 scale-90 sm:scale-100 origin-right">
+              <StarRating value={note.rating} onChange={() => {}} readonly />
+            </div>
+          ) : null}
         </div>
 
         <div className="space-y-4">
