@@ -625,7 +625,16 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     {showReps && (
                                       <div className="flex items-center border rounded-md">
                                         <button type="button" className="px-2" onClick={() => updateReps(group.indices, (item.reps || 1) - 1)}>-</button>
-                                        <span className="px-2 text-xs font-bold">{item.reps || 1}</span>
+                                        <input
+                                          type="number"
+                                          min="1"
+                                          value={item.reps || 1}
+                                          onChange={(e) => {
+                                            const val = parseInt(e.target.value);
+                                            if (!isNaN(val)) updateReps(group.indices, val);
+                                          }}
+                                          className="w-8 text-center text-xs font-bold bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
                                         <button type="button" className="px-2" onClick={() => updateReps(group.indices, (item.reps || 1) + 1)}>+</button>
                                       </div>
                                     )}
