@@ -54,13 +54,17 @@ export default function StatsPage() {
         currentGroupDD = 0;
         currentGroupReps = 1;
       } else if (item.id === -2) {
+        noteDD += currentGroupDD * currentGroupReps;
+        currentGroupDD = 0;
+        currentGroupReps = 1;
         const routine = routines?.find(r => r.id === item.routineId);
         if (routine) {
-          const routineDD = routine.skillIds.reduce((sum, sid) => {
-            const skill = allItems?.find(s => s.id === sid);
-            return sum + (skill?.difficulty || 0);
+          const skillIds = item.customSkillIds ?? routine.skillIds;
+          const count = item.attempt ?? skillIds.length;
+          noteDD += skillIds.slice(0, count).reduce((acc: number, sId: number) => {
+            const skill = allItems?.find(s => s.id === sId);
+            return acc + (skill?.difficulty || 0);
           }, 0);
-          noteDD += routineDD * (item.reps || 1);
         }
       } else {
         const skill = allItems?.find(s => s.id === item.id);
