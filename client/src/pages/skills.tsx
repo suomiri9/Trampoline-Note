@@ -164,16 +164,16 @@ export default function SkillsPage() {
 
         <TabsContent value="skills" className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="md:col-span-1">
-              <CardHeader>
-                <CardTitle className="flex justify-between items-center">
+            <Card className="md:col-span-1 h-fit">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="flex justify-between items-center text-lg">
                   {editingSkill ? "Edit Skill" : "Add New Skill"}
                   {editingSkill && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 pt-0">
                 <Form {...skillForm}>
-                  <form onSubmit={skillForm.handleSubmit(onSkillSubmit)} className="space-y-4">
+                  <form onSubmit={skillForm.handleSubmit(onSkillSubmit)} className="space-y-3">
                     <FormField control={skillForm.control} name="name" render={({ field }) => (
                       <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} placeholder="Back Tuck" /></FormControl><FormMessage /></FormItem>
                     )} />
@@ -219,16 +219,16 @@ export default function SkillsPage() {
 
         <TabsContent value="drills" className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="md:col-span-1">
-              <CardHeader>
-                <CardTitle className="flex justify-between items-center">
+            <Card className="md:col-span-1 h-fit">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="flex justify-between items-center text-lg">
                   {editingSkill ? "Edit Drill" : "Add New Drill"}
                   {editingSkill && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 pt-0">
                 <Form {...drillForm}>
-                  <form onSubmit={drillForm.handleSubmit(onDrillSubmit)} className="space-y-4">
+                  <form onSubmit={drillForm.handleSubmit(onDrillSubmit)} className="space-y-3">
                     <FormField control={drillForm.control} name="name" render={({ field }) => (
                       <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} placeholder="Tuck Jump" /></FormControl><FormMessage /></FormItem>
                     )} />
@@ -274,15 +274,15 @@ export default function SkillsPage() {
 
         <TabsContent value="connections" className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="md:col-span-1">
-              <CardHeader>
-                <CardTitle className="flex justify-between items-center">
+            <Card className="md:col-span-1 h-fit">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="flex justify-between items-center text-lg">
                   {editingSkill ? "Edit Connection" : "Add New Connection"}
                   {editingSkill && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
+              <CardContent className="p-4 pt-0">
+                <div className="space-y-3">
                   <div className="space-y-2">
                     <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Connection Name</label>
                     <Input value={connName} onChange={e => setConnName(e.target.value)} placeholder="e.g. Barani + Back Tuck" />
@@ -306,7 +306,7 @@ export default function SkillsPage() {
                     </Select>
                   </div>
 
-                  <div className="min-h-[100px] border rounded-lg p-2 bg-muted/30 flex flex-wrap gap-2 items-start">
+                  <div className="min-h-[80px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-2 items-start">
                     {connSkillIds.map((id, idx) => {
                       const s = skills?.find(sk => sk.id === id);
                       return (
