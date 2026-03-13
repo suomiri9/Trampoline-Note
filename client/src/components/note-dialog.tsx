@@ -76,7 +76,7 @@ function SortablePracticeGroup({ gId, isConnected, children }: { gId: string; is
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
-      className={cn("flex items-stretch border-b border-border/30 last:border-0", isConnected ? "border-l-[3px] border-primary bg-primary/5" : "border-l-[3px] border-transparent")}
+      className={cn("flex items-stretch border-b border-border/30 last:border-0", isConnected ? "border-l-[3px] border-l-red-400 bg-red-50/60 dark:bg-red-900/10" : "border-l-[3px] border-transparent")}
     >
       <button
         type="button"
