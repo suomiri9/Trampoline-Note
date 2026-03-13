@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, MouseSensor, TouchSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -80,7 +80,10 @@ export default function ScorePage() {
   const [customSkillIds, setCustomSkillIds] = useState<number[] | null>(null);
   const [customSkillIdsVol, setCustomSkillIdsVol] = useState<number[] | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<"set" | "vol" | null>(null);
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 5 } }));
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } })
+  );
 
   const { data: scores } = useQuery<Score[]>({ queryKey: ["/api/scores"] });
   const { data: routines } = useQuery<Routine[]>({ queryKey: ["/api/routines"] });
