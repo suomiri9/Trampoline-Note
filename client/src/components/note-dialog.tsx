@@ -587,17 +587,24 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               const idx = group.indices[iIdx];
                               if (item.id === -2) {
                                 const routine = routines?.find(r => r.id === item.routineId);
-                                const displaySkillIds = item.customSkillIds ?? routine?.skillIds ?? [];
+                                const baseSkillIds = routine?.skillIds ?? [];
+                                const displaySkillIds = item.customSkillIds ?? baseSkillIds;
                                 return (
                                   <div
                                     key={idx}
-                                    className="w-full px-3 py-2 text-sm flex justify-between items-center hover:bg-secondary/20 active:bg-secondary/40 transition-colors cursor-pointer"
+                                    className="w-full px-3 py-2 text-sm flex justify-between items-center hover:bg-secondary/20 active:bg-secondary/40 transition-colors cursor-pointer bg-primary/5"
                                     onClick={() => setEditingRoutineIdx(idx)}
                                   >
-                                    <span className="font-bold text-primary">
-                                      {item.routineName}
-                                      {displaySkillIds.length !== 10 && <span className="font-normal text-muted-foreground text-xs ml-1.5">{displaySkillIds.length} skills</span>}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none">ROUTINE</Badge>
+                                      <span className="font-bold text-primary">{item.routineName}</span>
+                                      {displaySkillIds.length < 10 && (
+                                        <span className="text-[11px] font-mono text-muted-foreground">attempt {displaySkillIds.length}/10</span>
+                                      )}
+                                      {displaySkillIds.length > 10 && (
+                                        <span className="text-[11px] font-mono text-muted-foreground">{displaySkillIds.length} skills</span>
+                                      )}
+                                    </div>
                                     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                                       <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /></Button>
                                     </div>
@@ -607,17 +614,26 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               const skill = allItems?.find(s => s.id === item.id);
                               const showReps = !isConnected || iIdx === 0;
                               return (
-                                <div key={idx} className={cn("px-3 py-2 flex justify-between items-center", iIdx > 0 && isConnected ? "border-t border-border/20" : "")}>
+                                <div key={idx} className={cn(
+                                  "px-3 py-2 flex justify-between items-center",
+                                  iIdx > 0 && isConnected ? "border-t border-border/20" : "",
+                                  isConnected ? "bg-red-50/60 dark:bg-red-900/10" : ""
+                                )}>
                                   <div className="flex gap-2 items-center min-w-0">
                                     {isConnected && (
-                                      <span className={cn("text-[9px] font-black uppercase tracking-wider shrink-0", iIdx === 0 ? "text-primary" : "text-primary/50 pl-1")}>
+                                      <span className={cn("text-[9px] font-black uppercase tracking-wider shrink-0", iIdx === 0 ? "text-red-500" : "text-red-400/50 pl-1")}>
                                         {iIdx === 0 ? "C" : "└"}
                                       </span>
                                     )}
                                     <Badge variant="outline" className={cn(
-                                      isConnected ? "border-primary/40 text-primary" :
-                                      skill?.isDrill === 1 ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400" :
-                                      skill?.isDrill === 2 ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400" : ""
+                                      "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
+                                      isConnected
+                                        ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
+                                        : skill?.isDrill === 1
+                                        ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400"
+                                        : skill?.isDrill === 2
+                                        ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
+                                        : "border-border/60 text-muted-foreground"
                                     )}>{skill?.code}</Badge>
                                     <span className="text-sm truncate">{skill?.name}</span>
                                   </div>
