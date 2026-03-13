@@ -214,7 +214,7 @@ export default function StatsPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 rounded-lg"
+                    className="h-9 w-9 rounded-lg"
                     onClick={() => setWeekOffset(w => w - 1)}
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -225,7 +225,7 @@ export default function StatsPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 rounded-lg"
+                    className="h-9 w-9 rounded-lg"
                     disabled={isCurrentWeek}
                     onClick={() => setWeekOffset(w => w + 1)}
                   >

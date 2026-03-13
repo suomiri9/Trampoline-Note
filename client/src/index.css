@@ -81,6 +81,10 @@
   overflow-y: auto;
 }
 
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Custom subtle animations for clean minimal feel */
 @keyframes fade-in-up {
   from {

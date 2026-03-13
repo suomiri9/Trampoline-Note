@@ -32,8 +32,8 @@ function SortableScoreSkill({ uid, code, name, isDrill, onRemove }: { uid: strin
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: uid });
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      className="flex items-center gap-1 py-0.5 touch-none">
-      <button type="button" className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1" {...attributes} {...listeners}>
+      className="flex items-center gap-1 py-0.5">
+      <button type="button" className="touch-none cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1" {...attributes} {...listeners}>
         <GripVertical className="h-4 w-4" />
       </button>
       <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -45,8 +45,8 @@ function SortableScoreSkill({ uid, code, name, isDrill, onRemove }: { uid: strin
         )}>{code}</Badge>
         <span className="text-xs truncate">{name}</span>
       </div>
-      <button type="button" onClick={onRemove} className="h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-destructive shrink-0">
-        <X className="h-3 w-3" />
+      <button type="button" onClick={onRemove} className="h-9 w-9 flex items-center justify-center text-muted-foreground hover:text-destructive shrink-0">
+        <X className="h-4 w-4" />
       </button>
     </div>
   );
@@ -84,7 +84,7 @@ export default function ScorePage() {
   const [editingRoutine, setEditingRoutine] = useState<"set" | "vol" | null>(null);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } })
+    useSensor(TouchSensor, { activationConstraint: { distance: 5 } })
   );
 
   const { data: scores } = useQuery<Score[]>({ queryKey: ["/api/scores"] });
@@ -328,7 +328,7 @@ export default function ScorePage() {
                   </div>
                 )}
 
-                <div className="space-y-4 relative">
+                <div className="space-y-4 relative min-h-[280px]">
                   <h3 className="font-bold text-sm uppercase tracking-wider text-primary/60">
                     {form.watch("category") === "both" ? "Set Score" : "Score Details"}
                   </h3>
@@ -422,7 +422,7 @@ export default function ScorePage() {
                 </div>
 
                 {form.watch("category") === "both" && (
-                  <div className="space-y-4 pt-4 border-t border-primary/10 relative">
+                  <div className="space-y-4 pt-4 border-t border-primary/10 relative min-h-[280px]">
                     <h3 className="font-bold text-sm uppercase tracking-wider text-primary/60">Vol Score</h3>
                     <div className="flex gap-2 items-end">
                       <FormField control={form.control} name="routineIdVol" render={({ field }) => (

@@ -28,22 +28,29 @@ function Navigation() {
     const nav = navRef.current;
     if (!nav) return;
     const vv = window.visualViewport;
-    if (!vv) return;
+    let rafId = 0;
 
     const pin = () => {
-      const bottom = window.innerHeight - (nav.offsetHeight + 16);
-      nav.style.position = 'absolute';
-      nav.style.top = `${window.scrollY + bottom}px`;
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const bottom = window.innerHeight - (nav.offsetHeight + 16);
+        nav.style.top = `${window.scrollY + bottom}px`;
+      });
     };
 
     pin();
-    window.addEventListener("scroll", pin);
-    vv.addEventListener("resize", pin);
-    vv.addEventListener("scroll", pin);
+    window.addEventListener("scroll", pin, { passive: true });
+    window.addEventListener("resize", pin);
+    if (vv) {
+      vv.addEventListener("scroll", pin);
+    }
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener("scroll", pin);
-      vv.removeEventListener("resize", pin);
-      vv.removeEventListener("scroll", pin);
+      window.removeEventListener("resize", pin);
+      if (vv) {
+        vv.removeEventListener("scroll", pin);
+      }
     };
   }, []);
 
@@ -66,7 +73,7 @@ function Navigation() {
   ];
 
   return (
-    <nav ref={navRef} className="absolute -translate-x-1/2 bg-background/80 backdrop-blur-md border border-border px-3 py-2 rounded-2xl shadow-2xl flex items-center gap-1 z-50" style={{ left: '50%' }}>
+    <nav ref={navRef} className="absolute -translate-x-1/2 bg-background/80 backdrop-blur-md border border-border px-3 py-2 pb-safe rounded-2xl shadow-2xl flex items-center gap-1 z-40" style={{ left: '50%' }}>
       {navItems.map((item) => (
         <Link key={item.href} href={item.href}>
           <div className={cn(

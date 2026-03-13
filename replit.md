@@ -40,6 +40,17 @@ All API routes are protected with `isAuthenticated` middleware. Data is filtered
 - `client/src/App.tsx` — Router + auth gate + navigation
 - `client/src/hooks/use-auth.ts` — Auth state hook
 
+## Mobile / Touch Handling
+
+- Nav bar: `position: absolute` with JS-calculated `top` from `window.scrollY + window.innerHeight`, `z-40` (below dialog z-50), `pb-safe` for safe-area-inset
+- Visual viewport resize listener removed from nav to prevent iPad keyboard toolbar jump
+- Drag-and-drop: `touch-none` only on grip handle buttons, not entire rows; distance-based activation (5px)
+- iOS zoom prevention: `font-size: 16px !important` on inputs via `@supports (-webkit-touch-callout: none)`
+- Routine builder: `max-h-[50vh]` (viewport-relative, not fixed px)
+- Skills tables: `overflow-x-auto` for narrow screens
+- Score page skill editor containers: `min-h-[280px]` so overlay has room
+- Calendar nav buttons and stats week nav: `h-9 w-9` (44px touch target)
+
 ## Running
 
 Workflow "Start application" runs `npm run dev` which starts Express + Vite on port 5000.

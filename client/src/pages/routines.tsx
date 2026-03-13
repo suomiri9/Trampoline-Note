@@ -92,7 +92,7 @@ export default function RoutinesPage() {
               value={name} 
               onChange={e => setName(e.target.value)} 
             />
-            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-2">
               {selectedSkillIds.map((id, index) => {
                 const selectedSkill = skills?.find(s => s.id === id);
                 return (
