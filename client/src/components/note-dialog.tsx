@@ -518,44 +518,48 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     };
 
                     return (
-                      <div className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 flex flex-col p-4 rounded-xl">
-                        <div className="flex justify-between items-center mb-3">
+                      <div className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 flex flex-col p-4 rounded-xl overflow-hidden">
+                        <div className="flex justify-between items-center mb-3 shrink-0">
                           <span className="font-bold text-sm">{rItem.routineName}</span>
                           <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setEditingRoutineIdx(null)}>Done</Button>
                         </div>
-                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                          <SortableContext items={displaySkillIds.map((_, i) => `skill-${i}`)} strategy={verticalListSortingStrategy}>
-                            <div className="flex-1 overflow-y-auto space-y-0.5 mb-3">
-                              {displaySkillIds.map((sId, sIdx) => {
-                                const sk = allItems?.find(s => s.id === sId);
-                                return (
-                                  <SortableRoutineSkill
-                                    key={`skill-${sIdx}`}
-                                    uid={`skill-${sIdx}`}
-                                    code={sk?.code}
-                                    name={sk?.name}
-                                    onRemove={() => removeSkillFromRoutine(sIdx)}
-                                  />
-                                );
-                              })}
-                            </div>
-                          </SortableContext>
-                        </DndContext>
-                        <Select key={displaySkillIds.length} onValueChange={addSkillToRoutine}>
-                          <SelectTrigger className="h-9 text-xs rounded-xl border-primary/20 bg-background">
-                            <SelectValue placeholder="Add skill..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {allItems?.sort((a, b) => b.difficulty - a.difficulty).map(s => (
-                              <SelectItem key={s.id} value={s.id.toString()}>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="font-mono text-[10px]">{s.code}</Badge>
-                                  <span>{s.name}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="flex-1 min-h-0 overflow-y-auto mb-3">
+                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                            <SortableContext items={displaySkillIds.map((_, i) => `skill-${i}`)} strategy={verticalListSortingStrategy}>
+                              <div className="space-y-0.5">
+                                {displaySkillIds.map((sId, sIdx) => {
+                                  const sk = allItems?.find(s => s.id === sId);
+                                  return (
+                                    <SortableRoutineSkill
+                                      key={`skill-${sIdx}`}
+                                      uid={`skill-${sIdx}`}
+                                      code={sk?.code}
+                                      name={sk?.name}
+                                      onRemove={() => removeSkillFromRoutine(sIdx)}
+                                    />
+                                  );
+                                })}
+                              </div>
+                            </SortableContext>
+                          </DndContext>
+                        </div>
+                        <div className="shrink-0">
+                          <Select key={displaySkillIds.length} onValueChange={addSkillToRoutine}>
+                            <SelectTrigger className="h-9 text-xs rounded-xl border-primary/20 bg-background">
+                              <SelectValue placeholder="Add skill..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allItems?.sort((a, b) => b.difficulty - a.difficulty).map(s => (
+                                <SelectItem key={s.id} value={s.id.toString()}>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="font-mono text-[10px]">{s.code}</Badge>
+                                    <span>{s.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     );
                   })()}
