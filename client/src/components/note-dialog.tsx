@@ -469,7 +469,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </Select>
                 )}
 
-                <div className={cn("min-h-[220px] bg-secondary/10 rounded-xl border border-border/50 overflow-hidden relative", editingRoutineIdx !== null ? "min-h-[60dvh]" : "")}>
+                <div className="min-h-[220px] bg-secondary/10 rounded-xl border border-border/50 overflow-hidden relative">
                   <div className="bg-secondary/20 px-3 py-1.5 border-b border-border/50 flex justify-between items-center">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Practice List</span>
                     <div className="flex items-center gap-2">
@@ -477,92 +477,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       <span className="text-xs font-mono font-bold text-primary">{totalDifficulty.toFixed(1)}</span>
                     </div>
                   </div>
-
-                  {editingRoutineIdx !== null && selectedSkills[editingRoutineIdx]?.id === -2 && (() => {
-                    const rItem = selectedSkills[editingRoutineIdx];
-                    const routine = routines?.find(r => r.id === rItem.routineId);
-                    const displaySkillIds = rItem.customSkillIds ?? routine?.skillIds ?? [];
-
-                    const handleDragEnd = (event: DragEndEvent) => {
-                      const { active, over } = event;
-                      if (!over || active.id === over.id) return;
-                      const oldIdx = displaySkillIds.findIndex((_, i) => `skill-${i}` === active.id);
-                      const newIdx = displaySkillIds.findIndex((_, i) => `skill-${i}` === over.id);
-                      const newIds = arrayMove(displaySkillIds, oldIdx, newIdx);
-                      setSelectedSkills(prev => {
-                        const ns = [...prev];
-                        ns[editingRoutineIdx] = { ...ns[editingRoutineIdx], customSkillIds: newIds };
-                        form.setValue('skills', JSON.stringify(ns));
-                        return ns;
-                      });
-                    };
-
-                    const removeSkillFromRoutine = (sIdx: number) => {
-                      const newIds = displaySkillIds.filter((_, i) => i !== sIdx);
-                      setSelectedSkills(prev => {
-                        const ns = [...prev];
-                        ns[editingRoutineIdx] = { ...ns[editingRoutineIdx], customSkillIds: newIds };
-                        form.setValue('skills', JSON.stringify(ns));
-                        return ns;
-                      });
-                    };
-
-                    const addSkillToRoutine = (val: string) => {
-                      const newIds = [...displaySkillIds, parseInt(val)];
-                      setSelectedSkills(prev => {
-                        const ns = [...prev];
-                        ns[editingRoutineIdx] = { ...ns[editingRoutineIdx], customSkillIds: newIds };
-                        form.setValue('skills', JSON.stringify(ns));
-                        return ns;
-                      });
-                    };
-
-                    return (
-                      <div className="absolute inset-0 bg-background z-20 flex flex-col p-4 rounded-xl overflow-hidden">
-                        <div className="flex justify-between items-center mb-3 shrink-0">
-                          <span className="font-bold text-sm">{rItem.routineName}</span>
-                          <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setEditingRoutineIdx(null)}>Done</Button>
-                        </div>
-                        <div className="flex-1 min-h-0 overflow-y-auto mb-3">
-                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                            <SortableContext items={displaySkillIds.map((_, i) => `skill-${i}`)} strategy={verticalListSortingStrategy}>
-                              <div className="space-y-0.5">
-                                {displaySkillIds.map((sId, sIdx) => {
-                                  const sk = allItems?.find(s => s.id === sId);
-                                  return (
-                                    <SortableRoutineSkill
-                                      key={`skill-${sIdx}`}
-                                      uid={`skill-${sIdx}`}
-                                      code={sk?.code}
-                                      name={sk?.name}
-                                      onRemove={() => removeSkillFromRoutine(sIdx)}
-                                    />
-                                  );
-                                })}
-                              </div>
-                            </SortableContext>
-                          </DndContext>
-                        </div>
-                        <div className="shrink-0">
-                          <Select key={displaySkillIds.length} onValueChange={addSkillToRoutine}>
-                            <SelectTrigger className="h-9 text-xs rounded-xl border-primary/20 bg-background">
-                              <SelectValue placeholder="Add skill..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {allItems?.sort((a, b) => b.difficulty - a.difficulty).map(s => (
-                                <SelectItem key={s.id} value={s.id.toString()}>
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="font-mono text-[10px]">{s.code}</Badge>
-                                    <span>{s.name}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    );
-                  })()}
 
                   <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handlePracticeListDragEnd}>
                   <div className="max-h-[300px] overflow-scroll-touch">
@@ -683,6 +597,92 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
             </form>
           </Form>
         </div>
+
+        {editingRoutineIdx !== null && selectedSkills[editingRoutineIdx]?.id === -2 && (() => {
+          const rItem = selectedSkills[editingRoutineIdx];
+          const routine = routines?.find(r => r.id === rItem.routineId);
+          const displaySkillIds = rItem.customSkillIds ?? routine?.skillIds ?? [];
+
+          const handleRoutineDragEnd = (event: DragEndEvent) => {
+            const { active, over } = event;
+            if (!over || active.id === over.id) return;
+            const oldIdx = displaySkillIds.findIndex((_, i) => `skill-${i}` === active.id);
+            const newIdx = displaySkillIds.findIndex((_, i) => `skill-${i}` === over.id);
+            const newIds = arrayMove(displaySkillIds, oldIdx, newIdx);
+            setSelectedSkills(prev => {
+              const ns = [...prev];
+              ns[editingRoutineIdx] = { ...ns[editingRoutineIdx], customSkillIds: newIds };
+              form.setValue('skills', JSON.stringify(ns));
+              return ns;
+            });
+          };
+
+          const removeSkillFromRoutine = (sIdx: number) => {
+            const newIds = displaySkillIds.filter((_, i) => i !== sIdx);
+            setSelectedSkills(prev => {
+              const ns = [...prev];
+              ns[editingRoutineIdx] = { ...ns[editingRoutineIdx], customSkillIds: newIds };
+              form.setValue('skills', JSON.stringify(ns));
+              return ns;
+            });
+          };
+
+          const addSkillToRoutine = (val: string) => {
+            const newIds = [...displaySkillIds, parseInt(val)];
+            setSelectedSkills(prev => {
+              const ns = [...prev];
+              ns[editingRoutineIdx] = { ...ns[editingRoutineIdx], customSkillIds: newIds };
+              form.setValue('skills', JSON.stringify(ns));
+              return ns;
+            });
+          };
+
+          return (
+            <div className="absolute inset-0 bg-background z-30 flex flex-col rounded-[24px] overflow-hidden">
+              <div className="flex justify-between items-center p-4 pb-2 shrink-0">
+                <span className="font-bold text-base">{rItem.routineName}</span>
+                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs rounded-xl" onClick={() => setEditingRoutineIdx(null)}>Done</Button>
+              </div>
+              <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-2">
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleRoutineDragEnd}>
+                  <SortableContext items={displaySkillIds.map((_, i) => `skill-${i}`)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-0.5">
+                      {displaySkillIds.map((sId, sIdx) => {
+                        const sk = allItems?.find(s => s.id === sId);
+                        return (
+                          <SortableRoutineSkill
+                            key={`skill-${sIdx}`}
+                            uid={`skill-${sIdx}`}
+                            code={sk?.code}
+                            name={sk?.name}
+                            onRemove={() => removeSkillFromRoutine(sIdx)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              </div>
+              <div className="shrink-0 p-4 pt-2">
+                <Select key={displaySkillIds.length} onValueChange={addSkillToRoutine}>
+                  <SelectTrigger className="h-9 text-xs rounded-xl border-border bg-background">
+                    <SelectValue placeholder="Add skill..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allItems?.sort((a, b) => b.difficulty - a.difficulty).map(s => (
+                      <SelectItem key={s.id} value={s.id.toString()}>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="font-mono text-[10px]">{s.code}</Badge>
+                          <span>{s.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          );
+        })()}
       </DialogContent>
     </Dialog>
 
