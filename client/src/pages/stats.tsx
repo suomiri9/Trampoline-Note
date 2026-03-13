@@ -177,8 +177,8 @@ export default function StatsPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="flex items-center gap-3 mb-8">
-        <div className="p-3 bg-primary/10 rounded-2xl">
-          <TrendingUp className="w-6 h-6 text-primary" />
+        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl">
+          <TrendingUp className="w-6 h-6 text-emerald-500" />
         </div>
         <div>
           <h1 className="text-3xl font-display font-bold">Progress Analytics</h1>
@@ -284,19 +284,19 @@ export default function StatsPage() {
         </Card>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Card className="rounded-2xl border-border/50 shadow-lg shadow-black/5">
+          <Card className="rounded-2xl border-blue-100 dark:border-blue-900/30 shadow-lg shadow-black/5 bg-gradient-to-br from-blue-50/60 to-background dark:from-blue-950/20">
             <CardContent className="pt-6">
               <div className="text-sm font-medium text-muted-foreground mb-1">Total DD</div>
-              <div className="text-3xl font-display font-bold text-primary">
+              <div className="text-3xl font-display font-bold text-blue-600 dark:text-blue-400">
                 {totalDDInRange.toFixed(1)}
               </div>
               <div className="text-xs text-muted-foreground mt-1">{periodLabel}</div>
             </CardContent>
           </Card>
-          <Card className="rounded-2xl border-border/50 shadow-lg shadow-black/5">
+          <Card className="rounded-2xl border-emerald-100 dark:border-emerald-900/30 shadow-lg shadow-black/5 bg-gradient-to-br from-emerald-50/60 to-background dark:from-emerald-950/20">
             <CardContent className="pt-6">
               <div className="text-sm font-medium text-muted-foreground mb-1">Sessions</div>
-              <div className="text-3xl font-display font-bold text-primary">
+              <div className="text-3xl font-display font-bold text-emerald-600 dark:text-emerald-400">
                 {totalSessionsInRange}
               </div>
               <div className="text-xs text-muted-foreground mt-1">{periodLabel}</div>

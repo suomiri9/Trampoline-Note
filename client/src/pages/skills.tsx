@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Pencil, X } from "lucide-react";
+import { Trash2, Plus, Pencil, X, Target } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertSkillSchema, type Skill } from "@shared/schema";
@@ -141,6 +141,15 @@ export default function SkillsPage() {
 
   return (
     <div className="container mx-auto py-8 px-4">
+      <div className="flex items-center gap-3 mb-8">
+        <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-2xl shrink-0">
+          <Target className="w-6 h-6 text-red-500" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-display font-bold">Skills</h1>
+          <p className="text-muted-foreground text-sm">Manage your skills, drills, and frequent connections.</p>
+        </div>
+      </div>
       <Tabs defaultValue="skills" className="space-y-8" onValueChange={() => cancelEditing()}>
         <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="skills">Skills</TabsTrigger>

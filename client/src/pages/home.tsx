@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, BookOpen, Loader2, Activity } from "lucide-react";
+import { Plus, BookOpen, Loader2, Activity, LayoutDashboard } from "lucide-react";
 import { useNotes } from "@/hooks/use-notes";
 import { NoteCard } from "@/components/note-card";
 import { NoteDialog } from "@/components/note-dialog";
@@ -32,13 +32,18 @@ export default function Home() {
         
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-          <div className="space-y-2">
-            <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground tracking-tight">
-              Training Log
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Track your trampoline sessions, skills, and progress.
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-2xl shrink-0">
+              <LayoutDashboard className="w-7 h-7 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="space-y-1">
+              <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground tracking-tight">
+                Training Log
+              </h1>
+              <p className="text-lg text-muted-foreground">
+                Track your trampoline sessions, skills, and progress.
+              </p>
+            </div>
           </div>
           
           <div className="flex gap-4">
@@ -66,8 +71,8 @@ export default function Home() {
             </div>
           ) : sortedNotes.length === 0 ? (
             <div className="py-24 px-6 flex flex-col items-center justify-center text-center border-2 border-dashed border-border/60 rounded-[2rem] bg-card/50">
-              <div className="w-16 h-16 mb-6 rounded-full bg-secondary flex items-center justify-center text-muted-foreground">
-                <BookOpen className="w-8 h-8" />
+              <div className="w-16 h-16 mb-6 rounded-full bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
+                <BookOpen className="w-8 h-8 text-blue-500" />
               </div>
               <h3 className="text-2xl font-display font-semibold mb-2">No sessions logged yet</h3>
               <p className="text-muted-foreground max-w-md mb-8">

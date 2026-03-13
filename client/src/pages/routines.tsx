@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, GripVertical, Pencil, X } from "lucide-react";
+import { Trash2, Plus, GripVertical, Pencil, X, Layers } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { type Routine } from "@shared/schema";
 import { cn } from "@/lib/utils";
@@ -67,6 +67,15 @@ export default function RoutinesPage() {
 
   return (
     <div className="container mx-auto py-8 px-4">
+      <div className="flex items-center gap-3 mb-8">
+        <div className="p-3 bg-violet-50 dark:bg-violet-950/30 rounded-2xl shrink-0">
+          <Layers className="w-6 h-6 text-violet-500" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-display font-bold">Routines</h1>
+          <p className="text-muted-foreground text-sm">Build and manage your competition routines.</p>
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <Card className="md:col-span-1">
           <CardHeader>

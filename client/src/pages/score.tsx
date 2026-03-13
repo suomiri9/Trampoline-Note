@@ -232,9 +232,14 @@ export default function ScorePage() {
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
       <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-display font-bold">Scoring</h1>
-          <p className="text-muted-foreground">Track your routine scores and competition results.</p>
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-2xl shrink-0">
+            <Trophy className="w-6 h-6 text-amber-500" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-display font-bold">Scoring</h1>
+            <p className="text-muted-foreground text-sm">Track your routine scores and competition results.</p>
+          </div>
         </div>
         <Button onClick={() => { setIsAdding(v => !v); setEditingScore(null); setCustomSkillIds(null); setCustomSkillIdsVol(null); form.reset({ ...scoreDefaults, date: new Date().toISOString().split('T')[0] }); }} className="rounded-xl">
           {isAdding ? "Cancel" : <><Plus className="w-4 h-4 mr-2" /> New Score</>}
@@ -595,7 +600,7 @@ export default function ScorePage() {
         })}
         {scores?.length === 0 && (
           <div className="text-center py-20 bg-secondary/5 rounded-3xl border-2 border-dashed border-border/50">
-            <Trophy className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+            <Trophy className="w-12 h-12 text-amber-300 dark:text-amber-600 mx-auto mb-4" />
             <p className="text-muted-foreground font-medium">No scores recorded yet.</p>
           </div>
         )}
