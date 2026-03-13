@@ -431,7 +431,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     size="sm" 
                     className={cn(
                       "h-7 px-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all",
-                      isConnectMode ? "bg-primary text-primary-foreground shadow-md" : "border-primary/20 text-primary hover:bg-primary/5"
+                      isConnectMode ? "bg-red-500 text-white shadow-md hover:bg-red-600" : "border-red-300 text-red-500 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
                     )}
                     onClick={() => setIsConnectMode(!isConnectMode)}
                   >
