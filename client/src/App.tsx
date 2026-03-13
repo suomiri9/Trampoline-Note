@@ -14,7 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Target, Layers, BarChart3, Trophy, LogOut, Loader2, UserCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
 
@@ -123,18 +123,14 @@ function Navigation() {
         </Popover>
       )}
 
-      <AlertDialog open={showSignOutAlert} onOpenChange={setShowSignOutAlert}>
-        <AlertDialogContent className="rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Sign out?</AlertDialogTitle>
-            <AlertDialogDescription>Are you sure you want to sign out of your account?</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => logout()} className="rounded-xl bg-destructive text-destructive-foreground">Sign out</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={showSignOutAlert}
+        onOpenChange={setShowSignOutAlert}
+        title="Sign out?"
+        description="Are you sure you want to sign out of your account?"
+        onConfirm={() => logout()}
+        confirmLabel="Sign out"
+      />
     </nav>
   );
 }

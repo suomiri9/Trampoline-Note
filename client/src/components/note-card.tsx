@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { Calendar, MoreVertical, Pencil, Trash2, Activity } from "lucide-react";
 import { type Note } from "@shared/schema";
+import { parseNoteSkills, calculateTotalDD } from "@/lib/training-utils";
 import { StarRating } from "./star-rating";
 import { 
   DropdownMenu, 
@@ -15,16 +16,7 @@ import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 
@@ -49,49 +41,8 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
     });
   };
 
-  const skillsData: { id: number; reps?: number }[] = (() => {
-    try {
-      const parsed = note.skills ? JSON.parse(note.skills) : [];
-      if (Array.isArray(parsed)) return parsed;
-      // Migration for old comma-separated string
-      return note.skills ? note.skills.split(',').map(s => ({ id: parseInt(s) })) : [];
-    } catch (e) {
-      return note.skills ? note.skills.split(',').map(s => ({ id: parseInt(s) })) : [];
-    }
-  })();
-  
-  const totalDifficulty = (() => {
-    let total = 0;
-    let currentGroupDD = 0;
-    let currentGroupReps = 1;
-
-    skillsData.forEach((item: any) => {
-      if (item.id === -1) {
-        total += currentGroupDD * currentGroupReps;
-        currentGroupDD = 0;
-        currentGroupReps = 1;
-      } else if (item.id === -2) {
-        total += currentGroupDD * currentGroupReps;
-        currentGroupDD = 0;
-        currentGroupReps = 1;
-        const routine = routines?.find(r => r.id === (item as any).routineId);
-        if (routine) {
-          const skillIds = (item as any).customSkillIds ?? routine.skillIds;
-          const count = (item as any).attempt ?? skillIds.length;
-          total += skillIds.slice(0, count).reduce((acc: number, sId: number) => {
-            const skill = allItems?.find(s => s.id === sId);
-            return acc + (skill?.difficulty || 0);
-          }, 0);
-        }
-      } else {
-        const skill = allItems?.find(s => s.id === item.id);
-        currentGroupDD += (skill?.difficulty || 0);
-        currentGroupReps = item.reps || 1;
-      }
-    });
-    total += currentGroupDD * currentGroupReps;
-    return total;
-  })();
+  const skillsData = parseNoteSkills(note.skills);
+  const totalDifficulty = calculateTotalDD(skillsData, allItems, routines);
 
   const staggerClass = `stagger-${Math.min(index + 1, 5)}`;
 
@@ -253,12 +204,14 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
         </div>
       </div>
 
-      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
-        <AlertDialogContent className="rounded-2xl">
-          <AlertDialogHeader><AlertDialogTitle>Delete Training Session?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="rounded-xl bg-destructive text-destructive-foreground">Delete</AlertDialogAction></AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={showDeleteAlert}
+        onOpenChange={setShowDeleteAlert}
+        title="Delete Training Session?"
+        description="This action cannot be undone."
+        onConfirm={handleDelete}
+        confirmLabel="Delete"
+      />
     </>
   );
 }

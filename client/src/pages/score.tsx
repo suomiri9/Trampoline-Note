@@ -4,6 +4,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertScoreSchema, type Score, type Routine, type Skill } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { calcDDFromSkillIds } from "@/lib/training-utils";
+
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
@@ -11,46 +16,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
-import { Trash2, Plus, Trophy, CalendarIcon, Pencil, GripVertical, X } from "lucide-react";
+import { Trash2, Plus, Trophy, CalendarIcon, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { DndContext, MouseSensor, TouchSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-
-function calcDDFromIds(skillIds: number[], skills: Skill[]) {
-  return skillIds.reduce((acc, sId) => {
-    const sk = skills.find(s => s.id === sId);
-    return acc + (sk?.difficulty || 0);
-  }, 0);
-}
-
-function SortableScoreSkill({ uid, code, name, isDrill, onRemove }: { uid: string; code?: string; name?: string; isDrill?: number; onRemove: () => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: uid });
-  return (
-    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      className="flex items-center gap-1 py-0.5">
-      <button type="button" className="touch-none cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1" {...attributes} {...listeners}>
-        <GripVertical className="h-4 w-4" />
-      </button>
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <Badge variant="outline" className={cn(
-          "font-mono text-[10px] shrink-0",
-          isDrill === 1 ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400" :
-          isDrill === 2 ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400" :
-          "border-primary/30 text-primary"
-        )}>{code}</Badge>
-        <span className="text-xs truncate">{name}</span>
-      </div>
-      <button type="button" onClick={onRemove} className="h-9 w-9 flex items-center justify-center text-muted-foreground hover:text-destructive shrink-0">
-        <X className="h-4 w-4" />
-      </button>
-    </div>
-  );
-}
 
 const scoreDefaults = {
   date: new Date().toISOString().split('T')[0],
@@ -82,10 +52,7 @@ export default function ScorePage() {
   const [customSkillIds, setCustomSkillIds] = useState<number[] | null>(null);
   const [customSkillIdsVol, setCustomSkillIdsVol] = useState<number[] | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<"set" | "vol" | null>(null);
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { distance: 5 } })
-  );
+
 
   const { data: scores } = useQuery<Score[]>({ queryKey: ["/api/scores"] });
   const { data: routines } = useQuery<Routine[]>({ queryKey: ["/api/routines"] });
@@ -225,13 +192,13 @@ export default function ScorePage() {
   useEffect(() => {
     if (!customSkillIds || !allSkills) return;
     const cat = form.getValues("category");
-    const d = (cat === "set" || cat === "both") ? 0 : Number(calcDDFromIds(customSkillIds, allSkills).toFixed(1));
+    const d = (cat === "set" || cat === "both") ? 0 : Number(calcDDFromSkillIds(customSkillIds, allSkills).toFixed(1));
     form.setValue("difficulty", d);
   }, [customSkillIds, allSkills]);
 
   useEffect(() => {
     if (!customSkillIdsVol || !allSkills) return;
-    form.setValue("difficultyVol", Number(calcDDFromIds(customSkillIdsVol, allSkills).toFixed(1)));
+    form.setValue("difficultyVol", Number(calcDDFromSkillIds(customSkillIdsVol, allSkills).toFixed(1)));
   }, [customSkillIdsVol, allSkills]);
 
   return (
@@ -353,55 +320,19 @@ export default function ScorePage() {
                       </Button>
                     )}
                   </div>
-                  {editingRoutine === "set" && customSkillIds && allSkills && (() => {
-                    const uids = customSkillIds.map((id, i) => `skill-${id}-${i}`);
-                    return (
-                      <div className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 flex flex-col rounded-xl shadow-lg shadow-black/5 p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="font-semibold text-sm">Edit Skills</span>
-                          <button type="button" onClick={() => setEditingRoutine(null)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto min-h-0">
-                          <DndContext sensors={sensors} collisionDetection={closestCenter}
-                            onDragEnd={(event: DragEndEvent) => {
-                              const { active, over } = event;
-                              if (over && active.id !== over.id) {
-                                const oldIdx = uids.indexOf(active.id as string);
-                                const newIdx = uids.indexOf(over.id as string);
-                                setCustomSkillIds(prev => prev ? arrayMove(prev, oldIdx, newIdx) : prev);
-                              }
-                            }}>
-                            <SortableContext items={uids} strategy={verticalListSortingStrategy}>
-                              {customSkillIds.map((sid, i) => {
-                                const sk = allSkills.find(s => s.id === sid);
-                                return (
-                                  <SortableScoreSkill key={uids[i]} uid={uids[i]}
-                                    code={sk?.code} name={sk?.name} isDrill={sk?.isDrill}
-                                    onRemove={() => setCustomSkillIds(prev => prev ? prev.filter((_, idx) => idx !== i) : prev)} />
-                                );
-                              })}
-                            </SortableContext>
-                          </DndContext>
-                        </div>
-                        <Select key={customSkillIds.length} onValueChange={(val) => setCustomSkillIds(prev => [...(prev || []), parseInt(val)])}>
-                          <SelectTrigger className="h-9 text-xs rounded-xl border-primary/20 bg-background mt-2">
-                            <SelectValue placeholder="Add skill..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {allSkills?.filter(s => s.isDrill !== 1).sort((a, b) => b.difficulty - a.difficulty).map(s => (
-                              <SelectItem key={s.id} value={s.id.toString()}>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className={cn("font-mono text-[10px]", s.isDrill === 2 ? "border-red-300 text-red-500" : "")}>{s.code}</Badge>
-                                  <span className="text-xs">{s.name}</span>
-                                  {s.isDrill === 2 && <span className="text-[10px] text-red-500 font-medium">(FC)</span>}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    );
-                  })()}
+                  {editingRoutine === "set" && customSkillIds && allSkills && (
+                    <SkillEditorOverlay
+                      title="Edit Skills"
+                      skillIds={customSkillIds}
+                      allSkills={allSkills}
+                      onSkillIdsChange={setCustomSkillIds}
+                      onClose={() => setEditingRoutine(null)}
+                      filterSkills={(s) => s.isDrill !== 1}
+                      uidPrefix="skill"
+                      closeVariant="icon"
+                      className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 rounded-xl shadow-lg shadow-black/5 p-4"
+                    />
+                  )}
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-4">
                     <FormField control={form.control} name="execution" render={({ field }) => (
                       <FormItem><FormLabel className="text-[10px] sm:text-xs">E</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 ? "" : field.value} onChange={e => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm" /></FormControl></FormItem>
@@ -445,55 +376,19 @@ export default function ScorePage() {
                         </Button>
                       )}
                     </div>
-                    {editingRoutine === "vol" && customSkillIdsVol && allSkills && (() => {
-                      const uids = customSkillIdsVol.map((id, i) => `vskill-${id}-${i}`);
-                      return (
-                        <div className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 flex flex-col rounded-xl shadow-lg shadow-black/5 p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="font-semibold text-sm">Edit Skills (Vol)</span>
-                            <button type="button" onClick={() => setEditingRoutine(null)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
-                          </div>
-                          <div className="flex-1 overflow-y-auto min-h-0">
-                            <DndContext sensors={sensors} collisionDetection={closestCenter}
-                              onDragEnd={(event: DragEndEvent) => {
-                                const { active, over } = event;
-                                if (over && active.id !== over.id) {
-                                  const oldIdx = uids.indexOf(active.id as string);
-                                  const newIdx = uids.indexOf(over.id as string);
-                                  setCustomSkillIdsVol(prev => prev ? arrayMove(prev, oldIdx, newIdx) : prev);
-                                }
-                              }}>
-                              <SortableContext items={uids} strategy={verticalListSortingStrategy}>
-                                {customSkillIdsVol.map((sid, i) => {
-                                  const sk = allSkills.find(s => s.id === sid);
-                                  return (
-                                    <SortableScoreSkill key={uids[i]} uid={uids[i]}
-                                      code={sk?.code} name={sk?.name} isDrill={sk?.isDrill}
-                                      onRemove={() => setCustomSkillIdsVol(prev => prev ? prev.filter((_, idx) => idx !== i) : prev)} />
-                                  );
-                                })}
-                              </SortableContext>
-                            </DndContext>
-                          </div>
-                          <Select key={customSkillIdsVol.length} onValueChange={(val) => setCustomSkillIdsVol(prev => [...(prev || []), parseInt(val)])}>
-                            <SelectTrigger className="h-9 text-xs rounded-xl border-primary/20 bg-background mt-2">
-                              <SelectValue placeholder="Add skill..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {allSkills?.filter(s => s.isDrill !== 1).sort((a, b) => b.difficulty - a.difficulty).map(s => (
-                                <SelectItem key={s.id} value={s.id.toString()}>
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className={cn("font-mono text-[10px]", s.isDrill === 2 ? "border-red-300 text-red-500" : "")}>{s.code}</Badge>
-                                    <span className="text-xs">{s.name}</span>
-                                    {s.isDrill === 2 && <span className="text-[10px] text-red-500 font-medium">(FC)</span>}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      );
-                    })()}
+                    {editingRoutine === "vol" && customSkillIdsVol && allSkills && (
+                      <SkillEditorOverlay
+                        title="Edit Skills (Vol)"
+                        skillIds={customSkillIdsVol}
+                        allSkills={allSkills}
+                        onSkillIdsChange={setCustomSkillIdsVol}
+                        onClose={() => setEditingRoutine(null)}
+                        filterSkills={(s) => s.isDrill !== 1}
+                        uidPrefix="vskill"
+                        closeVariant="icon"
+                        className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 rounded-xl shadow-lg shadow-black/5 p-4"
+                      />
+                    )}
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-4">
                       <FormField control={form.control} name="executionVol" render={({ field }) => (
                         <FormItem><FormLabel className="text-[10px] sm:text-xs">E</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 ? "" : field.value} onChange={e => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm" /></FormControl></FormItem>
@@ -611,18 +506,14 @@ export default function ScorePage() {
         )}
       </div>
 
-      <AlertDialog open={deleteScoreId !== null} onOpenChange={(open) => { if (!open) setDeleteScoreId(null); }}>
-        <AlertDialogContent className="rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this score?</AlertDialogTitle>
-            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (deleteScoreId !== null) { deleteMutation.mutate(deleteScoreId); setDeleteScoreId(null); } }} className="rounded-xl bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={deleteScoreId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteScoreId(null); }}
+        title="Delete this score?"
+        description="This action cannot be undone."
+        onConfirm={() => { if (deleteScoreId !== null) { deleteMutation.mutate(deleteScoreId); setDeleteScoreId(null); } }}
+        confirmLabel="Delete"
+      />
     </div>
   );
 }

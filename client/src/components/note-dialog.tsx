@@ -3,12 +3,16 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Plus, Trash2, GripVertical, X } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { DndContext, MouseSensor, TouchSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import { CalendarIcon, Trash2, GripVertical } from "lucide-react";
+import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { type Note, type Skill } from "@shared/schema";
+import { type Note } from "@shared/schema";
+import { parseNoteSkills, calculateTotalDD, type SkillItem } from "@/lib/training-utils";
+import { useDndSensors } from "@/hooks/use-dnd-sensors";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
+
 import { useCreateNote, useUpdateNote } from "@/hooks/use-notes";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
@@ -68,7 +72,7 @@ interface NoteDialogProps {
   noteToEdit?: Note | null;
 }
 
-type SkillItem = { id: number; reps?: number; routineId?: number; routineName?: string; attempt?: number; customSkillIds?: number[] };
+
 
 function SortablePracticeGroup({ gId, isConnected, children }: { gId: string; isConnected: boolean; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: gId });
@@ -91,27 +95,6 @@ function SortablePracticeGroup({ gId, isConnected, children }: { gId: string; is
   );
 }
 
-function SortableRoutineSkill({ uid, code, name, onRemove }: { uid: string; code?: string; name?: string; onRemove: () => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: uid });
-  return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      className="flex items-center gap-1 py-0.5"
-    >
-      <button type="button" className="touch-none cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1" {...attributes} {...listeners}>
-        <GripVertical className="h-4 w-4" />
-      </button>
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <Badge variant="outline" className="font-mono text-[10px] border-primary/30 text-primary shrink-0">{code}</Badge>
-        <span className="text-xs truncate">{name}</span>
-      </div>
-      <button type="button" onClick={onRemove} className="h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-destructive shrink-0">
-        <X className="h-3 w-3" />
-      </button>
-    </div>
-  );
-}
 
 export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) {
   const { toast } = useToast();
@@ -124,10 +107,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [isConnectMode, setIsConnectMode] = useState(false);
   const [editingRoutineIdx, setEditingRoutineIdx] = useState<number | null>(null);
 
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { distance: 5 } })
-  );
+  const sensors = useDndSensors();
 
   const buildGroups = (skills: SkillItem[]) => {
     const groups: Array<{ items: SkillItem[] }> = [];
@@ -172,17 +152,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   useEffect(() => {
     if (open) {
       if (noteToEdit) {
-        let skills: SkillItem[] = [];
-        try {
-          skills = noteToEdit.skills ? JSON.parse(noteToEdit.skills) : [];
-          if (!Array.isArray(skills)) {
-            // Migration for old comma-separated string
-            skills = noteToEdit.skills.split(',').map(s => ({ id: parseInt(s) }));
-          }
-        } catch (e) {
-          skills = noteToEdit.skills ? noteToEdit.skills.split(',').map(s => ({ id: parseInt(s) })) : [];
-        }
-        setSelectedSkills(skills);
+        setSelectedSkills(parseNoteSkills(noteToEdit.skills));
         form.reset({
           date: new Date(noteToEdit.date),
           startTime: noteToEdit.startTime || "",
@@ -271,35 +241,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     });
   };
 
-  const totalDifficulty = (() => {
-    let total = 0;
-    let currentGroupDD = 0;
-    let currentGroupReps = 1;
-
-    selectedSkills.forEach((item) => {
-      if (item.id === -1) {
-        total += currentGroupDD * currentGroupReps;
-        currentGroupDD = 0;
-        currentGroupReps = 1;
-      } else if (item.id === -2) {
-        total += currentGroupDD * currentGroupReps;
-        currentGroupDD = 0;
-        currentGroupReps = 1;
-        const routine = routines?.find(r => r.id === item.routineId);
-        const skillIds = item.customSkillIds ?? routine?.skillIds ?? [];
-        total += skillIds.reduce((acc, sId) => {
-          const skill = allItems?.find(s => s.id === sId);
-          return acc + (skill?.difficulty || 0);
-        }, 0);
-      } else {
-        const skill = allItems?.find(s => s.id === item.id);
-        currentGroupDD += (skill?.difficulty || 0);
-        currentGroupReps = item.reps || 1;
-      }
-    });
-    total += currentGroupDD * currentGroupReps;
-    return total;
-  })();
+  const totalDifficulty = calculateTotalDD(selectedSkills, allItems, routines);
 
   const onSubmit = (values: FormValues) => {
     const payload = {
@@ -603,101 +545,38 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
           const routine = routines?.find(r => r.id === rItem.routineId);
           const displaySkillIds = rItem.customSkillIds ?? routine?.skillIds ?? [];
 
-          const handleRoutineDragEnd = (event: DragEndEvent) => {
-            const { active, over } = event;
-            if (!over || active.id === over.id) return;
-            const oldIdx = displaySkillIds.findIndex((_, i) => `skill-${i}` === active.id);
-            const newIdx = displaySkillIds.findIndex((_, i) => `skill-${i}` === over.id);
-            const newIds = arrayMove(displaySkillIds, oldIdx, newIdx);
-            setSelectedSkills(prev => {
-              const ns = [...prev];
-              ns[editingRoutineIdx] = { ...ns[editingRoutineIdx], customSkillIds: newIds };
-              form.setValue('skills', JSON.stringify(ns));
-              return ns;
-            });
-          };
-
-          const removeSkillFromRoutine = (sIdx: number) => {
-            const newIds = displaySkillIds.filter((_, i) => i !== sIdx);
-            setSelectedSkills(prev => {
-              const ns = [...prev];
-              ns[editingRoutineIdx] = { ...ns[editingRoutineIdx], customSkillIds: newIds };
-              form.setValue('skills', JSON.stringify(ns));
-              return ns;
-            });
-          };
-
-          const addSkillToRoutine = (val: string) => {
-            const newIds = [...displaySkillIds, parseInt(val)];
-            setSelectedSkills(prev => {
-              const ns = [...prev];
-              ns[editingRoutineIdx] = { ...ns[editingRoutineIdx], customSkillIds: newIds };
-              form.setValue('skills', JSON.stringify(ns));
-              return ns;
-            });
-          };
-
           return (
-            <div className="absolute inset-0 bg-background z-30 flex flex-col rounded-[24px] overflow-hidden">
-              <div className="flex justify-between items-center p-4 pb-2 shrink-0">
-                <span className="font-bold text-base">{rItem.routineName}</span>
-                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs rounded-xl" onClick={() => setEditingRoutineIdx(null)}>Done</Button>
-              </div>
-              <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-2">
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleRoutineDragEnd}>
-                  <SortableContext items={displaySkillIds.map((_, i) => `skill-${i}`)} strategy={verticalListSortingStrategy}>
-                    <div className="space-y-0.5">
-                      {displaySkillIds.map((sId, sIdx) => {
-                        const sk = allItems?.find(s => s.id === sId);
-                        return (
-                          <SortableRoutineSkill
-                            key={`skill-${sIdx}`}
-                            uid={`skill-${sIdx}`}
-                            code={sk?.code}
-                            name={sk?.name}
-                            onRemove={() => removeSkillFromRoutine(sIdx)}
-                          />
-                        );
-                      })}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-              </div>
-              <div className="shrink-0 p-4 pt-2">
-                <Select key={displaySkillIds.length} onValueChange={addSkillToRoutine}>
-                  <SelectTrigger className="h-9 text-xs rounded-xl border-border bg-background">
-                    <SelectValue placeholder="Add skill..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allItems?.sort((a, b) => b.difficulty - a.difficulty).map(s => (
-                      <SelectItem key={s.id} value={s.id.toString()}>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="font-mono text-[10px]">{s.code}</Badge>
-                          <span>{s.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="absolute inset-0 bg-background z-30 flex flex-col rounded-[24px] overflow-hidden p-4">
+              <SkillEditorOverlay
+                title={rItem.routineName || "Edit Routine"}
+                skillIds={displaySkillIds}
+                allSkills={allItems || []}
+                onSkillIdsChange={(newIds) => {
+                  setSelectedSkills(prev => {
+                    const ns = [...prev];
+                    ns[editingRoutineIdx] = { ...ns[editingRoutineIdx], customSkillIds: newIds };
+                    form.setValue('skills', JSON.stringify(ns));
+                    return ns;
+                  });
+                }}
+                onClose={() => setEditingRoutineIdx(null)}
+                className="flex-1 min-h-0"
+              />
             </div>
           );
         })()}
       </DialogContent>
     </Dialog>
 
-    <AlertDialog open={showDiscardAlert} onOpenChange={setShowDiscardAlert}>
-      <AlertDialogContent className="rounded-2xl">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Discard changes?</AlertDialogTitle>
-          <AlertDialogDescription>Your unsaved changes will be lost.</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel className="rounded-xl">Keep editing</AlertDialogCancel>
-          <AlertDialogAction onClick={() => { setShowDiscardAlert(false); onOpenChange(false); }} className="rounded-xl bg-destructive text-destructive-foreground">Discard</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConfirmDialog
+      open={showDiscardAlert}
+      onOpenChange={setShowDiscardAlert}
+      title="Discard changes?"
+      description="Your unsaved changes will be lost."
+      onConfirm={() => { setShowDiscardAlert(false); onOpenChange(false); }}
+      confirmLabel="Discard"
+      cancelLabel="Keep editing"
+    />
     </>
   );
 }
