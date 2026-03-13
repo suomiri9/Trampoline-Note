@@ -29,7 +29,7 @@ function Navigation() {
     if (!vv) return;
     const update = () => {
       const hidden = window.innerHeight - vv.height - vv.offsetTop;
-      setKeyboardOffset(Math.max(0, hidden));
+      setKeyboardOffset(hidden > 100 ? hidden : 0);
     };
     vv.addEventListener("resize", update);
     vv.addEventListener("scroll", update);
