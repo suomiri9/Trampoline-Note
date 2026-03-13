@@ -343,7 +343,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   return (
     <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[500px] w-[calc(100vw-32px)] p-0 overflow-hidden rounded-[24px] border-border/50 max-h-[90vh] max-h-[90dvh] flex flex-col">
+      <DialogContent className="sm:max-w-[500px] w-[calc(100vw-32px)] p-0 rounded-[24px] border-border/50 max-h-[90vh] max-h-[90dvh] flex flex-col overflow-clip">
         <div className="p-6 pb-4 flex-none">
           <DialogHeader>
             <DialogTitle className="text-2xl font-display">{isEditing ? "Edit Session" : "Log Training Session"}</DialogTitle>
@@ -469,7 +469,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </Select>
                 )}
 
-                <div className="min-h-[220px] bg-secondary/10 rounded-xl border border-border/50 overflow-hidden relative">
+                <div className={cn("min-h-[220px] bg-secondary/10 rounded-xl border border-border/50 overflow-hidden relative", editingRoutineIdx !== null ? "min-h-[60dvh]" : "")}>
                   <div className="bg-secondary/20 px-3 py-1.5 border-b border-border/50 flex justify-between items-center">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Practice List</span>
                     <div className="flex items-center gap-2">
@@ -518,7 +518,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     };
 
                     return (
-                      <div className="fixed inset-x-0 bottom-0 top-16 sm:absolute sm:inset-0 bg-background z-20 sm:z-10 sm:bg-background/97 sm:backdrop-blur-sm flex flex-col p-4 rounded-t-2xl sm:rounded-xl overflow-hidden shadow-2xl sm:shadow-none">
+                      <div className="absolute inset-0 bg-background z-20 flex flex-col p-4 rounded-xl overflow-hidden">
                         <div className="flex justify-between items-center mb-3 shrink-0">
                           <span className="font-bold text-sm">{rItem.routineName}</span>
                           <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setEditingRoutineIdx(null)}>Done</Button>
