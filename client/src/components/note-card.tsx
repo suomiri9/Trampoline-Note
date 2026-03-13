@@ -200,8 +200,10 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
 
                     return (
                       <div key={`group-${groupIdx}`} className={cn(
-                        "flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl border border-border/30 shadow-sm",
-                        isSingle ? "bg-secondary/5" : "bg-primary/5 border-primary/20"
+                        "flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl border shadow-sm",
+                        isSingle
+                          ? "bg-secondary/5 border-border/30"
+                          : "bg-amber-50/60 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/30"
                       )}>
                         <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
                           {group.map((skillItem, skillIdx) => {
@@ -213,14 +215,14 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                                   "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
                                   skill.isDrill === 1
                                     ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
-                                    : skill.isDrill === 2
+                                    : (!isSingle || skill.isDrill === 2)
                                     ? "border-amber-300 text-amber-600 dark:border-amber-700 dark:text-amber-400"
-                                    : isSingle ? "border-border/60 text-muted-foreground" : "border-primary/30 text-primary"
+                                    : "border-border/60 text-muted-foreground"
                                 )}>
                                   {skill.code}
                                 </Badge>
                                 {skillIdx < group.length - 1 && (
-                                  <span className="text-primary/30 font-bold text-xs">+</span>
+                                  <span className="text-amber-400/70 font-bold text-xs">+</span>
                                 )}
                               </div>
                             );
@@ -228,10 +230,10 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                         </div>
                         <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
                           <span className="text-muted-foreground">{lineDD.toFixed(1)}</span>
-                          <span className="text-primary/40">×</span>
-                          <span className="text-primary">{reps}</span>
-                          <span className="text-primary/40">=</span>
-                          <span className="text-primary">{(lineDD * reps).toFixed(1)}</span>
+                          <span className={isSingle ? "text-muted-foreground/40" : "text-amber-400/70"}>×</span>
+                          <span className={isSingle ? "text-foreground" : "text-amber-600 dark:text-amber-400"}>{reps}</span>
+                          <span className={isSingle ? "text-muted-foreground/40" : "text-amber-400/70"}>=</span>
+                          <span className={isSingle ? "text-foreground" : "text-amber-600 dark:text-amber-400"}>{(lineDD * reps).toFixed(1)}</span>
                         </div>
                       </div>
                     );

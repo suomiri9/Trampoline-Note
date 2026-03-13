@@ -39,20 +39,20 @@ function Navigation() {
 
   const navItems = [
     { href: "/", label: "Training", icon: LayoutDashboard,
-      activeClass: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
-      hoverClass: "hover:text-blue-500 dark:hover:text-blue-400" },
+      activeClass: "bg-blue-50 dark:bg-blue-950/40 shadow-sm",
+      colorClass: "text-blue-600 dark:text-blue-400" },
     { href: "/score", label: "Score", icon: Trophy,
-      activeClass: "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400",
-      hoverClass: "hover:text-amber-500 dark:hover:text-amber-400" },
+      activeClass: "bg-amber-50 dark:bg-amber-950/40 shadow-sm",
+      colorClass: "text-amber-500 dark:text-amber-400" },
     { href: "/stats", label: "Progress", icon: BarChart3,
-      activeClass: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400",
-      hoverClass: "hover:text-emerald-500 dark:hover:text-emerald-400" },
+      activeClass: "bg-emerald-50 dark:bg-emerald-950/40 shadow-sm",
+      colorClass: "text-emerald-600 dark:text-emerald-400" },
     { href: "/skills", label: "Skills", icon: Target,
-      activeClass: "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400",
-      hoverClass: "hover:text-red-500 dark:hover:text-red-400" },
+      activeClass: "bg-red-50 dark:bg-red-950/40 shadow-sm",
+      colorClass: "text-red-500 dark:text-red-400" },
     { href: "/routines", label: "Routines", icon: Layers,
-      activeClass: "bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400",
-      hoverClass: "hover:text-violet-500 dark:hover:text-violet-400" },
+      activeClass: "bg-violet-50 dark:bg-violet-950/40 shadow-sm",
+      colorClass: "text-violet-600 dark:text-violet-400" },
   ];
 
   return (
@@ -63,11 +63,14 @@ function Navigation() {
           <div className={cn(
             "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer",
             location === item.href
-              ? `${item.activeClass} shadow-sm font-semibold`
-              : `text-muted-foreground hover:bg-secondary ${item.hoverClass}`
+              ? `${item.activeClass} ${item.colorClass} font-semibold`
+              : "hover:bg-secondary"
           )}>
-            <item.icon className="w-4 h-4" />
-            <span className="hidden sm:inline">{item.label}</span>
+            <item.icon className={cn("w-4 h-4", item.colorClass)} />
+            <span className={cn(
+              "hidden sm:inline",
+              location === item.href ? "" : "text-muted-foreground"
+            )}>{item.label}</span>
           </div>
         </Link>
       ))}
