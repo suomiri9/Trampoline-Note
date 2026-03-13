@@ -54,7 +54,7 @@ const formSchema = z.object({
   }),
   startTime: z.string().optional().nullable(),
   endTime: z.string().optional().nullable(),
-  content: z.string().min(1, "Notes cannot be empty."),
+  content: z.string().optional().default(""),
   skills: z.string().optional().nullable(), // Store as comma-separated IDs
   rating: z.number().min(1).max(5).optional().nullable(),
   sleepScore: z.number().min(0).max(100).optional().nullable(),
