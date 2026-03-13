@@ -175,7 +175,7 @@ export default function StatsPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
       <div className="flex items-center gap-3 mb-8">
         <div className="p-3 bg-slate-100 dark:bg-slate-800/30 rounded-2xl">
           <TrendingUp className="w-6 h-6 text-slate-500" />

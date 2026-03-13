@@ -233,7 +233,7 @@ export default function ScorePage() {
   }, [customSkillIdsVol, allSkills]);
 
   return (
-    <div className="container mx-auto py-6 px-4 max-w-4xl">
+    <div className="container mx-auto py-6 px-4 max-w-6xl">
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-2xl shrink-0">
