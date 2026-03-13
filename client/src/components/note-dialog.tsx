@@ -271,31 +271,35 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     });
   };
 
-  const totalDifficulty = selectedSkills.reduce((sum, item, idx) => {
-    if (item.id === -1) return sum;
-    if (item.id === -2) {
-      const routine = routines?.find(r => r.id === item.routineId);
-      const skillIds = item.customSkillIds ?? routine?.skillIds ?? [];
-      const routineDD = skillIds.reduce((acc, sId) => {
-        const skill = allItems?.find(s => s.id === sId);
-        return acc + (skill?.difficulty || 0);
-      }, 0);
-      return sum + routineDD;
-    }
-    let groupStart = idx;
-    while (groupStart > 0 && selectedSkills[groupStart - 1].id !== -1) {
-      groupStart--;
-    }
-    if (idx !== groupStart) return sum;
-    let groupDD = 0;
-    let i = groupStart;
-    while (i < selectedSkills.length && selectedSkills[i].id !== -1) {
-      const skill = allItems?.find(s => s.id === selectedSkills[i].id);
-      groupDD += (skill?.difficulty || 0);
-      i++;
-    }
-    return sum + (groupDD * (item.reps || 1));
-  }, 0);
+  const totalDifficulty = (() => {
+    let total = 0;
+    let currentGroupDD = 0;
+    let currentGroupReps = 1;
+
+    selectedSkills.forEach((item) => {
+      if (item.id === -1) {
+        total += currentGroupDD * currentGroupReps;
+        currentGroupDD = 0;
+        currentGroupReps = 1;
+      } else if (item.id === -2) {
+        total += currentGroupDD * currentGroupReps;
+        currentGroupDD = 0;
+        currentGroupReps = 1;
+        const routine = routines?.find(r => r.id === item.routineId);
+        const skillIds = item.customSkillIds ?? routine?.skillIds ?? [];
+        total += skillIds.reduce((acc, sId) => {
+          const skill = allItems?.find(s => s.id === sId);
+          return acc + (skill?.difficulty || 0);
+        }, 0);
+      } else {
+        const skill = allItems?.find(s => s.id === item.id);
+        currentGroupDD += (skill?.difficulty || 0);
+        currentGroupReps = item.reps || 1;
+      }
+    });
+    total += currentGroupDD * currentGroupReps;
+    return total;
+  })();
 
   const onSubmit = (values: FormValues) => {
     const payload = {

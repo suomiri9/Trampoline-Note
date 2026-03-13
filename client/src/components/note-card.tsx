@@ -71,10 +71,14 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
         currentGroupDD = 0;
         currentGroupReps = 1;
       } else if (item.id === -2) {
+        total += currentGroupDD * currentGroupReps;
+        currentGroupDD = 0;
+        currentGroupReps = 1;
         const routine = routines?.find(r => r.id === (item as any).routineId);
         if (routine) {
-          const count = (item as any).attempt ?? routine.skillIds.length;
-          total += routine.skillIds.slice(0, count).reduce((acc, sId) => {
+          const skillIds = (item as any).customSkillIds ?? routine.skillIds;
+          const count = (item as any).attempt ?? skillIds.length;
+          total += skillIds.slice(0, count).reduce((acc: number, sId: number) => {
             const skill = allItems?.find(s => s.id === sId);
             return acc + (skill?.difficulty || 0);
           }, 0);
