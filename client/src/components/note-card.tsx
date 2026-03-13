@@ -124,9 +124,9 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
             <span className="whitespace-nowrap">{note.startTime || "??:??"} - {note.endTime || "??:??"}</span>
           </div>
           {note.sleepScore != null ? (
-            <div className="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/40 px-2.5 py-1 rounded-lg w-fit">
-              <span className="text-[10px] font-bold text-yellow-600 uppercase tracking-wider">Sleep</span>
-              <span className="text-xs font-mono font-bold text-yellow-700 dark:text-yellow-400">{note.sleepScore}/100</span>
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/20 border border-slate-200 dark:border-slate-700/30 px-2.5 py-1 rounded-lg w-fit">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Sleep</span>
+              <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">{note.sleepScore}/100</span>
             </div>
           ) : null}
           {note.rating ? (
