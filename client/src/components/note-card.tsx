@@ -93,7 +93,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
 
   return (
     <>
-      <div className={`group relative bg-card p-4 sm:p-5 rounded-2xl border border-border/50 hover:border-border hover:shadow-lg transition-all animate-fade-in-up opacity-0 ${staggerClass}`}>
+      <div className={`group relative bg-card p-4 sm:p-5 rounded-2xl shadow-md shadow-black/5 hover:shadow-lg transition-all animate-fade-in-up opacity-0 ${staggerClass}`}>
         <div className="flex justify-between items-center mb-2">
           <div className="flex items-center gap-2">
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800/30 shrink-0">
@@ -119,12 +119,12 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
           </DropdownMenu>
         </div>
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <div className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/20 border border-slate-200 dark:border-slate-700/30 px-2.5 py-1 rounded-lg w-fit">
+          <div className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/20 px-2.5 py-1 rounded-lg w-fit">
             <Activity className="w-3 h-3 shrink-0" />
             <span className="whitespace-nowrap">{note.startTime || "??:??"} - {note.endTime || "??:??"}</span>
           </div>
           {note.sleepScore != null ? (
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/20 border border-slate-200 dark:border-slate-700/30 px-2.5 py-1 rounded-lg w-fit">
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/20 px-2.5 py-1 rounded-lg w-fit">
               <span className="text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400">Sleep score: {note.sleepScore}</span>
             </div>
           ) : null}
@@ -174,7 +174,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                       const isCustom = displaySkillIds.length !== baseSkillIds.length || (item.customSkillIds && JSON.stringify(item.customSkillIds) !== JSON.stringify(baseSkillIds));
 
                       return (
-                        <div key={`routine-${groupIdx}`} className="flex items-center justify-between py-2 px-3 rounded-xl border border-primary/20 bg-primary/5 shadow-sm">
+                        <div key={`routine-${groupIdx}`} className="flex items-center justify-between py-2 px-3 rounded-xl bg-primary/5">
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none">ROUTINE</Badge>
                             <span className="text-sm font-bold text-primary">{item.routineName || "Routine"}</span>
@@ -200,10 +200,10 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
 
                     return (
                       <div key={`group-${groupIdx}`} className={cn(
-                        "flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl border shadow-sm",
+                        "flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl",
                         isSingle
-                          ? "bg-secondary/5 border-border/30"
-                          : "bg-red-50/60 dark:bg-red-900/10 border-red-200 dark:border-red-800/30"
+                          ? "bg-secondary/30"
+                          : "bg-red-50/60 dark:bg-red-900/10"
                       )}>
                         <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
                           {group.map((skillItem, skillIdx) => {

@@ -252,7 +252,7 @@ export default function ScorePage() {
       </div>
 
       {isAdding && (
-        <Card className="mb-8 rounded-2xl border-primary/20 bg-primary/5">
+        <Card className="mb-8 rounded-2xl bg-primary/5">
           <CardHeader><CardTitle>{editingScore ? "Edit Score" : "Add New Score"}</CardTitle></CardHeader>
           <CardContent>
             <Form {...form}>
@@ -356,7 +356,7 @@ export default function ScorePage() {
                   {editingRoutine === "set" && customSkillIds && allSkills && (() => {
                     const uids = customSkillIds.map((id, i) => `skill-${id}-${i}`);
                     return (
-                      <div className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 flex flex-col rounded-xl border border-primary/20 p-4">
+                      <div className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 flex flex-col rounded-xl shadow-lg shadow-black/5 p-4">
                         <div className="flex items-center justify-between mb-3">
                           <span className="font-semibold text-sm">Edit Skills</span>
                           <button type="button" onClick={() => setEditingRoutine(null)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
@@ -448,7 +448,7 @@ export default function ScorePage() {
                     {editingRoutine === "vol" && customSkillIdsVol && allSkills && (() => {
                       const uids = customSkillIdsVol.map((id, i) => `vskill-${id}-${i}`);
                       return (
-                        <div className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 flex flex-col rounded-xl border border-primary/20 p-4">
+                        <div className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 flex flex-col rounded-xl shadow-lg shadow-black/5 p-4">
                           <div className="flex items-center justify-between mb-3">
                             <span className="font-semibold text-sm">Edit Skills (Vol)</span>
                             <button type="button" onClick={() => setEditingRoutine(null)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
@@ -528,7 +528,7 @@ export default function ScorePage() {
           const routine = routines?.find(r => r.id === score.routineId);
           const routineVol = routines?.find(r => r.id === score.routineIdVol);
           return (
-            <Card key={score.id} className="rounded-2xl border-border/50 overflow-hidden">
+            <Card key={score.id} className="rounded-2xl overflow-hidden">
               <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -604,7 +604,7 @@ export default function ScorePage() {
           );
         })}
         {scores?.length === 0 && (
-          <div className="text-center py-20 bg-secondary/5 rounded-3xl border-2 border-dashed border-border/50">
+          <div className="text-center py-20 bg-secondary/5 rounded-3xl">
             <Trophy className="w-12 h-12 text-yellow-300 dark:text-yellow-600 mx-auto mb-4" />
             <p className="text-muted-foreground font-medium">No scores recorded yet.</p>
           </div>

@@ -187,7 +187,7 @@ export default function StatsPage() {
       </div>
 
       <div className="grid gap-6">
-        <Card className="rounded-[2rem] border-border/50 shadow-xl shadow-black/5 overflow-hidden">
+        <Card className="rounded-[2rem] shadow-xl shadow-black/5 overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold flex items-center justify-between gap-3">
               <span>Daily Total Difficulty</span>
@@ -284,7 +284,7 @@ export default function StatsPage() {
         </Card>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Card className="rounded-2xl border-blue-100 dark:border-blue-900/30 shadow-lg shadow-black/5 bg-gradient-to-br from-blue-50/60 to-background dark:from-blue-950/20">
+          <Card className="rounded-2xl shadow-lg shadow-black/5 bg-gradient-to-br from-blue-50/60 to-background dark:from-blue-950/20">
             <CardContent className="pt-6">
               <div className="text-sm font-medium text-muted-foreground mb-1">Total DD</div>
               <div className="text-3xl font-display font-bold text-blue-600 dark:text-blue-400">
@@ -293,7 +293,7 @@ export default function StatsPage() {
               <div className="text-xs text-muted-foreground mt-1">{periodLabel}</div>
             </CardContent>
           </Card>
-          <Card className="rounded-2xl border-slate-200 dark:border-slate-700/30 shadow-lg shadow-black/5 bg-gradient-to-br from-slate-100/60 to-background dark:from-slate-800/20">
+          <Card className="rounded-2xl shadow-lg shadow-black/5 bg-gradient-to-br from-slate-100/60 to-background dark:from-slate-800/20">
             <CardContent className="pt-6">
               <div className="text-sm font-medium text-muted-foreground mb-1">Sessions</div>
               <div className="text-3xl font-display font-bold text-slate-600 dark:text-slate-400">

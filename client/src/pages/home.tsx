@@ -70,7 +70,7 @@ export default function Home() {
               <p className="text-sm opacity-90">{(error as Error).message}</p>
             </div>
           ) : sortedNotes.length === 0 ? (
-            <div className="py-24 px-6 flex flex-col items-center justify-center text-center border-2 border-dashed border-border/60 rounded-[2rem] bg-card/50">
+            <div className="py-24 px-6 flex flex-col items-center justify-center text-center rounded-[2rem] bg-card/50 shadow-md shadow-black/5">
               <div className="w-16 h-16 mb-6 rounded-full bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
                 <BookOpen className="w-8 h-8 text-blue-500" />
               </div>
