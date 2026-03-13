@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { CalendarIcon, Plus, Trash2, GripVertical, X } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DndContext, MouseSensor, TouchSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -321,17 +322,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     }
   };
 
+  const [showDiscardAlert, setShowDiscardAlert] = useState(false);
+
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen && (form.getValues("content") || selectedSkills.length > 0)) {
-      if (confirm("Are you sure you want to close? Your changes will be lost.")) {
-        onOpenChange(false);
-      }
+      setShowDiscardAlert(true);
     } else {
       onOpenChange(newOpen);
     }
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px] w-[calc(100vw-32px)] p-0 overflow-hidden rounded-[24px] border-border/50 max-h-[90vh] max-h-[90dvh] flex flex-col">
         <div className="p-6 pb-4 flex-none">
@@ -646,5 +648,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showDiscardAlert} onOpenChange={setShowDiscardAlert}>
+      <AlertDialogContent className="rounded-2xl">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+          <AlertDialogDescription>Your unsaved changes will be lost.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="rounded-xl">Keep editing</AlertDialogCancel>
+          <AlertDialogAction onClick={() => { setShowDiscardAlert(false); onOpenChange(false); }} className="rounded-xl bg-destructive text-destructive-foreground">Discard</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
