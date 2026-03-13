@@ -22,6 +22,22 @@ function Navigation() {
   const [location] = useLocation();
   const { user, logout, isLoggingOut } = useAuth();
   const [showSignOutAlert, setShowSignOutAlert] = useState(false);
+  const [viewportAdjust, setViewportAdjust] = useState(0);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const diff = window.innerHeight - vv.height - vv.offsetTop;
+      setViewportAdjust(diff > 0 && diff < window.innerHeight * 0.25 ? diff : 0);
+    };
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
 
   const navItems = [
     { href: "/", label: "Training", icon: LayoutDashboard,
@@ -42,7 +58,8 @@ function Navigation() {
   ];
 
   return (
-    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-md border border-border px-3 py-2 rounded-2xl shadow-2xl flex items-center gap-1 z-50">
+    <nav className="fixed left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-md border border-border px-3 py-2 rounded-2xl shadow-2xl flex items-center gap-1 z-50"
+      style={{ bottom: `${16 - viewportAdjust}px` }}>
       {navItems.map((item) => (
         <Link key={item.href} href={item.href}>
           <div className={cn(
