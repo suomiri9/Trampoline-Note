@@ -125,8 +125,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
           </div>
           {note.sleepScore != null ? (
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/20 border border-slate-200 dark:border-slate-700/30 px-2.5 py-1 rounded-lg w-fit">
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Sleep</span>
-              <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">{note.sleepScore}/100</span>
+              <span className="text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400">Sleep score: {note.sleepScore}</span>
             </div>
           ) : null}
           {note.rating ? (
