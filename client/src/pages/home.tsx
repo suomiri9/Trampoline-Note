@@ -28,19 +28,19 @@ export default function Home() {
 
   return (
     <div className="min-h-[100svh] bg-[#fafafa] dark:bg-background selection:bg-primary/20">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-2xl shrink-0">
-              <LayoutDashboard className="w-7 h-7 text-blue-600 dark:text-blue-400" />
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-blue-50 dark:bg-blue-950/30 rounded-2xl shrink-0">
+              <LayoutDashboard className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
-            <div className="space-y-1">
-              <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground tracking-tight">
+            <div className="space-y-0.5">
+              <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">
                 Training Log
               </h1>
-              <p className="text-lg text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Track your trampoline sessions, skills, and progress.
               </p>
             </div>
@@ -87,7 +87,7 @@ export default function Home() {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {sortedNotes.map((note, index) => (
                 <NoteCard 
                   key={note.id} 

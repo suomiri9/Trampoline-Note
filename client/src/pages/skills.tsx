@@ -140,7 +140,7 @@ export default function SkillsPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="container mx-auto py-6 px-4">
       <div className="flex items-center gap-3 mb-8">
         <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-2xl shrink-0">
           <Target className="w-6 h-6 text-red-500" />

@@ -112,7 +112,7 @@ function Navigation() {
 
 function Router() {
   return (
-    <div style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}>
+    <div style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/score" component={ScorePage} />

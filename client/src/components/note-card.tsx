@@ -93,7 +93,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
 
   return (
     <>
-      <div className={`group relative bg-card p-6 rounded-2xl border border-border/50 hover:border-border hover:shadow-lg transition-all animate-fade-in-up opacity-0 ${staggerClass}`}>
+      <div className={`group relative bg-card p-4 sm:p-5 rounded-2xl border border-border/50 hover:border-border hover:shadow-lg transition-all animate-fade-in-up opacity-0 ${staggerClass}`}>
         <div className="flex justify-between items-center mb-2">
           <div className="flex items-center gap-2">
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800/30 shrink-0">
