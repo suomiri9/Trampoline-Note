@@ -39,8 +39,8 @@ function SortableScoreSkill({ uid, code, name, isDrill, onRemove }: { uid: strin
       <div className="flex items-center gap-2 flex-1 min-w-0">
         <Badge variant="outline" className={cn(
           "font-mono text-[10px] shrink-0",
-          isDrill === 1 ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400" :
-          isDrill === 2 ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400" :
+          isDrill === 1 ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400" :
+          isDrill === 2 ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400" :
           "border-primary/30 text-primary"
         )}>{code}</Badge>
         <span className="text-xs truncate">{name}</span>
@@ -391,9 +391,9 @@ export default function ScorePage() {
                             {allSkills?.filter(s => s.isDrill !== 1).sort((a, b) => b.difficulty - a.difficulty).map(s => (
                               <SelectItem key={s.id} value={s.id.toString()}>
                                 <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className={cn("font-mono text-[10px]", s.isDrill === 2 ? "border-yellow-300 text-yellow-600" : "")}>{s.code}</Badge>
+                                  <Badge variant="outline" className={cn("font-mono text-[10px]", s.isDrill === 2 ? "border-red-300 text-red-500" : "")}>{s.code}</Badge>
                                   <span className="text-xs">{s.name}</span>
-                                  {s.isDrill === 2 && <span className="text-[10px] text-yellow-500 font-medium">(FC)</span>}
+                                  {s.isDrill === 2 && <span className="text-[10px] text-red-500 font-medium">(FC)</span>}
                                 </div>
                               </SelectItem>
                             ))}
@@ -483,9 +483,9 @@ export default function ScorePage() {
                               {allSkills?.filter(s => s.isDrill !== 1).sort((a, b) => b.difficulty - a.difficulty).map(s => (
                                 <SelectItem key={s.id} value={s.id.toString()}>
                                   <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className={cn("font-mono text-[10px]", s.isDrill === 2 ? "border-yellow-300 text-yellow-600" : "")}>{s.code}</Badge>
+                                    <Badge variant="outline" className={cn("font-mono text-[10px]", s.isDrill === 2 ? "border-red-300 text-red-500" : "")}>{s.code}</Badge>
                                     <span className="text-xs">{s.name}</span>
-                                    {s.isDrill === 2 && <span className="text-[10px] text-yellow-500 font-medium">(FC)</span>}
+                                    {s.isDrill === 2 && <span className="text-[10px] text-red-500 font-medium">(FC)</span>}
                                   </div>
                                 </SelectItem>
                               ))}

@@ -203,7 +203,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                         "flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl border shadow-sm",
                         isSingle
                           ? "bg-secondary/5 border-border/30"
-                          : "bg-yellow-50/60 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800/30"
+                          : "bg-red-50/60 dark:bg-red-900/10 border-red-200 dark:border-red-800/30"
                       )}>
                         <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
                           {group.map((skillItem, skillIdx) => {
@@ -214,15 +214,15 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                                 <Badge variant="outline" className={cn(
                                   "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
                                   skill.isDrill === 1
-                                    ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
-                                    : (!isSingle || skill.isDrill === 2)
                                     ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400"
+                                    : (!isSingle || skill.isDrill === 2)
+                                    ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
                                     : "border-border/60 text-muted-foreground"
                                 )}>
                                   {skill.code}
                                 </Badge>
                                 {skillIdx < group.length - 1 && (
-                                  <span className="text-yellow-400/70 font-bold text-xs">+</span>
+                                  <span className="text-red-400/70 font-bold text-xs">+</span>
                                 )}
                               </div>
                             );
@@ -230,10 +230,10 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                         </div>
                         <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
                           <span className="text-muted-foreground">{lineDD.toFixed(1)}</span>
-                          <span className={isSingle ? "text-muted-foreground/40" : "text-yellow-400/70"}>×</span>
-                          <span className={isSingle ? "text-foreground" : "text-yellow-600 dark:text-yellow-400"}>{reps}</span>
-                          <span className={isSingle ? "text-muted-foreground/40" : "text-yellow-400/70"}>=</span>
-                          <span className={isSingle ? "text-foreground" : "text-yellow-600 dark:text-yellow-400"}>{(lineDD * reps).toFixed(1)}</span>
+                          <span className={isSingle ? "text-muted-foreground/40" : "text-red-400/70"}>×</span>
+                          <span className={isSingle ? "text-foreground" : "text-red-600 dark:text-red-400"}>{reps}</span>
+                          <span className={isSingle ? "text-muted-foreground/40" : "text-red-400/70"}>=</span>
+                          <span className={isSingle ? "text-foreground" : "text-red-600 dark:text-red-400"}>{(lineDD * reps).toFixed(1)}</span>
                         </div>
                       </div>
                     );
