@@ -325,11 +325,15 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [showDiscardAlert, setShowDiscardAlert] = useState(false);
 
   const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen && (form.getValues("content") || selectedSkills.length > 0)) {
-      setShowDiscardAlert(true);
-    } else {
-      onOpenChange(newOpen);
+    if (!newOpen) {
+      const v = form.getValues();
+      const hasContent = !!(v.content || selectedSkills.length > 0 || v.startTime || v.endTime || v.rating || v.sleepScore);
+      if (hasContent || form.formState.isDirty) {
+        setShowDiscardAlert(true);
+        return;
+      }
     }
+    onOpenChange(newOpen);
   };
 
   return (
