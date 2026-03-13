@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Trash2, Plus, Pencil, X, Target } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,6 +22,7 @@ export default function SkillsPage() {
   const [connName, setConnName] = useState("");
   const [connCode, setConnCode] = useState("");
   const [connSkillIds, setConnSkillIds] = useState<number[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
 
   const skills = allItems?.filter(item => item.isDrill === 0);
   const drills = allItems?.filter(item => item.isDrill === 1);
@@ -204,7 +206,7 @@ export default function SkillsPage() {
                         <TableCell>{skill.difficulty.toFixed(1)}</TableCell>
                         <TableCell className="text-right space-x-2">
                           <Button variant="ghost" size="icon" onClick={() => startEditing(skill)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteSkill(skill.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: skill.id, name: skill.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -259,7 +261,7 @@ export default function SkillsPage() {
                         <TableCell>{drill.difficulty.toFixed(1)}</TableCell>
                         <TableCell className="text-right space-x-2">
                           <Button variant="ghost" size="icon" onClick={() => startEditing(drill)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteSkill(drill.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: drill.id, name: drill.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -352,7 +354,7 @@ export default function SkillsPage() {
                         <TableCell>{conn.difficulty.toFixed(1)}</TableCell>
                         <TableCell className="text-right space-x-2">
                           <Button variant="ghost" size="icon" onClick={() => startEditing(conn)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteSkill(conn.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: conn.id, name: conn.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -363,6 +365,19 @@ export default function SkillsPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{deleteTarget?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (deleteTarget) { deleteSkill(deleteTarget.id); setDeleteTarget(null); } }} className="rounded-xl bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Target, Layers, BarChart3, Trophy, LogOut, Loader2, UserCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 
@@ -21,6 +22,7 @@ function Navigation() {
   const [location] = useLocation();
   const { user, logout, isLoggingOut } = useAuth();
   const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [showSignOutAlert, setShowSignOutAlert] = useState(false);
 
   useEffect(() => {
     const vv = window.visualViewport;
@@ -97,7 +99,7 @@ function Navigation() {
             <Button
               variant="ghost"
               className="w-full justify-start gap-2 h-9 rounded-xl text-sm text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={() => { if (window.confirm("Are you sure you want to sign out?")) logout(); }}
+              onClick={() => setShowSignOutAlert(true)}
               disabled={isLoggingOut}
             >
               {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
@@ -106,6 +108,19 @@ function Navigation() {
           </PopoverContent>
         </Popover>
       )}
+
+      <AlertDialog open={showSignOutAlert} onOpenChange={setShowSignOutAlert}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out?</AlertDialogTitle>
+            <AlertDialogDescription>Are you sure you want to sign out of your account?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => logout()} className="rounded-xl bg-destructive text-destructive-foreground">Sign out</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </nav>
   );
 }

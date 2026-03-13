@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Trash2, Plus, GripVertical, Pencil, X, Layers } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { type Routine } from "@shared/schema";
@@ -17,6 +18,7 @@ export default function RoutinesPage() {
   
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
   const [name, setName] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [selectedSkillIds, setSelectedSkillIds] = useState<(number | null)[]>(new Array(10).fill(null));
 
   const handleAddSkill = (index: number, skillId: string) => {
@@ -157,7 +159,7 @@ export default function RoutinesPage() {
                       <Button variant="ghost" size="icon" onClick={() => startEditing(routine)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => deleteRoutine(routine.id)}>
+                      <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: routine.id, name: routine.name })}>
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
                     </div>
@@ -183,6 +185,19 @@ export default function RoutinesPage() {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{deleteTarget?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (deleteTarget) { deleteRoutine(deleteTarget.id); setDeleteTarget(null); } }} className="rounded-xl bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

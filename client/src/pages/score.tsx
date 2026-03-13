@@ -15,6 +15,7 @@ import { Trash2, Plus, Trophy, CalendarIcon, Pencil, GripVertical, X } from "luc
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { DndContext, MouseSensor, TouchSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
@@ -77,6 +78,7 @@ export default function ScorePage() {
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
   const [editingScore, setEditingScore] = useState<Score | null>(null);
+  const [deleteScoreId, setDeleteScoreId] = useState<number | null>(null);
   const [customSkillIds, setCustomSkillIds] = useState<number[] | null>(null);
   const [customSkillIdsVol, setCustomSkillIdsVol] = useState<number[] | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<"set" | "vol" | null>(null);
@@ -593,7 +595,7 @@ export default function ScorePage() {
                   <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground" onClick={() => startEdit(score)}>
                     <Pencil className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="text-destructive h-9 w-9" onClick={() => deleteMutation.mutate(score.id)}>
+                  <Button variant="ghost" size="icon" className="text-destructive h-9 w-9" onClick={() => setDeleteScoreId(score.id)}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -608,6 +610,19 @@ export default function ScorePage() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={deleteScoreId !== null} onOpenChange={(open) => { if (!open) setDeleteScoreId(null); }}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this score?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (deleteScoreId !== null) { deleteMutation.mutate(deleteScoreId); setDeleteScoreId(null); } }} className="rounded-xl bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
