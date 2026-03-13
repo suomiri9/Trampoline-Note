@@ -518,7 +518,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     };
 
                     return (
-                      <div className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 flex flex-col p-4 rounded-xl overflow-hidden">
+                      <div className="fixed inset-x-0 bottom-0 top-16 sm:absolute sm:inset-0 bg-background z-20 sm:z-10 sm:bg-background/97 sm:backdrop-blur-sm flex flex-col p-4 rounded-t-2xl sm:rounded-xl overflow-hidden shadow-2xl sm:shadow-none">
                         <div className="flex justify-between items-center mb-3 shrink-0">
                           <span className="font-bold text-sm">{rItem.routineName}</span>
                           <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setEditingRoutineIdx(null)}>Done</Button>
