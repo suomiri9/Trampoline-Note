@@ -6,7 +6,7 @@ export default function LoginPage() {
     <div className="min-h-[100svh] flex flex-col items-center justify-center bg-background px-6">
       <div className="w-full max-w-sm flex flex-col items-center gap-8">
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-foreground text-background shadow-lg">
+          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/30">
             <Activity className="w-8 h-8" />
           </div>
           <div>

@@ -44,7 +44,7 @@ export default function Home() {
           <div className="flex gap-4">
             <Button 
               onClick={handleCreateNew}
-              className="rounded-2xl h-12 px-6 font-semibold bg-foreground text-background hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-black/5 self-start md:self-auto flex items-center gap-2"
+              className="rounded-2xl h-12 px-6 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/20 self-start md:self-auto flex items-center gap-2"
             >
               <Plus className="w-5 h-5" />
               Start Training

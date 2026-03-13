@@ -53,7 +53,7 @@ function Navigation() {
           <div className={cn(
             "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer",
             location === item.href
-              ? "bg-foreground text-background shadow-lg"
+              ? "bg-primary text-primary-foreground shadow-lg"
               : "text-muted-foreground hover:bg-secondary"
           )}>
             <item.icon className="w-4 h-4" />
