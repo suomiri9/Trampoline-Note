@@ -11,8 +11,8 @@ import { Loader2, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import {
   format, parseISO, eachDayOfInterval, eachWeekOfInterval,
-  startOfDay, startOfWeek, endOfWeek,
-  addWeeks, subDays, subYears, isWithinInterval,
+  startOfDay, startOfWeek, endOfWeek, startOfMonth, startOfYear,
+  addWeeks, isWithinInterval,
 } from "date-fns";
 
 type Range = "week" | "month" | "year" | "all";
@@ -78,7 +78,7 @@ export default function StatsPage() {
       };
     });
   } else if (range === "month") {
-    const monthStart = subDays(today, 29);
+    const monthStart = startOfMonth(today);
     const days = eachDayOfInterval({ start: monthStart, end: today });
     xTickInterval = 4;
     periodLabel = `${format(monthStart, "MMM d")} – ${format(today, "MMM d, yyyy")}`;
@@ -89,7 +89,7 @@ export default function StatsPage() {
     });
   } else if (range === "year") {
     useWeekly = true;
-    const yearStart = subYears(today, 1);
+    const yearStart = startOfYear(today);
     const weeks = eachWeekOfInterval({ start: yearStart, end: today }, { weekStartsOn: 1 });
     periodLabel = `${format(yearStart, "MMM d, yyyy")} – ${format(today, "MMM d, yyyy")}`;
     chartData = weeks.map(ws => {
