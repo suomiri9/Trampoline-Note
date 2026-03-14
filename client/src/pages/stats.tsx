@@ -192,9 +192,9 @@ export default function StatsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="week">1 Week</SelectItem>
-                  <SelectItem value="month">1 Month</SelectItem>
-                  <SelectItem value="year">1 Year</SelectItem>
+                  <SelectItem value="week">A Week</SelectItem>
+                  <SelectItem value="month">A Month</SelectItem>
+                  <SelectItem value="year">A Year</SelectItem>
                   <SelectItem value="all">All Time</SelectItem>
                 </SelectContent>
               </Select>
