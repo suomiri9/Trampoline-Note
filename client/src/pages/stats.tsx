@@ -11,7 +11,7 @@ import { Loader2, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import {
   format, parseISO, eachDayOfInterval, eachWeekOfInterval,
-  startOfDay, startOfWeek, endOfWeek, startOfMonth, startOfYear,
+  startOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear,
   addWeeks, isWithinInterval,
 } from "date-fns";
 
@@ -79,9 +79,10 @@ export default function StatsPage() {
     });
   } else if (range === "month") {
     const monthStart = startOfMonth(today);
-    const days = eachDayOfInterval({ start: monthStart, end: today });
+    const monthEnd = endOfMonth(today);
+    const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
     xTickInterval = 4;
-    periodLabel = `${format(monthStart, "MMM d")} – ${format(today, "MMM d, yyyy")}`;
+    periodLabel = `${format(monthStart, "MMM d")} – ${format(monthEnd, "MMM d, yyyy")}`;
     chartData = days.map(day => {
       const key = format(day, "yyyy-MM-dd");
       const found = ddByDate[key];
@@ -90,8 +91,9 @@ export default function StatsPage() {
   } else if (range === "year") {
     useWeekly = true;
     const yearStart = startOfYear(today);
-    const weeks = eachWeekOfInterval({ start: yearStart, end: today }, { weekStartsOn: 1 });
-    periodLabel = `${format(yearStart, "MMM d, yyyy")} – ${format(today, "MMM d, yyyy")}`;
+    const yearEnd = endOfYear(today);
+    const weeks = eachWeekOfInterval({ start: yearStart, end: yearEnd }, { weekStartsOn: 1 });
+    periodLabel = `${format(yearStart, "MMM d, yyyy")} – ${format(yearEnd, "MMM d, yyyy")}`;
     chartData = weeks.map(ws => {
       const bStart = ws < yearStart ? yearStart : ws;
       const wEnd = endOfWeek(ws, { weekStartsOn: 1 });
