@@ -21,7 +21,7 @@ export function FocusMemo() {
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       if (!text) {
-        setText("• ");
+        setText("- ");
       }
       textareaRef.current.focus();
       requestAnimationFrame(() => {
@@ -68,7 +68,7 @@ export function FocusMemo() {
       const pos = ta.selectionStart;
       const before = text.slice(0, pos);
       const after = text.slice(pos);
-      const newText = before + "\n• " + after;
+      const newText = before + "\n- " + after;
       setText(newText);
       requestAnimationFrame(() => {
         ta.selectionStart = ta.selectionEnd = pos + 3;
