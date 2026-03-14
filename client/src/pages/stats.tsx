@@ -272,7 +272,7 @@ export default function StatsPage() {
                     dataKey="difficulty"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2.5}
-                    connectNulls={false}
+                    connectNulls={true}
                     dot={{ fill: 'hsl(var(--primary))', r: 4, strokeWidth: 0 }}
                     activeDot={{ r: 6, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
                   />
