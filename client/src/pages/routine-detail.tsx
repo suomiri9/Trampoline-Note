@@ -275,10 +275,10 @@ export default function RoutineDetailPage() {
                         data-testid={`badge-attempt-${entry.noteId}`}
                       >
                         {entry.attempt != null
-                          ? (entry.skillCount > routine.skillIds.length
+                          ? `attempt ${entry.skillCount}/${routine.skillIds.length}`
+                          : entry.skillCount > routine.skillIds.length
                             ? `${entry.skillCount} skills`
-                            : `attempt ${entry.skillCount}/${routine.skillIds.length}`)
-                          : `${routine.skillIds.length}/${routine.skillIds.length} Full run`}
+                            : `${routine.skillIds.length}/${routine.skillIds.length} Full run`}
                       </Badge>
                       {entry.rating != null && (
                         <div className="flex items-center gap-1" data-testid={`text-rating-${entry.noteId}`}>
