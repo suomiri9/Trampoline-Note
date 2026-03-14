@@ -434,7 +434,7 @@ export default function ScorePage() {
               <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-lg">{format(new Date(score.date), "MMM d, yyyy")}</span>
+                    <span className="font-bold text-lg">{format(new Date(score.date), "EEE, d MMMM yyyy")}</span>
                     <Badge variant={score.type === "competition" ? "default" : "outline"} className="rounded-lg capitalize text-[10px]">
                       {score.type}
                     </Badge>
