@@ -3,6 +3,7 @@ import { Plus, BookOpen, Loader2, Activity, LayoutDashboard } from "lucide-react
 import { useNotes } from "@/hooks/use-notes";
 import { NoteCard } from "@/components/note-card";
 import { NoteDialog } from "@/components/note-dialog";
+import { FocusMemo } from "@/components/focus-memo";
 import { PageLayout } from "@/components/page-layout";
 import { Button } from "@/components/ui/button";
 import { type Note } from "@shared/schema";
@@ -47,6 +48,8 @@ export default function Home() {
           Start Training
         </Button>
       </div>
+
+      <FocusMemo />
 
       <main>
         {isLoading ? (

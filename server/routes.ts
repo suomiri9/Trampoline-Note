@@ -4,6 +4,9 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { isAuthenticated, getUserId } from "./auth";
+import { db } from "./db";
+import { users } from "@shared/models/auth";
+import { eq } from "drizzle-orm";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -193,6 +196,29 @@ export async function registerRoutes(
   app.delete(api.scores.delete.path, isAuthenticated, async (req, res) => {
     await storage.deleteScore(Number(req.params.id), getUserId(req));
     res.status(204).send();
+  });
+
+  app.patch("/api/auth/focus-memo", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z.object({ focusMemo: z.string().max(1000) });
+      const { focusMemo } = schema.parse(req.body);
+      const userId = getUserId(req);
+      const [updated] = await db
+        .update(users)
+        .set({ focusMemo, updatedAt: new Date() })
+        .where(eq(users.id, userId))
+        .returning();
+      if (!updated) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const { password: _, ...safeUser } = updated;
+      res.json(safeUser);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to update focus memo" });
+    }
   });
 
   return httpServer;

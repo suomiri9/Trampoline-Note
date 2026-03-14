@@ -67,6 +67,7 @@ async function runMigrations() {
     await client.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS password varchar;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name varchar;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS focus_memo text;
     `);
     console.log("Database migrations applied");
   } catch (err) {
