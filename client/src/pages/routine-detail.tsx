@@ -1,0 +1,276 @@
+import { useQuery } from "@tanstack/react-query";
+import { useRoute, useLocation } from "wouter";
+import { useSkills } from "@/hooks/use-skills";
+import { useRoutines } from "@/hooks/use-routines";
+import { calcDDFromSkillIds } from "@/lib/training-utils";
+import { PageLayout } from "@/components/page-layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Calendar, Star, TrendingUp, Loader2, Layers } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { format, parseISO, startOfWeek, eachWeekOfInterval } from "date-fns";
+
+interface RoutineHistoryEntry {
+  noteId: number;
+  date: string;
+  rating: number | null;
+  attempt: number | null;
+  skillCount: number;
+}
+
+export default function RoutineDetailPage() {
+  const [, params] = useRoute("/routines/:id");
+  const [, navigate] = useLocation();
+  const routineId = Number(params?.id);
+
+  const { data: allSkills, isLoading: skillsLoading } = useSkills();
+  const skills = allSkills?.filter(s => s.isDrill === 0);
+  const { data: routines, isLoading: routinesLoading } = useRoutines();
+  const routine = routines?.find(r => r.id === routineId);
+
+  const { data: history, isLoading: historyLoading } = useQuery<RoutineHistoryEntry[]>({
+    queryKey: ["/api/routines", routineId, "history"],
+    queryFn: async () => {
+      const res = await fetch(`/api/routines/${routineId}/history`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch history");
+      return res.json();
+    },
+    enabled: !!routineId,
+  });
+
+  if (skillsLoading || routinesLoading || historyLoading) {
+    return (
+      <PageLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
+        </div>
+      </PageLayout>
+    );
+  }
+
+  if (!routine) {
+    return (
+      <PageLayout>
+        <div className="text-center py-16">
+          <p className="text-muted-foreground">Routine not found.</p>
+          <Button variant="ghost" className="mt-4" onClick={() => navigate("/routines")}>
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Routines
+          </Button>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  const entries = history || [];
+  const totalSessions = entries.length;
+  const firstPracticed = entries.length > 0 ? entries[0].date : null;
+  const lastPracticed = entries.length > 0 ? entries[entries.length - 1].date : null;
+  const fullRunCount = entries.filter(e => e.attempt == null).length;
+  const partialCount = entries.filter(e => e.attempt != null).length;
+  const totalDD = calcDDFromSkillIds(routine.skillIds, allSkills || []);
+
+  const weeklyData = buildWeeklyData(entries);
+
+  return (
+    <PageLayout>
+      <div className="mb-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1 -ml-2 mb-2 text-muted-foreground"
+          onClick={() => navigate("/routines")}
+          data-testid="button-back-to-routines"
+        >
+          <ArrowLeft className="w-4 h-4" /> Routines
+        </Button>
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-zinc-100 dark:bg-zinc-800/30 rounded-xl shrink-0">
+            <Layers className="w-5 h-5 text-zinc-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-display font-bold" data-testid="text-routine-name">{routine.name}</h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Total DD: <span className="font-medium" data-testid="text-routine-dd">{totalDD.toFixed(1)}</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap gap-3">
+            {routine.skillIds.map((id, idx) => {
+              const skill = skills?.find(s => s.id === id);
+              return (
+                <div key={idx} className="flex flex-col items-center gap-1">
+                  <Badge variant="outline" className="px-2 py-1 font-mono" data-testid={`badge-routine-skill-${idx}`}>
+                    {skill?.code || "???"}
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground font-semibold">
+                    {skill?.difficulty.toFixed(1) || "0.0"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+        <StatCard
+          icon={<Calendar className="w-4 h-4" />}
+          label="Total Sessions"
+          value={totalSessions.toString()}
+          testId="stat-total-sessions"
+        />
+        <StatCard
+          icon={<TrendingUp className="w-4 h-4" />}
+          label="Full Runs (10/10)"
+          value={fullRunCount.toString()}
+          testId="stat-full-runs"
+        />
+        <StatCard
+          icon={<TrendingUp className="w-4 h-4" />}
+          label="Partial Attempts"
+          value={partialCount.toString()}
+          testId="stat-partial-attempts"
+        />
+        <StatCard
+          icon={<Calendar className="w-4 h-4" />}
+          label="First Practiced"
+          value={firstPracticed ? format(parseISO(firstPracticed), "MMM d, yyyy") : "—"}
+          testId="stat-first-practiced"
+        />
+        <StatCard
+          icon={<Star className="w-4 h-4" />}
+          label="Last Practiced"
+          value={lastPracticed ? format(parseISO(lastPracticed), "MMM d, yyyy") : "—"}
+          testId="stat-last-practiced"
+        />
+      </div>
+
+      {weeklyData.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Practice Frequency</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-48 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weeklyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 11 }}
+                    className="fill-muted-foreground"
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    tick={{ fontSize: 11 }}
+                    className="fill-muted-foreground"
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: "8px",
+                      border: "1px solid hsl(var(--border))",
+                      background: "hsl(var(--popover))",
+                      color: "hsl(var(--popover-foreground))",
+                      fontSize: "12px",
+                    }}
+                  />
+                  <Bar dataKey="runs" name="Runs" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Session History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {entries.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-no-history">
+              No training sessions found for this routine yet.
+            </p>
+          ) : (
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto" data-testid="list-session-history">
+              {[...entries].reverse().map((entry) => (
+                <div
+                  key={`${entry.noteId}-${entry.date}`}
+                  className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  data-testid={`row-session-${entry.noteId}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium" data-testid={`text-date-${entry.noteId}`}>
+                      {format(parseISO(entry.date), "MMM d, yyyy")}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge
+                      variant={entry.attempt != null ? "secondary" : "outline"}
+                      className="font-mono text-xs"
+                      data-testid={`badge-attempt-${entry.noteId}`}
+                    >
+                      {entry.attempt != null ? `${entry.skillCount}/10 skills` : "10/10 Full run"}
+                    </Badge>
+                    {entry.rating != null && (
+                      <div className="flex items-center gap-1" data-testid={`text-rating-${entry.noteId}`}>
+                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                        <span className="text-xs font-medium">{entry.rating}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </PageLayout>
+  );
+}
+
+function StatCard({ icon, label, value, testId }: { icon: React.ReactNode; label: string; value: string; testId: string }) {
+  return (
+    <Card>
+      <CardContent className="p-3">
+        <div className="flex items-center gap-2 text-muted-foreground mb-1">
+          {icon}
+          <span className="text-xs">{label}</span>
+        </div>
+        <p className="text-lg font-bold truncate" data-testid={testId}>{value}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function buildWeeklyData(entries: RoutineHistoryEntry[]) {
+  if (entries.length === 0) return [];
+
+  const dates = entries.map(e => parseISO(e.date));
+  const minDate = dates[0];
+  const maxDate = dates[dates.length - 1];
+
+  const weeks = eachWeekOfInterval({ start: minDate, end: maxDate }, { weekStartsOn: 1 });
+
+  const weekMap = new Map<string, number>();
+  for (const weekStart of weeks) {
+    weekMap.set(weekStart.toISOString(), 0);
+  }
+
+  for (const entry of entries) {
+    const d = parseISO(entry.date);
+    const ws = startOfWeek(d, { weekStartsOn: 1 });
+    const key = ws.toISOString();
+    weekMap.set(key, (weekMap.get(key) || 0) + 1);
+  }
+
+  return Array.from(weekMap.entries()).map(([key, runs]) => ({
+    label: format(new Date(key), "MMM d"),
+    runs,
+  }));
+}

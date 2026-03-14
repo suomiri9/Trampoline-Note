@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { calcDDFromSkillIds } from "@/lib/training-utils";
@@ -14,6 +15,7 @@ import { type Routine } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
 export default function RoutinesPage() {
+  const [, navigate] = useLocation();
   const { data: allItems } = useSkills();
   const skills = allItems?.filter(item => item.isDrill === 0);
   const { data: routines, createRoutine, deleteRoutine, updateRoutine, isCreating, isUpdating } = useRoutines();
@@ -145,13 +147,13 @@ export default function RoutinesPage() {
           <CardContent>
             <div className="space-y-4">
               {routines?.map((routine) => (
-                <Card key={routine.id} className={cn("overflow-hidden", editingRoutine?.id === routine.id && "ring-2 ring-primary")}>
+                <Card key={routine.id} className={cn("overflow-hidden cursor-pointer hover:shadow-md transition-shadow", editingRoutine?.id === routine.id && "ring-2 ring-primary")} onClick={() => navigate(`/routines/${routine.id}`)} data-testid={`card-routine-${routine.id}`}>
                   <div className="p-4 flex items-center justify-between bg-muted/30">
                     <div>
                       <h3 className="font-bold text-lg">{routine.name}</h3>
                       <p className="text-sm text-muted-foreground">Total Difficulty: {calcDDFromSkillIds(routine.skillIds, allItems || []).toFixed(1)}</p>
                     </div>
-                    <div className="space-x-2">
+                    <div className="space-x-2" onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" onClick={() => startEditing(routine)}>
                         <Pencil className="h-4 w-4" />
                       </Button>

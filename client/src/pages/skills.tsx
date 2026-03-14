@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { calcDDFromSkillIds } from "@/lib/training-utils";
 import { PageLayout } from "@/components/page-layout";
@@ -17,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 
 export default function SkillsPage() {
+  const [, navigate] = useLocation();
   const { data: allItems, createSkill, deleteSkill, updateSkill, isCreating, isUpdating } = useSkills();
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   
@@ -199,11 +201,11 @@ export default function SkillsPage() {
                   <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Difficulty</TableHead><TableHead /></TableRow></TableHeader>
                   <TableBody>
                     {skills?.map((skill) => (
-                      <TableRow key={skill.id} className={editingSkill?.id === skill.id ? "bg-muted/50" : ""}>
+                      <TableRow key={skill.id} className={`cursor-pointer ${editingSkill?.id === skill.id ? "bg-muted/50" : "hover:bg-muted/30"}`} onClick={() => navigate(`/skills/${skill.id}`)} data-testid={`row-skill-${skill.id}`}>
                         <TableCell className="font-medium">{skill.name}</TableCell>
                         <TableCell>{skill.code}</TableCell>
                         <TableCell>{skill.difficulty.toFixed(1)}</TableCell>
-                        <TableCell className="text-right space-x-2">
+                        <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
                           <Button variant="ghost" size="icon" onClick={() => startEditing(skill)}><Pencil className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: skill.id, name: skill.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                         </TableCell>
@@ -254,11 +256,11 @@ export default function SkillsPage() {
                   <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Difficulty</TableHead><TableHead /></TableRow></TableHeader>
                   <TableBody>
                     {drills?.map((drill) => (
-                      <TableRow key={drill.id} className={editingSkill?.id === drill.id ? "bg-muted/50" : ""}>
+                      <TableRow key={drill.id} className={`cursor-pointer ${editingSkill?.id === drill.id ? "bg-muted/50" : "hover:bg-muted/30"}`} onClick={() => navigate(`/skills/${drill.id}`)} data-testid={`row-drill-${drill.id}`}>
                         <TableCell className="font-medium">{drill.name}</TableCell>
                         <TableCell>{drill.code}</TableCell>
                         <TableCell>{drill.difficulty.toFixed(1)}</TableCell>
-                        <TableCell className="text-right space-x-2">
+                        <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
                           <Button variant="ghost" size="icon" onClick={() => startEditing(drill)}><Pencil className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: drill.id, name: drill.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                         </TableCell>
@@ -341,7 +343,7 @@ export default function SkillsPage() {
                   <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Sequence</TableHead><TableHead>DD</TableHead><TableHead /></TableRow></TableHeader>
                   <TableBody>
                     {frequentConnections?.map((conn) => (
-                      <TableRow key={conn.id} className={editingSkill?.id === conn.id ? "bg-muted/50" : ""}>
+                      <TableRow key={conn.id} className={editingSkill?.id === conn.id ? "bg-muted/50" : ""} data-testid={`row-connection-${conn.id}`}>
                         <TableCell className="font-medium">{conn.name}</TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">

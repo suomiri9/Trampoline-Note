@@ -6,7 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import SkillsPage from "@/pages/skills";
+import SkillDetailPage from "@/pages/skill-detail";
 import RoutinesPage from "@/pages/routines";
+import RoutineDetailPage from "@/pages/routine-detail";
 import StatsPage from "@/pages/stats";
 import LoginPage from "@/pages/login";
 import ScorePage from "@/pages/score";
@@ -46,14 +48,14 @@ function Navigation() {
         <Link key={item.href} href={item.href}>
           <div className={cn(
             "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer",
-            location === item.href
+            (location === item.href || (item.href !== "/" && location.startsWith(item.href + "/")))
               ? `${item.activeClass} ${item.colorClass} font-semibold`
               : "hover:bg-secondary"
           )}>
             <item.icon className={cn("w-4 h-4", item.colorClass)} />
             <span className={cn(
               "hidden sm:inline",
-              location === item.href ? "" : "text-muted-foreground"
+              (location === item.href || (item.href !== "/" && location.startsWith(item.href + "/"))) ? "" : "text-muted-foreground"
             )}>{item.label}</span>
           </div>
         </Link>
@@ -111,7 +113,9 @@ function Router() {
         <Route path="/score" component={ScorePage} />
         <Route path="/stats" component={StatsPage} />
         <Route path="/skills" component={SkillsPage} />
+        <Route path="/skills/:id" component={SkillDetailPage} />
         <Route path="/routines" component={RoutinesPage} />
+        <Route path="/routines/:id" component={RoutineDetailPage} />
         <Route component={NotFound} />
       </Switch>
     </div>

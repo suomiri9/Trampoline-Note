@@ -8,6 +8,22 @@ import { db } from "./db";
 import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
 
+interface SkillEntry { id: number; reps?: number }
+
+function parseSkillsField(skillsString: string): SkillEntry[] {
+  try {
+    const parsed = JSON.parse(skillsString);
+    if (Array.isArray(parsed)) {
+      return parsed.map((item: unknown) =>
+        typeof item === "number" ? { id: item } : (item as SkillEntry)
+      );
+    }
+    return skillsString.split(",").map(s => ({ id: parseInt(s) }));
+  } catch {
+    return skillsString.split(",").map(s => ({ id: parseInt(s) }));
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -196,6 +212,133 @@ export async function registerRoutes(
   app.delete(api.scores.delete.path, isAuthenticated, async (req, res) => {
     await storage.deleteScore(Number(req.params.id), getUserId(req));
     res.status(204).send();
+  });
+
+  app.get("/api/skills/:id/history", isAuthenticated, async (req, res) => {
+    try {
+      const skillId = Number(req.params.id);
+      if (!Number.isFinite(skillId) || skillId <= 0) {
+        return res.status(400).json({ message: "Invalid skill ID" });
+      }
+      const userId = getUserId(req);
+      const [allNotes, userRoutines, userSkills] = await Promise.all([
+        storage.getNotes(userId),
+        storage.getRoutines(userId),
+        storage.getSkills(userId),
+      ]);
+
+      const fcMap = new Map<number, number[]>();
+      for (const sk of userSkills) {
+        if (sk.isDrill === 2 && sk.skillIds) {
+          fcMap.set(sk.id, sk.skillIds);
+        }
+      }
+
+      const entries: Array<{
+        noteId: number;
+        date: string;
+        reps: number;
+        rating: number | null;
+      }> = [];
+
+      for (const note of allNotes) {
+        if (!note.skills) continue;
+
+        const items = parseSkillsField(note.skills);
+        let totalReps = 0;
+
+        for (const item of items) {
+          const raw = item as any;
+
+          if (item.id === skillId) {
+            const reps = Number(item.reps);
+            totalReps += Number.isFinite(reps) && reps > 0 ? reps : 1;
+          } else if (item.id === -2 && raw.routineId) {
+            const customIds: number[] | undefined = raw.customSkillIds;
+            const routine = userRoutines.find(r => r.id === raw.routineId);
+            const routineSkillIds = customIds ?? routine?.skillIds ?? [];
+            const attempt = raw.attempt ?? routineSkillIds.length;
+            const activeSkills = routineSkillIds.slice(0, attempt);
+            const count = activeSkills.filter((sid: number) => sid === skillId).length;
+            totalReps += count;
+          } else {
+            const fcSkillIds = fcMap.get(item.id);
+            if (fcSkillIds && fcSkillIds.includes(skillId)) {
+              const reps = Number(item.reps);
+              const count = Number.isFinite(reps) && reps > 0 ? reps : 1;
+              totalReps += count * fcSkillIds.filter(sid => sid === skillId).length;
+            }
+          }
+        }
+
+        if (totalReps > 0) {
+          entries.push({
+            noteId: note.id,
+            date: note.date,
+            reps: totalReps,
+            rating: note.rating ?? null,
+          });
+        }
+      }
+
+      entries.sort((a, b) => a.date.localeCompare(b.date));
+      res.json(entries);
+    } catch {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/routines/:id/history", isAuthenticated, async (req, res) => {
+    try {
+      const routineId = Number(req.params.id);
+      if (!Number.isFinite(routineId) || routineId <= 0) {
+        return res.status(400).json({ message: "Invalid routine ID" });
+      }
+      const userId = getUserId(req);
+      const allNotes = await storage.getNotes(userId);
+
+      const entries: Array<{
+        noteId: number;
+        date: string;
+        rating: number | null;
+        attempt: number | null;
+        skillCount: number;
+      }> = [];
+
+      for (const note of allNotes) {
+        if (!note.skills) continue;
+        const items = parseSkillsField(note.skills);
+
+        for (const item of items) {
+          const raw = item as any;
+          if (item.id === -2 && raw.routineId === routineId) {
+            const customIds: number[] | undefined = raw.customSkillIds;
+            const explicitAttempt: number | undefined = raw.attempt;
+            let skillCount: number;
+            if (explicitAttempt != null) {
+              skillCount = explicitAttempt;
+            } else if (customIds) {
+              skillCount = customIds.length;
+            } else {
+              skillCount = 10;
+            }
+            entries.push({
+              noteId: note.id,
+              date: note.date,
+              rating: note.rating ?? null,
+              attempt: skillCount < 10 ? skillCount : null,
+              skillCount,
+            });
+            break;
+          }
+        }
+      }
+
+      entries.sort((a, b) => a.date.localeCompare(b.date));
+      res.json(entries);
+    } catch {
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   app.patch("/api/auth/focus-memo", isAuthenticated, async (req, res) => {
