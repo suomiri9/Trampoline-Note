@@ -167,8 +167,8 @@ export default function StatsPage() {
     if (touchStartX.current === null || range !== "week") return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     if (Math.abs(dx) > 50) {
-      if (dx < 0) setWeekOffset(w => w - 1);       // swipe left = go back
-      else if (dx > 0 && !isCurrentWeek) setWeekOffset(w => w + 1); // swipe right = go forward
+      if (dx > 0) setWeekOffset(w => w - 1);        // swipe right = go back
+      else if (dx < 0 && !isCurrentWeek) setWeekOffset(w => w + 1); // swipe left = go forward
     }
     touchStartX.current = null;
   };
