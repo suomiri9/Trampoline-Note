@@ -104,7 +104,7 @@ export default function StatsPage() {
       const wEnd = endOfWeek(ws, { weekStartsOn: 1 });
       const bEnd = wEnd > yearEnd ? yearEnd : (wEnd > today ? today : wEnd);
       const m = bStart.getMonth();
-      const label = m !== lastMonth && m < 11 ? format(bStart, "MMM") : "";
+      const label = m !== lastMonth && bStart.getFullYear() === today.getFullYear() ? format(bStart, "MMM") : "";
       lastMonth = m;
       const totalDD = Object.entries(ddByDate)
         .filter(([k]) => {
