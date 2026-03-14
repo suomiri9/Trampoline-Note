@@ -20,6 +20,9 @@ export function FocusMemo() {
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
+      if (!text) {
+        setText("• ");
+      }
       textareaRef.current.focus();
       requestAnimationFrame(() => {
         if (textareaRef.current) {
@@ -65,23 +68,11 @@ export function FocusMemo() {
       const pos = ta.selectionStart;
       const before = text.slice(0, pos);
       const after = text.slice(pos);
-      const lastLine = before.split("\n").pop() || "";
-      const isList = /^- /.test(lastLine);
-      if (isList && lastLine.trim() === "-") {
-        const lineStart = before.lastIndexOf("\n- ");
-        const newText = before.slice(0, lineStart === -1 ? 0 : lineStart) + (after ? "\n" + after : "");
-        setText(newText);
-        const newPos = lineStart === -1 ? 0 : lineStart;
-        requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = newPos; });
-      } else if (isList) {
-        const newText = before + "\n- " + after;
-        setText(newText);
-        requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = pos + 3; });
-      } else {
-        const newText = before + "\n" + after;
-        setText(newText);
-        requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = pos + 1; });
-      }
+      const newText = before + "\n• " + after;
+      setText(newText);
+      requestAnimationFrame(() => {
+        ta.selectionStart = ta.selectionEnd = pos + 3;
+      });
     }
     if (e.key === "Escape") {
       setText(user?.focusMemo || "");
