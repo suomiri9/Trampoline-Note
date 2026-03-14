@@ -58,6 +58,7 @@ export function useCreateNote() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.notes.list.path] });
+      invalidateAllHistory(queryClient);
     },
   });
 }
@@ -79,6 +80,7 @@ export function useUpdateNote() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [api.notes.list.path] });
       queryClient.invalidateQueries({ queryKey: [api.notes.get.path, variables.id] });
+      invalidateAllHistory(queryClient);
     },
   });
 }
@@ -96,6 +98,16 @@ export function useDeleteNote() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.notes.list.path] });
+      invalidateAllHistory(queryClient);
+    },
+  });
+}
+
+function invalidateAllHistory(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({
+    predicate: (query) => {
+      const key = query.queryKey[0];
+      return typeof key === "string" && (key.includes("/history"));
     },
   });
 }
