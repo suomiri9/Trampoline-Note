@@ -3,30 +3,40 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Check, Loader2 } from "lucide-react";
+import { Pencil, Check, Loader2, Plus, X } from "lucide-react";
 import type { SafeUser } from "@shared/models/auth";
+
+function parseLines(memo: string): string[] {
+  if (!memo) return [];
+  return memo.split("\n").filter((l) => l.trim() !== "");
+}
+
+function serializeLines(lines: string[]): string {
+  return lines.filter((l) => l.trim() !== "").join("\n");
+}
 
 export function FocusMemo() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
-  const [text, setText] = useState(user?.focusMemo || "");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [lines, setLines] = useState<string[]>(() => parseLines(user?.focusMemo || ""));
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    setText(user?.focusMemo || "");
+    setLines(parseLines(user?.focusMemo || ""));
   }, [user?.focusMemo]);
 
   useEffect(() => {
-    if (isEditing && textareaRef.current) {
-      if (!text) {
-        setText("• ");
+    if (isEditing) {
+      if (lines.length === 0) {
+        setLines([""]);
       }
-      textareaRef.current.focus();
       requestAnimationFrame(() => {
-        if (textareaRef.current) {
-          textareaRef.current.selectionStart = textareaRef.current.selectionEnd = textareaRef.current.value.length;
+        const lastRef = inputRefs.current[inputRefs.current.length - 1];
+        if (lastRef) {
+          lastRef.focus();
+          lastRef.selectionStart = lastRef.selectionEnd = lastRef.value.length;
         }
       });
     }
@@ -41,7 +51,7 @@ export function FocusMemo() {
       queryClient.setQueryData(["/api/auth/user"], updatedUser);
     },
     onError: () => {
-      setText(user?.focusMemo || "");
+      setLines(parseLines(user?.focusMemo || ""));
       toast({ title: "Failed to save focus notes", variant: "destructive" });
     },
   });
@@ -51,36 +61,65 @@ export function FocusMemo() {
   const handleSave = () => {
     if (savingRef.current) return;
     savingRef.current = true;
-    const trimmed = text.trim();
+    const cleaned = lines.filter((l) => l.trim() !== "");
+    const serialized = serializeLines(cleaned);
+    setLines(cleaned.length > 0 ? cleaned : []);
     setIsEditing(false);
-    if (trimmed !== (user?.focusMemo || "")) {
-      mutation.mutate(trimmed);
-      setText(trimmed);
+    if (serialized !== (user?.focusMemo || "")) {
+      mutation.mutate(serialized);
     }
     requestAnimationFrame(() => { savingRef.current = false; });
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const updateLine = (index: number, value: string) => {
+    const next = [...lines];
+    next[index] = value;
+    setLines(next);
+  };
+
+  const addLine = () => {
+    setLines((prev) => [...prev, ""]);
+    requestAnimationFrame(() => {
+      const ref = inputRefs.current[lines.length];
+      if (ref) ref.focus();
+    });
+  };
+
+  const removeLine = (index: number) => {
+    if (lines.length <= 1) {
+      setLines([""]);
+      inputRefs.current[0]?.focus();
+      return;
+    }
+    const next = lines.filter((_, i) => i !== index);
+    setLines(next);
+    requestAnimationFrame(() => {
+      const focusIdx = Math.min(index, next.length - 1);
+      inputRefs.current[focusIdx]?.focus();
+    });
+  };
+
+  const handleLineKeyDown = (e: React.KeyboardEvent, index: number) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      const ta = textareaRef.current;
-      if (!ta) return;
-      const pos = ta.selectionStart;
-      const before = text.slice(0, pos);
-      const after = text.slice(pos);
-      const newText = before + "\n• " + after;
-      setText(newText);
+      const next = [...lines];
+      next.splice(index + 1, 0, "");
+      setLines(next);
       requestAnimationFrame(() => {
-        ta.selectionStart = ta.selectionEnd = pos + 3;
+        inputRefs.current[index + 1]?.focus();
       });
     }
+    if (e.key === "Backspace" && lines[index] === "" && lines.length > 1) {
+      e.preventDefault();
+      removeLine(index);
+    }
     if (e.key === "Escape") {
-      setText(user?.focusMemo || "");
+      setLines(parseLines(user?.focusMemo || ""));
       setIsEditing(false);
     }
   };
 
-  const displayText = user?.focusMemo || "";
+  const displayLines = parseLines(user?.focusMemo || "");
 
   return (
     <div
@@ -114,26 +153,62 @@ export function FocusMemo() {
             )}
           </div>
           {isEditing ? (
-            <textarea
-              ref={textareaRef}
-              data-testid="focus-memo-input"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onBlur={handleSave}
-              onKeyDown={handleKeyDown}
-              placeholder="Tap to add focus notes..."
-              maxLength={1000}
-              rows={4}
-              className="w-full bg-transparent text-sm text-foreground resize-none outline-none placeholder:text-muted-foreground/50"
-              onClick={(e) => e.stopPropagation()}
-            />
+            <div className="space-y-1.5" onClick={(e) => e.stopPropagation()}>
+              {lines.map((line, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground shrink-0 select-none">•</span>
+                  <input
+                    ref={(el) => { inputRefs.current[i] = el; }}
+                    data-testid={`focus-memo-line-${i}`}
+                    value={line}
+                    onChange={(e) => updateLine(i, e.target.value)}
+                    onKeyDown={(e) => handleLineKeyDown(e, i)}
+                    onBlur={(e) => {
+                      if (!e.currentTarget.closest('[data-testid="focus-memo-card"]')?.contains(e.relatedTarget as Node)) {
+                        handleSave();
+                      }
+                    }}
+                    className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/50"
+                    placeholder="Type here..."
+                    maxLength={500}
+                  />
+                  <button
+                    data-testid={`focus-memo-remove-${i}`}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => removeLine(i)}
+                    className="p-0.5 rounded hover:bg-secondary transition-colors shrink-0 opacity-40 hover:opacity-100"
+                    tabIndex={-1}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              <button
+                data-testid="focus-memo-add-line"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={addLine}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
+                tabIndex={-1}
+              >
+                <Plus className="w-3 h-3" />
+                <span>Add line</span>
+              </button>
+            </div>
           ) : (
-            <p
-              data-testid="focus-memo-text"
-              className={`text-sm whitespace-pre-wrap ${displayText ? "text-foreground" : "text-muted-foreground/50 italic"}`}
-            >
-              {displayText || "Tap to add focus notes..."}
-            </p>
+            <div data-testid="focus-memo-text">
+              {displayLines.length > 0 ? (
+                <ul className="space-y-0.5">
+                  {displayLines.map((line, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                      <span className="text-muted-foreground shrink-0 select-none">•</span>
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground/50 italic">Tap to add focus notes...</p>
+              )}
+            </div>
           )}
         </div>
       </div>
