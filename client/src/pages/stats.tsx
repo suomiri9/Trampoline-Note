@@ -94,13 +94,17 @@ export default function StatsPage() {
     const yearEnd = endOfYear(today);
     const weeks = eachWeekOfInterval({ start: yearStart, end: yearEnd }, { weekStartsOn: 1 });
     periodLabel = `${format(yearStart, "MMM d, yyyy")} – ${format(yearEnd, "MMM d, yyyy")}`;
+    const filteredWeeks = weeks.filter(ws => {
+      const wEnd = endOfWeek(ws, { weekStartsOn: 1 });
+      return ws.getFullYear() === today.getFullYear() || wEnd.getFullYear() === today.getFullYear();
+    });
     let lastMonth = -1;
-    chartData = weeks.map(ws => {
+    chartData = filteredWeeks.map(ws => {
       const bStart = ws < yearStart ? yearStart : ws;
       const wEnd = endOfWeek(ws, { weekStartsOn: 1 });
-      const bEnd = wEnd > today ? today : wEnd;
-      const m = ws.getMonth();
-      const label = m !== lastMonth ? format(ws, "MMM") : "";
+      const bEnd = wEnd > yearEnd ? yearEnd : (wEnd > today ? today : wEnd);
+      const m = bStart.getMonth();
+      const label = m !== lastMonth && m < 11 ? format(bStart, "MMM") : "";
       lastMonth = m;
       const totalDD = Object.entries(ddByDate)
         .filter(([k]) => {
