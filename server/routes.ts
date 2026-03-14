@@ -111,10 +111,25 @@ export async function registerRoutes(
   app.put(api.skills.update.path, isAuthenticated, async (req, res) => {
     try {
       const input = api.skills.update.input.parse(req.body);
-      const skill = await storage.updateSkill(Number(req.params.id), getUserId(req), input);
+      const userId = getUserId(req);
+      const skillId = Number(req.params.id);
+      const skill = await storage.updateSkill(skillId, userId, input);
       if (!skill) {
         return res.status(404).json({ message: "Skill not found" });
       }
+
+      if (skill.isDrill === 0 && input.difficulty != null) {
+        const allSkills = await storage.getSkills(userId);
+        const connections = allSkills.filter(s => s.isDrill === 2 && s.skillIds?.includes(skillId));
+        for (const conn of connections) {
+          const newDD = (conn.skillIds || []).reduce((acc, sId) => {
+            const sk = allSkills.find(s => s.id === sId);
+            return acc + (sk?.difficulty || 0);
+          }, 0);
+          await storage.updateSkill(conn.id, userId, { difficulty: newDD });
+        }
+      }
+
       res.json(skill);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -296,6 +311,9 @@ export async function registerRoutes(
       }
       const userId = getUserId(req);
       const allNotes = await storage.getNotes(userId);
+      const allRoutines = await storage.getRoutines(userId);
+      const routine = allRoutines.find(r => r.id === routineId);
+      const expectedCount = routine?.skillIds?.length ?? 10;
 
       const entries: Array<{
         noteId: number;
@@ -320,13 +338,13 @@ export async function registerRoutes(
             } else if (customIds) {
               skillCount = customIds.length;
             } else {
-              skillCount = 10;
+              skillCount = expectedCount;
             }
             entries.push({
               noteId: note.id,
               date: note.date,
               rating: note.rating ?? null,
-              attempt: skillCount !== 10 ? skillCount : null,
+              attempt: skillCount !== expectedCount ? skillCount : null,
               skillCount,
             });
             break;

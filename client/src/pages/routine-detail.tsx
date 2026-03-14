@@ -185,7 +185,7 @@ export default function RoutineDetailPage() {
           />
           <StatCard
             icon={<TrendingUp className="w-4 h-4" />}
-            label="Full Runs (10/10)"
+            label={`Full Runs (${routine.skillIds.length}/${routine.skillIds.length})`}
             value={fullRunCount.toString()}
             testId="stat-full-runs"
           />
@@ -274,7 +274,7 @@ export default function RoutineDetailPage() {
                         className="font-mono text-xs"
                         data-testid={`badge-attempt-${entry.noteId}`}
                       >
-                        {entry.attempt != null ? `${entry.skillCount}/10 skills` : "10/10 Full run"}
+                        {entry.attempt != null ? `${entry.skillCount}/${routine.skillIds.length} skills` : `${routine.skillIds.length}/${routine.skillIds.length} Full run`}
                       </Badge>
                       {entry.rating != null && (
                         <div className="flex items-center gap-1" data-testid={`text-rating-${entry.noteId}`}>
