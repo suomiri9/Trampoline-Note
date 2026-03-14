@@ -54,7 +54,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800/30 shrink-0">
               <Calendar className="w-4 h-4 text-slate-500 dark:text-slate-400" />
             </div>
-            <span className="whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-400">{format(new Date(note.date), "EEE, MMMM d, yyyy")}</span>
+            <span className="whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-400">{format(new Date(note.date), "EEE, d MMMM yyyy")}</span>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
