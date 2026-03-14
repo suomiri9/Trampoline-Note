@@ -41,7 +41,7 @@ function Navigation() {
   ];
 
   return (
-    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-md border border-border px-3 py-2 pb-safe rounded-2xl shadow-2xl flex items-center gap-1 z-40">
+    <nav className="fixed bottom-4 left-0 right-0 mx-auto w-fit bg-background/80 backdrop-blur-md border border-border px-3 py-2 pb-safe rounded-2xl shadow-2xl flex items-center gap-1 z-40">
       {navItems.map((item) => (
         <Link key={item.href} href={item.href}>
           <div className={cn(
@@ -62,7 +62,7 @@ function Navigation() {
       {user && (
         <Popover>
           <PopoverTrigger asChild>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer text-muted-foreground hover:bg-secondary ml-1">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer text-muted-foreground hover:bg-secondary">
               <UserCircle className="w-4 h-4" />
               <span className="hidden sm:inline max-w-[80px] truncate">
                 {user.displayName ?? user.firstName ?? user.email?.split("@")[0] ?? "Account"}
