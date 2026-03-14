@@ -38,15 +38,12 @@ function getSession() {
   });
 }
 
-function regenerateSession(req: Request, userId: string): Promise<void> {
+function setSessionUser(req: Request, userId: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    req.session.regenerate((err: Error | null) => {
+    req.session.userId = userId;
+    req.session.save((err: Error | null) => {
       if (err) return reject(err);
-      req.session.userId = userId;
-      req.session.save((saveErr: Error | null) => {
-        if (saveErr) return reject(saveErr);
-        resolve();
-      });
+      resolve();
     });
   });
 }
@@ -124,7 +121,7 @@ export async function setupAuth(app: Express) {
         })
         .returning();
 
-      await regenerateSession(req, user.id);
+      await setSessionUser(req, user.id);
       const { password: _, ...safeUser } = user;
       res.status(201).json(safeUser);
     } catch (err) {
@@ -155,7 +152,7 @@ export async function setupAuth(app: Express) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
 
-      await regenerateSession(req, user.id);
+      await setSessionUser(req, user.id);
       const { password: _, ...safeUser } = user;
       res.json(safeUser);
     } catch (err) {
