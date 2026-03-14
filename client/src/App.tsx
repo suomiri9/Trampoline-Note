@@ -20,10 +20,25 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 
+function useKeyboardVisible() {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const handler = () => {
+      setVisible(window.innerHeight - vv.height > 100);
+    };
+    vv.addEventListener("resize", handler);
+    return () => vv.removeEventListener("resize", handler);
+  }, []);
+  return visible;
+}
+
 function Navigation() {
   const [location] = useLocation();
   const { user, logout, isLoggingOut } = useAuth();
   const [showSignOutAlert, setShowSignOutAlert] = useState(false);
+  const keyboardOpen = useKeyboardVisible();
   const navItems = [
     { href: "/", label: "Training", icon: LayoutDashboard,
       activeClass: "bg-blue-50 dark:bg-blue-950/40 shadow-sm",
@@ -43,7 +58,7 @@ function Navigation() {
   ];
 
   return (
-    <nav className="fixed bottom-4 left-0 right-0 mx-auto w-fit bg-background/80 backdrop-blur-md border border-border px-3 pt-2 pb-2 mb-safe rounded-2xl shadow-2xl flex items-center gap-1 z-40">
+    <nav className={cn("fixed bottom-4 left-0 right-0 mx-auto w-fit bg-background/80 backdrop-blur-md border border-border px-3 pt-2 pb-2 mb-safe rounded-2xl shadow-2xl flex items-center gap-1 z-40 transition-opacity duration-200", keyboardOpen && "opacity-0 pointer-events-none")}>
       {navItems.map((item) => (
         <Link key={item.href} href={item.href}>
           <div className={cn(
