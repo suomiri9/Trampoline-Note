@@ -102,10 +102,13 @@ export default function StatsPage() {
     chartData = filteredWeeks.map(ws => {
       const bStart = ws < yearStart ? yearStart : ws;
       const wEnd = endOfWeek(ws, { weekStartsOn: 1 });
-      const bEnd = wEnd > yearEnd ? yearEnd : (wEnd > today ? today : wEnd);
+      const bEnd = wEnd > yearEnd ? yearEnd : wEnd;
       const m = bStart.getMonth();
       const label = m !== lastMonth && bStart.getFullYear() === today.getFullYear() ? format(bStart, "MMM") : "";
       lastMonth = m;
+      if (bStart > today) {
+        return { date: label, difficulty: null, sessions: 0 };
+      }
       const totalDD = Object.entries(ddByDate)
         .filter(([k]) => {
           const d = parseISO(k);
@@ -269,7 +272,7 @@ export default function StatsPage() {
                     dataKey="difficulty"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2.5}
-                    connectNulls={true}
+                    connectNulls={false}
                     dot={{ fill: 'hsl(var(--primary))', r: 4, strokeWidth: 0 }}
                     activeDot={{ r: 6, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
                   />
