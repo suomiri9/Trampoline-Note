@@ -3,19 +3,12 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { isAuthenticated } from "./replit_integrations/auth";
-import { registerAuthRoutes } from "./replit_integrations/auth";
-
-function getUserId(req: any): string {
-  return req.user.claims.sub;
-}
+import { isAuthenticated, getUserId } from "./auth";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-
-  registerAuthRoutes(app);
 
   // Notes
   app.get(api.notes.list.path, isAuthenticated, async (req, res) => {

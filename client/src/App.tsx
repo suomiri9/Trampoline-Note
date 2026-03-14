@@ -97,14 +97,14 @@ function Navigation() {
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer text-muted-foreground hover:bg-secondary ml-1">
               <UserCircle className="w-4 h-4" />
               <span className="hidden sm:inline max-w-[80px] truncate">
-                {user.firstName ?? user.email?.split("@")[0] ?? "Account"}
+                {user.displayName ?? user.firstName ?? user.email?.split("@")[0] ?? "Account"}
               </span>
             </div>
           </PopoverTrigger>
           <PopoverContent align="end" side="top" className="w-56 rounded-2xl p-3 mb-2">
             <div className="mb-3 px-1">
               <p className="text-xs font-semibold text-foreground truncate">
-                {user.firstName ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}` : "My Account"}
+                {user.displayName ?? (user.firstName ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}` : "My Account")}
               </p>
               {user.email && (
                 <p className="text-xs text-muted-foreground truncate mt-0.5">{user.email}</p>

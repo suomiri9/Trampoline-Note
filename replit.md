@@ -6,7 +6,7 @@ A full-stack trampoline training note app built with React, Express, Drizzle ORM
 
 - **Frontend**: React + Vite + TypeScript, Shadcn UI, TanStack Query, Wouter routing, Recharts
 - **Backend**: Express.js + TypeScript, Drizzle ORM, PostgreSQL
-- **Auth**: Replit Auth (email/password + OAuth), express-session with PostgreSQL session store
+- **Auth**: Custom email/password authentication with bcrypt, express-session with PostgreSQL session store
 
 ## Pages
 
@@ -18,8 +18,8 @@ A full-stack trampoline training note app built with React, Express, Drizzle ORM
 
 ## Database Tables
 
-- `users` — Replit Auth user profiles
-- `sessions` — Express session store (required for Replit Auth)
+- `users` — User profiles with hashed passwords (email/password auth)
+- `sessions` — Express session store
 - `notes` — Training sessions (per user)
 - `skills` — Skills/drills/frequent connections (per user)
 - `routines` — 10-skill routines (per user)
@@ -27,18 +27,19 @@ A full-stack trampoline training note app built with React, Express, Drizzle ORM
 
 ## Auth
 
-All API routes are protected with `isAuthenticated` middleware. Data is filtered by `userId` (from Replit OIDC `sub` claim). The frontend shows a login gate when unauthenticated.
+Custom email/password authentication. All API routes are protected with `isAuthenticated` middleware. Data is filtered by `userId` (from session). The frontend shows a login/register form when unauthenticated. Demo user (id `55504735`) has email `suomi.ri.9@gmail.com` and password `tramplog2026`.
 
 ## Key Files
 
 - `shared/schema.ts` — Drizzle table definitions + Zod schemas
 - `shared/models/auth.ts` — Users and sessions table definitions
+- `server/auth.ts` — Authentication setup (register, login, logout, session middleware)
 - `server/storage.ts` — Data access layer (all methods scoped by userId)
 - `server/routes.ts` — API route handlers
-- `server/index.ts` — Express app setup + auth middleware
-- `server/replit_integrations/auth/` — Replit Auth integration
+- `server/index.ts` — Express app setup
 - `client/src/App.tsx` — Router + auth gate + navigation
-- `client/src/hooks/use-auth.ts` — Auth state hook
+- `client/src/hooks/use-auth.ts` — Auth state hook (login, register, logout mutations)
+- `client/src/pages/login.tsx` — Login/register form
 
 ## Mobile / Touch Handling
 
