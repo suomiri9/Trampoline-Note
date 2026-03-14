@@ -62,8 +62,8 @@ export default function StatsPage() {
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
     const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
-    const startLabel = format(weekStart, "MMM d");
-    const endLabel = format(weekEnd, "MMM d, yyyy");
+    const startLabel = format(weekStart, "d MMM");
+    const endLabel = format(weekEnd, "d MMM yyyy");
     periodLabel = `${startLabel} – ${endLabel}`;
 
     chartData = days.map(day => {
@@ -82,18 +82,18 @@ export default function StatsPage() {
     const monthEnd = endOfMonth(today);
     const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
     xTickInterval = 4;
-    periodLabel = `${format(monthStart, "MMM d")} – ${format(monthEnd, "MMM d, yyyy")}`;
+    periodLabel = `${format(monthStart, "d MMM")} – ${format(monthEnd, "d MMM yyyy")}`;
     chartData = days.map(day => {
       const key = format(day, "yyyy-MM-dd");
       const found = ddByDate[key];
-      return { date: format(day, "MMM d"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0 };
+      return { date: format(day, "d MMM"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0 };
     });
   } else if (range === "year") {
     useWeekly = true;
     const yearStart = startOfYear(today);
     const yearEnd = endOfYear(today);
     const weeks = eachWeekOfInterval({ start: yearStart, end: yearEnd }, { weekStartsOn: 1 });
-    periodLabel = `${format(yearStart, "MMM d, yyyy")} – ${format(yearEnd, "MMM d, yyyy")}`;
+    periodLabel = `${format(yearStart, "d MMM yyyy")} – ${format(yearEnd, "d MMM yyyy")}`;
     const filteredWeeks = weeks.filter(ws => {
       const wEnd = endOfWeek(ws, { weekStartsOn: 1 });
       return ws.getFullYear() === today.getFullYear() || wEnd.getFullYear() === today.getFullYear();
@@ -126,10 +126,10 @@ export default function StatsPage() {
     if (allKeys.length > 0) {
       const earliest = startOfWeek(parseISO(allKeys[0]), { weekStartsOn: 1 });
       const weeks = eachWeekOfInterval({ start: earliest, end: today }, { weekStartsOn: 1 });
-      periodLabel = `${format(earliest, "MMM d, yyyy")} – ${format(today, "MMM d, yyyy")}`;
+      periodLabel = `${format(earliest, "d MMM yyyy")} – ${format(today, "d MMM yyyy")}`;
       chartData = weeks.map(weekStart => {
         const wEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-        const label = format(weekStart, "MMM d");
+        const label = format(weekStart, "d MMM");
         const totalDD = Object.entries(ddByDate)
           .filter(([k]) => {
             const d = parseISO(k);
