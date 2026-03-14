@@ -347,7 +347,6 @@ export async function registerRoutes(
               attempt: skillCount !== expectedCount ? skillCount : null,
               skillCount,
             });
-            break;
           }
         }
       }
