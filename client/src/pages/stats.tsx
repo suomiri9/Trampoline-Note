@@ -94,11 +94,14 @@ export default function StatsPage() {
     const yearEnd = endOfYear(today);
     const weeks = eachWeekOfInterval({ start: yearStart, end: yearEnd }, { weekStartsOn: 1 });
     periodLabel = `${format(yearStart, "MMM d, yyyy")} – ${format(yearEnd, "MMM d, yyyy")}`;
+    let lastMonth = -1;
     chartData = weeks.map(ws => {
       const bStart = ws < yearStart ? yearStart : ws;
       const wEnd = endOfWeek(ws, { weekStartsOn: 1 });
       const bEnd = wEnd > today ? today : wEnd;
-      const label = format(ws, "MMM d");
+      const m = ws.getMonth();
+      const label = m !== lastMonth ? format(ws, "MMM") : "";
+      lastMonth = m;
       const totalDD = Object.entries(ddByDate)
         .filter(([k]) => {
           const d = parseISO(k);
@@ -113,7 +116,6 @@ export default function StatsPage() {
         .reduce((sum, [, v]) => sum + v.sessions, 0);
       return { date: label, difficulty: totalDD > 0 ? totalDD : null, sessions: totalSess };
     });
-    xTickInterval = 3;
   } else {
     useWeekly = true;
     const allKeys = Object.keys(ddByDate).sort();
