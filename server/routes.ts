@@ -344,7 +344,7 @@ export async function registerRoutes(
               noteId: note.id,
               date: note.date,
               rating: note.rating ?? null,
-              attempt: skillCount < expectedCount ? skillCount : null,
+              attempt: skillCount !== expectedCount ? skillCount : null,
               skillCount,
             });
             break;

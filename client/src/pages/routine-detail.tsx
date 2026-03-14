@@ -191,7 +191,7 @@ export default function RoutineDetailPage() {
           />
           <StatCard
             icon={<TrendingUp className="w-4 h-4" />}
-            label="Partial Attempts"
+            label="Attempts"
             value={partialCount.toString()}
             testId="stat-partial-attempts"
           />
