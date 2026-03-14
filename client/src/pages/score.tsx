@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertScoreSchema, type Score, type Routine, type Skill } from "@shared/schema";
@@ -98,7 +98,10 @@ export default function ScorePage() {
     }
   });
 
+  const skipDDAutoFill = useRef(false);
+
   function startEdit(score: Score) {
+    skipDDAutoFill.current = true;
     setEditingScore(score);
     setIsAdding(true);
     form.reset({
@@ -191,6 +194,10 @@ export default function ScorePage() {
 
   useEffect(() => {
     if (!customSkillIds || !allSkills) return;
+    if (skipDDAutoFill.current) {
+      skipDDAutoFill.current = false;
+      return;
+    }
     const cat = form.getValues("category");
     const d = (cat === "set" || cat === "both") ? 0 : Number(calcDDFromSkillIds(customSkillIds, allSkills).toFixed(1));
     form.setValue("difficulty", d);
