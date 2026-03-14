@@ -191,7 +191,8 @@ export default function ScorePage() {
 
   useEffect(() => {
     if (!customSkillIds || !allSkills) return;
-    const d = Number(calcDDFromSkillIds(customSkillIds, allSkills).toFixed(1));
+    const cat = form.getValues("category");
+    const d = (cat === "set" || cat === "both") ? 0 : Number(calcDDFromSkillIds(customSkillIds, allSkills).toFixed(1));
     form.setValue("difficulty", d);
   }, [customSkillIds, allSkills]);
 
