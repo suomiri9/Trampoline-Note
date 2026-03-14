@@ -52,7 +52,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
             {mode === "register" && (
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="displayName">Display name</Label>
