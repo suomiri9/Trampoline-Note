@@ -487,11 +487,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     )}
                                     <Badge variant="outline" className={cn(
                                       "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
-                                      isConnected
-                                        ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
-                                        : skill?.isDrill === 1
+                                      skill?.isDrill === 1
                                         ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400"
-                                        : skill?.isDrill === 2
+                                        : isConnected || skill?.isDrill === 2
                                         ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
                                         : "border-border/60 text-muted-foreground"
                                     )}>{skill?.code}</Badge>
