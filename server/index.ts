@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { setupAuth } from "./auth";
+import { pool } from "./db";
 
 const app = express();
 const httpServer = createServer(app);
@@ -60,7 +61,23 @@ app.use((req, res, next) => {
   next();
 });
 
+async function runMigrations() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password varchar;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name varchar;
+    `);
+    console.log("Database migrations applied");
+  } catch (err) {
+    console.error("Migration error (non-fatal):", err);
+  } finally {
+    client.release();
+  }
+}
+
 (async () => {
+  await runMigrations();
   await setupAuth(app);
   await registerRoutes(httpServer, app);
 
