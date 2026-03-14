@@ -41,7 +41,7 @@ function Navigation() {
   ];
 
   return (
-    <nav className="fixed bottom-4 left-0 right-0 mx-auto w-fit bg-background/80 backdrop-blur-md border border-border px-3 py-2 pb-safe rounded-2xl shadow-2xl flex items-center gap-1 z-40">
+    <nav className="fixed bottom-4 left-0 right-0 mx-auto w-fit bg-background/80 backdrop-blur-md border border-border px-3 pt-2 pb-2 mb-safe rounded-2xl shadow-2xl flex items-center gap-1 z-40">
       {navItems.map((item) => (
         <Link key={item.href} href={item.href}>
           <div className={cn(
