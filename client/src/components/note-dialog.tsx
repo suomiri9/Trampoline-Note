@@ -304,7 +304,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button variant="outline" className="w-full text-left font-normal rounded-xl h-11">
-                            {field.value ? format(field.value, "PPP") : "Pick a date"}
+                            {field.value ? format(field.value, "EEE, d MMMM yyyy") : "Pick a date"}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
                         </FormControl>

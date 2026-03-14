@@ -245,7 +245,7 @@ export default function ScorePage() {
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button variant="outline" className={cn("w-full text-left font-normal rounded-xl h-11", !field.value && "text-muted-foreground")}>
-                              {field.value ? format(parseISO(field.value), "PPP") : "Pick a date"}
+                              {field.value ? format(parseISO(field.value), "EEE, d MMMM yyyy") : "Pick a date"}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
