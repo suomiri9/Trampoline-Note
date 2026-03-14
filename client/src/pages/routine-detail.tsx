@@ -7,9 +7,10 @@ import { PageLayout } from "@/components/page-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, Star, TrendingUp, Loader2, Layers } from "lucide-react";
+import { ArrowLeft, Calendar, Star, TrendingUp, Loader2, Layers, ChevronLeft, ChevronRight } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format, parseISO, startOfWeek, eachWeekOfInterval } from "date-fns";
+import { useRef, useCallback } from "react";
 
 interface RoutineHistoryEntry {
   noteId: number;
@@ -28,6 +29,34 @@ export default function RoutineDetailPage() {
   const skills = allSkills?.filter(s => s.isDrill === 0);
   const { data: routines, isLoading: routinesLoading } = useRoutines();
   const routine = routines?.find(r => r.id === routineId);
+
+  const orderedIds = routines ? routines.map(r => r.id) : [];
+  const currentIndex = orderedIds.indexOf(routineId);
+
+  const goTo = useCallback((id: number) => navigate(`/routines/${id}`, { replace: true }), [navigate]);
+  const goPrev = useCallback(() => { if (currentIndex > 0) goTo(orderedIds[currentIndex - 1]); }, [currentIndex, orderedIds, goTo]);
+  const goNext = useCallback(() => { if (currentIndex < orderedIds.length - 1) goTo(orderedIds[currentIndex + 1]); }, [currentIndex, orderedIds, goTo]);
+
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const swiping = useRef(false);
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    swiping.current = true;
+  }, []);
+
+  const onTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!swiping.current) return;
+    swiping.current = false;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) goNext();
+      else goPrev();
+    }
+  }, [goNext, goPrev]);
 
   const { data: history, isLoading: historyLoading } = useQuery<RoutineHistoryEntry[]>({
     queryKey: [`/api/routines/${routineId}/history`],
@@ -69,164 +98,219 @@ export default function RoutineDetailPage() {
 
   const weeklyData = buildWeeklyData(entries);
 
+  const hasPrev = currentIndex > 0;
+  const hasNext = currentIndex < orderedIds.length - 1;
+  const prevRoutine = hasPrev ? routines?.find(r => r.id === orderedIds[currentIndex - 1]) : null;
+  const nextRoutine = hasNext ? routines?.find(r => r.id === orderedIds[currentIndex + 1]) : null;
+
   return (
     <PageLayout>
-      <div className="mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1 -ml-2 mb-2 text-muted-foreground"
-          onClick={() => navigate("/routines")}
-          data-testid="button-back-to-routines"
-        >
-          <ArrowLeft className="w-4 h-4" /> Routines
-        </Button>
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-zinc-100 dark:bg-zinc-800/30 rounded-xl shrink-0">
-            <Layers className="w-5 h-5 text-zinc-600" />
+      <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 -ml-2 text-muted-foreground"
+              onClick={() => navigate("/routines")}
+              data-testid="button-back-to-routines"
+            >
+              <ArrowLeft className="w-4 h-4" /> Routines
+            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                disabled={!hasPrev}
+                onClick={goPrev}
+                data-testid="button-prev-routine"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-xs text-muted-foreground tabular-nums min-w-[3ch] text-center">
+                {currentIndex + 1}/{orderedIds.length}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                disabled={!hasNext}
+                onClick={goNext}
+                data-testid="button-next-routine"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-display font-bold" data-testid="text-routine-name">{routine.name}</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Total DD: <span className="font-medium" data-testid="text-routine-dd">{totalDD.toFixed(1)}</span>
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-zinc-100 dark:bg-zinc-800/30 rounded-xl shrink-0">
+              <Layers className="w-5 h-5 text-zinc-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-display font-bold" data-testid="text-routine-name">{routine.name}</h1>
+              <p className="text-muted-foreground text-sm mt-1">
+                Total DD: <span className="font-medium" data-testid="text-routine-dd">{totalDD.toFixed(1)}</span>
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <Card className="mb-6">
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-3">
-            {routine.skillIds.map((id, idx) => {
-              const skill = skills?.find(s => s.id === id);
-              return (
-                <div key={idx} className="flex flex-col items-center gap-1">
-                  <Badge variant="outline" className="px-2 py-1 font-mono" data-testid={`badge-routine-skill-${idx}`}>
-                    {skill?.code || "???"}
-                  </Badge>
-                  <span className="text-[10px] text-muted-foreground font-semibold">
-                    {skill?.difficulty.toFixed(1) || "0.0"}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
-        <StatCard
-          icon={<Calendar className="w-4 h-4" />}
-          label="Total Sessions"
-          value={totalSessions.toString()}
-          testId="stat-total-sessions"
-        />
-        <StatCard
-          icon={<TrendingUp className="w-4 h-4" />}
-          label="Full Runs (10/10)"
-          value={fullRunCount.toString()}
-          testId="stat-full-runs"
-        />
-        <StatCard
-          icon={<TrendingUp className="w-4 h-4" />}
-          label="Partial Attempts"
-          value={partialCount.toString()}
-          testId="stat-partial-attempts"
-        />
-        <StatCard
-          icon={<Calendar className="w-4 h-4" />}
-          label="First Practiced"
-          value={firstPracticed ? format(parseISO(firstPracticed), "MMM d, yyyy") : "—"}
-          testId="stat-first-practiced"
-        />
-        <StatCard
-          icon={<Star className="w-4 h-4" />}
-          label="Last Practiced"
-          value={lastPracticed ? format(parseISO(lastPracticed), "MMM d, yyyy") : "—"}
-          testId="stat-last-practiced"
-        />
-      </div>
-
-      {weeklyData.length > 0 && (
         <Card className="mb-6">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Practice Frequency</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-48 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weeklyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fontSize: 11 }}
-                    className="fill-muted-foreground"
-                  />
-                  <YAxis
-                    allowDecimals={false}
-                    tick={{ fontSize: 11 }}
-                    className="fill-muted-foreground"
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: "8px",
-                      border: "1px solid hsl(var(--border))",
-                      background: "hsl(var(--popover))",
-                      color: "hsl(var(--popover-foreground))",
-                      fontSize: "12px",
-                    }}
-                  />
-                  <Bar dataKey="runs" name="Runs" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+          <CardContent className="p-4">
+            <div className="flex flex-wrap gap-3">
+              {routine.skillIds.map((id, idx) => {
+                const skill = skills?.find(s => s.id === id);
+                return (
+                  <div key={idx} className="flex flex-col items-center gap-1">
+                    <Badge variant="outline" className="px-2 py-1 font-mono" data-testid={`badge-routine-skill-${idx}`}>
+                      {skill?.code || "???"}
+                    </Badge>
+                    <span className="text-[10px] text-muted-foreground font-semibold">
+                      {skill?.difficulty.toFixed(1) || "0.0"}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
-      )}
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Session History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {entries.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-no-history">
-              No training sessions found for this routine yet.
-            </p>
-          ) : (
-            <div className="space-y-2 max-h-[50vh] overflow-y-auto" data-testid="list-session-history">
-              {[...entries].reverse().map((entry) => (
-                <div
-                  key={`${entry.noteId}-${entry.date}`}
-                  className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                  data-testid={`row-session-${entry.noteId}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium" data-testid={`text-date-${entry.noteId}`}>
-                      {format(parseISO(entry.date), "MMM d, yyyy")}
-                    </span>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+          <StatCard
+            icon={<Calendar className="w-4 h-4" />}
+            label="Total Sessions"
+            value={totalSessions.toString()}
+            testId="stat-total-sessions"
+          />
+          <StatCard
+            icon={<TrendingUp className="w-4 h-4" />}
+            label="Full Runs (10/10)"
+            value={fullRunCount.toString()}
+            testId="stat-full-runs"
+          />
+          <StatCard
+            icon={<TrendingUp className="w-4 h-4" />}
+            label="Partial Attempts"
+            value={partialCount.toString()}
+            testId="stat-partial-attempts"
+          />
+          <StatCard
+            icon={<Calendar className="w-4 h-4" />}
+            label="First Practiced"
+            value={firstPracticed ? format(parseISO(firstPracticed), "MMM d, yyyy") : "—"}
+            testId="stat-first-practiced"
+          />
+          <StatCard
+            icon={<Star className="w-4 h-4" />}
+            label="Last Practiced"
+            value={lastPracticed ? format(parseISO(lastPracticed), "MMM d, yyyy") : "—"}
+            testId="stat-last-practiced"
+          />
+        </div>
+
+        {weeklyData.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Practice Frequency</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-48 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={weeklyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 11 }}
+                      className="fill-muted-foreground"
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fontSize: 11 }}
+                      className="fill-muted-foreground"
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "8px",
+                        border: "1px solid hsl(var(--border))",
+                        background: "hsl(var(--popover))",
+                        color: "hsl(var(--popover-foreground))",
+                        fontSize: "12px",
+                      }}
+                    />
+                    <Bar dataKey="runs" name="Runs" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Session History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {entries.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-no-history">
+                No training sessions found for this routine yet.
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto" data-testid="list-session-history">
+                {[...entries].reverse().map((entry) => (
+                  <div
+                    key={`${entry.noteId}-${entry.date}`}
+                    className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                    data-testid={`row-session-${entry.noteId}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium" data-testid={`text-date-${entry.noteId}`}>
+                        {format(parseISO(entry.date), "MMM d, yyyy")}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge
+                        variant={entry.attempt != null ? "secondary" : "outline"}
+                        className="font-mono text-xs"
+                        data-testid={`badge-attempt-${entry.noteId}`}
+                      >
+                        {entry.attempt != null ? `${entry.skillCount}/10 skills` : "10/10 Full run"}
+                      </Badge>
+                      {entry.rating != null && (
+                        <div className="flex items-center gap-1" data-testid={`text-rating-${entry.noteId}`}>
+                          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                          <span className="text-xs font-medium">{entry.rating}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge
-                      variant={entry.attempt != null ? "secondary" : "outline"}
-                      className="font-mono text-xs"
-                      data-testid={`badge-attempt-${entry.noteId}`}
-                    >
-                      {entry.attempt != null ? `${entry.skillCount}/10 skills` : "10/10 Full run"}
-                    </Badge>
-                    {entry.rating != null && (
-                      <div className="flex items-center gap-1" data-testid={`text-rating-${entry.noteId}`}>
-                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                        <span className="text-xs font-medium">{entry.rating}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-between items-center mt-6 text-sm text-muted-foreground">
+          <button
+            className="flex items-center gap-1 hover:text-foreground transition-colors disabled:opacity-30"
+            disabled={!hasPrev}
+            onClick={goPrev}
+            data-testid="button-prev-routine-bottom"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span className="truncate max-w-[120px]">{prevRoutine?.name || ""}</span>
+          </button>
+          <button
+            className="flex items-center gap-1 hover:text-foreground transition-colors disabled:opacity-30"
+            disabled={!hasNext}
+            onClick={goNext}
+            data-testid="button-next-routine-bottom"
+          >
+            <span className="truncate max-w-[120px]">{nextRoutine?.name || ""}</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
     </PageLayout>
   );
 }

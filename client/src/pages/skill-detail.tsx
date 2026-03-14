@@ -5,9 +5,10 @@ import { PageLayout } from "@/components/page-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, Hash, Star, TrendingUp, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, Hash, Star, TrendingUp, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format, parseISO, startOfWeek, eachWeekOfInterval } from "date-fns";
+import { useRef, useCallback } from "react";
 
 interface HistoryEntry {
   noteId: number;
@@ -24,7 +25,37 @@ export default function SkillDetailPage() {
   const { data: allSkills, isLoading: skillsLoading } = useSkills();
   const skill = allSkills?.find(s => s.id === skillId);
 
-  const { data: history, isLoading: historyLoading, error: historyError } = useQuery<HistoryEntry[]>({
+  const orderedIds = allSkills
+    ? [...allSkills.filter(s => s.isDrill === 0), ...allSkills.filter(s => s.isDrill === 1), ...allSkills.filter(s => s.isDrill === 2)].map(s => s.id)
+    : [];
+  const currentIndex = orderedIds.indexOf(skillId);
+
+  const goTo = useCallback((id: number) => navigate(`/skills/${id}`, { replace: true }), [navigate]);
+  const goPrev = useCallback(() => { if (currentIndex > 0) goTo(orderedIds[currentIndex - 1]); }, [currentIndex, orderedIds, goTo]);
+  const goNext = useCallback(() => { if (currentIndex < orderedIds.length - 1) goTo(orderedIds[currentIndex + 1]); }, [currentIndex, orderedIds, goTo]);
+
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const swiping = useRef(false);
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    swiping.current = true;
+  }, []);
+
+  const onTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!swiping.current) return;
+    swiping.current = false;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) goNext();
+      else goPrev();
+    }
+  }, [goNext, goPrev]);
+
+  const { data: history, isLoading: historyLoading } = useQuery<HistoryEntry[]>({
     queryKey: [`/api/skills/${skillId}/history`],
     enabled: !!skillId && skillId > 0,
     staleTime: 1000 * 60 * 5,
@@ -64,136 +95,191 @@ export default function SkillDetailPage() {
 
   const weeklyData = buildWeeklyData(entries);
 
+  const hasPrev = currentIndex > 0;
+  const hasNext = currentIndex < orderedIds.length - 1;
+  const prevSkill = hasPrev ? allSkills?.find(s => s.id === orderedIds[currentIndex - 1]) : null;
+  const nextSkill = hasNext ? allSkills?.find(s => s.id === orderedIds[currentIndex + 1]) : null;
+
   return (
     <PageLayout>
-      <div className="mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1 -ml-2 mb-2 text-muted-foreground"
-          onClick={() => navigate("/skills")}
-          data-testid="button-back-to-skills"
-        >
-          <ArrowLeft className="w-4 h-4" /> Skills
-        </Button>
-        <div className="flex items-center gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-display font-bold" data-testid="text-skill-name">{skill.name}</h1>
-              <Badge variant="secondary" data-testid="badge-skill-type">{typeLabel}</Badge>
+      <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 -ml-2 text-muted-foreground"
+              onClick={() => navigate("/skills")}
+              data-testid="button-back-to-skills"
+            >
+              <ArrowLeft className="w-4 h-4" /> Skills
+            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                disabled={!hasPrev}
+                onClick={goPrev}
+                data-testid="button-prev-skill"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-xs text-muted-foreground tabular-nums min-w-[3ch] text-center">
+                {currentIndex + 1}/{orderedIds.length}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                disabled={!hasNext}
+                onClick={goNext}
+                data-testid="button-next-skill"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
             </div>
-            <p className="text-muted-foreground text-sm mt-1">
-              Code: <span className="font-mono font-medium" data-testid="text-skill-code">{skill.code}</span>
-              {" · "}
-              Difficulty: <span className="font-medium" data-testid="text-skill-difficulty">{skill.difficulty.toFixed(1)}</span>
-            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-display font-bold" data-testid="text-skill-name">{skill.name}</h1>
+                <Badge variant="secondary" data-testid="badge-skill-type">{typeLabel}</Badge>
+              </div>
+              <p className="text-muted-foreground text-sm mt-1">
+                Code: <span className="font-mono font-medium" data-testid="text-skill-code">{skill.code}</span>
+                {" · "}
+                Difficulty: <span className="font-medium" data-testid="text-skill-difficulty">{skill.difficulty.toFixed(1)}</span>
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <StatCard
-          icon={<Hash className="w-4 h-4" />}
-          label="Total Reps"
-          value={totalReps.toString()}
-          testId="stat-total-reps"
-        />
-        <StatCard
-          icon={<Calendar className="w-4 h-4" />}
-          label="Sessions"
-          value={totalSessions.toString()}
-          testId="stat-total-sessions"
-        />
-        <StatCard
-          icon={<TrendingUp className="w-4 h-4" />}
-          label="First Practiced"
-          value={firstPracticed ? format(parseISO(firstPracticed), "MMM d, yyyy") : "—"}
-          testId="stat-first-practiced"
-        />
-        <StatCard
-          icon={<Star className="w-4 h-4" />}
-          label="Last Practiced"
-          value={lastPracticed ? format(parseISO(lastPracticed), "MMM d, yyyy") : "—"}
-          testId="stat-last-practiced"
-        />
-      </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <StatCard
+            icon={<Hash className="w-4 h-4" />}
+            label="Total Reps"
+            value={totalReps.toString()}
+            testId="stat-total-reps"
+          />
+          <StatCard
+            icon={<Calendar className="w-4 h-4" />}
+            label="Sessions"
+            value={totalSessions.toString()}
+            testId="stat-total-sessions"
+          />
+          <StatCard
+            icon={<TrendingUp className="w-4 h-4" />}
+            label="First Practiced"
+            value={firstPracticed ? format(parseISO(firstPracticed), "MMM d, yyyy") : "—"}
+            testId="stat-first-practiced"
+          />
+          <StatCard
+            icon={<Star className="w-4 h-4" />}
+            label="Last Practiced"
+            value={lastPracticed ? format(parseISO(lastPracticed), "MMM d, yyyy") : "—"}
+            testId="stat-last-practiced"
+          />
+        </div>
 
-      {weeklyData.length > 0 && (
-        <Card className="mb-6">
+        {weeklyData.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Reps per Week</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-48 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={weeklyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 11 }}
+                      className="fill-muted-foreground"
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fontSize: 11 }}
+                      className="fill-muted-foreground"
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "8px",
+                        border: "1px solid hsl(var(--border))",
+                        background: "hsl(var(--popover))",
+                        color: "hsl(var(--popover-foreground))",
+                        fontSize: "12px",
+                      }}
+                    />
+                    <Bar dataKey="reps" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Reps per Week</CardTitle>
+            <CardTitle className="text-base">Session History</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-48 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weeklyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fontSize: 11 }}
-                    className="fill-muted-foreground"
-                  />
-                  <YAxis
-                    allowDecimals={false}
-                    tick={{ fontSize: 11 }}
-                    className="fill-muted-foreground"
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: "8px",
-                      border: "1px solid hsl(var(--border))",
-                      background: "hsl(var(--popover))",
-                      color: "hsl(var(--popover-foreground))",
-                      fontSize: "12px",
-                    }}
-                  />
-                  <Bar dataKey="reps" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {entries.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-no-history">
+                No training sessions found for this skill yet.
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto" data-testid="list-session-history">
+                {[...entries].reverse().map((entry) => (
+                  <div
+                    key={`${entry.noteId}-${entry.date}`}
+                    className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                    data-testid={`row-session-${entry.noteId}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium" data-testid={`text-date-${entry.noteId}`}>
+                        {format(parseISO(entry.date), "MMM d, yyyy")}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="font-mono text-xs" data-testid={`badge-reps-${entry.noteId}`}>
+                        {entry.reps} rep{entry.reps !== 1 ? "s" : ""}
+                      </Badge>
+                      {entry.rating != null && (
+                        <div className="flex items-center gap-1" data-testid={`text-rating-${entry.noteId}`}>
+                          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                          <span className="text-xs font-medium">{entry.rating}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Session History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {entries.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-no-history">
-              No training sessions found for this skill yet.
-            </p>
-          ) : (
-            <div className="space-y-2 max-h-[50vh] overflow-y-auto" data-testid="list-session-history">
-              {[...entries].reverse().map((entry) => (
-                <div
-                  key={`${entry.noteId}-${entry.date}`}
-                  className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                  data-testid={`row-session-${entry.noteId}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium" data-testid={`text-date-${entry.noteId}`}>
-                      {format(parseISO(entry.date), "MMM d, yyyy")}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="font-mono text-xs" data-testid={`badge-reps-${entry.noteId}`}>
-                      {entry.reps} rep{entry.reps !== 1 ? "s" : ""}
-                    </Badge>
-                    {entry.rating != null && (
-                      <div className="flex items-center gap-1" data-testid={`text-rating-${entry.noteId}`}>
-                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                        <span className="text-xs font-medium">{entry.rating}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        <div className="flex justify-between items-center mt-6 text-sm text-muted-foreground">
+          <button
+            className="flex items-center gap-1 hover:text-foreground transition-colors disabled:opacity-30"
+            disabled={!hasPrev}
+            onClick={goPrev}
+            data-testid="button-prev-skill-bottom"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span className="truncate max-w-[120px]">{prevSkill?.name || ""}</span>
+          </button>
+          <button
+            className="flex items-center gap-1 hover:text-foreground transition-colors disabled:opacity-30"
+            disabled={!hasNext}
+            onClick={goNext}
+            data-testid="button-next-skill-bottom"
+          >
+            <span className="truncate max-w-[120px]">{nextSkill?.name || ""}</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
     </PageLayout>
   );
 }
