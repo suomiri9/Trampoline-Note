@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Loader2, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import {
-  format, parseISO, eachDayOfInterval, eachMonthOfInterval,
-  startOfDay, startOfWeek, endOfWeek, startOfMonth, startOfYear,
-  addWeeks, subDays, subMonths,
+  format, parseISO, eachDayOfInterval, eachWeekOfInterval,
+  startOfDay, startOfWeek, endOfWeek,
+  addWeeks, subDays, subYears, isWithinInterval,
 } from "date-fns";
 
 type Range = "week" | "month" | "year" | "all";
@@ -53,7 +53,7 @@ export default function StatsPage() {
   type ChartPoint = { date: string; difficulty: number | null; sessions: number };
   let chartData: ChartPoint[] = [];
   let xTickInterval: number | "preserveStartEnd" = 0;
-  let useMonthly = false;
+  let useWeekly = false;
   let periodLabel = "";
 
   if (range === "week") {
@@ -88,38 +88,55 @@ export default function StatsPage() {
       return { date: format(day, "MMM d"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0 };
     });
   } else if (range === "year") {
-    useMonthly = true;
-    const yearStart = startOfYear(today);
-    const yearEnd = new Date(today.getFullYear(), 11, 1);
-    const months = eachMonthOfInterval({ start: yearStart, end: yearEnd });
-    periodLabel = `${format(yearStart, "MMM yyyy")} – ${format(yearEnd, "MMM yyyy")}`;
-    chartData = months.map(month => {
-      const label = format(month, "MMM");
+    useWeekly = true;
+    const yearStart = subYears(today, 1);
+    const weeks = eachWeekOfInterval({ start: yearStart, end: today }, { weekStartsOn: 1 });
+    periodLabel = `${format(yearStart, "MMM d, yyyy")} – ${format(today, "MMM d, yyyy")}`;
+    chartData = weeks.map(ws => {
+      const bStart = ws < yearStart ? yearStart : ws;
+      const wEnd = endOfWeek(ws, { weekStartsOn: 1 });
+      const bEnd = wEnd > today ? today : wEnd;
+      const label = format(ws, "MMM d");
       const totalDD = Object.entries(ddByDate)
-        .filter(([k]) => k.startsWith(format(month, "yyyy-MM")))
+        .filter(([k]) => {
+          const d = parseISO(k);
+          return isWithinInterval(d, { start: bStart, end: bEnd });
+        })
         .reduce((sum, [, v]) => sum + v.difficulty, 0);
       const totalSess = Object.entries(ddByDate)
-        .filter(([k]) => k.startsWith(format(month, "yyyy-MM")))
+        .filter(([k]) => {
+          const d = parseISO(k);
+          return isWithinInterval(d, { start: bStart, end: bEnd });
+        })
         .reduce((sum, [, v]) => sum + v.sessions, 0);
       return { date: label, difficulty: totalDD > 0 ? totalDD : null, sessions: totalSess };
     });
+    xTickInterval = 3;
   } else {
-    useMonthly = true;
+    useWeekly = true;
     const allKeys = Object.keys(ddByDate).sort();
     if (allKeys.length > 0) {
-      const earliest = startOfMonth(parseISO(allKeys[0]));
-      const months = eachMonthOfInterval({ start: earliest, end: today });
-      periodLabel = `${format(earliest, "MMM yyyy")} – ${format(today, "MMM yyyy")}`;
-      chartData = months.map(month => {
-        const label = format(month, "MMM yy");
+      const earliest = startOfWeek(parseISO(allKeys[0]), { weekStartsOn: 1 });
+      const weeks = eachWeekOfInterval({ start: earliest, end: today }, { weekStartsOn: 1 });
+      periodLabel = `${format(earliest, "MMM d, yyyy")} – ${format(today, "MMM d, yyyy")}`;
+      chartData = weeks.map(weekStart => {
+        const wEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+        const label = format(weekStart, "MMM d");
         const totalDD = Object.entries(ddByDate)
-          .filter(([k]) => k.startsWith(format(month, "yyyy-MM")))
+          .filter(([k]) => {
+            const d = parseISO(k);
+            return isWithinInterval(d, { start: weekStart, end: wEnd });
+          })
           .reduce((sum, [, v]) => sum + v.difficulty, 0);
         const totalSess = Object.entries(ddByDate)
-          .filter(([k]) => k.startsWith(format(month, "yyyy-MM")))
+          .filter(([k]) => {
+            const d = parseISO(k);
+            return isWithinInterval(d, { start: weekStart, end: wEnd });
+          })
           .reduce((sum, [, v]) => sum + v.sessions, 0);
         return { date: label, difficulty: totalDD > 0 ? totalDD : null, sessions: totalSess };
       });
+      xTickInterval = Math.max(1, Math.floor(weeks.length / 12));
     } else {
       periodLabel = "No data yet";
     }
@@ -161,7 +178,7 @@ export default function StatsPage() {
         <Card className="overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold flex items-center justify-between gap-3">
-              <span>Daily Total Difficulty</span>
+              <span>{useWeekly ? "Weekly" : "Daily"} Total Difficulty</span>
               <Select value={range} onValueChange={(v) => { setRange(v as Range); setWeekOffset(0); }}>
                 <SelectTrigger className="w-36 h-8 rounded-xl text-xs border-border/50">
                   <SelectValue />
@@ -203,7 +220,7 @@ export default function StatsPage() {
                 <span className="text-xs text-muted-foreground">{periodLabel}</span>
               )}
               <span className="text-xs text-muted-foreground">
-                {trainingDaysInRange} training {useMonthly ? "months" : "days"}
+                {trainingDaysInRange} training {useWeekly ? "weeks" : "days"}
               </span>
             </div>
           </CardHeader>
@@ -236,7 +253,7 @@ export default function StatsPage() {
                       boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
                       fontSize: '12px'
                     }}
-                    formatter={(value: any) => value !== null ? [Number(value).toFixed(1), "DD"] : ["Rest day", ""]}
+                    formatter={(value: any) => value !== null ? [Number(value).toFixed(1), useWeekly ? "Week DD" : "DD"] : [useWeekly ? "No training" : "Rest day", ""]}
                     cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '4 4' }}
                   />
                   <Line
