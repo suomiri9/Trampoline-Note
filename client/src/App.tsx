@@ -16,44 +16,12 @@ import { LayoutDashboard, Target, Layers, BarChart3, Trophy, LogOut, Loader2, Us
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 function Navigation() {
   const [location] = useLocation();
   const { user, logout, isLoggingOut } = useAuth();
   const [showSignOutAlert, setShowSignOutAlert] = useState(false);
-  const navRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const nav = navRef.current;
-    if (!nav) return;
-    const vv = window.visualViewport;
-    let rafId = 0;
-
-    const pin = () => {
-      cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        const bottom = window.innerHeight - (nav.offsetHeight + 16);
-        nav.style.top = `${window.scrollY + bottom}px`;
-      });
-    };
-
-    pin();
-    window.addEventListener("scroll", pin, { passive: true });
-    window.addEventListener("resize", pin);
-    if (vv) {
-      vv.addEventListener("scroll", pin);
-    }
-    return () => {
-      cancelAnimationFrame(rafId);
-      window.removeEventListener("scroll", pin);
-      window.removeEventListener("resize", pin);
-      if (vv) {
-        vv.removeEventListener("scroll", pin);
-      }
-    };
-  }, []);
-
   const navItems = [
     { href: "/", label: "Training", icon: LayoutDashboard,
       activeClass: "bg-blue-50 dark:bg-blue-950/40 shadow-sm",
@@ -73,7 +41,7 @@ function Navigation() {
   ];
 
   return (
-    <nav ref={navRef} className="absolute -translate-x-1/2 bg-background/80 backdrop-blur-md border border-border px-3 py-2 pb-safe rounded-2xl shadow-2xl flex items-center gap-1 z-40" style={{ left: '50%' }}>
+    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-md border border-border px-3 py-2 pb-safe rounded-2xl shadow-2xl flex items-center gap-1 z-40">
       {navItems.map((item) => (
         <Link key={item.href} href={item.href}>
           <div className={cn(
