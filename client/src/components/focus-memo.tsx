@@ -20,8 +20,15 @@ export function FocusMemo() {
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
+      if (!text) {
+        setText("• ");
+      }
       textareaRef.current.focus();
-      textareaRef.current.selectionStart = textareaRef.current.value.length;
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.selectionStart = textareaRef.current.selectionEnd = textareaRef.current.value.length;
+        }
+      });
     }
   }, [isEditing]);
 
@@ -54,9 +61,18 @@ export function FocusMemo() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter") {
       e.preventDefault();
-      handleSave();
+      const ta = textareaRef.current;
+      if (!ta) return;
+      const pos = ta.selectionStart;
+      const before = text.slice(0, pos);
+      const after = text.slice(pos);
+      const newText = before + "\n• " + after;
+      setText(newText);
+      requestAnimationFrame(() => {
+        ta.selectionStart = ta.selectionEnd = pos + 3;
+      });
     }
     if (e.key === "Escape") {
       setText(user?.focusMemo || "");
@@ -107,7 +123,7 @@ export function FocusMemo() {
               onKeyDown={handleKeyDown}
               placeholder="Tap to add focus notes..."
               maxLength={1000}
-              rows={2}
+              rows={4}
               className="w-full bg-transparent text-sm text-foreground resize-none outline-none placeholder:text-muted-foreground/50"
               onClick={(e) => e.stopPropagation()}
             />
