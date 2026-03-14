@@ -30,13 +30,10 @@ export default function RoutineDetailPage() {
   const routine = routines?.find(r => r.id === routineId);
 
   const { data: history, isLoading: historyLoading } = useQuery<RoutineHistoryEntry[]>({
-    queryKey: ["/api/routines", routineId, "history"],
-    queryFn: async () => {
-      const res = await fetch(`/api/routines/${routineId}/history`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch history");
-      return res.json();
-    },
-    enabled: !!routineId,
+    queryKey: [`/api/routines/${routineId}/history`],
+    enabled: !!routineId && routineId > 0,
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
   });
 
   if (skillsLoading || routinesLoading || historyLoading) {

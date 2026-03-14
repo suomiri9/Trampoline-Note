@@ -24,14 +24,11 @@ export default function SkillDetailPage() {
   const { data: allSkills, isLoading: skillsLoading } = useSkills();
   const skill = allSkills?.find(s => s.id === skillId);
 
-  const { data: history, isLoading: historyLoading } = useQuery<HistoryEntry[]>({
-    queryKey: ["/api/skills", skillId, "history"],
-    queryFn: async () => {
-      const res = await fetch(`/api/skills/${skillId}/history`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch history");
-      return res.json();
-    },
-    enabled: !!skillId,
+  const { data: history, isLoading: historyLoading, error: historyError } = useQuery<HistoryEntry[]>({
+    queryKey: [`/api/skills/${skillId}/history`],
+    enabled: !!skillId && skillId > 0,
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
   });
 
   if (skillsLoading || historyLoading) {
