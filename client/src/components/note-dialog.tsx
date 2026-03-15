@@ -226,7 +226,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   };
 
   const updateReps = (indices: number[], reps: number) => {
-    const val = Math.max(1, reps);
+    const val = Math.max(0, reps);
     setSelectedSkills(prev => {
       const newSkills = prev.map((item, idx) => {
         if (indices.includes(idx) && item.id !== -1) {
@@ -500,14 +500,23 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                       <div className="flex items-center border rounded-md">
                                         <button type="button" className="px-2" onClick={() => updateReps(group.indices, (item.reps || 1) - 1)}>-</button>
                                         <input
-                                          type="number"
-                                          min="1"
-                                          value={item.reps || 1}
+                                          type="text"
+                                          inputMode="numeric"
+                                          pattern="[0-9]*"
+                                          value={item.reps ?? ""}
                                           onChange={(e) => {
-                                            const val = parseInt(e.target.value);
+                                            const raw = e.target.value;
+                                            if (raw === "") {
+                                              updateReps(group.indices, 0);
+                                              return;
+                                            }
+                                            const val = parseInt(raw);
                                             if (!isNaN(val)) updateReps(group.indices, val);
                                           }}
-                                          className="w-8 text-center text-xs font-bold bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                          onBlur={() => {
+                                            if (!item.reps || item.reps < 1) updateReps(group.indices, 1);
+                                          }}
+                                          className="w-8 text-center text-xs font-bold bg-transparent outline-none"
                                         />
                                         <button type="button" className="px-2" onClick={() => updateReps(group.indices, (item.reps || 1) + 1)}>+</button>
                                       </div>
