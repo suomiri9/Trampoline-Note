@@ -23,13 +23,21 @@ import { useState, useEffect } from "react";
 function useKeyboardVisible() {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const handler = () => {
-      setVisible(window.innerHeight - vv.height > 100);
+    const onFocus = (e: FocusEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+        setVisible(true);
+      }
     };
-    vv.addEventListener("resize", handler);
-    return () => vv.removeEventListener("resize", handler);
+    const onBlur = () => {
+      setVisible(false);
+    };
+    document.addEventListener("focusin", onFocus);
+    document.addEventListener("focusout", onBlur);
+    return () => {
+      document.removeEventListener("focusin", onFocus);
+      document.removeEventListener("focusout", onBlur);
+    };
   }, []);
   return visible;
 }
