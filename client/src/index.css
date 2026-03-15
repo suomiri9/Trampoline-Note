@@ -105,21 +105,21 @@
   animation: fade-in-up 0.4s ease-out forwards;
 }
 
-/* Prevent iOS auto-scroll on input focus (physical keyboard + autocomplete bar) */
-html, body {
-  overflow-anchor: none;
+/* Prevent iOS auto-scroll when accessory bar appears */
+html {
+  height: 100%;
+  overflow: hidden;
 }
 
-input, textarea, select {
-  scroll-margin: 0;
+body {
+  height: 100%;
+  overflow: hidden;
 }
 
-@supports (-webkit-touch-callout: none) {
-  body {
-    height: 100%;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-  }
+#root {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Staggered animation delays for lists */
