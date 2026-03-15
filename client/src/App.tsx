@@ -20,33 +20,10 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 
-function useKeyboardVisible() {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const onFocus = (e: FocusEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
-        setVisible(true);
-      }
-    };
-    const onBlur = () => {
-      setVisible(false);
-    };
-    document.addEventListener("focusin", onFocus);
-    document.addEventListener("focusout", onBlur);
-    return () => {
-      document.removeEventListener("focusin", onFocus);
-      document.removeEventListener("focusout", onBlur);
-    };
-  }, []);
-  return visible;
-}
-
 function Navigation() {
   const [location] = useLocation();
   const { user, logout, isLoggingOut } = useAuth();
   const [showSignOutAlert, setShowSignOutAlert] = useState(false);
-  const keyboardOpen = useKeyboardVisible();
   const navItems = [
     { href: "/", label: "Training", icon: LayoutDashboard,
       activeClass: "bg-blue-50 dark:bg-blue-950/40 shadow-sm",
@@ -66,7 +43,7 @@ function Navigation() {
   ];
 
   return (
-    <nav className={cn("fixed bottom-4 left-0 right-0 mx-auto w-fit bg-background/80 backdrop-blur-md border border-border px-3 pt-2 pb-2 mb-safe rounded-2xl shadow-2xl flex items-center gap-1 z-40 transition-opacity duration-200", keyboardOpen && "opacity-0 pointer-events-none")}>
+    <nav className="fixed bottom-4 left-0 right-0 mx-auto w-fit bg-background/80 backdrop-blur-md border border-border px-3 pt-2 pb-2 mb-safe rounded-2xl shadow-2xl flex items-center gap-1 z-40">
       {navItems.map((item) => (
         <Link key={item.href} href={item.href}>
           <div className={cn(
