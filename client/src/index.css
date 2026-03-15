@@ -105,21 +105,9 @@
   animation: fade-in-up 0.4s ease-out forwards;
 }
 
-/* Prevent iOS auto-scroll when accessory bar appears */
-html {
-  height: 100%;
-  overflow: hidden;
-}
-
-body {
-  height: 100%;
-  overflow: hidden;
-}
-
-#root {
-  height: 100%;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+/* Extra bottom padding so iOS keyboard/accessory bar never pushes content awkwardly */
+.page-content-padding {
+  padding-bottom: 350px;
 }
 
 /* Staggered animation delays for lists */
