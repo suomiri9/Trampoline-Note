@@ -105,6 +105,23 @@
   animation: fade-in-up 0.4s ease-out forwards;
 }
 
+/* Prevent iOS auto-scroll on input focus (physical keyboard + autocomplete bar) */
+html, body {
+  overflow-anchor: none;
+}
+
+input, textarea, select {
+  scroll-margin: 0;
+}
+
+@supports (-webkit-touch-callout: none) {
+  body {
+    height: 100%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* Staggered animation delays for lists */
 .stagger-1 { animation-delay: 0.1s; }
 .stagger-2 { animation-delay: 0.2s; }
