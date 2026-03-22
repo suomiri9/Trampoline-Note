@@ -14,7 +14,7 @@ import {
   type Score,
   type InsertScore
 } from "@shared/schema";
-import { eq, desc, and, isNull } from "drizzle-orm";
+import { eq, desc, and, isNull, sql, gte } from "drizzle-orm";
 
 export interface IStorage {
   // Notes
@@ -41,6 +41,9 @@ export interface IStorage {
   createScore(userId: string, score: InsertScore): Promise<Score>;
   updateScore(id: number, userId: string, updates: Partial<InsertScore>): Promise<Score | undefined>;
   deleteScore(id: number, userId: string): Promise<void>;
+
+  // Reorder
+  reorderSkills(userId: string, orderedIds: number[]): Promise<void>;
 
   // Data migration
   claimLegacyData(userId: string): Promise<void>;
@@ -78,7 +81,41 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSkill(userId: string, insertSkill: InsertSkill): Promise<Skill> {
-    const [skill] = await db.insert(skills).values({ ...insertSkill, userId }).returning();
+    const isDrill = insertSkill.isDrill ?? 0;
+    const difficulty = insertSkill.difficulty ?? 0;
+
+    const sameCategory = await db.select()
+      .from(skills)
+      .where(and(eq(skills.userId, userId), eq(skills.isDrill, isDrill)));
+
+    const sorted = sameCategory
+      .map(s => ({ id: s.id, sortOrder: s.sortOrder ?? 999999, difficulty: s.difficulty }))
+      .sort((a, b) => a.sortOrder !== b.sortOrder ? a.sortOrder - b.sortOrder : b.difficulty - a.difficulty);
+
+    let insertIdx = sorted.length;
+    for (let i = 0; i < sorted.length; i++) {
+      if (difficulty >= sorted[i].difficulty) {
+        insertIdx = i;
+        break;
+      }
+    }
+
+    const shiftUpdates = sorted.slice(insertIdx).map((s, i) =>
+      db.update(skills)
+        .set({ sortOrder: insertIdx + i + 1 })
+        .where(eq(skills.id, s.id))
+    );
+    await Promise.all(shiftUpdates);
+
+    for (let i = 0; i < insertIdx; i++) {
+      if (sorted[i].sortOrder !== i) {
+        await db.update(skills).set({ sortOrder: i }).where(eq(skills.id, sorted[i].id));
+      }
+    }
+
+    const [skill] = await db.insert(skills)
+      .values({ ...insertSkill, userId, sortOrder: insertIdx })
+      .returning();
     return skill;
   }
 
@@ -136,6 +173,15 @@ export class DatabaseStorage implements IStorage {
 
   async deleteScore(id: number, userId: string): Promise<void> {
     await db.delete(scores).where(and(eq(scores.id, id), eq(scores.userId, userId)));
+  }
+
+  async reorderSkills(userId: string, orderedIds: number[]): Promise<void> {
+    const updates = orderedIds.map((id, index) =>
+      db.update(skills)
+        .set({ sortOrder: index })
+        .where(and(eq(skills.id, id), eq(skills.userId, userId)))
+    );
+    await Promise.all(updates);
   }
 
   async claimLegacyData(userId: string): Promise<void> {

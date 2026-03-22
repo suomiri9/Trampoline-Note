@@ -2,13 +2,14 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { calcDDFromSkillIds } from "@/lib/training-utils";
+import { useDndSensors } from "@/hooks/use-dnd-sensors";
 import { PageLayout } from "@/components/page-layout";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Pencil, X, Target } from "lucide-react";
+import { Trash2, Plus, Pencil, X, Target, GripVertical } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertSkillSchema, type Skill } from "@shared/schema";
@@ -16,21 +17,77 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { cn } from "@/lib/utils";
+
+function SortableRow({ id, children, className, onClick, testId }: {
+  id: string;
+  children: React.ReactNode;
+  className?: string;
+  onClick?: () => void;
+  testId?: string;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
+      className={className}
+      onClick={onClick}
+      data-testid={testId}
+    >
+      <TableCell className="w-8 px-1" onClick={e => e.stopPropagation()}>
+        <button
+          type="button"
+          className="touch-none cursor-grab active:cursor-grabbing flex items-center justify-center w-6 h-6 text-muted-foreground/40 hover:text-muted-foreground"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      </TableCell>
+      {children}
+    </TableRow>
+  );
+}
+
+function sortByOrder(items: Skill[]): Skill[] {
+  return [...items].sort((a, b) => {
+    const aOrder = a.sortOrder ?? 999999;
+    const bOrder = b.sortOrder ?? 999999;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return b.difficulty - a.difficulty;
+  });
+}
 
 export default function SkillsPage() {
   const [, navigate] = useLocation();
-  const { data: allItems, createSkill, deleteSkill, updateSkill, isCreating, isUpdating } = useSkills();
+  const { data: allItems, createSkill, deleteSkill, updateSkill, reorderSkills, isCreating, isUpdating } = useSkills();
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   
-  // For Connection building
   const [connName, setConnName] = useState("");
   const [connCode, setConnCode] = useState("");
   const [connSkillIds, setConnSkillIds] = useState<number[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
 
-  const skills = allItems?.filter(item => item.isDrill === 0);
-  const drills = allItems?.filter(item => item.isDrill === 1);
-  const frequentConnections = allItems?.filter(item => item.isDrill === 2);
+  const sensors = useDndSensors();
+
+  const skills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 0)) : undefined;
+  const drills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 1)) : undefined;
+  const frequentConnections = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 2)) : undefined;
+
+  const handleDragEnd = (items: Skill[] | undefined) => (event: DragEndEvent) => {
+    if (!items) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = items.findIndex(s => `skill-${s.id}` === active.id);
+    const newIdx = items.findIndex(s => `skill-${s.id}` === over.id);
+    if (oldIdx === -1 || newIdx === -1) return;
+    const reordered = arrayMove(items, oldIdx, newIdx);
+    reorderSkills(reordered.map(s => s.id));
+  };
 
   const skillForm = useForm({
     resolver: zodResolver(insertSkillSchema),
@@ -197,22 +254,32 @@ export default function SkillsPage() {
             <Card className="md:col-span-2">
               <CardHeader><CardTitle>Skills Library</CardTitle></CardHeader>
               <CardContent className="max-h-[60vh] overflow-y-auto overflow-x-auto">
-                <Table>
-                  <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Difficulty</TableHead><TableHead /></TableRow></TableHeader>
-                  <TableBody>
-                    {skills?.map((skill) => (
-                      <TableRow key={skill.id} className={`cursor-pointer ${editingSkill?.id === skill.id ? "bg-muted/50" : "hover:bg-muted/30"}`} onClick={() => navigate(`/skills/${skill.id}`)} data-testid={`row-skill-${skill.id}`}>
-                        <TableCell className="font-medium">{skill.name}</TableCell>
-                        <TableCell>{skill.code}</TableCell>
-                        <TableCell>{skill.difficulty.toFixed(1)}</TableCell>
-                        <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" onClick={() => startEditing(skill)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: skill.id, name: skill.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(skills)}>
+                  <Table>
+                    <TableHeader><TableRow><TableHead className="w-8" /><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Difficulty</TableHead><TableHead /></TableRow></TableHeader>
+                    <SortableContext items={(skills || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
+                      <TableBody>
+                        {skills?.map((skill) => (
+                          <SortableRow
+                            key={skill.id}
+                            id={`skill-${skill.id}`}
+                            className={`cursor-pointer ${editingSkill?.id === skill.id ? "bg-muted/50" : "hover:bg-muted/30"}`}
+                            onClick={() => navigate(`/skills/${skill.id}`)}
+                            testId={`row-skill-${skill.id}`}
+                          >
+                            <TableCell className="font-medium">{skill.name}</TableCell>
+                            <TableCell>{skill.code}</TableCell>
+                            <TableCell>{skill.difficulty.toFixed(1)}</TableCell>
+                            <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon" onClick={() => startEditing(skill)}><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: skill.id, name: skill.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                            </TableCell>
+                          </SortableRow>
+                        ))}
+                      </TableBody>
+                    </SortableContext>
+                  </Table>
+                </DndContext>
               </CardContent>
             </Card>
           </div>
@@ -252,22 +319,32 @@ export default function SkillsPage() {
             <Card className="md:col-span-2">
               <CardHeader><CardTitle>Drills Library</CardTitle></CardHeader>
               <CardContent className="max-h-[60vh] overflow-y-auto overflow-x-auto">
-                <Table>
-                  <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Difficulty</TableHead><TableHead /></TableRow></TableHeader>
-                  <TableBody>
-                    {drills?.map((drill) => (
-                      <TableRow key={drill.id} className={`cursor-pointer ${editingSkill?.id === drill.id ? "bg-muted/50" : "hover:bg-muted/30"}`} onClick={() => navigate(`/skills/${drill.id}`)} data-testid={`row-drill-${drill.id}`}>
-                        <TableCell className="font-medium">{drill.name}</TableCell>
-                        <TableCell>{drill.code}</TableCell>
-                        <TableCell>{drill.difficulty.toFixed(1)}</TableCell>
-                        <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" onClick={() => startEditing(drill)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: drill.id, name: drill.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(drills)}>
+                  <Table>
+                    <TableHeader><TableRow><TableHead className="w-8" /><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Difficulty</TableHead><TableHead /></TableRow></TableHeader>
+                    <SortableContext items={(drills || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
+                      <TableBody>
+                        {drills?.map((drill) => (
+                          <SortableRow
+                            key={drill.id}
+                            id={`skill-${drill.id}`}
+                            className={`cursor-pointer ${editingSkill?.id === drill.id ? "bg-muted/50" : "hover:bg-muted/30"}`}
+                            onClick={() => navigate(`/skills/${drill.id}`)}
+                            testId={`row-drill-${drill.id}`}
+                          >
+                            <TableCell className="font-medium">{drill.name}</TableCell>
+                            <TableCell>{drill.code}</TableCell>
+                            <TableCell>{drill.difficulty.toFixed(1)}</TableCell>
+                            <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon" onClick={() => startEditing(drill)}><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: drill.id, name: drill.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                            </TableCell>
+                          </SortableRow>
+                        ))}
+                      </TableBody>
+                    </SortableContext>
+                  </Table>
+                </DndContext>
               </CardContent>
             </Card>
           </div>
@@ -339,28 +416,37 @@ export default function SkillsPage() {
             <Card className="md:col-span-2">
               <CardHeader><CardTitle>Connections Library</CardTitle></CardHeader>
               <CardContent className="max-h-[60vh] overflow-y-auto overflow-x-auto">
-                <Table>
-                  <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Sequence</TableHead><TableHead>DD</TableHead><TableHead /></TableRow></TableHeader>
-                  <TableBody>
-                    {frequentConnections?.map((conn) => (
-                      <TableRow key={conn.id} className={editingSkill?.id === conn.id ? "bg-muted/50" : ""} data-testid={`row-connection-${conn.id}`}>
-                        <TableCell className="font-medium">{conn.name}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {conn.skillIds?.map((sid, idx) => (
-                              <Badge key={idx} variant="outline" className="text-[10px] px-1">{skills?.find(s => s.id === sid)?.code || "?"}</Badge>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell>{conn.difficulty.toFixed(1)}</TableCell>
-                        <TableCell className="text-right space-x-2">
-                          <Button variant="ghost" size="icon" onClick={() => startEditing(conn)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: conn.id, name: conn.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(frequentConnections)}>
+                  <Table>
+                    <TableHeader><TableRow><TableHead className="w-8" /><TableHead>Name</TableHead><TableHead>Sequence</TableHead><TableHead>DD</TableHead><TableHead /></TableRow></TableHeader>
+                    <SortableContext items={(frequentConnections || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
+                      <TableBody>
+                        {frequentConnections?.map((conn) => (
+                          <SortableRow
+                            key={conn.id}
+                            id={`skill-${conn.id}`}
+                            className={editingSkill?.id === conn.id ? "bg-muted/50" : ""}
+                            testId={`row-connection-${conn.id}`}
+                          >
+                            <TableCell className="font-medium">{conn.name}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {conn.skillIds?.map((sid, idx) => (
+                                  <Badge key={idx} variant="outline" className="text-[10px] px-1">{skills?.find(s => s.id === sid)?.code || "?"}</Badge>
+                                ))}
+                              </div>
+                            </TableCell>
+                            <TableCell>{conn.difficulty.toFixed(1)}</TableCell>
+                            <TableCell className="text-right space-x-2">
+                              <Button variant="ghost" size="icon" onClick={() => startEditing(conn)}><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: conn.id, name: conn.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                            </TableCell>
+                          </SortableRow>
+                        ))}
+                      </TableBody>
+                    </SortableContext>
+                  </Table>
+                </DndContext>
               </CardContent>
             </Card>
           </div>

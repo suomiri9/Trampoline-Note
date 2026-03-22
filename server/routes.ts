@@ -142,6 +142,20 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/skills/reorder", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z.object({ orderedIds: z.array(z.number()) });
+      const { orderedIds } = schema.parse(req.body);
+      await storage.reorderSkills(getUserId(req), orderedIds);
+      res.json({ ok: true });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Routines
   app.get(api.routines.list.path, isAuthenticated, async (req, res) => {
     const routinesList = await storage.getRoutines(getUserId(req));

@@ -383,7 +383,14 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 <Select key={selectedSkills.length} onValueChange={addSkill}>
                   <SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Add a skill, drill or FC..." /></SelectTrigger>
                   <SelectContent>
-                    {allItems?.sort((a, b) => b.difficulty - a.difficulty).map(item => (
+                    {allItems?.slice().sort((a, b) => {
+                      const groupOrder = (s: typeof a) => s.isDrill === 0 ? 0 : s.isDrill === 2 ? 1 : 2;
+                      const gA = groupOrder(a), gB = groupOrder(b);
+                      if (gA !== gB) return gA - gB;
+                      const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
+                      if (oA !== oB) return oA - oB;
+                      return b.difficulty - a.difficulty;
+                    }).map(item => (
                       <SelectItem key={item.id} value={item.id.toString()}>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="font-mono text-[10px]">{item.code}</Badge>

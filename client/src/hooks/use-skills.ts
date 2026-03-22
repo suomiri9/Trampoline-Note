@@ -58,6 +58,15 @@ export function useSkills() {
     },
   });
 
+  const reorderMutation = useMutation({
+    mutationFn: async (orderedIds: number[]) => {
+      await apiRequest("PATCH", "/api/skills/reorder", { orderedIds });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
+    },
+  });
+
   return {
     ...query,
     createSkill: createMutation.mutateAsync,
@@ -65,5 +74,6 @@ export function useSkills() {
     deleteSkill: deleteMutation.mutateAsync,
     updateSkill: updateMutation.mutateAsync,
     isUpdating: updateMutation.isPending,
+    reorderSkills: reorderMutation.mutateAsync,
   };
 }

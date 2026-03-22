@@ -68,6 +68,7 @@ async function runMigrations() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS password varchar;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name varchar;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS focus_memo text;
+      ALTER TABLE skills ADD COLUMN IF NOT EXISTS sort_order integer;
     `);
     console.log("Database migrations applied");
   } catch (err) {
