@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Pencil, X, Target, GripVertical } from "lucide-react";
+import { Trash2, Plus, Pencil, X, Target, GripVertical, ArrowUpDown, Check } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertSkillSchema, type Skill } from "@shared/schema";
@@ -22,32 +22,35 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 
-function SortableRow({ id, children, className, onClick, testId }: {
+function SortableRow({ id, children, className, onClick, testId, reorderMode }: {
   id: string;
   children: React.ReactNode;
   className?: string;
   onClick?: () => void;
   testId?: string;
+  reorderMode?: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: !reorderMode });
   return (
     <TableRow
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
       className={className}
-      onClick={onClick}
+      onClick={reorderMode ? undefined : onClick}
       data-testid={testId}
     >
-      <TableCell className="w-8 px-1" onClick={e => e.stopPropagation()}>
-        <button
-          type="button"
-          className="touch-none cursor-grab active:cursor-grabbing flex items-center justify-center w-6 h-6 text-muted-foreground/40 hover:text-muted-foreground"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
-      </TableCell>
+      {reorderMode && (
+        <TableCell className="w-8 px-1">
+          <button
+            type="button"
+            className="touch-none cursor-grab active:cursor-grabbing flex items-center justify-center w-6 h-6 text-muted-foreground/40 hover:text-muted-foreground"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        </TableCell>
+      )}
       {children}
     </TableRow>
   );
@@ -66,6 +69,7 @@ export default function SkillsPage() {
   const [, navigate] = useLocation();
   const { data: allItems, createSkill, deleteSkill, updateSkill, reorderSkills, isCreating, isUpdating } = useSkills();
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
+  const [reorderMode, setReorderMode] = useState(false);
   
   const [connName, setConnName] = useState("");
   const [connCode, setConnCode] = useState("");
@@ -87,6 +91,15 @@ export default function SkillsPage() {
     if (oldIdx === -1 || newIdx === -1) return;
     const reordered = arrayMove(items, oldIdx, newIdx);
     reorderSkills(reordered.map(s => s.id));
+  };
+
+  const toggleReorderMode = () => {
+    if (reorderMode) {
+      setReorderMode(false);
+    } else {
+      cancelEditing();
+      setReorderMode(true);
+    }
   };
 
   const skillForm = useForm({
@@ -199,6 +212,18 @@ export default function SkillsPage() {
     setConnSkillIds(prev => prev.filter((_, i) => i !== idx));
   };
 
+  const renderReorderButton = () => (
+    <Button
+      variant={reorderMode ? "default" : "outline"}
+      size="sm"
+      onClick={toggleReorderMode}
+      data-testid="button-reorder-toggle"
+      className="gap-1.5"
+    >
+      {reorderMode ? <><Check className="h-4 w-4" /> Done</> : <><ArrowUpDown className="h-4 w-4" /> Edit Order</>}
+    </Button>
+  );
+
   return (
     <PageLayout>
       <div className="flex items-center gap-3 mb-8">
@@ -210,7 +235,7 @@ export default function SkillsPage() {
           <p className="text-muted-foreground text-sm">Manage your skills, drills, and frequent connections.</p>
         </div>
       </div>
-      <Tabs defaultValue="skills" className="space-y-8" onValueChange={() => cancelEditing()}>
+      <Tabs defaultValue="skills" className="space-y-8" onValueChange={() => { cancelEditing(); setReorderMode(false); }}>
         <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="drills">Drills</TabsTrigger>
@@ -222,58 +247,69 @@ export default function SkillsPage() {
 
         <TabsContent value="skills" className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="md:col-span-1 h-fit">
-              <CardHeader className="p-4 pb-2">
-                <CardTitle className="flex justify-between items-center text-lg">
-                  {editingSkill ? "Edit Skill" : "Add New Skill"}
-                  {editingSkill && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
-                </CardTitle>
+            {!reorderMode && (
+              <Card className="md:col-span-1 h-fit">
+                <CardHeader className="p-4 pb-2">
+                  <CardTitle className="flex justify-between items-center text-lg">
+                    {editingSkill ? "Edit Skill" : "Add New Skill"}
+                    {editingSkill && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <Form {...skillForm}>
+                    <form onSubmit={skillForm.handleSubmit(onSkillSubmit)} className="space-y-3">
+                      <FormField control={skillForm.control} name="name" render={({ field }) => (
+                        <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} placeholder="Back Tuck" /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={skillForm.control} name="code" render={({ field }) => (
+                        <FormItem><FormLabel>Code</FormLabel><FormControl><Input {...field} placeholder="BT" /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={skillForm.control} name="difficulty" render={({ field }) => (
+                        <FormItem><FormLabel>Difficulty</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <div className="flex gap-2">
+                        <Button type="submit" className="flex-1" disabled={isCreating || isUpdating}>
+                          {editingSkill ? "Update Skill" : "Add Skill"}
+                        </Button>
+                        {editingSkill && <Button type="button" variant="outline" onClick={cancelEditing}>Cancel</Button>}
+                      </div>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            )}
+            <Card className={reorderMode ? "md:col-span-3" : "md:col-span-2"}>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Skills Library</CardTitle>
+                {renderReorderButton()}
               </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <Form {...skillForm}>
-                  <form onSubmit={skillForm.handleSubmit(onSkillSubmit)} className="space-y-3">
-                    <FormField control={skillForm.control} name="name" render={({ field }) => (
-                      <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} placeholder="Back Tuck" /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={skillForm.control} name="code" render={({ field }) => (
-                      <FormItem><FormLabel>Code</FormLabel><FormControl><Input {...field} placeholder="BT" /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={skillForm.control} name="difficulty" render={({ field }) => (
-                      <FormItem><FormLabel>Difficulty</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <div className="flex gap-2">
-                      <Button type="submit" className="flex-1" disabled={isCreating || isUpdating}>
-                        {editingSkill ? "Update Skill" : "Add Skill"}
-                      </Button>
-                      {editingSkill && <Button type="button" variant="outline" onClick={cancelEditing}>Cancel</Button>}
-                    </div>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-            <Card className="md:col-span-2">
-              <CardHeader><CardTitle>Skills Library</CardTitle></CardHeader>
               <CardContent className="max-h-[60vh] overflow-y-auto overflow-x-auto">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(skills)}>
                   <Table>
-                    <TableHeader><TableRow><TableHead className="w-8" /><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Difficulty</TableHead><TableHead /></TableRow></TableHeader>
+                    <TableHeader><TableRow>{reorderMode && <TableHead className="w-8" />}<TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Difficulty</TableHead>{!reorderMode && <TableHead />}</TableRow></TableHeader>
                     <SortableContext items={(skills || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
                       <TableBody>
                         {skills?.map((skill) => (
                           <SortableRow
                             key={skill.id}
                             id={`skill-${skill.id}`}
-                            className={`cursor-pointer ${editingSkill?.id === skill.id ? "bg-muted/50" : "hover:bg-muted/30"}`}
+                            reorderMode={reorderMode}
+                            className={cn(
+                              !reorderMode && "cursor-pointer",
+                              editingSkill?.id === skill.id ? "bg-muted/50" : !reorderMode && "hover:bg-muted/30"
+                            )}
                             onClick={() => navigate(`/skills/${skill.id}`)}
                             testId={`row-skill-${skill.id}`}
                           >
                             <TableCell className="font-medium">{skill.name}</TableCell>
                             <TableCell>{skill.code}</TableCell>
                             <TableCell>{skill.difficulty.toFixed(1)}</TableCell>
-                            <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon" onClick={() => startEditing(skill)}><Pencil className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: skill.id, name: skill.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                            </TableCell>
+                            {!reorderMode && (
+                              <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" size="icon" onClick={() => startEditing(skill)}><Pencil className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: skill.id, name: skill.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                              </TableCell>
+                            )}
                           </SortableRow>
                         ))}
                       </TableBody>
@@ -287,58 +323,69 @@ export default function SkillsPage() {
 
         <TabsContent value="drills" className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="md:col-span-1 h-fit">
-              <CardHeader className="p-4 pb-2">
-                <CardTitle className="flex justify-between items-center text-lg">
-                  {editingSkill ? "Edit Drill" : "Add New Drill"}
-                  {editingSkill && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
-                </CardTitle>
+            {!reorderMode && (
+              <Card className="md:col-span-1 h-fit">
+                <CardHeader className="p-4 pb-2">
+                  <CardTitle className="flex justify-between items-center text-lg">
+                    {editingSkill ? "Edit Drill" : "Add New Drill"}
+                    {editingSkill && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <Form {...drillForm}>
+                    <form onSubmit={drillForm.handleSubmit(onDrillSubmit)} className="space-y-3">
+                      <FormField control={drillForm.control} name="name" render={({ field }) => (
+                        <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} placeholder="Tuck Jump" /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={drillForm.control} name="code" render={({ field }) => (
+                        <FormItem><FormLabel>Code</FormLabel><FormControl><Input {...field} placeholder="TJ" /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={drillForm.control} name="difficulty" render={({ field }) => (
+                        <FormItem><FormLabel>Difficulty</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <div className="flex gap-2">
+                        <Button type="submit" className="flex-1" disabled={isCreating || isUpdating}>
+                          {editingSkill ? "Update Drill" : "Add Drill"}
+                        </Button>
+                        {editingSkill && <Button type="button" variant="outline" onClick={cancelEditing}>Cancel</Button>}
+                      </div>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            )}
+            <Card className={reorderMode ? "md:col-span-3" : "md:col-span-2"}>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Drills Library</CardTitle>
+                {renderReorderButton()}
               </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <Form {...drillForm}>
-                  <form onSubmit={drillForm.handleSubmit(onDrillSubmit)} className="space-y-3">
-                    <FormField control={drillForm.control} name="name" render={({ field }) => (
-                      <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} placeholder="Tuck Jump" /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={drillForm.control} name="code" render={({ field }) => (
-                      <FormItem><FormLabel>Code</FormLabel><FormControl><Input {...field} placeholder="TJ" /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={drillForm.control} name="difficulty" render={({ field }) => (
-                      <FormItem><FormLabel>Difficulty</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <div className="flex gap-2">
-                      <Button type="submit" className="flex-1" disabled={isCreating || isUpdating}>
-                        {editingSkill ? "Update Drill" : "Add Drill"}
-                      </Button>
-                      {editingSkill && <Button type="button" variant="outline" onClick={cancelEditing}>Cancel</Button>}
-                    </div>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-            <Card className="md:col-span-2">
-              <CardHeader><CardTitle>Drills Library</CardTitle></CardHeader>
               <CardContent className="max-h-[60vh] overflow-y-auto overflow-x-auto">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(drills)}>
                   <Table>
-                    <TableHeader><TableRow><TableHead className="w-8" /><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Difficulty</TableHead><TableHead /></TableRow></TableHeader>
+                    <TableHeader><TableRow>{reorderMode && <TableHead className="w-8" />}<TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Difficulty</TableHead>{!reorderMode && <TableHead />}</TableRow></TableHeader>
                     <SortableContext items={(drills || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
                       <TableBody>
                         {drills?.map((drill) => (
                           <SortableRow
                             key={drill.id}
                             id={`skill-${drill.id}`}
-                            className={`cursor-pointer ${editingSkill?.id === drill.id ? "bg-muted/50" : "hover:bg-muted/30"}`}
+                            reorderMode={reorderMode}
+                            className={cn(
+                              !reorderMode && "cursor-pointer",
+                              editingSkill?.id === drill.id ? "bg-muted/50" : !reorderMode && "hover:bg-muted/30"
+                            )}
                             onClick={() => navigate(`/skills/${drill.id}`)}
                             testId={`row-drill-${drill.id}`}
                           >
                             <TableCell className="font-medium">{drill.name}</TableCell>
                             <TableCell>{drill.code}</TableCell>
                             <TableCell>{drill.difficulty.toFixed(1)}</TableCell>
-                            <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon" onClick={() => startEditing(drill)}><Pencil className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: drill.id, name: drill.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                            </TableCell>
+                            {!reorderMode && (
+                              <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" size="icon" onClick={() => startEditing(drill)}><Pencil className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: drill.id, name: drill.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                              </TableCell>
+                            )}
                           </SortableRow>
                         ))}
                       </TableBody>
@@ -352,79 +399,85 @@ export default function SkillsPage() {
 
         <TabsContent value="connections" className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="md:col-span-1 h-fit">
-              <CardHeader className="p-4 pb-2">
-                <CardTitle className="flex justify-between items-center text-lg">
-                  {editingSkill ? "Edit Connection" : "Add New Connection"}
-                  {editingSkill && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
-                </CardTitle>
+            {!reorderMode && (
+              <Card className="md:col-span-1 h-fit">
+                <CardHeader className="p-4 pb-2">
+                  <CardTitle className="flex justify-between items-center text-lg">
+                    {editingSkill ? "Edit Connection" : "Add New Connection"}
+                    {editingSkill && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Connection Name</label>
+                      <Input value={connName} onChange={e => setConnName(e.target.value)} placeholder="e.g. Barani + Back Tuck" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Combined Code</label>
+                      <Input value={connCode} onChange={e => setConnCode(e.target.value)} placeholder="e.g. Ba+BT" />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Build Sequence</label>
+                      <Select onValueChange={addSkillToConn}>
+                        <SelectTrigger><SelectValue placeholder="Add skill to sequence..." /></SelectTrigger>
+                        <SelectContent>
+                          {skills?.sort((a,b) => b.difficulty - a.difficulty).map(s => (
+                            <SelectItem key={s.id} value={s.id.toString()}>
+                              <span className="font-mono mr-2">{s.code}</span> {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="min-h-[80px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-2 items-start">
+                      {connSkillIds.map((id, idx) => {
+                        const s = skills?.find(sk => sk.id === id);
+                        return (
+                          <Badge key={idx} variant="secondary" className="pr-1 gap-1">
+                            {s?.code}
+                            <button onClick={() => removeSkillFromConn(idx)}><X className="h-3 w-3" /></button>
+                          </Badge>
+                        );
+                      })}
+                      {connSkillIds.length === 0 && <span className="text-xs text-muted-foreground p-2">No skills added yet</span>}
+                    </div>
+
+                    <div className="pt-2 flex justify-between items-center">
+                      <span className="text-sm font-medium">Total DD:</span>
+                      <span className="font-bold text-primary">
+                        {calcDDFromSkillIds(connSkillIds, skills || []).toFixed(1)}
+                      </span>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button className="flex-1" onClick={onConnectionSubmit} disabled={isCreating || isUpdating || !connName || !connCode || connSkillIds.length === 0}>
+                        {editingSkill ? "Update Connection" : "Save Connection"}
+                      </Button>
+                      {editingSkill && <Button variant="outline" onClick={cancelEditing}>Cancel</Button>}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            <Card className={reorderMode ? "md:col-span-3" : "md:col-span-2"}>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Connections Library</CardTitle>
+                {renderReorderButton()}
               </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Connection Name</label>
-                    <Input value={connName} onChange={e => setConnName(e.target.value)} placeholder="e.g. Barani + Back Tuck" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Combined Code</label>
-                    <Input value={connCode} onChange={e => setConnCode(e.target.value)} placeholder="e.g. Ba+BT" />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Build Sequence</label>
-                    <Select onValueChange={addSkillToConn}>
-                      <SelectTrigger><SelectValue placeholder="Add skill to sequence..." /></SelectTrigger>
-                      <SelectContent>
-                        {skills?.sort((a,b) => b.difficulty - a.difficulty).map(s => (
-                          <SelectItem key={s.id} value={s.id.toString()}>
-                            <span className="font-mono mr-2">{s.code}</span> {s.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="min-h-[80px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-2 items-start">
-                    {connSkillIds.map((id, idx) => {
-                      const s = skills?.find(sk => sk.id === id);
-                      return (
-                        <Badge key={idx} variant="secondary" className="pr-1 gap-1">
-                          {s?.code}
-                          <button onClick={() => removeSkillFromConn(idx)}><X className="h-3 w-3" /></button>
-                        </Badge>
-                      );
-                    })}
-                    {connSkillIds.length === 0 && <span className="text-xs text-muted-foreground p-2">No skills added yet</span>}
-                  </div>
-
-                  <div className="pt-2 flex justify-between items-center">
-                    <span className="text-sm font-medium">Total DD:</span>
-                    <span className="font-bold text-primary">
-                      {calcDDFromSkillIds(connSkillIds, skills || []).toFixed(1)}
-                    </span>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button className="flex-1" onClick={onConnectionSubmit} disabled={isCreating || isUpdating || !connName || !connCode || connSkillIds.length === 0}>
-                      {editingSkill ? "Update Connection" : "Save Connection"}
-                    </Button>
-                    {editingSkill && <Button variant="outline" onClick={cancelEditing}>Cancel</Button>}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="md:col-span-2">
-              <CardHeader><CardTitle>Connections Library</CardTitle></CardHeader>
               <CardContent className="max-h-[60vh] overflow-y-auto overflow-x-auto">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(frequentConnections)}>
                   <Table>
-                    <TableHeader><TableRow><TableHead className="w-8" /><TableHead>Name</TableHead><TableHead>Sequence</TableHead><TableHead>DD</TableHead><TableHead /></TableRow></TableHeader>
+                    <TableHeader><TableRow>{reorderMode && <TableHead className="w-8" />}<TableHead>Name</TableHead><TableHead>Sequence</TableHead><TableHead>DD</TableHead>{!reorderMode && <TableHead />}</TableRow></TableHeader>
                     <SortableContext items={(frequentConnections || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
                       <TableBody>
                         {frequentConnections?.map((conn) => (
                           <SortableRow
                             key={conn.id}
                             id={`skill-${conn.id}`}
+                            reorderMode={reorderMode}
                             className={editingSkill?.id === conn.id ? "bg-muted/50" : ""}
                             testId={`row-connection-${conn.id}`}
                           >
@@ -437,10 +490,12 @@ export default function SkillsPage() {
                               </div>
                             </TableCell>
                             <TableCell>{conn.difficulty.toFixed(1)}</TableCell>
-                            <TableCell className="text-right space-x-2">
-                              <Button variant="ghost" size="icon" onClick={() => startEditing(conn)}><Pencil className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: conn.id, name: conn.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                            </TableCell>
+                            {!reorderMode && (
+                              <TableCell className="text-right space-x-2">
+                                <Button variant="ghost" size="icon" onClick={() => startEditing(conn)}><Pencil className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: conn.id, name: conn.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                              </TableCell>
+                            )}
                           </SortableRow>
                         ))}
                       </TableBody>
