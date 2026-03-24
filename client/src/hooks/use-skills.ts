@@ -62,7 +62,24 @@ export function useSkills() {
     mutationFn: async (orderedIds: number[]) => {
       await apiRequest("PATCH", "/api/skills/reorder", { orderedIds });
     },
-    onSuccess: () => {
+    onMutate: async (orderedIds: number[]) => {
+      await queryClient.cancelQueries({ queryKey: [api.skills.list.path] });
+      const previous = queryClient.getQueryData<Skill[]>([api.skills.list.path]);
+      if (previous) {
+        const updated = previous.map(skill => {
+          const idx = orderedIds.indexOf(skill.id);
+          return idx !== -1 ? { ...skill, sortOrder: idx } : skill;
+        });
+        queryClient.setQueryData([api.skills.list.path], updated);
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData([api.skills.list.path], context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
     },
   });
