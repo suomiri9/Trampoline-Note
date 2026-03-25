@@ -267,9 +267,24 @@ export default function SkillsPage() {
                       <FormField control={skillForm.control} name="difficulty" render={({ field }) => (
                         <FormItem><FormLabel>Difficulty</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
                       )} />
+                      {editingSkill && (
+                        <FormField control={skillForm.control} name="isDrill" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Type</FormLabel>
+                            <Select value={String(field.value)} onValueChange={(v) => field.onChange(parseInt(v))}>
+                              <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                              <SelectContent>
+                                <SelectItem value="0">Skill</SelectItem>
+                                <SelectItem value="1">Drill</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                      )}
                       <div className="flex gap-2">
                         <Button type="submit" className="flex-1" disabled={isCreating || isUpdating}>
-                          {editingSkill ? "Update Skill" : "Add Skill"}
+                          {editingSkill ? "Update" : "Add Skill"}
                         </Button>
                         {editingSkill && <Button type="button" variant="outline" onClick={cancelEditing}>Cancel</Button>}
                       </div>
@@ -343,9 +358,24 @@ export default function SkillsPage() {
                       <FormField control={drillForm.control} name="difficulty" render={({ field }) => (
                         <FormItem><FormLabel>Difficulty</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
                       )} />
+                      {editingSkill && (
+                        <FormField control={drillForm.control} name="isDrill" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Type</FormLabel>
+                            <Select value={String(field.value)} onValueChange={(v) => field.onChange(parseInt(v))}>
+                              <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                              <SelectContent>
+                                <SelectItem value="0">Skill</SelectItem>
+                                <SelectItem value="1">Drill</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                      )}
                       <div className="flex gap-2">
                         <Button type="submit" className="flex-1" disabled={isCreating || isUpdating}>
-                          {editingSkill ? "Update Drill" : "Add Drill"}
+                          {editingSkill ? "Update" : "Add Drill"}
                         </Button>
                         {editingSkill && <Button type="button" variant="outline" onClick={cancelEditing}>Cancel</Button>}
                       </div>
