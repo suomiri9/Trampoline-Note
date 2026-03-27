@@ -3,6 +3,7 @@ import { useRoute, useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { calcDDFromSkillIds } from "@/lib/training-utils";
+import { DifficultyBadge } from "@/components/difficulty-badge";
 import { PageLayout } from "@/components/page-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -166,9 +167,7 @@ export default function RoutineDetailPage() {
                     <Badge variant="outline" className="px-2 py-1 font-mono" data-testid={`badge-routine-skill-${idx}`}>
                       {skill?.code || "???"}
                     </Badge>
-                    <span className="text-[10px] text-muted-foreground font-semibold">
-                      {skill?.difficulty.toFixed(1) || "0.0"}
-                    </span>
+                    <DifficultyBadge difficulty={skill?.difficulty || 0} className="text-[9px] px-1.5 py-0 h-4" />
                   </div>
                 );
               })}

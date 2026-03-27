@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { DifficultyBadge } from "@/components/difficulty-badge";
 
 interface NoteCardProps {
   note: Note;
@@ -184,7 +185,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                           })}
                         </div>
                         <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
-                          <span className="text-muted-foreground">{lineDD.toFixed(1)}</span>
+                          <DifficultyBadge difficulty={lineDD} className="text-[9px] px-1.5 py-0 h-4" />
                           <span className={isSingle ? "text-muted-foreground/40" : "text-red-400/70"}>×</span>
                           <span className={isSingle ? "text-foreground" : "text-red-600 dark:text-red-400"}>{reps}</span>
                           <span className={isSingle ? "text-muted-foreground/40" : "text-red-400/70"}>=</span>

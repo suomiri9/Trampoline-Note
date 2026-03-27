@@ -13,6 +13,7 @@ import { Trash2, Plus, GripVertical, Pencil, X, Layers } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { type Routine } from "@shared/schema";
 import { cn } from "@/lib/utils";
+import { DifficultyBadge } from "@/components/difficulty-badge";
 
 export default function RoutinesPage() {
   const [, navigate] = useLocation();
@@ -110,9 +111,7 @@ export default function RoutinesPage() {
                     </Select>
                     <div className="w-16 flex justify-end">
                       {selectedSkill ? (
-                        <Badge variant="outline" className="font-mono bg-secondary/50">
-                          {selectedSkill.difficulty.toFixed(1)}
-                        </Badge>
+                        <DifficultyBadge difficulty={selectedSkill.difficulty} />
                       ) : (
                         <div className="w-8 h-4 bg-muted/20 rounded-full" />
                       )}
@@ -170,9 +169,7 @@ export default function RoutinesPage() {
                           <Badge variant="outline" className="px-2 py-1 font-mono">
                             {skill?.code || "???"}
                           </Badge>
-                          <span className="text-[10px] text-muted-foreground font-semibold">
-                            {skill?.difficulty.toFixed(1) || "0.0"}
-                          </span>
+                          <DifficultyBadge difficulty={skill?.difficulty || 0} className="text-[9px] px-1.5 py-0 h-4" />
                         </div>
                       );
                     })}

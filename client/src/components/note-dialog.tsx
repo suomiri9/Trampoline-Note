@@ -50,6 +50,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
+import { DifficultyBadge } from "@/components/difficulty-badge";
 import { StarRating } from "./star-rating";
 
 const formSchema = z.object({
@@ -395,8 +396,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="font-mono text-[10px]">{item.code}</Badge>
                           <span>{item.name}</span>
-                          {item.isDrill === 1 && <span className="text-[10px] text-yellow-500 ml-auto font-medium">(Drill)</span>}
-                          {item.isDrill === 2 && <span className="text-[10px] text-red-500 ml-auto font-medium">(FC)</span>}
+                          <DifficultyBadge difficulty={item.difficulty} className="text-[9px] px-1.5 py-0 h-4 ml-auto" />
+                          {item.isDrill === 1 && <span className="text-[10px] text-yellow-500 font-medium">(Drill)</span>}
+                          {item.isDrill === 2 && <span className="text-[10px] text-red-500 font-medium">(FC)</span>}
                         </div>
                       </SelectItem>
                     ))}
