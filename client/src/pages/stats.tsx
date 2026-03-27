@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Loader2, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { HeatmapCalendar } from "@/components/heatmap-calendar";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import {
   format, parseISO, eachDayOfInterval, eachWeekOfInterval,
@@ -281,6 +282,8 @@ export default function StatsPage() {
             </div>
           </CardContent>
         </Card>
+
+        <HeatmapCalendar ddByDate={ddByDate} />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Card className="bg-gradient-to-br from-blue-50/60 to-background dark:from-blue-950/20">
