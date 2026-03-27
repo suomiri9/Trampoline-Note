@@ -110,7 +110,9 @@ export default function RoutinesPage() {
                     </Select>
                     <div className="w-16 flex justify-end">
                       {selectedSkill ? (
-                        <span className="text-xs font-mono text-muted-foreground">{selectedSkill.difficulty.toFixed(1)}</span>
+                        <Badge variant="outline" className="font-mono bg-secondary/50">
+                          {selectedSkill.difficulty.toFixed(1)}
+                        </Badge>
                       ) : (
                         <div className="w-8 h-4 bg-muted/20 rounded-full" />
                       )}
@@ -168,7 +170,9 @@ export default function RoutinesPage() {
                           <Badge variant="outline" className="px-2 py-1 font-mono">
                             {skill?.code || "???"}
                           </Badge>
-                          <span className="text-[9px] font-mono text-muted-foreground">{(skill?.difficulty || 0).toFixed(1)}</span>
+                          <span className="text-[10px] text-muted-foreground font-semibold">
+                            {skill?.difficulty.toFixed(1) || "0.0"}
+                          </span>
                         </div>
                       );
                     })}

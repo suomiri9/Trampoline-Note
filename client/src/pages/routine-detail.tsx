@@ -166,7 +166,9 @@ export default function RoutineDetailPage() {
                     <Badge variant="outline" className="px-2 py-1 font-mono" data-testid={`badge-routine-skill-${idx}`}>
                       {skill?.code || "???"}
                     </Badge>
-                    <span className="text-[9px] font-mono text-muted-foreground">{(skill?.difficulty || 0).toFixed(1)}</span>
+                    <span className="text-[10px] text-muted-foreground font-semibold">
+                      {skill?.difficulty.toFixed(1) || "0.0"}
+                    </span>
                   </div>
                 );
               })}

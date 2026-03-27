@@ -13,13 +13,11 @@ import { useDndSensors } from "@/hooks/use-dnd-sensors";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
 
-import { useCreateNote, useUpdateNote, useNotes } from "@/hooks/use-notes";
+import { useCreateNote, useUpdateNote } from "@/hooks/use-notes";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { checkMilestones } from "@/lib/milestones";
-import { showMilestones } from "@/components/milestone-toast";
 import {
   Dialog,
   DialogContent,
@@ -104,7 +102,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const updateNote = useUpdateNote();
   const { data: allItems } = useSkills();
   const { data: routines } = useRoutines();
-  const { data: allNotes } = useNotes();
   
   const [selectedSkills, setSelectedSkills] = useState<SkillItem[]>([]);
   const [isConnectMode, setIsConnectMode] = useState(false);
@@ -259,31 +256,14 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
     if (isEditing && noteToEdit) {
       updateNote.mutate({ id: noteToEdit.id, ...payload }, {
-        onSuccess: (updatedNote) => { 
+        onSuccess: () => { 
           onOpenChange(false); 
-          toast({ title: "Session updated" });
-          if (updatedNote && allNotes && allItems) {
-            const notesBefore = allNotes;
-            const notesAfter = allNotes.map((n) =>
-              n.id === updatedNote.id ? updatedNote : n
-            );
-            const milestones = checkMilestones(notesBefore, notesAfter, updatedNote, allItems, true);
-            setTimeout(() => showMilestones(milestones), 500);
-          }
+          toast({ title: "Session updated" }); 
         }
       });
     } else {
       createNote.mutate(payload as any, {
-        onSuccess: (createdNote) => {
-          onOpenChange(false);
-          toast({ title: "Session logged!" });
-          if (createdNote && allNotes && allItems) {
-            const notesBefore = allNotes;
-            const notesAfter = [...allNotes, createdNote];
-            const milestones = checkMilestones(notesBefore, notesAfter, createdNote, allItems, false);
-            setTimeout(() => showMilestones(milestones), 500);
-          }
-        }
+        onSuccess: () => { onOpenChange(false); toast({ title: "Session logged!" }); }
       });
     }
   };
@@ -415,9 +395,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="font-mono text-[10px]">{item.code}</Badge>
                           <span>{item.name}</span>
-                          <span className="text-[10px] text-muted-foreground ml-auto font-mono">{item.difficulty.toFixed(1)}</span>
-                          {item.isDrill === 1 && <span className="text-[10px] text-yellow-500 font-medium">(Drill)</span>}
-                          {item.isDrill === 2 && <span className="text-[10px] text-red-500 font-medium">(FC)</span>}
+                          {item.isDrill === 1 && <span className="text-[10px] text-yellow-500 ml-auto font-medium">(Drill)</span>}
+                          {item.isDrill === 2 && <span className="text-[10px] text-red-500 ml-auto font-medium">(FC)</span>}
                         </div>
                       </SelectItem>
                     ))}

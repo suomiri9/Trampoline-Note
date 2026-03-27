@@ -22,7 +22,6 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 
-
 function SortableRow({ id, children, className, onClick, testId, reorderMode }: {
   id: string;
   children: React.ReactNode;
