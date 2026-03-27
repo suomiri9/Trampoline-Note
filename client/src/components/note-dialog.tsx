@@ -13,11 +13,13 @@ import { useDndSensors } from "@/hooks/use-dnd-sensors";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
 
-import { useCreateNote, useUpdateNote } from "@/hooks/use-notes";
+import { useCreateNote, useUpdateNote, useNotes } from "@/hooks/use-notes";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { checkMilestones } from "@/lib/milestones";
+import { showMilestones } from "@/components/milestone-toast";
 import {
   Dialog,
   DialogContent,
@@ -103,6 +105,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const updateNote = useUpdateNote();
   const { data: allItems } = useSkills();
   const { data: routines } = useRoutines();
+  const { data: allNotes } = useNotes();
   
   const [selectedSkills, setSelectedSkills] = useState<SkillItem[]>([]);
   const [isConnectMode, setIsConnectMode] = useState(false);
@@ -257,14 +260,31 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
     if (isEditing && noteToEdit) {
       updateNote.mutate({ id: noteToEdit.id, ...payload }, {
-        onSuccess: () => { 
+        onSuccess: (updatedNote) => { 
           onOpenChange(false); 
-          toast({ title: "Session updated" }); 
+          toast({ title: "Session updated" });
+          if (updatedNote && allNotes && allItems) {
+            const notesBefore = allNotes;
+            const notesAfter = allNotes.map((n) =>
+              n.id === updatedNote.id ? updatedNote : n
+            );
+            const milestones = checkMilestones(notesBefore, notesAfter, updatedNote, allItems, true);
+            setTimeout(() => showMilestones(milestones), 500);
+          }
         }
       });
     } else {
       createNote.mutate(payload as any, {
-        onSuccess: () => { onOpenChange(false); toast({ title: "Session logged!" }); }
+        onSuccess: (createdNote) => {
+          onOpenChange(false);
+          toast({ title: "Session logged!" });
+          if (createdNote && allNotes && allItems) {
+            const notesBefore = allNotes;
+            const notesAfter = [...allNotes, createdNote];
+            const milestones = checkMilestones(notesBefore, notesAfter, createdNote, allItems, false);
+            setTimeout(() => showMilestones(milestones), 500);
+          }
+        }
       });
     }
   };
