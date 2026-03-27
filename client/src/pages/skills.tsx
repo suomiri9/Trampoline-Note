@@ -21,7 +21,7 @@ import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
-import { DifficultyBadge } from "@/components/difficulty-badge";
+
 
 function SortableRow({ id, children, className, onClick, testId, reorderMode }: {
   id: string;
@@ -319,7 +319,7 @@ export default function SkillsPage() {
                           >
                             <TableCell className="font-medium">{skill.name}</TableCell>
                             <TableCell>{skill.code}</TableCell>
-                            <TableCell><DifficultyBadge difficulty={skill.difficulty} /></TableCell>
+                            <TableCell>{skill.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
                               <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
                                 <Button variant="ghost" size="icon" onClick={() => startEditing(skill)}><Pencil className="h-4 w-4" /></Button>
@@ -410,7 +410,7 @@ export default function SkillsPage() {
                           >
                             <TableCell className="font-medium">{drill.name}</TableCell>
                             <TableCell>{drill.code}</TableCell>
-                            <TableCell><DifficultyBadge difficulty={drill.difficulty} /></TableCell>
+                            <TableCell>{drill.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
                               <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
                                 <Button variant="ghost" size="icon" onClick={() => startEditing(drill)}><Pencil className="h-4 w-4" /></Button>
@@ -520,7 +520,7 @@ export default function SkillsPage() {
                                 ))}
                               </div>
                             </TableCell>
-                            <TableCell><DifficultyBadge difficulty={conn.difficulty} /></TableCell>
+                            <TableCell>{conn.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
                               <TableCell className="text-right space-x-2">
                                 <Button variant="ghost" size="icon" onClick={() => startEditing(conn)}><Pencil className="h-4 w-4" /></Button>

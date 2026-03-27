@@ -4,7 +4,6 @@ import { useNotes } from "@/hooks/use-notes";
 import { NoteCard } from "@/components/note-card";
 import { NoteDialog } from "@/components/note-dialog";
 import { FocusMemo } from "@/components/focus-memo";
-import { StreakCard } from "@/components/streak-card";
 import { PageLayout } from "@/components/page-layout";
 import { Button } from "@/components/ui/button";
 import { type Note } from "@shared/schema";
@@ -51,8 +50,6 @@ export default function Home() {
       </div>
 
       <FocusMemo />
-
-      {notes && <StreakCard notes={notes} />}
 
       <main>
         {isLoading ? (

@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { PageLayout } from "@/components/page-layout";
-import { DifficultyBadge } from "@/components/difficulty-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -151,7 +150,7 @@ export default function SkillDetailPage() {
               <p className="text-muted-foreground text-sm mt-1">
                 Code: <span className="font-mono font-medium" data-testid="text-skill-code">{skill.code}</span>
                 {" · "}
-                Difficulty: <DifficultyBadge difficulty={skill.difficulty} showLabel data-testid="text-skill-difficulty" />
+                Difficulty: <span className="font-medium" data-testid="text-skill-difficulty">{skill.difficulty.toFixed(1)}</span>
               </p>
             </div>
           </div>
