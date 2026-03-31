@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { calcDDFromSkillIds } from "@/lib/training-utils";
+import { useDndSensors } from "@/hooks/use-dnd-sensors";
 import { PageLayout } from "@/components/page-layout";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,30 @@ import { Trash2, Plus, GripVertical, Pencil, X, Layers } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { type Routine } from "@shared/schema";
 import { cn } from "@/lib/utils";
+import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+function SortableSkillSlot({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
+      className="flex items-center gap-2 group"
+    >
+      <button
+        type="button"
+        className="touch-none cursor-grab active:cursor-grabbing flex items-center justify-center w-5 h-5 text-muted-foreground/40 hover:text-muted-foreground shrink-0"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-3.5 w-3.5" />
+      </button>
+      {children}
+    </div>
+  );
+}
 
 export default function RoutinesPage() {
   const [, navigate] = useLocation();
@@ -25,10 +50,21 @@ export default function RoutinesPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [selectedSkillIds, setSelectedSkillIds] = useState<(number | null)[]>(new Array(10).fill(null));
 
+  const sensors = useDndSensors();
+
   const handleAddSkill = (index: number, skillId: string) => {
     const newIds = [...selectedSkillIds];
     newIds[index] = parseInt(skillId);
     setSelectedSkillIds(newIds);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = parseInt(String(active.id).replace("slot-", ""));
+    const newIdx = parseInt(String(over.id).replace("slot-", ""));
+    if (isNaN(oldIdx) || isNaN(newIdx)) return;
+    setSelectedSkillIds(prev => arrayMove([...prev], oldIdx, newIdx));
   };
 
   const handleCreate = async () => {
@@ -90,41 +126,45 @@ export default function RoutinesPage() {
               value={name} 
               onChange={e => setName(e.target.value)} 
             />
-            <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-2">
-              {selectedSkillIds.map((id, index) => {
-                const selectedSkill = skills?.find(s => s.id === id);
-                return (
-                  <div key={index} className="flex items-center gap-2 group">
-                    <span className="text-xs font-mono text-muted-foreground w-6">{index + 1}.</span>
-                    <Select onValueChange={(val) => handleAddSkill(index, val)} value={id?.toString() || ""}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Skill Code" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {skills?.slice().sort((a, b) => {
-                          const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
-                          if (oA !== oB) return oA - oB;
-                          return b.difficulty - a.difficulty;
-                        }).map(skill => (
-                          <SelectItem key={skill.id} value={skill.id.toString()}>
-                            <span className="font-mono">{skill.code}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="w-16 flex justify-end">
-                      {selectedSkill ? (
-                        <Badge variant="outline" className="font-mono bg-secondary/50">
-                          {selectedSkill.difficulty.toFixed(1)}
-                        </Badge>
-                      ) : (
-                        <div className="w-8 h-4 bg-muted/20 rounded-full" />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={selectedSkillIds.map((_, i) => `slot-${i}`)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-2">
+                  {selectedSkillIds.map((id, index) => {
+                    const selectedSkill = skills?.find(s => s.id === id);
+                    return (
+                      <SortableSkillSlot key={`slot-${index}`} id={`slot-${index}`}>
+                        <span className="text-xs font-mono text-muted-foreground w-5 shrink-0">{index + 1}.</span>
+                        <Select onValueChange={(val) => handleAddSkill(index, val)} value={id?.toString() || ""}>
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Skill Code" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {skills?.slice().sort((a, b) => {
+                              const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
+                              if (oA !== oB) return oA - oB;
+                              return b.difficulty - a.difficulty;
+                            }).map(skill => (
+                              <SelectItem key={skill.id} value={skill.id.toString()}>
+                                <span className="font-mono">{skill.code}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="w-16 flex justify-end">
+                          {selectedSkill ? (
+                            <Badge variant="outline" className="font-mono bg-secondary/50">
+                              {selectedSkill.difficulty.toFixed(1)}
+                            </Badge>
+                          ) : (
+                            <div className="w-8 h-4 bg-muted/20 rounded-full" />
+                          )}
+                        </div>
+                      </SortableSkillSlot>
+                    );
+                  })}
+                </div>
+              </SortableContext>
+            </DndContext>
             <div className="pt-4 border-t flex justify-between items-center">
               <span className="text-sm font-medium text-muted-foreground">Total Difficulty</span>
               <span className="text-2xl font-bold text-primary">
