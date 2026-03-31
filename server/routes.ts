@@ -290,6 +290,11 @@ export async function registerRoutes(
             const activeSkills = routineSkillIds.slice(0, attempt);
             const count = activeSkills.filter((sid: number) => sid === skillId).length;
             totalReps += count;
+          } else if (item.id === -3 && raw.fcId) {
+            const customIds: number[] | undefined = raw.customSkillIds;
+            const fcSkillIds = customIds ?? fcMap.get(raw.fcId) ?? [];
+            const count = fcSkillIds.filter((sid: number) => sid === skillId).length;
+            totalReps += count;
           } else {
             const fcSkillIds = fcMap.get(item.id);
             if (fcSkillIds && fcSkillIds.includes(skillId)) {

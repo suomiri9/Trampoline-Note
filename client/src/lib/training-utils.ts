@@ -8,6 +8,8 @@ export interface SkillItem {
   routineName?: string;
   customSkillIds?: number[];
   attempt?: number;
+  fcId?: number;
+  fcName?: string;
 }
 
 export function parseNoteSkills(skillsString: string | null | undefined): SkillItem[] {
@@ -54,6 +56,16 @@ export function calculateTotalDD(
       const skillIds = item.customSkillIds ?? routine?.skillIds ?? [];
       const count = item.attempt ?? skillIds.length;
       total += skillIds.slice(0, count).reduce((acc: number, sId: number) => {
+        const skill = allSkills?.find(s => s.id === sId);
+        return acc + (skill?.difficulty || 0);
+      }, 0);
+    } else if (item.id === -3) {
+      total += currentGroupDD * currentGroupReps;
+      currentGroupDD = 0;
+      currentGroupReps = 1;
+      const fc = allSkills?.find(s => s.id === item.fcId);
+      const skillIds = item.customSkillIds ?? fc?.skillIds ?? [];
+      total += skillIds.reduce((acc: number, sId: number) => {
         const skill = allSkills?.find(s => s.id === sId);
         return acc + (skill?.difficulty || 0);
       }, 0);

@@ -116,7 +116,6 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                   return groups.map((group, groupIdx) => {
                     if (!Array.isArray(group)) return null;
 
-                    // Handle Routine marker
                     if (group.length === 1 && (group[0] as any).id === -2) {
                       const item = group[0] as any;
                       const routine = routines?.find(r => r.id === item.routineId);
@@ -126,7 +125,6 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                         const skill = allItems?.find(s => s.id === sId);
                         return acc + (skill?.difficulty || 0);
                       }, 0);
-                      const isCustom = displaySkillIds.length !== baseSkillIds.length || (item.customSkillIds && JSON.stringify(item.customSkillIds) !== JSON.stringify(baseSkillIds));
 
                       return (
                         <div key={`routine-${groupIdx}`} className="flex items-center justify-between py-2 px-3 rounded-xl bg-primary/5">
@@ -141,6 +139,30 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                             )}
                           </div>
                           <span className="text-[11px] font-mono font-bold text-primary">{routineDD.toFixed(1)}</span>
+                        </div>
+                      );
+                    }
+
+                    if (group.length === 1 && (group[0] as any).id === -3) {
+                      const item = group[0] as any;
+                      const fc = allItems?.find(s => s.id === item.fcId);
+                      const baseSkillIds: number[] = fc?.skillIds ?? [];
+                      const displaySkillIds: number[] = item.customSkillIds ?? baseSkillIds;
+                      const fcDD = displaySkillIds.reduce((acc: number, sId: number) => {
+                        const skill = allItems?.find(s => s.id === sId);
+                        return acc + (skill?.difficulty || 0);
+                      }, 0);
+
+                      return (
+                        <div key={`fc-${groupIdx}`} className="flex items-center justify-between py-2 px-3 rounded-xl bg-red-50/60 dark:bg-red-900/10">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-red-500 text-white border-none">FC</Badge>
+                            <span className="text-sm font-bold text-red-600 dark:text-red-400">{item.fcName || "Connection"}</span>
+                            {displaySkillIds.length < baseSkillIds.length && (
+                              <span className="text-[11px] font-mono text-muted-foreground">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
+                            )}
+                          </div>
+                          <span className="text-[11px] font-mono font-bold text-red-600 dark:text-red-400">{fcDD.toFixed(1)}</span>
                         </div>
                       );
                     }

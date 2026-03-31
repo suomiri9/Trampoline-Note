@@ -180,6 +180,20 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   const addSkill = (idStr: string) => {
     const id = parseInt(idStr);
+    const fcItem = allItems?.find(s => s.id === id && s.isDrill === 2);
+    if (fcItem && fcItem.skillIds) {
+      setSelectedSkills(prev => {
+        let newSkills = [...prev];
+        if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
+          newSkills.push({ id: -1 });
+        }
+        newSkills.push({ id: -3, fcId: id, fcName: fcItem.name, customSkillIds: fcItem.skillIds! } as any);
+        form.setValue('skills', JSON.stringify(newSkills));
+        return newSkills;
+      });
+      setIsConnectMode(false);
+      return;
+    }
     setSelectedSkills(prev => {
       let newSkills = [...prev];
       if (isConnectMode && newSkills.length > 0) {
@@ -501,6 +515,29 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                   </div>
                                 );
                               }
+                              if (item.id === -3) {
+                                const fc = allItems?.find(s => s.id === item.fcId);
+                                const baseSkillIds = fc?.skillIds ?? [];
+                                const displaySkillIds = item.customSkillIds ?? baseSkillIds;
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="w-full px-3 py-2 text-sm flex justify-between items-center hover:bg-red-100/40 active:bg-red-100/60 dark:hover:bg-red-900/20 dark:active:bg-red-900/30 transition-colors cursor-pointer bg-red-50/60 dark:bg-red-900/10"
+                                    onClick={() => setEditingRoutineIdx(idx)}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-red-500 text-white border-none">FC</Badge>
+                                      <span className="font-bold text-red-600 dark:text-red-400">{item.fcName}</span>
+                                      {displaySkillIds.length < baseSkillIds.length && (
+                                        <span className="text-[11px] font-mono text-muted-foreground">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                    </div>
+                                  </div>
+                                );
+                              }
                               const skill = allItems?.find(s => s.id === item.id);
                               const showReps = !isConnected || iIdx === 0;
                               return (
@@ -601,15 +638,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
           </Form>
         </div>
 
-        {editingRoutineIdx !== null && selectedSkills[editingRoutineIdx]?.id === -2 && (() => {
+        {editingRoutineIdx !== null && (selectedSkills[editingRoutineIdx]?.id === -2 || selectedSkills[editingRoutineIdx]?.id === -3) && (() => {
           const rItem = selectedSkills[editingRoutineIdx];
-          const routine = routines?.find(r => r.id === rItem.routineId);
-          const displaySkillIds = rItem.customSkillIds ?? routine?.skillIds ?? [];
+          const isFC = rItem.id === -3;
+          const baseSkillIds = isFC
+            ? (allItems?.find(s => s.id === rItem.fcId)?.skillIds ?? [])
+            : (routines?.find(r => r.id === rItem.routineId)?.skillIds ?? []);
+          const displaySkillIds = rItem.customSkillIds ?? baseSkillIds;
+          const title = isFC ? (rItem.fcName || "Edit FC") : (rItem.routineName || "Edit Routine");
 
           return (
             <div className="absolute inset-0 bg-background z-30 flex flex-col rounded-[24px] overflow-hidden p-4">
               <SkillEditorOverlay
-                title={rItem.routineName || "Edit Routine"}
+                title={title}
                 skillIds={displaySkillIds}
                 allSkills={allItems || []}
                 onSkillIdsChange={(newIds) => {
@@ -621,6 +662,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   });
                 }}
                 onClose={() => setEditingRoutineIdx(null)}
+                filterSkills={isFC ? (s) => s.isDrill === 0 : undefined}
                 className="flex-1 min-h-0"
               />
             </div>
