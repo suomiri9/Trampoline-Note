@@ -104,7 +104,7 @@ export function SkillEditorOverlay({
                     s.isDrill === 2 ? "border-red-300 text-red-500" : ""
                   )}>{s.code}</Badge>
                   <span className="text-xs">{s.name}</span>
-                  {s.isDrill === 2 && <span className="text-[10px] text-red-500 font-medium">(FC)</span>}
+                  {s.isDrill === 2 && <span className="text-[10px] text-red-500 font-medium">(Connection)</span>}
                 </div>
               </SelectItem>
             ))}

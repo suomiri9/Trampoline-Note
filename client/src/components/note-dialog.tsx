@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Trash2, GripVertical, MessageSquare } from "lucide-react";
+import { CalendarIcon, Trash2, GripVertical, MessageSquare, Copy } from "lucide-react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -239,6 +239,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     });
   };
 
+  const duplicateGroup = (groupIndices: number[]) => {
+    setSelectedSkills(prev => {
+      const newSkills = [...prev];
+      const lastIdx = groupIndices[groupIndices.length - 1];
+      const groupItems = groupIndices.map(i => ({ ...prev[i] }));
+      const toInsert = [{ id: -1 } as SkillItem, ...groupItems];
+      newSkills.splice(lastIdx + 1, 0, ...toInsert);
+      form.setValue('skills', JSON.stringify(newSkills));
+      return newSkills;
+    });
+  };
+
   const updateReps = (indices: number[], reps: number) => {
     const val = Math.max(0, reps);
     setSelectedSkills(prev => {
@@ -418,7 +430,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </Button>
                 </div>
                 <Select key={selectedSkills.length} onValueChange={addSkill}>
-                  <SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Add a skill, drill or FC..." /></SelectTrigger>
+                  <SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Add a skill or drill..." /></SelectTrigger>
                   <SelectContent>
                     {allItems?.slice().sort((a, b) => {
                       const groupOrder = (s: typeof a) => s.isDrill === 0 ? 0 : s.isDrill === 2 ? 1 : 2;
@@ -433,21 +445,35 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           <Badge variant="outline" className="font-mono text-[10px]">{item.code}</Badge>
                           <span>{item.name}</span>
                           {item.isDrill === 1 && <span className="text-[10px] text-yellow-500 ml-auto font-medium">(Drill)</span>}
-                          {item.isDrill === 2 && <span className="text-[10px] text-red-500 ml-auto font-medium">(FC)</span>}
+                          {item.isDrill === 2 && <span className="text-[10px] text-red-500 ml-auto font-medium">(Connection)</span>}
                         </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {routines && routines.length > 0 && (
-                  <Select key={`routine-select-${selectedSkills.length}`} onValueChange={addRoutine}>
-                    <SelectTrigger className="rounded-xl h-11 border-primary/20 bg-primary/5"><SelectValue placeholder="Add a saved routine..." /></SelectTrigger>
+                {((routines && routines.length > 0) || (allItems?.some(s => s.isDrill === 2 && s.skillIds))) && (
+                  <Select key={`routine-select-${selectedSkills.length}`} onValueChange={(val) => {
+                    if (val.startsWith("conn-")) {
+                      addSkill(val.replace("conn-", ""));
+                    } else {
+                      addRoutine(val);
+                    }
+                  }}>
+                    <SelectTrigger className="rounded-xl h-11 border-primary/20 bg-primary/5"><SelectValue placeholder="Add a routine or connection..." /></SelectTrigger>
                     <SelectContent>
-                      {routines.map(routine => (
-                        <SelectItem key={routine.id} value={routine.id.toString()}>
+                      {routines?.map(routine => (
+                        <SelectItem key={`r-${routine.id}`} value={routine.id.toString()}>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="font-mono text-[10px] bg-primary/10 border-primary/20 text-primary">Routine</Badge>
                             <span>{routine.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                      {allItems?.filter(s => s.isDrill === 2 && s.skillIds).map(conn => (
+                        <SelectItem key={`c-${conn.id}`} value={`conn-${conn.id}`}>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="font-mono text-[10px] bg-red-100 border-red-200 text-red-500 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">Connection</Badge>
+                            <span>{conn.name}</span>
                           </div>
                         </SelectItem>
                       ))}
@@ -494,24 +520,37 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                 const baseSkillIds = routine?.skillIds ?? [];
                                 const displaySkillIds = item.customSkillIds ?? baseSkillIds;
                                 return (
-                                  <div
-                                    key={idx}
-                                    className="w-full px-3 py-2 text-sm flex justify-between items-center hover:bg-secondary/20 active:bg-secondary/40 transition-colors cursor-pointer bg-primary/5"
-                                    onClick={() => setEditingRoutineIdx(idx)}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none">ROUTINE</Badge>
-                                      <span className="font-bold text-primary">{item.routineName}</span>
-                                      {displaySkillIds.length < 10 && (
-                                        <span className="text-[11px] font-mono text-muted-foreground">attempt {displaySkillIds.length}/10</span>
-                                      )}
-                                      {displaySkillIds.length > 10 && (
-                                        <span className="text-[11px] font-mono text-muted-foreground">{displaySkillIds.length} skills</span>
-                                      )}
+                                  <div key={idx}>
+                                    <div
+                                      className="w-full px-3 py-2 text-sm flex justify-between items-center hover:bg-secondary/20 active:bg-secondary/40 transition-colors cursor-pointer bg-primary/5"
+                                      onClick={() => setEditingRoutineIdx(idx)}
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none shrink-0">ROUTINE</Badge>
+                                        <span className="font-bold text-primary truncate">{item.routineName}</span>
+                                        {displaySkillIds.length < 10 && (
+                                          <span className="text-[11px] font-mono text-muted-foreground shrink-0">attempt {displaySkillIds.length}/10</span>
+                                        )}
+                                        {displaySkillIds.length > 10 && (
+                                          <span className="text-[11px] font-mono text-muted-foreground shrink-0">{displaySkillIds.length} skills</span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+                                        <div className="flex items-center border rounded-md">
+                                          <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) - 1)}>-</button>
+                                          <input type="text" inputMode="numeric" pattern="[0-9]*" value={item.reps ?? 1} onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateReps([idx], v); else if (e.target.value === "") updateReps([idx], 0); }} onBlur={() => { if (!item.reps || item.reps < 1) updateReps([idx], 1); }} className="w-8 text-center text-xs font-bold bg-transparent outline-none" />
+                                          <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) + 1)}>+</button>
+                                        </div>
+                                        <Button type="button" variant="ghost" size="icon" className={cn("h-7 w-7", item.note ? "text-primary" : "")} onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { updateSkillNote(idx, ""); } }}><MessageSquare className="h-3 w-3" /></Button>
+                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3 w-3" /></Button>
+                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSkill(idx)}><Trash2 className="h-3 w-3" /></Button>
+                                      </div>
                                     </div>
-                                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                                    </div>
+                                    {(item.note !== undefined && item.note !== null) && (
+                                      <div className="px-3 pb-2 bg-primary/5">
+                                        <input type="text" placeholder="Type a note..." value={item.note || ""} onChange={(e) => updateSkillNote(idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 outline-none focus:bg-muted/50 placeholder:text-muted-foreground/40" data-testid={`input-skill-note-${idx}`} />
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               }
@@ -520,21 +559,34 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                 const baseSkillIds = fc?.skillIds ?? [];
                                 const displaySkillIds = item.customSkillIds ?? baseSkillIds;
                                 return (
-                                  <div
-                                    key={idx}
-                                    className="w-full px-3 py-2 text-sm flex justify-between items-center hover:bg-red-100/40 active:bg-red-100/60 dark:hover:bg-red-900/20 dark:active:bg-red-900/30 transition-colors cursor-pointer bg-red-50/60 dark:bg-red-900/10"
-                                    onClick={() => setEditingRoutineIdx(idx)}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-red-500 text-white border-none">FC</Badge>
-                                      <span className="font-bold text-red-600 dark:text-red-400">{item.fcName}</span>
-                                      {displaySkillIds.length < baseSkillIds.length && (
-                                        <span className="text-[11px] font-mono text-muted-foreground">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
-                                      )}
+                                  <div key={idx}>
+                                    <div
+                                      className="w-full px-3 py-2 text-sm flex justify-between items-center hover:bg-red-100/40 active:bg-red-100/60 dark:hover:bg-red-900/20 dark:active:bg-red-900/30 transition-colors cursor-pointer bg-red-50/60 dark:bg-red-900/10"
+                                      onClick={() => setEditingRoutineIdx(idx)}
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-red-500 text-white border-none shrink-0">CONN</Badge>
+                                        <span className="font-bold text-red-600 dark:text-red-400 truncate">{item.fcName}</span>
+                                        {displaySkillIds.length < baseSkillIds.length && (
+                                          <span className="text-[11px] font-mono text-muted-foreground shrink-0">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+                                        <div className="flex items-center border rounded-md">
+                                          <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) - 1)}>-</button>
+                                          <input type="text" inputMode="numeric" pattern="[0-9]*" value={item.reps ?? 1} onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateReps([idx], v); else if (e.target.value === "") updateReps([idx], 0); }} onBlur={() => { if (!item.reps || item.reps < 1) updateReps([idx], 1); }} className="w-8 text-center text-xs font-bold bg-transparent outline-none" />
+                                          <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) + 1)}>+</button>
+                                        </div>
+                                        <Button type="button" variant="ghost" size="icon" className={cn("h-7 w-7", item.note ? "text-red-500" : "")} onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { updateSkillNote(idx, ""); } }}><MessageSquare className="h-3 w-3" /></Button>
+                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3 w-3" /></Button>
+                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSkill(idx)}><Trash2 className="h-3 w-3" /></Button>
+                                      </div>
                                     </div>
-                                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                                    </div>
+                                    {(item.note !== undefined && item.note !== null) && (
+                                      <div className="px-3 pb-2 bg-red-50/60 dark:bg-red-900/10">
+                                        <input type="text" placeholder="Type a note..." value={item.note || ""} onChange={(e) => updateSkillNote(idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 outline-none focus:bg-muted/50 placeholder:text-muted-foreground/40" data-testid={`input-skill-note-${idx}`} />
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               }
@@ -599,6 +651,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           }, 50);
                                         }
                                       }}><MessageSquare className="h-3.5 w-3.5" /></Button>
+                                      {iIdx === 0 && <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /></Button>}
                                       <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeSkill(idx)}><Trash2 className="h-4 w-4" /></Button>
                                     </div>
                                   </div>
@@ -645,7 +698,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
             ? (allItems?.find(s => s.id === rItem.fcId)?.skillIds ?? [])
             : (routines?.find(r => r.id === rItem.routineId)?.skillIds ?? []);
           const displaySkillIds = rItem.customSkillIds ?? baseSkillIds;
-          const title = isFC ? (rItem.fcName || "Edit FC") : (rItem.routineName || "Edit Routine");
+          const title = isFC ? (rItem.fcName || "Edit Connection") : (rItem.routineName || "Edit Routine");
 
           return (
             <div className="absolute inset-0 bg-background z-30 flex flex-col rounded-[24px] overflow-hidden p-4">

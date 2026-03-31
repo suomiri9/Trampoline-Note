@@ -289,12 +289,14 @@ export async function registerRoutes(
             const attempt = raw.attempt ?? routineSkillIds.length;
             const activeSkills = routineSkillIds.slice(0, attempt);
             const count = activeSkills.filter((sid: number) => sid === skillId).length;
-            totalReps += count;
+            const entryReps = Number(raw.reps);
+            totalReps += count * (Number.isFinite(entryReps) && entryReps > 0 ? entryReps : 1);
           } else if (item.id === -3 && raw.fcId) {
             const customIds: number[] | undefined = raw.customSkillIds;
             const fcSkillIds = customIds ?? fcMap.get(raw.fcId) ?? [];
             const count = fcSkillIds.filter((sid: number) => sid === skillId).length;
-            totalReps += count;
+            const entryReps = Number(raw.reps);
+            totalReps += count * (Number.isFinite(entryReps) && entryReps > 0 ? entryReps : 1);
           } else {
             const fcSkillIds = fcMap.get(item.id);
             if (fcSkillIds && fcSkillIds.includes(skillId)) {

@@ -55,20 +55,22 @@ export function calculateTotalDD(
       const routine = routines?.find(r => r.id === item.routineId);
       const skillIds = item.customSkillIds ?? routine?.skillIds ?? [];
       const count = item.attempt ?? skillIds.length;
+      const reps = item.reps || 1;
       total += skillIds.slice(0, count).reduce((acc: number, sId: number) => {
         const skill = allSkills?.find(s => s.id === sId);
         return acc + (skill?.difficulty || 0);
-      }, 0);
+      }, 0) * reps;
     } else if (item.id === -3) {
       total += currentGroupDD * currentGroupReps;
       currentGroupDD = 0;
       currentGroupReps = 1;
       const fc = allSkills?.find(s => s.id === item.fcId);
       const skillIds = item.customSkillIds ?? fc?.skillIds ?? [];
+      const reps = item.reps || 1;
       total += skillIds.reduce((acc: number, sId: number) => {
         const skill = allSkills?.find(s => s.id === sId);
         return acc + (skill?.difficulty || 0);
-      }, 0);
+      }, 0) * reps;
     } else {
       const skill = allSkills?.find(s => s.id === item.id);
       currentGroupDD += (skill?.difficulty || 0);

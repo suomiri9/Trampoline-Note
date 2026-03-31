@@ -121,24 +121,31 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                       const routine = routines?.find(r => r.id === item.routineId);
                       const baseSkillIds: number[] = routine?.skillIds ?? [];
                       const displaySkillIds: number[] = item.customSkillIds ?? (item.attempt != null ? baseSkillIds.slice(0, item.attempt) : baseSkillIds);
-                      const routineDD = displaySkillIds.reduce((acc, sId) => {
+                      const routineDD = displaySkillIds.reduce((acc: number, sId: number) => {
                         const skill = allItems?.find(s => s.id === sId);
                         return acc + (skill?.difficulty || 0);
                       }, 0);
+                      const reps = item.reps || 1;
 
                       return (
-                        <div key={`routine-${groupIdx}`} className="flex items-center justify-between py-2 px-3 rounded-xl bg-primary/5">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none">ROUTINE</Badge>
-                            <span className="text-sm font-bold text-primary">{item.routineName || "Routine"}</span>
-                            {displaySkillIds.length > baseSkillIds.length && (
-                              <span className="text-[11px] font-mono text-muted-foreground">{displaySkillIds.length} skills</span>
-                            )}
-                            {displaySkillIds.length < baseSkillIds.length && (
-                              <span className="text-[11px] font-mono text-muted-foreground">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
-                            )}
+                        <div key={`routine-${groupIdx}`} className="rounded-xl bg-primary/5">
+                          <div className="flex items-center justify-between py-2 px-3">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none">ROUTINE</Badge>
+                              <span className="text-sm font-bold text-primary">{item.routineName || "Routine"}</span>
+                              {displaySkillIds.length > baseSkillIds.length && (
+                                <span className="text-[11px] font-mono text-muted-foreground">{displaySkillIds.length} skills</span>
+                              )}
+                              {displaySkillIds.length < baseSkillIds.length && (
+                                <span className="text-[11px] font-mono text-muted-foreground">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
+                              <span className="text-muted-foreground">{routineDD.toFixed(1)}</span>
+                              {reps > 1 && (<><span className="text-primary/40">×</span><span className="text-primary">{reps}</span><span className="text-primary/40">=</span><span className="text-primary">{(routineDD * reps).toFixed(1)}</span></>)}
+                            </div>
                           </div>
-                          <span className="text-[11px] font-mono font-bold text-primary">{routineDD.toFixed(1)}</span>
+                          {item.note && <div className="px-3 pb-2"><span className="text-[11px] text-muted-foreground italic">{item.note}</span></div>}
                         </div>
                       );
                     }
@@ -152,17 +159,24 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                         const skill = allItems?.find(s => s.id === sId);
                         return acc + (skill?.difficulty || 0);
                       }, 0);
+                      const reps = item.reps || 1;
 
                       return (
-                        <div key={`fc-${groupIdx}`} className="flex items-center justify-between py-2 px-3 rounded-xl bg-red-50/60 dark:bg-red-900/10">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-red-500 text-white border-none">FC</Badge>
-                            <span className="text-sm font-bold text-red-600 dark:text-red-400">{item.fcName || "Connection"}</span>
-                            {displaySkillIds.length < baseSkillIds.length && (
-                              <span className="text-[11px] font-mono text-muted-foreground">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
-                            )}
+                        <div key={`fc-${groupIdx}`} className="rounded-xl bg-red-50/60 dark:bg-red-900/10">
+                          <div className="flex items-center justify-between py-2 px-3">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-red-500 text-white border-none">CONN</Badge>
+                              <span className="text-sm font-bold text-red-600 dark:text-red-400">{item.fcName || "Connection"}</span>
+                              {displaySkillIds.length < baseSkillIds.length && (
+                                <span className="text-[11px] font-mono text-muted-foreground">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
+                              <span className="text-muted-foreground">{fcDD.toFixed(1)}</span>
+                              {reps > 1 && (<><span className="text-red-400/70">×</span><span className="text-red-600 dark:text-red-400">{reps}</span><span className="text-red-400/70">=</span><span className="text-red-600 dark:text-red-400">{(fcDD * reps).toFixed(1)}</span></>)}
+                            </div>
                           </div>
-                          <span className="text-[11px] font-mono font-bold text-red-600 dark:text-red-400">{fcDD.toFixed(1)}</span>
+                          {item.note && <div className="px-3 pb-2"><span className="text-[11px] text-muted-foreground italic">{item.note}</span></div>}
                         </div>
                       );
                     }
