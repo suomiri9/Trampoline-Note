@@ -3,6 +3,7 @@ import type { Skill } from "@shared/schema";
 export interface SkillItem {
   id: number;
   reps?: number;
+  note?: string;
   routineId?: number;
   routineName?: string;
   customSkillIds?: number[];

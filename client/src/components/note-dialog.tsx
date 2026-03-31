@@ -241,6 +241,21 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     });
   };
 
+  const updateSkillNote = (index: number, note: string) => {
+    setSelectedSkills(prev => {
+      const newSkills = prev.map((item, idx) => {
+        if (idx === index) {
+          return note ? { ...item, note } : (() => { const { note: _, ...rest } = item; return rest; })();
+        }
+        return item;
+      });
+      setTimeout(() => {
+        form.setValue('skills', JSON.stringify(newSkills));
+      }, 0);
+      return newSkills;
+    });
+  };
+
   const totalDifficulty = calculateTotalDD(selectedSkills, allItems, routines);
 
   const onSubmit = (values: FormValues) => {
@@ -482,53 +497,64 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               const showReps = !isConnected || iIdx === 0;
                               return (
                                 <div key={idx} className={cn(
-                                  "px-3 py-2 flex justify-between items-center",
                                   iIdx > 0 && isConnected ? "border-t border-border/20" : "",
                                   isConnected ? "bg-red-50/60 dark:bg-red-900/10" : ""
                                 )}>
-                                  <div className="flex gap-2 items-center min-w-0">
-                                    {isConnected && (
-                                      <span className={cn("text-[9px] font-black uppercase tracking-wider shrink-0", iIdx === 0 ? "text-red-500" : "text-red-400/50 pl-1")}>
-                                        {iIdx === 0 ? "C" : "└"}
-                                      </span>
-                                    )}
-                                    <Badge variant="outline" className={cn(
-                                      "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
-                                      skill?.isDrill === 1
-                                        ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400"
-                                        : isConnected || skill?.isDrill === 2
-                                        ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
-                                        : "border-border/60 text-muted-foreground"
-                                    )}>{skill?.code}</Badge>
-                                    <span className="text-sm truncate">{skill?.name}</span>
+                                  <div className="px-3 py-2 flex justify-between items-center">
+                                    <div className="flex gap-2 items-center min-w-0">
+                                      {isConnected && (
+                                        <span className={cn("text-[9px] font-black uppercase tracking-wider shrink-0", iIdx === 0 ? "text-red-500" : "text-red-400/50 pl-1")}>
+                                          {iIdx === 0 ? "C" : "└"}
+                                        </span>
+                                      )}
+                                      <Badge variant="outline" className={cn(
+                                        "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
+                                        skill?.isDrill === 1
+                                          ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400"
+                                          : isConnected || skill?.isDrill === 2
+                                          ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
+                                          : "border-border/60 text-muted-foreground"
+                                      )}>{skill?.code}</Badge>
+                                      <span className="text-sm truncate">{skill?.name}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      {showReps && (
+                                        <div className="flex items-center border rounded-md">
+                                          <button type="button" className="px-2" onClick={() => updateReps(group.indices, (item.reps || 1) - 1)}>-</button>
+                                          <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            pattern="[0-9]*"
+                                            value={item.reps ?? ""}
+                                            onChange={(e) => {
+                                              const raw = e.target.value;
+                                              if (raw === "") {
+                                                updateReps(group.indices, 0);
+                                                return;
+                                              }
+                                              const val = parseInt(raw);
+                                              if (!isNaN(val)) updateReps(group.indices, val);
+                                            }}
+                                            onBlur={() => {
+                                              if (!item.reps || item.reps < 1) updateReps(group.indices, 1);
+                                            }}
+                                            className="w-8 text-center text-xs font-bold bg-transparent outline-none"
+                                          />
+                                          <button type="button" className="px-2" onClick={() => updateReps(group.indices, (item.reps || 1) + 1)}>+</button>
+                                        </div>
+                                      )}
+                                      <Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(idx)}><Trash2 className="h-4 w-4" /></Button>
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    {showReps && (
-                                      <div className="flex items-center border rounded-md">
-                                        <button type="button" className="px-2" onClick={() => updateReps(group.indices, (item.reps || 1) - 1)}>-</button>
-                                        <input
-                                          type="text"
-                                          inputMode="numeric"
-                                          pattern="[0-9]*"
-                                          value={item.reps ?? ""}
-                                          onChange={(e) => {
-                                            const raw = e.target.value;
-                                            if (raw === "") {
-                                              updateReps(group.indices, 0);
-                                              return;
-                                            }
-                                            const val = parseInt(raw);
-                                            if (!isNaN(val)) updateReps(group.indices, val);
-                                          }}
-                                          onBlur={() => {
-                                            if (!item.reps || item.reps < 1) updateReps(group.indices, 1);
-                                          }}
-                                          className="w-8 text-center text-xs font-bold bg-transparent outline-none"
-                                        />
-                                        <button type="button" className="px-2" onClick={() => updateReps(group.indices, (item.reps || 1) + 1)}>+</button>
-                                      </div>
-                                    )}
-                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(idx)}><Trash2 className="h-4 w-4" /></Button>
+                                  <div className={cn("px-3 pb-2", isConnected && iIdx > 0 ? "pl-8" : "")}>
+                                    <input
+                                      type="text"
+                                      placeholder="Add a note..."
+                                      value={item.note || ""}
+                                      onChange={(e) => updateSkillNote(idx, e.target.value)}
+                                      className="w-full text-xs text-muted-foreground bg-transparent border-b border-transparent focus:border-border/40 outline-none placeholder:text-muted-foreground/40 py-0.5"
+                                      data-testid={`input-skill-note-${idx}`}
+                                    />
                                   </div>
                                 </div>
                               );

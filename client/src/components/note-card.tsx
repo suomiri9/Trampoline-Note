@@ -190,6 +190,11 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                           <span className={isSingle ? "text-muted-foreground/40" : "text-red-400/70"}>=</span>
                           <span className={isSingle ? "text-foreground" : "text-red-600 dark:text-red-400"}>{(lineDD * reps).toFixed(1)}</span>
                         </div>
+                        {group[0]?.note && (
+                          <div className="w-full mt-1">
+                            <span className="text-[11px] text-muted-foreground italic">{group[0].note}</span>
+                          </div>
+                        )}
                       </div>
                     );
                   });
