@@ -453,7 +453,11 @@ export default function SkillsPage() {
                       <Select onValueChange={addSkillToConn}>
                         <SelectTrigger><SelectValue placeholder="Add skill to sequence..." /></SelectTrigger>
                         <SelectContent>
-                          {skills?.sort((a,b) => b.difficulty - a.difficulty).map(s => (
+                          {skills?.slice().sort((a, b) => {
+                            const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
+                            if (oA !== oB) return oA - oB;
+                            return b.difficulty - a.difficulty;
+                          }).map(s => (
                             <SelectItem key={s.id} value={s.id.toString()}>
                               <span className="font-mono mr-2">{s.code}</span> {s.name}
                             </SelectItem>
