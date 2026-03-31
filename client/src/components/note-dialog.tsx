@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Trash2, GripVertical } from "lucide-react";
+import { CalendarIcon, Trash2, GripVertical, MessageSquare } from "lucide-react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -241,16 +241,24 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     });
   };
 
-  const updateSkillNote = (index: number, note: string) => {
+  const updateSkillNote = (index: number, note: string | undefined) => {
     setSelectedSkills(prev => {
       const newSkills = prev.map((item, idx) => {
         if (idx === index) {
-          return note ? { ...item, note } : (() => { const { note: _, ...rest } = item; return rest; })();
+          if (note === undefined) {
+            const { note: _, ...rest } = item;
+            return rest;
+          }
+          return { ...item, note };
         }
         return item;
       });
       setTimeout(() => {
-        form.setValue('skills', JSON.stringify(newSkills));
+        const cleaned = newSkills.map(s => {
+          if (s.note === "") { const { note: _, ...rest } = s; return rest; }
+          return s;
+        });
+        form.setValue('skills', JSON.stringify(cleaned));
       }, 0);
       return newSkills;
     });
@@ -543,19 +551,32 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           <button type="button" className="px-2" onClick={() => updateReps(group.indices, (item.reps || 1) + 1)}>+</button>
                                         </div>
                                       )}
-                                      <Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(idx)}><Trash2 className="h-4 w-4" /></Button>
+                                      <Button type="button" variant="ghost" size="icon" className={cn("h-8 w-8", item.note ? "text-primary" : "")} onClick={() => {
+                                        if (item.note !== undefined && item.note !== null) {
+                                          updateSkillNote(idx, undefined);
+                                        } else {
+                                          updateSkillNote(idx, "");
+                                          setTimeout(() => {
+                                            const el = document.querySelector(`[data-testid="input-skill-note-${idx}"]`) as HTMLInputElement;
+                                            if (el) el.focus();
+                                          }, 50);
+                                        }
+                                      }}><MessageSquare className="h-3.5 w-3.5" /></Button>
+                                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeSkill(idx)}><Trash2 className="h-4 w-4" /></Button>
                                     </div>
                                   </div>
-                                  <div className={cn("px-3 pb-2", isConnected && iIdx > 0 ? "pl-8" : "")}>
-                                    <input
-                                      type="text"
-                                      placeholder="Add a note..."
-                                      value={item.note || ""}
-                                      onChange={(e) => updateSkillNote(idx, e.target.value)}
-                                      className="w-full text-xs text-muted-foreground bg-transparent border-b border-transparent focus:border-border/40 outline-none placeholder:text-muted-foreground/40 py-0.5"
-                                      data-testid={`input-skill-note-${idx}`}
-                                    />
-                                  </div>
+                                  {(item.note !== undefined && item.note !== null) && (
+                                    <div className={cn("px-3 pb-2", isConnected && iIdx > 0 ? "pl-8" : "")}>
+                                      <input
+                                        type="text"
+                                        placeholder="Type a note..."
+                                        value={item.note || ""}
+                                        onChange={(e) => updateSkillNote(idx, e.target.value)}
+                                        className="w-full text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 outline-none focus:bg-muted/50 placeholder:text-muted-foreground/40"
+                                        data-testid={`input-skill-note-${idx}`}
+                                      />
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
