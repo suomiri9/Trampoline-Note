@@ -656,7 +656,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           <button type="button" className="px-2" onClick={() => updateReps(group.indices, (item.reps || 1) + 1)}>+</button>
                                         </div>
                                       )}
-                                      {(!isConnected || iIdx === 0) && (
+                                      {(!isConnected || iIdx === 0) ? (
                                         <DropdownMenu>
                                           <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
                                           <DropdownMenuContent align="end" className="w-36 rounded-xl">
@@ -668,6 +668,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                             <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                           </DropdownMenuContent>
                                         </DropdownMenu>
+                                      ) : (
+                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground/50 hover:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3 w-3" /></Button>
                                       )}
                                     </div>
                                   </div>
