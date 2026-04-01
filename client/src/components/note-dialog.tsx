@@ -640,7 +640,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           <button type="button" className="px-2" onClick={() => updateReps(group.indices, (item.reps || 1) + 1)}>+</button>
                                         </div>
                                       )}
-                                      <Button type="button" variant="ghost" size="icon" className={cn("h-8 w-8", item.note ? "text-primary" : "")} onClick={() => {
+                                      {(!isConnected || iIdx === 0) && <Button type="button" variant="ghost" size="icon" className={cn("h-8 w-8", item.note ? "text-primary" : "")} onClick={() => {
                                         if (item.note !== undefined && item.note !== null) {
                                           updateSkillNote(idx, undefined);
                                         } else {
@@ -650,7 +650,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                             if (el) el.focus();
                                           }, 50);
                                         }
-                                      }}><MessageSquare className="h-3.5 w-3.5" /></Button>
+                                      }}><MessageSquare className="h-3.5 w-3.5" /></Button>}
                                       {iIdx === 0 && <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /></Button>}
                                       <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeSkill(idx)}><Trash2 className="h-4 w-4" /></Button>
                                     </div>
