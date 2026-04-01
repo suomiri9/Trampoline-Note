@@ -577,10 +577,16 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           <input type="text" inputMode="numeric" pattern="[0-9]*" value={item.reps ?? 1} onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateReps([idx], v); else if (e.target.value === "") updateReps([idx], 0); }} onBlur={() => { if (!item.reps || item.reps < 1) updateReps([idx], 1); }} className="w-8 text-center text-xs font-bold bg-transparent outline-none" />
                                           <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) + 1)}>+</button>
                                         </div>
+                                        <Button type="button" variant="ghost" size="icon" className={cn("h-7 w-7", item.note ? "text-red-500" : "")} onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { updateSkillNote(idx, ""); } }}><MessageSquare className="h-3 w-3" /></Button>
                                         <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3 w-3" /></Button>
                                         <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSkill(idx)}><Trash2 className="h-3 w-3" /></Button>
                                       </div>
                                     </div>
+                                    {(item.note !== undefined && item.note !== null) && (
+                                      <div className="px-3 pb-2 bg-red-50/60 dark:bg-red-900/10">
+                                        <input type="text" placeholder="Type a note..." value={item.note || ""} onChange={(e) => updateSkillNote(idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 outline-none focus:bg-muted/50 placeholder:text-muted-foreground/40" data-testid={`input-skill-note-${idx}`} />
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               }
