@@ -673,7 +673,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                       )}
                                     </div>
                                   </div>
-                                  {(item.note !== undefined && item.note !== null) && (!isConnected || iIdx === group.items.length - 1) && (
+                                  {(isConnected ? (iIdx === group.items.length - 1 && group.items[0].note !== undefined && group.items[0].note !== null) : (item.note !== undefined && item.note !== null)) && (
                                     <div className="px-3 pb-2">
                                       <input
                                         type="text"
