@@ -573,7 +573,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     <Select key={`conn-skill-${newConnSkillIds.length}`} onValueChange={(v) => setNewConnSkillIds(prev => [...prev, parseInt(v)])}>
                       <SelectTrigger className="rounded-lg h-8 text-xs"><SelectValue placeholder="Add skill to connection..." /></SelectTrigger>
                       <SelectContent>
-                        {allItems?.filter(s => s.isDrill === 0).map(s => (
+                        {allItems?.filter(s => s.isDrill === 0).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
                           <SelectItem key={s.id} value={s.id.toString()}><span className="text-xs">{s.code} — {s.name}</span></SelectItem>
                         ))}
                       </SelectContent>
@@ -605,7 +605,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       <Select key={`routine-skill-${newRoutineSkillIds.length}`} onValueChange={(v) => setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, parseInt(v)] : prev)} disabled={newRoutineSkillIds.length >= 10}>
                         <SelectTrigger className="rounded-lg h-8 text-xs flex-1" disabled={newRoutineSkillIds.length >= 10}><SelectValue placeholder={newRoutineSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."} /></SelectTrigger>
                         <SelectContent>
-                          {allItems?.filter(s => s.isDrill === 0).map(s => (
+                          {allItems?.filter(s => s.isDrill === 0).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
                             <SelectItem key={s.id} value={s.id.toString()}><span className="text-xs">{s.code} — {s.name}</span></SelectItem>
                           ))}
                         </SelectContent>
