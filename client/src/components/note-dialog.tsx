@@ -606,23 +606,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       </div>
                     </div>
                     <Input placeholder="Routine name" value={newRoutineName} onChange={e => setNewRoutineName(e.target.value)} className="rounded-lg h-9 text-xs" />
-                    <div className="flex flex-wrap gap-1">
-                      {newRoutineSkillIds.map((sid, i) => {
-                        const s = allItems?.find(sk => sk.id === sid);
-                        return <Badge key={i} variant="outline" className="font-mono text-[10px] gap-1">{s?.code}<button type="button" onClick={() => setNewRoutineSkillIds(prev => prev.filter((_, j) => j !== i))}><X className="h-2.5 w-2.5" /></button></Badge>;
-                      })}
+                    <div className="flex items-center gap-2">
+                      <Select key={`routine-skill-${newRoutineSkillIds.length}`} onValueChange={(v) => setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, parseInt(v)] : prev)} disabled={newRoutineSkillIds.length >= 10}>
+                        <SelectTrigger className="rounded-lg h-8 text-xs flex-1" disabled={newRoutineSkillIds.length >= 10}><SelectValue placeholder={newRoutineSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."} /></SelectTrigger>
+                        <SelectContent>
+                          {allItems?.filter(s => s.isDrill === 0).map(s => (
+                            <SelectItem key={s.id} value={s.id.toString()}><span className="text-xs">{s.code} — {s.name}</span></SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <span className={cn("text-[10px] shrink-0", newRoutineSkillIds.length >= 10 ? "text-red-500 font-bold" : "text-muted-foreground")}>{newRoutineSkillIds.length}/10</span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className={cn("text-[10px]", newRoutineSkillIds.length >= 10 ? "text-red-500 font-bold" : "text-muted-foreground")}>{newRoutineSkillIds.length}/10 skills</span>
-                    </div>
-                    <Select key={`routine-skill-${newRoutineSkillIds.length}`} onValueChange={(v) => setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, parseInt(v)] : prev)} disabled={newRoutineSkillIds.length >= 10}>
-                      <SelectTrigger className="rounded-lg h-8 text-xs" disabled={newRoutineSkillIds.length >= 10}><SelectValue placeholder={newRoutineSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."} /></SelectTrigger>
-                      <SelectContent>
-                        {allItems?.filter(s => s.isDrill === 0).map(s => (
-                          <SelectItem key={s.id} value={s.id.toString()}><span className="text-xs">{s.code} — {s.name}</span></SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {newRoutineSkillIds.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1 border-t border-primary/10">
+                        {newRoutineSkillIds.map((sid, i) => {
+                          const s = allItems?.find(sk => sk.id === sid);
+                          return <Badge key={i} variant="outline" className="font-mono text-[10px] gap-1">{s?.code}<button type="button" onClick={() => setNewRoutineSkillIds(prev => prev.filter((_, j) => j !== i))}><X className="h-2.5 w-2.5" /></button></Badge>;
+                        })}
+                      </div>
+                    )}
                     <Button type="button" size="sm" className="w-full h-8 rounded-lg text-xs" disabled={!newRoutineName || newRoutineSkillIds.length === 0 || isCreatingRoutine} onClick={async () => {
                       try {
                         await createRoutine({ name: newRoutineName, skillIds: newRoutineSkillIds });
