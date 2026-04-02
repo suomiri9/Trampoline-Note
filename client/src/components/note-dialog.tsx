@@ -673,15 +673,15 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                       )}
                                     </div>
                                   </div>
-                                  {(item.note !== undefined && item.note !== null) && (
-                                    <div className={cn("px-3 pb-2", isConnected && iIdx > 0 ? "pl-8" : "")}>
+                                  {(item.note !== undefined && item.note !== null) && (!isConnected || iIdx === group.items.length - 1) && (
+                                    <div className="px-3 pb-2">
                                       <input
                                         type="text"
                                         placeholder="Type a note..."
-                                        value={item.note || ""}
-                                        onChange={(e) => updateSkillNote(idx, e.target.value)}
+                                        value={group.items[0].note || ""}
+                                        onChange={(e) => updateSkillNote(group.indices[0], e.target.value)}
                                         className="w-full text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 outline-none focus:bg-muted/50 placeholder:text-muted-foreground/40"
-                                        data-testid={`input-skill-note-${idx}`}
+                                        data-testid={`input-skill-note-${group.indices[0]}`}
                                       />
                                     </div>
                                   )}
