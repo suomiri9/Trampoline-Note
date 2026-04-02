@@ -240,7 +240,7 @@ export default function SkillsPage() {
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="drills">Drills</TabsTrigger>
           <TabsTrigger value="connections">
-            <span className="hidden sm:inline">Frequent Connections</span>
+            <span className="hidden sm:inline">Connections</span>
             <span className="sm:hidden">Connections</span>
           </TabsTrigger>
         </TabsList>
