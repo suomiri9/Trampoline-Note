@@ -538,19 +538,16 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   <div className={cn("p-3 rounded-xl border space-y-2", newSkillIsDrill ? "border-yellow-200 dark:border-yellow-800 bg-yellow-50/50 dark:bg-yellow-900/10" : "border-border bg-secondary/20")}>
                     <div className="flex items-center justify-between">
                       <span className={cn("text-xs font-bold", newSkillIsDrill ? "text-yellow-600 dark:text-yellow-400" : "text-foreground/80")}>{newSkillIsDrill ? "New Drill" : "New Skill"}</span>
-                      <button type="button" onClick={() => setShowNewSkill(false)}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
+                      <div className="flex gap-1">
+                        <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground" onClick={() => setNewSkillIsDrill(!newSkillIsDrill)}>Switch to {newSkillIsDrill ? "Skill" : "Drill"}</Button>
+                        <button type="button" onClick={() => setShowNewSkill(false)}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <Input placeholder="Name" value={newSkillName} onChange={e => setNewSkillName(e.target.value)} className="rounded-lg h-9 text-xs flex-1" />
                       <Input placeholder="Code" value={newSkillCode} onChange={e => setNewSkillCode(e.target.value)} className="rounded-lg h-9 text-xs w-20" />
                     </div>
-                    <div className="flex gap-2 items-center">
-                      <Input type="number" step="0.1" min="0" placeholder="DD" value={newSkillDD} onChange={e => setNewSkillDD(e.target.value)} className="rounded-lg h-9 text-xs w-20" />
-                      <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-                        <input type="checkbox" checked={newSkillIsDrill} onChange={e => setNewSkillIsDrill(e.target.checked)} className="rounded" />
-                        <span className={cn(newSkillIsDrill ? "text-yellow-600 dark:text-yellow-400 font-medium" : "text-muted-foreground")}>Drill</span>
-                      </label>
-                    </div>
+                    <Input type="number" step="0.1" min="0" placeholder="DD" value={newSkillDD} onChange={e => setNewSkillDD(e.target.value)} className="rounded-lg h-9 text-xs w-20" />
                     <Button type="button" size="sm" className="w-full h-8 rounded-lg text-xs" disabled={!newSkillName || !newSkillCode || isCreatingSkill} onClick={async () => {
                       try {
                         await createSkill({ name: newSkillName, code: newSkillCode, difficulty: parseFloat(newSkillDD) || 0, isDrill: newSkillIsDrill ? 1 : 0 });
