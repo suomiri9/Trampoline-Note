@@ -13,7 +13,7 @@ import { useDndSensors } from "@/hooks/use-dnd-sensors";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
 
-import { useCreateNote, useUpdateNote, useNotes } from "@/hooks/use-notes";
+import { useCreateNote, useUpdateNote } from "@/hooks/use-notes";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { useToast } from "@/hooks/use-toast";
@@ -108,7 +108,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const updateNote = useUpdateNote();
   const { data: allItems, createSkill, isCreating: isCreatingSkill } = useSkills();
   const { data: routines, createRoutine, isCreating: isCreatingRoutine } = useRoutines();
-  const { data: notes } = useNotes();
   
   const [selectedSkills, setSelectedSkills] = useState<SkillItem[]>([]);
   const [isConnectMode, setIsConnectMode] = useState(false);
@@ -128,18 +127,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [newSkillIsDrill, setNewSkillIsDrill] = useState(false);
 
   const recentSkillIds = (() => {
-    if (!notes || !allItems) return [];
-    const freq = new Map<number, number>();
-    const sorted = [...notes].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
-    for (const n of sorted) {
-      const items = parseNoteSkills(n.skills);
-      for (const item of items) {
-        if (item.id > 0) freq.set(item.id, (freq.get(item.id) || 0) + (item.reps || 1));
-        if (item.id === -2 && item.customSkillIds) item.customSkillIds.forEach(sid => freq.set(sid, (freq.get(sid) || 0) + 1));
-        if (item.id === -3 && item.customSkillIds) item.customSkillIds.forEach(sid => freq.set(sid, (freq.get(sid) || 0) + 1));
-      }
+    if (!allItems) return [];
+    const seen: number[] = [];
+    for (let i = selectedSkills.length - 1; i >= 0; i--) {
+      const item = selectedSkills[i];
+      if (item.id > 0 && !seen.includes(item.id)) seen.push(item.id);
     }
-    return [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(e => e[0]).filter(id => allItems.some(s => s.id === id));
+    return seen.slice(0, 8).filter(id => allItems.some(s => s.id === id));
   })();
 
   const sensors = useDndSensors();
