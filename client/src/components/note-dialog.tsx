@@ -466,23 +466,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </Button>
                 </div>
 
-                {recentSkillIds.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {recentSkillIds.map(sid => {
-                      const skill = allItems?.find(s => s.id === sid);
-                      if (!skill) return null;
-                      return (
-                        <button key={sid} type="button" onClick={() => addSkill(sid.toString())} className={cn(
-                          "px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors active:scale-95",
-                          skill.isDrill === 1 ? "border-yellow-300 text-yellow-600 bg-yellow-50 dark:border-yellow-700 dark:text-yellow-400 dark:bg-yellow-900/10"
-                            : skill.isDrill === 2 ? "border-red-300 text-red-500 bg-red-50 dark:border-red-700 dark:text-red-400 dark:bg-red-900/10"
-                            : "border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50"
-                        )} data-testid={`btn-recent-skill-${sid}`}>{skill.code}</button>
-                      );
-                    })}
-                  </div>
-                )}
-
                 <Select key={selectedSkills.length} onValueChange={addSkill}>
                   <SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Add a skill or drill..." /></SelectTrigger>
                   <SelectContent>
@@ -537,6 +520,26 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setNewRoutineName(""); setNewRoutineSkillIds([]); }} data-testid="btn-new-routine"><Plus className="h-3.5 w-3.5" />R</Button>
                   <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2 border-red-200 text-red-500 dark:border-red-800 dark:text-red-400" onClick={() => { setShowNewConn(true); setShowNewRoutine(false); setNewConnName(""); setNewConnCode(""); setNewConnSkillIds([]); }} data-testid="btn-new-conn"><Plus className="h-3.5 w-3.5" />C</Button>
                 </div>
+
+                {recentSkillIds.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {recentSkillIds.map(sid => {
+                        const skill = allItems?.find(s => s.id === sid);
+                        if (!skill) return null;
+                        return (
+                          <button key={sid} type="button" onClick={() => addSkill(sid.toString())} className={cn(
+                            "px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors active:scale-95",
+                            skill.isDrill === 1 ? "border-yellow-300 text-yellow-600 bg-yellow-50 dark:border-yellow-700 dark:text-yellow-400 dark:bg-yellow-900/10"
+                              : skill.isDrill === 2 ? "border-red-300 text-red-500 bg-red-50 dark:border-red-700 dark:text-red-400 dark:bg-red-900/10"
+                              : "border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50"
+                          )} data-testid={`btn-recent-skill-${sid}`}>{skill.code}</button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {showNewConn && (
                   <div className="p-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10 space-y-2">
