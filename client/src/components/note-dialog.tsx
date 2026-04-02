@@ -494,8 +494,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); }} data-testid="btn-new-skill"><Plus className="h-3.5 w-3.5" />S</Button>
-                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2 border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(true); }} data-testid="btn-new-drill"><Plus className="h-3.5 w-3.5" />D</Button>
+                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); }} data-testid="btn-new-skill"><Plus className="h-3.5 w-3.5" />S<span className="text-muted-foreground/50">or</span><span className="text-yellow-500">D</span></Button>
                 </div>
 
                 <div className="flex gap-2">
@@ -526,8 +525,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2 border-blue-300 text-blue-500 dark:border-blue-700 dark:text-blue-400" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setNewRoutineName(""); setNewRoutineCode(""); setNewRoutineSkillIds([]); }} data-testid="btn-new-routine"><Plus className="h-3.5 w-3.5" />R</Button>
-                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2 border-red-200 text-red-500 dark:border-red-800 dark:text-red-400" onClick={() => { setShowNewConn(true); setShowNewRoutine(false); setShowNewSkill(false); setNewConnName(""); setNewConnCode(""); setNewConnSkillIds([]); }} data-testid="btn-new-conn"><Plus className="h-3.5 w-3.5" />C</Button>
+                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2 border-blue-300 text-blue-500 dark:border-blue-700 dark:text-blue-400" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setNewRoutineName(""); setNewRoutineCode(""); setNewRoutineSkillIds([]); }} data-testid="btn-new-routine"><Plus className="h-3.5 w-3.5" />R<span className="text-muted-foreground/50">or</span><span className="text-red-500">C</span></Button>
                 </div>
 
                 {showNewSkill && (
