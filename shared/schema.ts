@@ -29,6 +29,7 @@ export const routines = pgTable("routines", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id"),
   name: text("name").notNull(),
+  code: text("code"),
   skillIds: integer("skill_ids").array().notNull(), // Array of 10 skill IDs
 });
 
