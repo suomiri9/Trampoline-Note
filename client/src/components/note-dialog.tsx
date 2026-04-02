@@ -120,6 +120,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [newConnSkillIds, setNewConnSkillIds] = useState<number[]>([]);
   const [newRoutineName, setNewRoutineName] = useState("");
   const [newRoutineSkillIds, setNewRoutineSkillIds] = useState<number[]>([]);
+  const [showNewSkill, setShowNewSkill] = useState(false);
+  const [newSkillName, setNewSkillName] = useState("");
+  const [newSkillCode, setNewSkillCode] = useState("");
+  const [newSkillDD, setNewSkillDD] = useState("");
+  const [newSkillIsDrill, setNewSkillIsDrill] = useState(false);
 
   const recentSkillIds = (() => {
     if (!notes || !allItems) return [];
@@ -201,6 +206,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         setNewConnSkillIds([]);
         setNewRoutineName("");
         setNewRoutineSkillIds([]);
+        setShowNewSkill(false);
+        setNewSkillName("");
+        setNewSkillCode("");
+        setNewSkillDD("");
+        setNewSkillIsDrill(false);
         form.reset({
           date: new Date(),
           startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
@@ -466,28 +476,31 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </Button>
                 </div>
 
-                <Select key={selectedSkills.length} onValueChange={addSkill}>
-                  <SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Add a skill or drill..." /></SelectTrigger>
-                  <SelectContent>
-                    {allItems?.slice().sort((a, b) => {
-                      const groupOrder = (s: typeof a) => s.isDrill === 0 ? 0 : s.isDrill === 2 ? 1 : 2;
-                      const gA = groupOrder(a), gB = groupOrder(b);
-                      if (gA !== gB) return gA - gB;
-                      const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
-                      if (oA !== oB) return oA - oB;
-                      return b.difficulty - a.difficulty;
-                    }).map(item => (
-                      <SelectItem key={item.id} value={item.id.toString()}>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="font-mono text-[10px]">{item.code}</Badge>
-                          <span>{item.name}</span>
-                          {item.isDrill === 1 && <span className="text-[10px] text-yellow-500 ml-auto font-medium">(Drill)</span>}
-                          {item.isDrill === 2 && <span className="text-[10px] text-red-500 ml-auto font-medium">(Connection)</span>}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select key={selectedSkills.length} onValueChange={addSkill}>
+                    <SelectTrigger className="rounded-xl h-11 flex-1"><SelectValue placeholder="Add a skill or drill..." /></SelectTrigger>
+                    <SelectContent>
+                      {allItems?.slice().sort((a, b) => {
+                        const groupOrder = (s: typeof a) => s.isDrill === 0 ? 0 : s.isDrill === 2 ? 1 : 2;
+                        const gA = groupOrder(a), gB = groupOrder(b);
+                        if (gA !== gB) return gA - gB;
+                        const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
+                        if (oA !== oB) return oA - oB;
+                        return b.difficulty - a.difficulty;
+                      }).map(item => (
+                        <SelectItem key={item.id} value={item.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="font-mono text-[10px]">{item.code}</Badge>
+                            <span>{item.name}</span>
+                            {item.isDrill === 1 && <span className="text-[10px] text-yellow-500 ml-auto font-medium">(Drill)</span>}
+                            {item.isDrill === 2 && <span className="text-[10px] text-red-500 ml-auto font-medium">(Connection)</span>}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); }} data-testid="btn-new-skill"><Plus className="h-3.5 w-3.5" />S</Button>
+                </div>
 
                 <div className="flex gap-2">
                   <Select key={`routine-select-${selectedSkills.length}`} onValueChange={(val) => {
@@ -517,9 +530,35 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setNewRoutineName(""); setNewRoutineSkillIds([]); }} data-testid="btn-new-routine"><Plus className="h-3.5 w-3.5" />R</Button>
-                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2 border-red-200 text-red-500 dark:border-red-800 dark:text-red-400" onClick={() => { setShowNewConn(true); setShowNewRoutine(false); setNewConnName(""); setNewConnCode(""); setNewConnSkillIds([]); }} data-testid="btn-new-conn"><Plus className="h-3.5 w-3.5" />C</Button>
+                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setNewRoutineName(""); setNewRoutineSkillIds([]); }} data-testid="btn-new-routine"><Plus className="h-3.5 w-3.5" />R</Button>
+                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2 border-red-200 text-red-500 dark:border-red-800 dark:text-red-400" onClick={() => { setShowNewConn(true); setShowNewRoutine(false); setShowNewSkill(false); setNewConnName(""); setNewConnCode(""); setNewConnSkillIds([]); }} data-testid="btn-new-conn"><Plus className="h-3.5 w-3.5" />C</Button>
                 </div>
+
+                {showNewSkill && (
+                  <div className={cn("p-3 rounded-xl border space-y-2", newSkillIsDrill ? "border-yellow-200 dark:border-yellow-800 bg-yellow-50/50 dark:bg-yellow-900/10" : "border-border bg-secondary/20")}>
+                    <div className="flex items-center justify-between">
+                      <span className={cn("text-xs font-bold", newSkillIsDrill ? "text-yellow-600 dark:text-yellow-400" : "text-foreground/80")}>{newSkillIsDrill ? "New Drill" : "New Skill"}</span>
+                      <button type="button" onClick={() => setShowNewSkill(false)}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input placeholder="Name" value={newSkillName} onChange={e => setNewSkillName(e.target.value)} className="rounded-lg h-9 text-xs flex-1" />
+                      <Input placeholder="Code" value={newSkillCode} onChange={e => setNewSkillCode(e.target.value)} className="rounded-lg h-9 text-xs w-20" />
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <Input type="number" step="0.1" min="0" placeholder="DD" value={newSkillDD} onChange={e => setNewSkillDD(e.target.value)} className="rounded-lg h-9 text-xs w-20" />
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                        <input type="checkbox" checked={newSkillIsDrill} onChange={e => setNewSkillIsDrill(e.target.checked)} className="rounded" />
+                        <span className={cn(newSkillIsDrill ? "text-yellow-600 dark:text-yellow-400 font-medium" : "text-muted-foreground")}>Drill</span>
+                      </label>
+                    </div>
+                    <Button type="button" size="sm" className="w-full h-8 rounded-lg text-xs" disabled={!newSkillName || !newSkillCode || isCreatingSkill} onClick={async () => {
+                      try {
+                        await createSkill({ name: newSkillName, code: newSkillCode, difficulty: parseFloat(newSkillDD) || 0, isDrill: newSkillIsDrill ? 1 : 0 });
+                        setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); setShowNewSkill(false);
+                      } catch {}
+                    }}>Save {newSkillIsDrill ? "Drill" : "Skill"}</Button>
+                  </div>
+                )}
 
                 {showNewConn && (
                   <div className="p-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10 space-y-2">
