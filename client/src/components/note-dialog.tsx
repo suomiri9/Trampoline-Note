@@ -143,6 +143,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     let cur: SkillItem[] = [];
     skills.forEach(item => {
       if (item.id === -1) { groups.push({ items: cur }); cur = []; }
+      else if (item.id === -2 || item.id === -3) {
+        if (cur.length > 0) groups.push({ items: cur });
+        groups.push({ items: [item] });
+        cur = [];
+      }
       else cur.push(item);
     });
     groups.push({ items: cur });
@@ -226,9 +231,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     if (fcItem && fcItem.skillIds) {
       setSelectedSkills(prev => {
         let newSkills = [...prev];
-        if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
-          newSkills.push({ id: -1 });
-        }
         newSkills.push({ id: -3, fcId: id, fcName: fcItem.name, customSkillIds: fcItem.skillIds! } as any);
         form.setValue('skills', JSON.stringify(newSkills));
         return newSkills;
@@ -681,19 +683,23 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handlePracticeListDragEnd}>
                   <div className="max-h-[300px] overflow-scroll-touch">
                     {(() => {
-                      const groups: Array<{ items: typeof selectedSkills; indices: number[] }> = [];
+                      const rawGroups: Array<{ items: typeof selectedSkills; indices: number[] }> = [];
                       let curItems: typeof selectedSkills = [];
                       let curIndices: number[] = [];
                       selectedSkills.forEach((item, idx) => {
                         if (item.id === -1) {
-                          groups.push({ items: curItems, indices: curIndices });
+                          rawGroups.push({ items: curItems, indices: curIndices });
+                          curItems = []; curIndices = [];
+                        } else if (item.id === -2 || item.id === -3) {
+                          if (curItems.length > 0) rawGroups.push({ items: curItems, indices: curIndices });
+                          rawGroups.push({ items: [item], indices: [idx] });
                           curItems = []; curIndices = [];
                         } else {
                           curItems.push(item); curIndices.push(idx);
                         }
                       });
-                      groups.push({ items: curItems, indices: curIndices });
-                      const nonEmpty = groups.filter(g => g.items.length > 0);
+                      rawGroups.push({ items: curItems, indices: curIndices });
+                      const nonEmpty = rawGroups.filter(g => g.items.length > 0);
 
                       return (
                         <SortableContext items={nonEmpty.map((_, i) => `group-${i}`)} strategy={verticalListSortingStrategy}>
