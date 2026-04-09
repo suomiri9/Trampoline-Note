@@ -239,9 +239,12 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         if (newSkills[newSkills.length - 1].id === -1) {
           newSkills.pop();
         }
-        const lastSkill = [...newSkills].reverse().find(s => s.id !== -1);
+        const lastSkill = [...newSkills].reverse().find(s => s.id !== -1 && s.id > 0);
         const reps = lastSkill?.reps || 1;
-        newSkills.push({ id, reps });
+        if (lastSkill && !(lastSkill as any).connected) {
+          (lastSkill as any).connected = true;
+        }
+        newSkills.push({ id, reps, connected: true } as any);
       } else {
         newSkills.push({ id, reps: 1 });
       }
@@ -692,7 +695,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       return (
                         <SortableContext items={nonEmpty.map((_, i) => `group-${i}`)} strategy={verticalListSortingStrategy}>
                           {nonEmpty.map((group, gIdx) => {
-                            const isConnected = false;
+                            const isConnected = group.items.length > 1 && group.items.some((it: any) => it.connected);
                             return (
                               <SortablePracticeGroup key={`group-${gIdx}`} gId={`group-${gIdx}`} isConnected={isConnected}>
                             {group.items.map((item, iIdx) => {
