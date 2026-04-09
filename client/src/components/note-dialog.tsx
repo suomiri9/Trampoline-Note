@@ -711,11 +711,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         )}
                                       </div>
                                       <div className="flex items-center gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+                                        {!isConnected && (
                                         <div className="flex items-center border rounded-md">
                                           <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) - 1)}>-</button>
                                           <input type="text" inputMode="numeric" pattern="[0-9]*" value={item.reps ?? 1} onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateReps([idx], v); else if (e.target.value === "") updateReps([idx], 0); }} onBlur={() => { if (!item.reps || item.reps < 1) updateReps([idx], 1); }} className="w-8 text-center text-xs font-bold bg-transparent outline-none" />
                                           <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) + 1)}>+</button>
                                         </div>
+                                        )}
                                         <DropdownMenu>
                                           <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
                                           <DropdownMenuContent align="end" className="w-36 rounded-xl">
@@ -752,11 +754,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         )}
                                       </div>
                                       <div className="flex items-center gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+                                        {!isConnected && (
                                         <div className="flex items-center border rounded-md">
                                           <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) - 1)}>-</button>
                                           <input type="text" inputMode="numeric" pattern="[0-9]*" value={item.reps ?? 1} onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateReps([idx], v); else if (e.target.value === "") updateReps([idx], 0); }} onBlur={() => { if (!item.reps || item.reps < 1) updateReps([idx], 1); }} className="w-8 text-center text-xs font-bold bg-transparent outline-none" />
                                           <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) + 1)}>+</button>
                                         </div>
+                                        )}
                                         <DropdownMenu>
                                           <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
                                           <DropdownMenuContent align="end" className="w-36 rounded-xl">
