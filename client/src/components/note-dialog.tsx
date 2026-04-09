@@ -141,16 +141,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const buildGroups = (skills: SkillItem[]) => {
     const groups: Array<{ items: SkillItem[] }> = [];
     let cur: SkillItem[] = [];
-    let curConn: boolean | null = null;
     skills.forEach(item => {
-      if (item.id === -1) { groups.push({ items: cur }); cur = []; curConn = null; }
-      else {
-        const ic = !!(item as any).connected;
-        if (cur.length > 0 && curConn !== null && ic !== curConn) {
-          groups.push({ items: cur }); cur = [];
-        }
-        cur.push(item); curConn = ic;
-      }
+      if (item.id === -1) { groups.push({ items: cur }); cur = []; }
+      else cur.push(item);
     });
     groups.push({ items: cur });
     return groups.filter(g => g.items.length > 0);
@@ -233,13 +226,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     if (fcItem && fcItem.skillIds) {
       setSelectedSkills(prev => {
         let newSkills = [...prev];
-        if (isConnectMode && newSkills.length > 0) {
-          if (newSkills[newSkills.length - 1].id === -1) newSkills.pop();
-        }
-        newSkills.push({ id: -3, fcId: id, fcName: fcItem.name, customSkillIds: fcItem.skillIds!, ...(isConnectMode ? { connected: true } : {}) } as any);
+        newSkills.push({ id: -3, fcId: id, fcName: fcItem.name, customSkillIds: fcItem.skillIds! } as any);
         form.setValue('skills', JSON.stringify(newSkills));
         return newSkills;
       });
+      setIsConnectMode(false);
       return;
     }
     setSelectedSkills(prev => {
@@ -248,14 +239,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         if (newSkills[newSkills.length - 1].id === -1) {
           newSkills.pop();
         }
-        const lastItem = newSkills.length > 0 ? newSkills[newSkills.length - 1] : undefined;
-        const lastIsConnected = lastItem && (lastItem as any).connected;
-        const reps = (lastItem && lastItem.id > 0 ? lastItem.reps : undefined) || 1;
-        if (lastItem && lastItem.id !== -1 && lastIsConnected) {
-          newSkills.push({ id, reps, connected: true } as any);
-        } else {
-          newSkills.push({ id, reps: 1, connected: true } as any);
-        }
+        const lastSkill = [...newSkills].reverse().find(s => s.id !== -1);
+        const reps = lastSkill?.reps || 1;
+        newSkills.push({ id, reps });
       } else {
         newSkills.push({ id, reps: 1 });
       }
@@ -271,10 +257,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
     setSelectedSkills(prev => {
       let newSkills = [...prev];
-      if (isConnectMode && newSkills.length > 0) {
-        if (newSkills[newSkills.length - 1].id === -1) newSkills.pop();
+      if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
+        newSkills.push({ id: -1 });
       }
-      newSkills.push({ id: -2, routineId, routineName: routine.name, ...(isConnectMode ? { connected: true } : {}) } as any);
+      newSkills.push({ id: -2, routineId, routineName: routine.name });
       form.setValue('skills', JSON.stringify(newSkills));
       return newSkills;
     });
@@ -533,7 +519,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2 border-foreground text-foreground hover:bg-foreground/10 dark:border-foreground dark:text-foreground dark:hover:bg-foreground/10" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setNewRoutineName(""); setNewRoutineCode(""); setNewRoutineSkillIds([]); }} data-testid="btn-new-routine"><Plus className="h-3.5 w-3.5" />R<span className="text-muted-foreground/50">or</span><span className="text-red-500">C</span></Button>
+                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2 border-blue-300 text-blue-500 dark:border-blue-700 dark:text-blue-400" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setNewRoutineName(""); setNewRoutineCode(""); setNewRoutineSkillIds([]); }} data-testid="btn-new-routine"><Plus className="h-3.5 w-3.5" />R<span className="text-muted-foreground/50">or</span><span className="text-red-500">C</span></Button>
                 </div>
 
                 {showNewSkill && (
@@ -656,8 +642,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border border-blue-300 text-blue-600 bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:bg-blue-900/10 transition-colors active:scale-95"
                           data-testid="btn-next-turn"
                         >
-                          Turn {(() => { let turns = 1; selectedSkills.forEach(s => { if (s.id === -1) turns++; }); return turns; })()}
                           <ChevronRight className="w-3 h-3" />
+                          Next Turn
                         </button>
                       )}
                     </div>
@@ -695,19 +681,12 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       const groups: Array<{ items: typeof selectedSkills; indices: number[] }> = [];
                       let curItems: typeof selectedSkills = [];
                       let curIndices: number[] = [];
-                      let curConnected: boolean | null = null;
                       selectedSkills.forEach((item, idx) => {
                         if (item.id === -1) {
                           groups.push({ items: curItems, indices: curIndices });
-                          curItems = []; curIndices = []; curConnected = null;
+                          curItems = []; curIndices = [];
                         } else {
-                          const itemConnected = !!(item as any).connected;
-                          if (curItems.length > 0 && curConnected !== null && itemConnected !== curConnected) {
-                            groups.push({ items: curItems, indices: curIndices });
-                            curItems = []; curIndices = [];
-                          }
                           curItems.push(item); curIndices.push(idx);
-                          curConnected = itemConnected;
                         }
                       });
                       groups.push({ items: curItems, indices: curIndices });
@@ -716,7 +695,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       return (
                         <SortableContext items={nonEmpty.map((_, i) => `group-${i}`)} strategy={verticalListSortingStrategy}>
                           {nonEmpty.map((group, gIdx) => {
-                            const isConnected = group.items.length > 1 && group.items.some((it: any) => it.connected);
+                            const isConnected = group.items.length > 1 && group.items[0].id !== -2;
                             return (
                               <SortablePracticeGroup key={`group-${gIdx}`} gId={`group-${gIdx}`} isConnected={isConnected}>
                             {group.items.map((item, iIdx) => {
