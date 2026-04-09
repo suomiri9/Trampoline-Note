@@ -237,7 +237,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         form.setValue('skills', JSON.stringify(newSkills));
         return newSkills;
       });
-      setIsConnectMode(false);
       return;
     }
     setSelectedSkills(prev => {
@@ -278,7 +277,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       form.setValue('skills', JSON.stringify(newSkills));
       return newSkills;
     });
-    setIsConnectMode(false);
   };
 
   const removeSkill = (index: number) => {
