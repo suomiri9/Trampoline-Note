@@ -245,7 +245,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
           (lastSkill as any).connected = true;
         }
         newSkills.push({ id, reps, connected: true } as any);
-        setIsConnectMode(false);
       } else {
         newSkills.push({ id, reps: 1 });
       }
