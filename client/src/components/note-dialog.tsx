@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, X, ChevronRight } from "lucide-react";
+import { CalendarIcon, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, X } from "lucide-react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -226,6 +226,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     if (fcItem && fcItem.skillIds) {
       setSelectedSkills(prev => {
         let newSkills = [...prev];
+        if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
+          newSkills.push({ id: -1 });
+        }
         newSkills.push({ id: -3, fcId: id, fcName: fcItem.name, customSkillIds: fcItem.skillIds! } as any);
         form.setValue('skills', JSON.stringify(newSkills));
         return newSkills;
@@ -243,6 +246,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         const reps = lastSkill?.reps || 1;
         newSkills.push({ id, reps });
       } else {
+        if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
+          newSkills.push({ id: -1 });
+        }
         newSkills.push({ id, reps: 1 });
       }
       form.setValue('skills', JSON.stringify(newSkills));
@@ -623,46 +629,23 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </div>
                 )}
 
-                {(recentSkillIds.length > 0 || selectedSkills.length > 0) && (
+                {recentSkillIds.length > 0 && (
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      {recentSkillIds.length > 0 && <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>}
-                      {recentSkillIds.length === 0 && <span />}
-                      {selectedSkills.length > 0 && selectedSkills.some(s => s.id !== -1) && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedSkills(prev => {
-                              if (prev.length === 0 || prev[prev.length - 1].id === -1) return prev;
-                              const newSkills = [...prev, { id: -1 as const }];
-                              form.setValue('skills', JSON.stringify(newSkills));
-                              return newSkills;
-                            });
-                          }}
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border border-blue-300 text-blue-600 bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:bg-blue-900/10 transition-colors active:scale-95"
-                          data-testid="btn-next-turn"
-                        >
-                          <ChevronRight className="w-3 h-3" />
-                          Next Turn
-                        </button>
-                      )}
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {recentSkillIds.map(sid => {
+                        const skill = allItems?.find(s => s.id === sid);
+                        if (!skill) return null;
+                        return (
+                          <button key={sid} type="button" onClick={() => addSkill(sid.toString())} className={cn(
+                            "px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors active:scale-95",
+                            skill.isDrill === 1 ? "border-yellow-300 text-yellow-600 bg-yellow-50 dark:border-yellow-700 dark:text-yellow-400 dark:bg-yellow-900/10"
+                              : skill.isDrill === 2 ? "border-red-300 text-red-500 bg-red-50 dark:border-red-700 dark:text-red-400 dark:bg-red-900/10"
+                              : "border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50"
+                          )} data-testid={`btn-recent-skill-${sid}`}>{skill.code}</button>
+                        );
+                      })}
                     </div>
-                    {recentSkillIds.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {recentSkillIds.map(sid => {
-                          const skill = allItems?.find(s => s.id === sid);
-                          if (!skill) return null;
-                          return (
-                            <button key={sid} type="button" onClick={() => addSkill(sid.toString())} className={cn(
-                              "px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors active:scale-95",
-                              skill.isDrill === 1 ? "border-yellow-300 text-yellow-600 bg-yellow-50 dark:border-yellow-700 dark:text-yellow-400 dark:bg-yellow-900/10"
-                                : skill.isDrill === 2 ? "border-red-300 text-red-500 bg-red-50 dark:border-red-700 dark:text-red-400 dark:bg-red-900/10"
-                                : "border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50"
-                            )} data-testid={`btn-recent-skill-${sid}`}>{skill.code}</button>
-                          );
-                        })}
-                      </div>
-                    )}
                   </div>
                 )}
 
