@@ -692,7 +692,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       return (
                         <SortableContext items={nonEmpty.map((_, i) => `group-${i}`)} strategy={verticalListSortingStrategy}>
                           {nonEmpty.map((group, gIdx) => {
-                            const isConnected = group.items.length > 1 && group.items[0].id !== -2;
+                            const isConnected = false;
                             return (
                               <SortablePracticeGroup key={`group-${gIdx}`} gId={`group-${gIdx}`} isConnected={isConnected}>
                             {group.items.map((item, iIdx) => {
