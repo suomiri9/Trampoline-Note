@@ -235,8 +235,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         let newSkills = [...prev];
         if (isConnectMode && newSkills.length > 0) {
           if (newSkills[newSkills.length - 1].id === -1) newSkills.pop();
-          const lastSkill = [...newSkills].reverse().find(s => s.id !== -1);
-          if (lastSkill && !(lastSkill as any).connected) (lastSkill as any).connected = true;
         }
         newSkills.push({ id: -3, fcId: id, fcName: fcItem.name, customSkillIds: fcItem.skillIds!, ...(isConnectMode ? { connected: true } : {}) } as any);
         form.setValue('skills', JSON.stringify(newSkills));
@@ -250,12 +248,14 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         if (newSkills[newSkills.length - 1].id === -1) {
           newSkills.pop();
         }
-        const lastSkill = [...newSkills].reverse().find(s => s.id !== -1 && s.id > 0);
-        const reps = lastSkill?.reps || 1;
-        if (lastSkill && !(lastSkill as any).connected) {
-          (lastSkill as any).connected = true;
+        const lastItem = newSkills.length > 0 ? newSkills[newSkills.length - 1] : undefined;
+        const lastIsConnected = lastItem && (lastItem as any).connected;
+        const reps = (lastItem && lastItem.id > 0 ? lastItem.reps : undefined) || 1;
+        if (lastItem && lastItem.id !== -1 && lastIsConnected) {
+          newSkills.push({ id, reps, connected: true } as any);
+        } else {
+          newSkills.push({ id, reps: 1, connected: true } as any);
         }
-        newSkills.push({ id, reps, connected: true } as any);
       } else {
         newSkills.push({ id, reps: 1 });
       }
@@ -273,8 +273,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       let newSkills = [...prev];
       if (isConnectMode && newSkills.length > 0) {
         if (newSkills[newSkills.length - 1].id === -1) newSkills.pop();
-        const lastSkill = [...newSkills].reverse().find(s => s.id !== -1);
-        if (lastSkill && !(lastSkill as any).connected) (lastSkill as any).connected = true;
       }
       newSkills.push({ id: -2, routineId, routineName: routine.name, ...(isConnectMode ? { connected: true } : {}) } as any);
       form.setValue('skills', JSON.stringify(newSkills));
