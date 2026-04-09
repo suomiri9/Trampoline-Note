@@ -141,9 +141,16 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const buildGroups = (skills: SkillItem[]) => {
     const groups: Array<{ items: SkillItem[] }> = [];
     let cur: SkillItem[] = [];
+    let curConn: boolean | null = null;
     skills.forEach(item => {
-      if (item.id === -1) { groups.push({ items: cur }); cur = []; }
-      else cur.push(item);
+      if (item.id === -1) { groups.push({ items: cur }); cur = []; curConn = null; }
+      else {
+        const ic = !!(item as any).connected;
+        if (cur.length > 0 && curConn !== null && ic !== curConn) {
+          groups.push({ items: cur }); cur = [];
+        }
+        cur.push(item); curConn = ic;
+      }
     });
     groups.push({ items: cur });
     return groups.filter(g => g.items.length > 0);
@@ -681,12 +688,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       const groups: Array<{ items: typeof selectedSkills; indices: number[] }> = [];
                       let curItems: typeof selectedSkills = [];
                       let curIndices: number[] = [];
+                      let curConnected: boolean | null = null;
                       selectedSkills.forEach((item, idx) => {
                         if (item.id === -1) {
                           groups.push({ items: curItems, indices: curIndices });
-                          curItems = []; curIndices = [];
+                          curItems = []; curIndices = []; curConnected = null;
                         } else {
+                          const itemConnected = !!(item as any).connected;
+                          if (curItems.length > 0 && curConnected !== null && itemConnected !== curConnected) {
+                            groups.push({ items: curItems, indices: curIndices });
+                            curItems = []; curIndices = [];
+                          }
                           curItems.push(item); curIndices.push(idx);
+                          curConnected = itemConnected;
                         }
                       });
                       groups.push({ items: curItems, indices: curIndices });
