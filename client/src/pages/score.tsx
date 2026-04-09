@@ -212,7 +212,7 @@ export default function ScorePage() {
     <PageLayout>
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-2xl shrink-0">
+          <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-2xl shrink-0 icon-3d">
             <Trophy className="w-6 h-6 text-yellow-500" />
           </div>
           <div>

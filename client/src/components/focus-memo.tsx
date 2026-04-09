@@ -124,7 +124,7 @@ export function FocusMemo() {
   return (
     <div
       data-testid="focus-memo-card"
-      className="mb-6 rounded-2xl border border-border bg-card/50 shadow-sm shadow-black/5 p-4 cursor-pointer transition-colors hover:bg-card/80"
+      className="mb-6 rounded-2xl card-3d p-4 cursor-pointer transition-colors hover:bg-card/80"
       onClick={() => {
         if (!isEditing) setIsEditing(true);
       }}

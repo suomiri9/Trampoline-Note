@@ -32,7 +32,7 @@ export default function Home() {
     <PageLayout>
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-2xl shrink-0">
+          <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-2xl shrink-0 icon-3d">
             <LayoutDashboard className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
@@ -42,7 +42,7 @@ export default function Home() {
         </div>
         <Button
           onClick={handleCreateNew}
-          className="rounded-2xl h-12 px-6 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/20 flex items-center gap-2"
+          className="rounded-2xl h-12 px-6 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition-all btn-3d flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
           Start Training
@@ -63,7 +63,7 @@ export default function Home() {
             <p className="text-sm opacity-90">{(error as Error).message}</p>
           </div>
         ) : sortedNotes.length === 0 ? (
-          <div className="py-24 px-6 flex flex-col items-center justify-center text-center rounded-[2rem] bg-card/50 shadow-md shadow-black/5">
+          <div className="py-24 px-6 flex flex-col items-center justify-center text-center rounded-[2rem] card-3d">
             <div className="w-16 h-16 mb-6 rounded-full bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
               <BookOpen className="w-8 h-8 text-blue-500" />
             </div>

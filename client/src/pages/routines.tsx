@@ -104,7 +104,7 @@ export default function RoutinesPage() {
   return (
     <PageLayout>
       <div className="flex items-center gap-3 mb-8">
-        <div className="p-3 bg-zinc-100 dark:bg-zinc-800/30 rounded-2xl shrink-0">
+        <div className="p-3 bg-zinc-100 dark:bg-zinc-800/30 rounded-2xl shrink-0 icon-3d">
           <Layers className="w-6 h-6 text-zinc-600" />
         </div>
         <div>

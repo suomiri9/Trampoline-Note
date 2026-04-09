@@ -28,10 +28,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[100svh] flex flex-col items-center justify-center bg-background px-6">
+    <div className="min-h-[100svh] flex flex-col items-center justify-center bg-mesh px-6">
       <div className="w-full max-w-sm flex flex-col items-center gap-8">
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/30">
+          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-primary-foreground btn-3d">
             <Activity className="w-8 h-8" />
           </div>
           <div>
@@ -40,7 +40,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="w-full bg-card border border-border/50 rounded-2xl p-6 flex flex-col gap-4 shadow-sm">
+        <div className="w-full card-3d rounded-2xl p-6 flex flex-col gap-4">
           <p className="text-sm text-muted-foreground text-center">
             {mode === "login" ? "Sign in to access your training data." : "Create an account to get started."}
           </p>
@@ -99,7 +99,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full h-11 rounded-xl font-semibold mt-1"
+              className="w-full h-11 rounded-xl font-semibold mt-1 btn-3d"
               disabled={isPending}
               data-testid="button-submit"
             >

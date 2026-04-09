@@ -227,7 +227,7 @@ export default function SkillsPage() {
   return (
     <PageLayout>
       <div className="flex items-center gap-3 mb-8">
-        <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-2xl shrink-0">
+        <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-2xl shrink-0 icon-3d">
           <Target className="w-6 h-6 text-red-500" />
         </div>
         <div>

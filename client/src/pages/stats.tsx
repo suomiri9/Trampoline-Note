@@ -176,7 +176,7 @@ export default function StatsPage() {
   return (
     <PageLayout>
       <div className="flex items-center gap-3 mb-8">
-        <div className="p-3 bg-slate-100 dark:bg-slate-800/30 rounded-2xl">
+        <div className="p-3 bg-slate-100 dark:bg-slate-800/30 rounded-2xl icon-3d">
           <TrendingUp className="w-6 h-6 text-slate-500" />
         </div>
         <div>
