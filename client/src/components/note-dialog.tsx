@@ -519,7 +519,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button type="button" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2 bg-foreground text-background hover:bg-foreground/90 dark:bg-foreground dark:text-background dark:hover:bg-foreground/90" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setNewRoutineName(""); setNewRoutineCode(""); setNewRoutineSkillIds([]); }} data-testid="btn-new-routine"><Plus className="h-3.5 w-3.5" />R<span className="opacity-50">or</span><span className="text-red-400">C</span></Button>
+                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2 border-foreground text-foreground hover:bg-foreground/10 dark:border-foreground dark:text-foreground dark:hover:bg-foreground/10" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setNewRoutineName(""); setNewRoutineCode(""); setNewRoutineSkillIds([]); }} data-testid="btn-new-routine"><Plus className="h-3.5 w-3.5" />R<span className="text-muted-foreground/50">or</span><span className="text-red-500">C</span></Button>
                 </div>
 
                 {showNewSkill && (
