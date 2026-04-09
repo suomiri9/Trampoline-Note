@@ -233,11 +233,15 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     if (fcItem && fcItem.skillIds) {
       setSelectedSkills(prev => {
         let newSkills = [...prev];
-        newSkills.push({ id: -3, fcId: id, fcName: fcItem.name, customSkillIds: fcItem.skillIds! } as any);
+        if (isConnectMode && newSkills.length > 0) {
+          if (newSkills[newSkills.length - 1].id === -1) newSkills.pop();
+          const lastSkill = [...newSkills].reverse().find(s => s.id !== -1);
+          if (lastSkill && !(lastSkill as any).connected) (lastSkill as any).connected = true;
+        }
+        newSkills.push({ id: -3, fcId: id, fcName: fcItem.name, customSkillIds: fcItem.skillIds!, ...(isConnectMode ? { connected: true } : {}) } as any);
         form.setValue('skills', JSON.stringify(newSkills));
         return newSkills;
       });
-      setIsConnectMode(false);
       return;
     }
     setSelectedSkills(prev => {
@@ -267,7 +271,12 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
     setSelectedSkills(prev => {
       let newSkills = [...prev];
-      newSkills.push({ id: -2, routineId, routineName: routine.name });
+      if (isConnectMode && newSkills.length > 0) {
+        if (newSkills[newSkills.length - 1].id === -1) newSkills.pop();
+        const lastSkill = [...newSkills].reverse().find(s => s.id !== -1);
+        if (lastSkill && !(lastSkill as any).connected) (lastSkill as any).connected = true;
+      }
+      newSkills.push({ id: -2, routineId, routineName: routine.name, ...(isConnectMode ? { connected: true } : {}) } as any);
       form.setValue('skills', JSON.stringify(newSkills));
       return newSkills;
     });
