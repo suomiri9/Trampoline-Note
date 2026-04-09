@@ -226,6 +226,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     if (fcItem && fcItem.skillIds) {
       setSelectedSkills(prev => {
         let newSkills = [...prev];
+        if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
+          newSkills.push({ id: -1 });
+        }
         newSkills.push({ id: -3, fcId: id, fcName: fcItem.name, customSkillIds: fcItem.skillIds! } as any);
         form.setValue('skills', JSON.stringify(newSkills));
         return newSkills;
