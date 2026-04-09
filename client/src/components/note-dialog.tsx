@@ -226,9 +226,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     if (fcItem && fcItem.skillIds) {
       setSelectedSkills(prev => {
         let newSkills = [...prev];
-        if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
-          newSkills.push({ id: -1 });
-        }
         newSkills.push({ id: -3, fcId: id, fcName: fcItem.name, customSkillIds: fcItem.skillIds! } as any);
         form.setValue('skills', JSON.stringify(newSkills));
         return newSkills;
@@ -246,9 +243,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         const reps = lastSkill?.reps || 1;
         newSkills.push({ id, reps });
       } else {
-        if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
-          newSkills.push({ id: -1 });
-        }
         newSkills.push({ id, reps: 1 });
       }
       form.setValue('skills', JSON.stringify(newSkills));
@@ -645,11 +639,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               return newSkills;
                             });
                           }}
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border border-green-300 text-green-600 bg-green-50 dark:border-green-700 dark:text-green-400 dark:bg-green-900/10 transition-colors active:scale-95"
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border border-blue-300 text-blue-600 bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:bg-blue-900/10 transition-colors active:scale-95"
                           data-testid="btn-next-turn"
                         >
                           <ChevronRight className="w-3 h-3" />
-                          Turn {(() => { let turns = 1; selectedSkills.forEach(s => { if (s.id === -1) turns++; }); return turns; })()}
+                          Next Turn
                         </button>
                       )}
                     </div>
