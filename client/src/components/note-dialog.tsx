@@ -642,8 +642,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border border-blue-300 text-blue-600 bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:bg-blue-900/10 transition-colors active:scale-95"
                           data-testid="btn-next-turn"
                         >
+                          Turn {(() => { let turns = 1; selectedSkills.forEach(s => { if (s.id === -1) turns++; }); return turns; })()}
                           <ChevronRight className="w-3 h-3" />
-                          Next Turn
                         </button>
                       )}
                     </div>
