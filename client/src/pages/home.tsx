@@ -30,7 +30,7 @@ export default function Home() {
 
   return (
     <PageLayout>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-2xl shrink-0 icon-3d">
             <LayoutDashboard className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -40,7 +40,7 @@ export default function Home() {
             <p className="text-muted-foreground text-sm">Track your trampoline sessions, skills, and progress.</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <PointsToFix />
           <Button
             onClick={handleCreateNew}
