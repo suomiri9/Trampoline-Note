@@ -381,7 +381,7 @@ export async function registerRoutes(
 
   app.patch("/api/auth/focus-memo", isAuthenticated, async (req, res) => {
     try {
-      const schema = z.object({ focusMemo: z.string().max(1000) });
+      const schema = z.object({ focusMemo: z.string().max(20000) });
       const { focusMemo } = schema.parse(req.body);
       const userId = getUserId(req);
       const [updated] = await db
