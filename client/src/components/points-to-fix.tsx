@@ -38,7 +38,7 @@ function parsePoints(raw: string | null | undefined): PointToFix[] {
           : [],
         rating:
           typeof p.rating === "number" && Number.isFinite(p.rating)
-            ? Math.max(0, Math.min(5, Math.round(p.rating)))
+            ? Math.max(0, Math.min(3, Math.round(p.rating)))
             : 0,
       }));
   } catch {
@@ -138,7 +138,7 @@ export function PointsToFix() {
 
   const setRating = (id: string, rating: number) => {
     if (mutation.isPending) return;
-    const clamped = Math.max(0, Math.min(5, rating));
+    const clamped = Math.max(0, Math.min(3, rating));
     const target = points.find((p) => p.id === id);
     if (!target || target.rating === clamped) return;
     mutation.mutate(
@@ -231,7 +231,7 @@ export function PointsToFix() {
                         role="radiogroup"
                         aria-label="Achievement rating"
                       >
-                        {[1, 2, 3, 4, 5].map((n) => {
+                        {[1, 2, 3].map((n) => {
                           const filled = n <= p.rating;
                           return (
                             <button
