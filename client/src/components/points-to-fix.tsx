@@ -205,10 +205,6 @@ export function PointsToFix() {
                 const noResults = q && filteredSkillIds.length === 0;
 
                 const renderPointRow = (p: PointToFix, currentSkillId: number | null) => {
-                  const otherSkills =
-                    currentSkillId === null
-                      ? p.skillIds
-                      : p.skillIds.filter((id) => id !== currentSkillId);
                   return (
                     <div
                       key={`${currentSkillId ?? "u"}-${p.id}`}
@@ -221,22 +217,6 @@ export function PointsToFix() {
                       >
                         {p.name}
                       </p>
-                      {otherSkills.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-1">
-                          {otherSkills.map((sid) => {
-                            const s = skillById(sid);
-                            return (
-                              <Badge
-                                key={sid}
-                                variant="outline"
-                                className="px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm border-border/60 text-muted-foreground"
-                              >
-                                {s?.code || "?"}
-                              </Badge>
-                            );
-                          })}
-                        </div>
-                      )}
                       <Button
                         type="button"
                         variant="ghost"
