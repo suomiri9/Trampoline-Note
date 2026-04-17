@@ -132,9 +132,6 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                           <div className="flex items-center justify-between py-2 px-3">
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none">ROUTINE</Badge>
-                              {routine?.code && (
-                                <Badge variant="outline" className="px-1.5 py-0.5 h-5 font-mono text-[10px] bg-background border-primary/30 text-primary">{routine.code}</Badge>
-                              )}
                               <span className="text-sm font-bold text-primary">{item.routineName || "Routine"}</span>
                               {displaySkillIds.length > baseSkillIds.length && (
                                 <span className="text-[11px] font-mono text-muted-foreground">{displaySkillIds.length} skills</span>

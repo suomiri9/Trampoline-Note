@@ -47,7 +47,6 @@ export default function RoutinesPage() {
   
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
   const [name, setName] = useState("");
-  const [code, setCode] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [selectedSkillIds, setSelectedSkillIds] = useState<(number | null)[]>(new Array(10).fill(null));
 
@@ -75,34 +74,29 @@ export default function RoutinesPage() {
       await updateRoutine({
         id: editingRoutine.id,
         name,
-        code: code || null,
         skillIds: selectedSkillIds as number[],
       });
       setEditingRoutine(null);
     } else {
       await createRoutine({
         name,
-        code: code || null,
         skillIds: selectedSkillIds as number[],
       });
     }
     
     setName("");
-    setCode("");
     setSelectedSkillIds(new Array(10).fill(null));
   };
 
   const startEditing = (routine: Routine) => {
     setEditingRoutine(routine);
     setName(routine.name);
-    setCode(routine.code || "");
     setSelectedSkillIds(routine.skillIds);
   };
 
   const cancelEditing = () => {
     setEditingRoutine(null);
     setName("");
-    setCode("");
     setSelectedSkillIds(new Array(10).fill(null));
   };
 
@@ -127,20 +121,11 @@ export default function RoutinesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Input 
-                placeholder="Routine Name" 
-                value={name} 
-                onChange={e => setName(e.target.value)} 
-                className="flex-1"
-              />
-              <Input 
-                placeholder="Code" 
-                value={code} 
-                onChange={e => setCode(e.target.value)} 
-                className="w-24 font-mono"
-              />
-            </div>
+            <Input 
+              placeholder="Routine Name" 
+              value={name} 
+              onChange={e => setName(e.target.value)} 
+            />
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={selectedSkillIds.map((_, i) => `slot-${i}`)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-2">
@@ -209,12 +194,7 @@ export default function RoutinesPage() {
                 <Card key={routine.id} className={cn("overflow-hidden cursor-pointer hover:shadow-md transition-shadow", editingRoutine?.id === routine.id && "ring-2 ring-primary")} onClick={() => navigate(`/routines/${routine.id}`)} data-testid={`card-routine-${routine.id}`}>
                   <div className="p-4 flex items-center justify-between bg-muted/30">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-lg">{routine.name}</h3>
-                        {routine.code && (
-                          <Badge variant="outline" className="font-mono text-xs bg-background border-primary/30 text-primary">{routine.code}</Badge>
-                        )}
-                      </div>
+                      <h3 className="font-bold text-lg">{routine.name}</h3>
                       <p className="text-sm text-muted-foreground">Total Difficulty: {calcDDFromSkillIds(routine.skillIds, allItems || []).toFixed(1)}</p>
                     </div>
                     <div className="space-x-2" onClick={(e) => e.stopPropagation()}>

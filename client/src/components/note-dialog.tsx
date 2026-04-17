@@ -702,7 +702,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
                                         <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none shrink-0">ROUTINE</Badge>
-                                        {routine?.code && <Badge variant="outline" className="px-1.5 py-0.5 h-5 font-mono text-[10px] bg-background border-primary/30 text-primary shrink-0">{routine.code}</Badge>}
                                         <span className="font-bold text-primary truncate">{item.routineName}</span>
                                         {displaySkillIds.length < 10 && (
                                           <span className="text-[11px] font-mono text-muted-foreground shrink-0">attempt {displaySkillIds.length}/10</span>
