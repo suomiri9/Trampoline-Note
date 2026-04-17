@@ -164,54 +164,128 @@ export function PointsToFix() {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="space-y-2">
-              {points.length === 0 ? (
-                <p className="text-sm text-muted-foreground italic py-4 text-center">
-                  No points yet. Add one below.
-                </p>
-              ) : (
-                points.map((p) => (
-                  <div
-                    key={p.id}
-                    data-testid={`point-row-${p.id}`}
-                    className="flex items-start gap-2 p-3 rounded-xl bg-muted/40 border border-border"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm" data-testid={`text-point-name-${p.id}`}>
-                        {p.name}
-                      </p>
-                      {p.skillIds.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {p.skillIds.map((sid) => {
-                            const s = skillById(sid);
-                            return (
-                              <Badge
-                                key={sid}
-                                variant="outline"
-                                className="text-[10px] px-1.5 py-0 font-mono"
-                              >
-                                {s?.code || "?"}
-                              </Badge>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removePoint(p.id)}
-                      disabled={mutation.isPending}
-                      data-testid={`button-remove-point-${p.id}`}
-                      className="shrink-0 h-7 w-7"
+            {points.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic py-4 text-center">
+                No points yet. Add one below.
+              </p>
+            ) : (
+              (() => {
+                const groupsBySkill = new Map<number, PointToFix[]>();
+                const unlinked: PointToFix[] = [];
+                for (const p of points) {
+                  if (p.skillIds.length === 0) {
+                    unlinked.push(p);
+                  } else {
+                    for (const sid of p.skillIds) {
+                      const arr = groupsBySkill.get(sid) || [];
+                      arr.push(p);
+                      groupsBySkill.set(sid, arr);
+                    }
+                  }
+                }
+                const orderedSkillIds = sortedActiveSkills
+                  .map((s) => s.id)
+                  .filter((id) => groupsBySkill.has(id));
+                for (const id of groupsBySkill.keys()) {
+                  if (!orderedSkillIds.includes(id)) orderedSkillIds.push(id);
+                }
+
+                const renderPointRow = (p: PointToFix, currentSkillId: number | null) => {
+                  const otherSkills =
+                    currentSkillId === null
+                      ? p.skillIds
+                      : p.skillIds.filter((id) => id !== currentSkillId);
+                  return (
+                    <div
+                      key={`${currentSkillId ?? "u"}-${p.id}`}
+                      data-testid={`point-row-${p.id}`}
+                      className="flex items-start gap-2 p-2.5 rounded-lg bg-muted/40 border border-border"
                     >
-                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                    </Button>
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className="font-medium text-sm"
+                          data-testid={`text-point-name-${p.id}`}
+                        >
+                          {p.name}
+                        </p>
+                        {otherSkills.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {otherSkills.map((sid) => {
+                              const s = skillById(sid);
+                              return (
+                                <Badge
+                                  key={sid}
+                                  variant="outline"
+                                  className="text-[10px] px-1.5 py-0 font-mono"
+                                >
+                                  {s?.code || "?"}
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removePoint(p.id)}
+                        disabled={mutation.isPending}
+                        data-testid={`button-remove-point-${p.id}`}
+                        className="shrink-0 h-7 w-7"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  );
+                };
+
+                return (
+                  <div className="space-y-4">
+                    {orderedSkillIds.map((sid) => {
+                      const s = skillById(sid);
+                      const groupPoints = groupsBySkill.get(sid) || [];
+                      return (
+                        <div key={sid} className="space-y-1.5" data-testid={`group-skill-${sid}`}>
+                          <div className="flex items-center gap-2 px-1">
+                            <Badge
+                              variant="secondary"
+                              className="font-mono text-[10px] px-1.5 py-0"
+                            >
+                              {s?.code || "?"}
+                            </Badge>
+                            <span className="text-xs font-semibold text-foreground truncate">
+                              {s?.name || "Unknown skill"}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {groupPoints.length}
+                            </span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {groupPoints.map((p) => renderPointRow(p, sid))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {unlinked.length > 0 && (
+                      <div className="space-y-1.5" data-testid="group-unlinked">
+                        <div className="flex items-center gap-2 px-1">
+                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            General
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {unlinked.length}
+                          </span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {unlinked.map((p) => renderPointRow(p, null))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))
-              )}
-            </div>
+                );
+              })()
+            )}
 
             <div className="border-t border-border pt-4 space-y-3">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
