@@ -24,7 +24,6 @@ export const skills = pgTable("skills", {
   skillIds: integer("skill_ids").array(), // For frequent connections (type 2)
   sortOrder: integer("sort_order"),
   archived: integer("archived").notNull().default(0), // 0 = active, 1 = archived
-  focusMemo: text("focus_memo"), // Per-skill focus notes (newline-separated lines)
 });
 
 export const routines = pgTable("routines", {
