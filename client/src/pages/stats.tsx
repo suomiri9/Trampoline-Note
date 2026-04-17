@@ -91,42 +91,22 @@ export default function StatsPage() {
       return { date: format(day, "d MMM"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, isFuture };
     });
   } else if (range === "year") {
-    useWeekly = true;
     const refDay = addYears(today, offset);
     const yearStart = startOfYear(refDay);
     const yearEnd = endOfYear(refDay);
-    const yearNum = refDay.getFullYear();
-    const weeks = eachWeekOfInterval({ start: yearStart, end: yearEnd }, { weekStartsOn: 1 });
+    const days = eachDayOfInterval({ start: yearStart, end: yearEnd });
     periodLabel = `${format(yearStart, "d MMM yyyy")} – ${format(yearEnd, "d MMM yyyy")}`;
-    const filteredWeeks = weeks.filter(ws => {
-      const wEnd = endOfWeek(ws, { weekStartsOn: 1 });
-      return ws.getFullYear() === yearNum || wEnd.getFullYear() === yearNum;
-    });
     let lastMonth = -1;
-    chartData = filteredWeeks.map(ws => {
-      const bStart = ws < yearStart ? yearStart : ws;
-      const wEnd = endOfWeek(ws, { weekStartsOn: 1 });
-      const bEnd = wEnd > yearEnd ? yearEnd : wEnd;
-      const m = bStart.getMonth();
-      const label = m !== lastMonth && bStart.getFullYear() === yearNum ? format(bStart, "MMM") : "";
+    chartData = days.map(day => {
+      const key = format(day, "yyyy-MM-dd");
+      const found = ddByDate[key];
+      const isFuture = day > today;
+      const m = day.getMonth();
+      const label = m !== lastMonth ? format(day, "MMM") : "";
       lastMonth = m;
-      if (bStart > today) {
-        return { date: label, difficulty: null, sessions: 0 };
-      }
-      const totalDD = Object.entries(ddByDate)
-        .filter(([k]) => {
-          const d = parseISO(k);
-          return isWithinInterval(d, { start: bStart, end: bEnd });
-        })
-        .reduce((sum, [, v]) => sum + v.difficulty, 0);
-      const totalSess = Object.entries(ddByDate)
-        .filter(([k]) => {
-          const d = parseISO(k);
-          return isWithinInterval(d, { start: bStart, end: bEnd });
-        })
-        .reduce((sum, [, v]) => sum + v.sessions, 0);
-      return { date: label, difficulty: totalDD > 0 ? totalDD : null, sessions: totalSess };
+      return { date: label, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, isFuture };
     });
+    xTickInterval = Math.max(1, Math.floor(days.length / 12));
   } else {
     useWeekly = true;
     const allKeys = Object.keys(ddByDate).sort();
