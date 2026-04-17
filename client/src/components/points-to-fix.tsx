@@ -142,15 +142,6 @@ export function PointsToFix() {
       >
         <Target className="w-5 h-5 text-amber-600 dark:text-amber-400" />
         Points to Fix
-        {points.length > 0 && (
-          <Badge
-            variant="secondary"
-            className="ml-1 h-5 min-w-[1.25rem] px-1.5 rounded-full text-[10px] font-bold"
-            data-testid="badge-points-count"
-          >
-            {points.length}
-          </Badge>
-        )}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -246,9 +237,6 @@ export function PointsToFix() {
                   >
                     <div className="flex justify-between items-center mb-3">
                       {header}
-                      <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
-                        {groupPoints.length} {groupPoints.length === 1 ? "point" : "points"}
-                      </span>
                     </div>
                     <div className="flex flex-col gap-1.5 pt-3 border-t border-border/40">
                       {groupPoints.map((p) => renderPointRow(p, currentSkillId))}
