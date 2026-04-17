@@ -209,7 +209,12 @@ export default function RoutinesPage() {
                 <Card key={routine.id} className={cn("overflow-hidden cursor-pointer hover:shadow-md transition-shadow", editingRoutine?.id === routine.id && "ring-2 ring-primary")} onClick={() => navigate(`/routines/${routine.id}`)} data-testid={`card-routine-${routine.id}`}>
                   <div className="p-4 flex items-center justify-between bg-muted/30">
                     <div>
-                      <h3 className="font-bold text-lg">{routine.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-lg">{routine.name}</h3>
+                        {routine.code && (
+                          <Badge variant="outline" className="font-mono text-xs bg-background border-primary/30 text-primary">{routine.code}</Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground">Total Difficulty: {calcDDFromSkillIds(routine.skillIds, allItems || []).toFixed(1)}</p>
                     </div>
                     <div className="space-x-2" onClick={(e) => e.stopPropagation()}>
