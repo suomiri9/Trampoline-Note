@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Pencil, X, Target, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore } from "lucide-react";
+import { Trash2, Plus, Pencil, X, Target, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertSkillSchema, type Skill } from "@shared/schema";
@@ -336,10 +337,17 @@ export default function SkillsPage() {
                             <TableCell>{skill.code}</TableCell>
                             <TableCell>{skill.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
-                              <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
-                                <Button variant="ghost" size="icon" onClick={() => startEditing(skill)}><Pencil className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" onClick={() => toggleArchive(skill)} data-testid={`button-archive-skill-${skill.id}`}>{skill.archived === 1 ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</Button>
-                                <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: skill.id, name: skill.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" data-testid={`button-actions-skill-${skill.id}`}><MoreVertical className="h-4 w-4" /></Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEditing(skill)}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => toggleArchive(skill)} data-testid={`button-archive-skill-${skill.id}`}>{skill.archived === 1 ? <><ArchiveRestore className="h-3.5 w-3.5" /> Unarchive</> : <><Archive className="h-3.5 w-3.5" /> Archive</>}</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget({ id: skill.id, name: skill.name })}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </TableCell>
                             )}
                           </SortableRow>
@@ -428,10 +436,17 @@ export default function SkillsPage() {
                             <TableCell>{drill.code}</TableCell>
                             <TableCell>{drill.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
-                              <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
-                                <Button variant="ghost" size="icon" onClick={() => startEditing(drill)}><Pencil className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" onClick={() => toggleArchive(drill)} data-testid={`button-archive-skill-${drill.id}`}>{drill.archived === 1 ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</Button>
-                                <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: drill.id, name: drill.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" data-testid={`button-actions-skill-${drill.id}`}><MoreVertical className="h-4 w-4" /></Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEditing(drill)}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => toggleArchive(drill)} data-testid={`button-archive-skill-${drill.id}`}>{drill.archived === 1 ? <><ArchiveRestore className="h-3.5 w-3.5" /> Unarchive</> : <><Archive className="h-3.5 w-3.5" /> Archive</>}</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget({ id: drill.id, name: drill.name })}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </TableCell>
                             )}
                           </SortableRow>
@@ -543,10 +558,17 @@ export default function SkillsPage() {
                             </TableCell>
                             <TableCell>{conn.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
-                              <TableCell className="text-right space-x-2">
-                                <Button variant="ghost" size="icon" onClick={() => startEditing(conn)}><Pencil className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" onClick={() => toggleArchive(conn)} data-testid={`button-archive-skill-${conn.id}`}>{conn.archived === 1 ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</Button>
-                                <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: conn.id, name: conn.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                              <TableCell className="text-right">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" data-testid={`button-actions-skill-${conn.id}`}><MoreVertical className="h-4 w-4" /></Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEditing(conn)}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => toggleArchive(conn)} data-testid={`button-archive-skill-${conn.id}`}>{conn.archived === 1 ? <><ArchiveRestore className="h-3.5 w-3.5" /> Unarchive</> : <><Archive className="h-3.5 w-3.5" /> Archive</>}</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget({ id: conn.id, name: conn.name })}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </TableCell>
                             )}
                           </SortableRow>
