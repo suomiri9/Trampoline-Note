@@ -4,7 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useSkills } from "@/hooks/use-skills";
 import { useToast } from "@/hooks/use-toast";
-import { Target, Plus, X, Trash2, Loader2, Search, Star } from "lucide-react";
+import { Target, Plus, X, Trash2, Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,6 @@ export type PointToFix = {
   id: string;
   name: string;
   skillIds: number[];
-  rating: number;
 };
 
 function parsePoints(raw: string | null | undefined): PointToFix[] {
@@ -36,10 +35,6 @@ function parsePoints(raw: string | null | undefined): PointToFix[] {
               (x): x is number => typeof x === "number" && Number.isInteger(x) && x > 0,
             )
           : [],
-        rating:
-          typeof p.rating === "number" && Number.isFinite(p.rating)
-            ? Math.max(0, Math.min(3, Math.round(p.rating)))
-            : 0,
       }));
   } catch {
     // Legacy plain-text focus memo — migrate each non-empty line into a point.
@@ -51,7 +46,6 @@ function parsePoints(raw: string | null | undefined): PointToFix[] {
         id: `legacy-${i}-${Date.now()}`,
         name: line,
         skillIds: [],
-        rating: 0,
       }));
   }
 }
@@ -124,7 +118,6 @@ export function PointsToFix() {
       id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name,
       skillIds: draftSkillIds,
-      rating: 0,
     };
     mutation.mutate([...points, newPoint]);
     setDraftName("");
@@ -134,16 +127,6 @@ export function PointsToFix() {
   const removePoint = (id: string) => {
     if (mutation.isPending) return;
     mutation.mutate(points.filter((p) => p.id !== id));
-  };
-
-  const setRating = (id: string, rating: number) => {
-    if (mutation.isPending) return;
-    const clamped = Math.max(0, Math.min(3, rating));
-    const target = points.find((p) => p.id === id);
-    if (!target || target.rating === clamped) return;
-    mutation.mutate(
-      points.map((p) => (p.id === id ? { ...p, rating: clamped } : p)),
-    );
   };
 
   const skillById = (id: number) => skills?.find((s) => s.id === id);
@@ -225,37 +208,6 @@ export function PointsToFix() {
                       >
                         {p.name}
                       </p>
-                      <div
-                        className="flex items-center gap-0.5 shrink-0"
-                        data-testid={`rating-${p.id}`}
-                        role="radiogroup"
-                        aria-label="Achievement rating"
-                      >
-                        {[1, 2, 3].map((n) => {
-                          const filled = n <= p.rating;
-                          return (
-                            <button
-                              key={n}
-                              type="button"
-                              onClick={() =>
-                                setRating(p.id, p.rating === n ? n - 1 : n)
-                              }
-                              disabled={mutation.isPending}
-                              data-testid={`button-rating-${p.id}-${n}`}
-                              aria-label={`Set rating to ${n}`}
-                              className="p-0.5 rounded hover:scale-110 transition-transform disabled:opacity-50"
-                            >
-                              <Star
-                                className={
-                                  filled
-                                    ? "w-3.5 h-3.5 fill-amber-400 text-amber-400"
-                                    : "w-3.5 h-3.5 text-muted-foreground/40"
-                                }
-                              />
-                            </button>
-                          );
-                        })}
-                      </div>
                       <Button
                         type="button"
                         variant="ghost"
