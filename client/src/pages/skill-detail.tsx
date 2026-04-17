@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Calendar, Hash, Star, TrendingUp, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { SkillFocusMemo } from "@/components/skill-focus-memo";
 import { format, parseISO, startOfWeek, eachWeekOfInterval } from "date-fns";
 import { useRef, useCallback } from "react";
 
@@ -155,6 +156,8 @@ export default function SkillDetailPage() {
             </div>
           </div>
         </div>
+
+        <SkillFocusMemo skill={skill} />
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <StatCard
