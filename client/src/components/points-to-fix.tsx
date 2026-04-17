@@ -269,9 +269,6 @@ export function PointsToFix() {
                       const groupPoints = groupsBySkill.get(sid) || [];
                       const header = (
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-950/30 shrink-0">
-                            <Target className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                          </div>
                           <Badge
                             variant="outline"
                             className="px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm border-border/60 text-muted-foreground shrink-0"
@@ -296,9 +293,6 @@ export function PointsToFix() {
                         "card-unlinked",
                         "group-unlinked",
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800/30 shrink-0">
-                            <Target className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                          </div>
                           <span className="text-sm font-semibold text-foreground truncate">
                             General
                           </span>
