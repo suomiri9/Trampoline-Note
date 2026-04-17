@@ -108,30 +108,29 @@ export default function StatsPage() {
     });
     xTickInterval = Math.max(1, Math.floor(days.length / 12));
   } else {
-    useWeekly = true;
     const allKeys = Object.keys(ddByDate).sort();
     if (allKeys.length > 0) {
-      const earliest = startOfWeek(parseISO(allKeys[0]), { weekStartsOn: 1 });
-      const weeks = eachWeekOfInterval({ start: earliest, end: today }, { weekStartsOn: 1 });
+      const earliest = parseISO(allKeys[0]);
+      const days = eachDayOfInterval({ start: earliest, end: today });
       periodLabel = `${format(earliest, "d MMM yyyy")} – ${format(today, "d MMM yyyy")}`;
-      chartData = weeks.map(weekStart => {
-        const wEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-        const label = format(weekStart, "d MMM");
-        const totalDD = Object.entries(ddByDate)
-          .filter(([k]) => {
-            const d = parseISO(k);
-            return isWithinInterval(d, { start: weekStart, end: wEnd });
-          })
-          .reduce((sum, [, v]) => sum + v.difficulty, 0);
-        const totalSess = Object.entries(ddByDate)
-          .filter(([k]) => {
-            const d = parseISO(k);
-            return isWithinInterval(d, { start: weekStart, end: wEnd });
-          })
-          .reduce((sum, [, v]) => sum + v.sessions, 0);
-        return { date: label, difficulty: totalDD > 0 ? totalDD : null, sessions: totalSess };
+      let lastMonth = -1;
+      let lastYear = -1;
+      chartData = days.map(day => {
+        const key = format(day, "yyyy-MM-dd");
+        const found = ddByDate[key];
+        const m = day.getMonth();
+        const y = day.getFullYear();
+        let label = "";
+        if (y !== lastYear) {
+          label = format(day, "MMM yyyy");
+        } else if (m !== lastMonth) {
+          label = format(day, "MMM");
+        }
+        lastMonth = m;
+        lastYear = y;
+        return { date: label, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0 };
       });
-      xTickInterval = Math.max(1, Math.floor(weeks.length / 12));
+      xTickInterval = Math.max(1, Math.floor(days.length / 12));
     } else {
       periodLabel = "No data yet";
     }
