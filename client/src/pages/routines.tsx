@@ -49,6 +49,7 @@ export default function RoutinesPage() {
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
   const [name, setName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<{ id: number; name: string } | null>(null);
   const [selectedSkillIds, setSelectedSkillIds] = useState<(number | null)[]>(new Array(10).fill(null));
   const [showArchived, setShowArchived] = useState(false);
 
@@ -56,7 +57,17 @@ export default function RoutinesPage() {
   const archivedCount = allRoutines ? allRoutines.filter(r => r.archived === 1).length : 0;
 
   const toggleArchive = async (routine: Routine) => {
-    await updateRoutine({ id: routine.id, archived: routine.archived === 1 ? 0 : 1 });
+    if (routine.archived === 1) {
+      await updateRoutine({ id: routine.id, archived: 0 });
+    } else {
+      setArchiveTarget({ id: routine.id, name: routine.name });
+    }
+  };
+
+  const confirmArchive = async () => {
+    if (!archiveTarget) return;
+    await updateRoutine({ id: archiveTarget.id, archived: 1 });
+    setArchiveTarget(null);
   };
 
   const sensors = useDndSensors();
@@ -277,6 +288,16 @@ export default function RoutinesPage() {
         description="This action cannot be undone."
         onConfirm={() => { if (deleteTarget) { deleteRoutine(deleteTarget.id); setDeleteTarget(null); } }}
         confirmLabel="Delete"
+      />
+
+      <ConfirmDialog
+        open={!!archiveTarget}
+        onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}
+        title={`Archive "${archiveTarget?.name}"?`}
+        description="This routine will be hidden from active lists. You can restore it later from the Archived view."
+        onConfirm={confirmArchive}
+        confirmLabel="Archive"
+        variant="default"
       />
     </PageLayout>
   );

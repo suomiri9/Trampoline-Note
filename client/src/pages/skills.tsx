@@ -77,6 +77,7 @@ export default function SkillsPage() {
   const [connCode, setConnCode] = useState("");
   const [connSkillIds, setConnSkillIds] = useState<number[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<{ id: number; name: string; kind: string } | null>(null);
 
   const sensors = useDndSensors();
 
@@ -91,7 +92,18 @@ export default function SkillsPage() {
   const activeConnections = allItems ? sortByOrder(allItems.filter(i => i.isDrill === 2 && i.archived !== 1)) : [];
 
   const toggleArchive = async (skill: Skill) => {
-    await updateSkill({ id: skill.id, archived: skill.archived === 1 ? 0 : 1 });
+    if (skill.archived === 1) {
+      await updateSkill({ id: skill.id, archived: 0 });
+    } else {
+      const kind = skill.isDrill === 1 ? "drill" : skill.isDrill === 2 ? "connection" : "skill";
+      setArchiveTarget({ id: skill.id, name: skill.name, kind });
+    }
+  };
+
+  const confirmArchive = async () => {
+    if (!archiveTarget) return;
+    await updateSkill({ id: archiveTarget.id, archived: 1 });
+    setArchiveTarget(null);
   };
 
   const handleDragEnd = (items: Skill[] | undefined) => (event: DragEndEvent) => {
@@ -653,6 +665,16 @@ export default function SkillsPage() {
         description="This action cannot be undone."
         onConfirm={() => { if (deleteTarget) { deleteSkill(deleteTarget.id); setDeleteTarget(null); } }}
         confirmLabel="Delete"
+      />
+
+      <ConfirmDialog
+        open={!!archiveTarget}
+        onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}
+        title={`Archive "${archiveTarget?.name}"?`}
+        description={`This ${archiveTarget?.kind ?? "item"} will be hidden from active lists. You can restore it later from the Archived view.`}
+        onConfirm={confirmArchive}
+        confirmLabel="Archive"
+        variant="default"
       />
     </PageLayout>
   );
