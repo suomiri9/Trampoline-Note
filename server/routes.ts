@@ -379,6 +379,38 @@ export async function registerRoutes(
     }
   });
 
+  // Focus points
+  app.get("/api/focus-points", isAuthenticated, async (req, res) => {
+    const list = await storage.getFocusPoints(getUserId(req));
+    res.json(list);
+  });
+
+  app.post("/api/focus-points", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z.object({
+        text: z.string().trim().min(1).max(500),
+        skillIds: z.array(z.number().int().positive()).default([]),
+      });
+      const input = schema.parse(req.body);
+      const created = await storage.createFocusPoint(getUserId(req), input);
+      res.status(201).json(created);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/focus-points/:id", isAuthenticated, async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ message: "Invalid focus point ID" });
+    }
+    await storage.deleteFocusPoint(id, getUserId(req));
+    res.status(204).send();
+  });
+
   app.patch("/api/auth/focus-memo", isAuthenticated, async (req, res) => {
     try {
       const schema = z.object({ focusMemo: z.string().max(1000) });

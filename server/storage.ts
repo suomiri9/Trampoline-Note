@@ -4,6 +4,9 @@ import {
   skills,
   routines,
   scores,
+  focusPoints,
+  type FocusPoint,
+  type InsertFocusPoint,
   type CreateNoteRequest,
   type UpdateNoteRequest,
   type NoteResponse,
@@ -41,6 +44,11 @@ export interface IStorage {
   createScore(userId: string, score: InsertScore): Promise<Score>;
   updateScore(id: number, userId: string, updates: Partial<InsertScore>): Promise<Score | undefined>;
   deleteScore(id: number, userId: string): Promise<void>;
+
+  // Focus points
+  getFocusPoints(userId: string): Promise<FocusPoint[]>;
+  createFocusPoint(userId: string, fp: InsertFocusPoint): Promise<FocusPoint>;
+  deleteFocusPoint(id: number, userId: string): Promise<void>;
 
   // Reorder
   reorderSkills(userId: string, orderedIds: number[]): Promise<void>;
@@ -173,6 +181,23 @@ export class DatabaseStorage implements IStorage {
 
   async deleteScore(id: number, userId: string): Promise<void> {
     await db.delete(scores).where(and(eq(scores.id, id), eq(scores.userId, userId)));
+  }
+
+  async getFocusPoints(userId: string): Promise<FocusPoint[]> {
+    return await db.select().from(focusPoints)
+      .where(eq(focusPoints.userId, userId))
+      .orderBy(desc(focusPoints.createdAt));
+  }
+
+  async createFocusPoint(userId: string, fp: InsertFocusPoint): Promise<FocusPoint> {
+    const [created] = await db.insert(focusPoints)
+      .values({ ...fp, userId, skillIds: fp.skillIds ?? [] })
+      .returning();
+    return created;
+  }
+
+  async deleteFocusPoint(id: number, userId: string): Promise<void> {
+    await db.delete(focusPoints).where(and(eq(focusPoints.id, id), eq(focusPoints.userId, userId)));
   }
 
   async reorderSkills(userId: string, orderedIds: number[]): Promise<void> {
