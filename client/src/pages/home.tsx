@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Plus, BookOpen, Loader2, Activity, LayoutDashboard, Target } from "lucide-react";
+import { Plus, BookOpen, Loader2, Activity, LayoutDashboard } from "lucide-react";
 import { useNotes } from "@/hooks/use-notes";
 import { NoteCard } from "@/components/note-card";
 import { NoteDialog } from "@/components/note-dialog";
 import { FocusMemo } from "@/components/focus-memo";
-import { PointsToFocusDialog } from "@/components/points-to-focus-dialog";
 import { PageLayout } from "@/components/page-layout";
 import { Button } from "@/components/ui/button";
 import { type Note } from "@shared/schema";
@@ -12,7 +11,6 @@ import { type Note } from "@shared/schema";
 export default function Home() {
   const { data: notes, isLoading, isError, error } = useNotes();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isFocusDialogOpen, setIsFocusDialogOpen] = useState(false);
   const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
 
   const handleCreateNew = () => {
@@ -42,25 +40,13 @@ export default function Home() {
             <p className="text-muted-foreground text-sm">Track your trampoline sessions, skills, and progress.</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={() => setIsFocusDialogOpen(true)}
-            variant="outline"
-            className="rounded-2xl h-12 px-4 sm:px-5 font-semibold border-border hover:bg-secondary active:scale-[0.98] transition-all flex items-center gap-2"
-            data-testid="button-points-to-focus"
-          >
-            <Target className="w-5 h-5" />
-            <span className="hidden sm:inline">Points to Focus</span>
-          </Button>
-          <Button
-            onClick={handleCreateNew}
-            className="rounded-2xl h-12 px-6 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition-all btn-3d flex items-center gap-2"
-            data-testid="button-start-training"
-          >
-            <Plus className="w-5 h-5" />
-            Start Training
-          </Button>
-        </div>
+        <Button
+          onClick={handleCreateNew}
+          className="rounded-2xl h-12 px-6 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition-all btn-3d flex items-center gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          Start Training
+        </Button>
       </div>
 
       <FocusMemo />
@@ -111,11 +97,6 @@ export default function Home() {
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         noteToEdit={noteToEdit}
-      />
-
-      <PointsToFocusDialog
-        open={isFocusDialogOpen}
-        onOpenChange={setIsFocusDialogOpen}
       />
     </PageLayout>
   );

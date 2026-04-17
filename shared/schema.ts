@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, date, real, varchar, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, date, real, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -60,18 +60,6 @@ export const scores = pgTable("scores", {
   totalVol: real("total_vol"),
   attemptVol: integer("attempt_vol"), // null = full 10 skills, 1-9 = partial attempt
 });
-
-export const focusPoints = pgTable("focus_points", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id"),
-  text: text("text").notNull(),
-  skillIds: integer("skill_ids").array().notNull().default([]),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
-
-export const insertFocusPointSchema = createInsertSchema(focusPoints).omit({ id: true, userId: true, createdAt: true });
-export type FocusPoint = typeof focusPoints.$inferSelect;
-export type InsertFocusPoint = z.infer<typeof insertFocusPointSchema>;
 
 export const insertNoteSchema = createInsertSchema(notes).omit({ id: true });
 export const insertSkillSchema = createInsertSchema(skills).omit({ id: true });
