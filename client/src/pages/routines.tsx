@@ -47,6 +47,7 @@ export default function RoutinesPage() {
   
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
   const [name, setName] = useState("");
+  const [code, setCode] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [selectedSkillIds, setSelectedSkillIds] = useState<(number | null)[]>(new Array(10).fill(null));
 
@@ -74,29 +75,34 @@ export default function RoutinesPage() {
       await updateRoutine({
         id: editingRoutine.id,
         name,
+        code: code || null,
         skillIds: selectedSkillIds as number[],
       });
       setEditingRoutine(null);
     } else {
       await createRoutine({
         name,
+        code: code || null,
         skillIds: selectedSkillIds as number[],
       });
     }
     
     setName("");
+    setCode("");
     setSelectedSkillIds(new Array(10).fill(null));
   };
 
   const startEditing = (routine: Routine) => {
     setEditingRoutine(routine);
     setName(routine.name);
+    setCode(routine.code || "");
     setSelectedSkillIds(routine.skillIds);
   };
 
   const cancelEditing = () => {
     setEditingRoutine(null);
     setName("");
+    setCode("");
     setSelectedSkillIds(new Array(10).fill(null));
   };
 
@@ -121,11 +127,20 @@ export default function RoutinesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Input 
-              placeholder="Routine Name" 
-              value={name} 
-              onChange={e => setName(e.target.value)} 
-            />
+            <div className="flex gap-2">
+              <Input 
+                placeholder="Routine Name" 
+                value={name} 
+                onChange={e => setName(e.target.value)} 
+                className="flex-1"
+              />
+              <Input 
+                placeholder="Code" 
+                value={code} 
+                onChange={e => setCode(e.target.value)} 
+                className="w-24 font-mono"
+              />
+            </div>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={selectedSkillIds.map((_, i) => `slot-${i}`)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-2">
