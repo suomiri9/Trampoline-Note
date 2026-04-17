@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, GripVertical, Pencil, X, Layers } from "lucide-react";
+import { Trash2, Plus, GripVertical, Pencil, X, Layers, Archive, ArchiveRestore } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { type Routine } from "@shared/schema";
 import { cn } from "@/lib/utils";
@@ -42,13 +42,21 @@ function SortableSkillSlot({ id, children }: { id: string; children: React.React
 export default function RoutinesPage() {
   const [, navigate] = useLocation();
   const { data: allItems } = useSkills();
-  const skills = allItems?.filter(item => item.isDrill === 0);
-  const { data: routines, createRoutine, deleteRoutine, updateRoutine, isCreating, isUpdating } = useRoutines();
+  const skills = allItems?.filter(item => item.isDrill === 0 && item.archived !== 1);
+  const { data: allRoutines, createRoutine, deleteRoutine, updateRoutine, isCreating, isUpdating } = useRoutines();
   
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
   const [name, setName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [selectedSkillIds, setSelectedSkillIds] = useState<(number | null)[]>(new Array(10).fill(null));
+  const [showArchived, setShowArchived] = useState(false);
+
+  const routines = allRoutines?.filter(r => showArchived ? r.archived === 1 : r.archived !== 1);
+  const archivedCount = allRoutines ? allRoutines.filter(r => r.archived === 1).length : 0;
+
+  const toggleArchive = async (routine: Routine) => {
+    await updateRoutine({ id: routine.id, archived: routine.archived === 1 ? 0 : 1 });
+  };
 
   const sensors = useDndSensors();
 
@@ -107,10 +115,19 @@ export default function RoutinesPage() {
         <div className="p-3 bg-zinc-100 dark:bg-zinc-800/30 rounded-2xl shrink-0 icon-3d">
           <Layers className="w-6 h-6 text-zinc-600" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-display font-bold">Routines</h1>
           <p className="text-muted-foreground text-sm">Build and manage your competition routines.</p>
         </div>
+        <Button
+          variant={showArchived ? "default" : "outline"}
+          size="sm"
+          onClick={() => { setShowArchived(v => !v); cancelEditing(); }}
+          className="gap-1.5 shrink-0"
+          data-testid="button-toggle-archived"
+        >
+          {showArchived ? <><ArchiveRestore className="h-4 w-4" /> Active</> : <><Archive className="h-4 w-4" /> Archived{archivedCount > 0 ? ` (${archivedCount})` : ""}</>}
+        </Button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <Card className="md:col-span-1">
@@ -200,6 +217,9 @@ export default function RoutinesPage() {
                     <div className="space-x-2" onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" onClick={() => startEditing(routine)}>
                         <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => toggleArchive(routine)} data-testid={`button-archive-routine-${routine.id}`}>
+                        {routine.archived === 1 ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: routine.id, name: routine.name })}>
                         <Trash2 className="w-4 h-4 text-destructive" />

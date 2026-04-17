@@ -23,6 +23,7 @@ export const skills = pgTable("skills", {
   isDrill: integer("is_drill").notNull().default(0), // 0 for skill, 1 for drill, 2 for frequent connection
   skillIds: integer("skill_ids").array(), // For frequent connections (type 2)
   sortOrder: integer("sort_order"),
+  archived: integer("archived").notNull().default(0), // 0 = active, 1 = archived
 });
 
 export const routines = pgTable("routines", {
@@ -31,6 +32,7 @@ export const routines = pgTable("routines", {
   name: text("name").notNull(),
   code: text("code"),
   skillIds: integer("skill_ids").array().notNull(), // Array of 10 skill IDs
+  archived: integer("archived").notNull().default(0), // 0 = active, 1 = archived
 });
 
 export const scores = pgTable("scores", {

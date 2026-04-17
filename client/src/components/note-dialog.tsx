@@ -483,7 +483,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   <Select key={selectedSkills.length} onValueChange={addSkill}>
                     <SelectTrigger className="rounded-xl h-11 flex-1"><SelectValue placeholder="Add a skill or drill..." /></SelectTrigger>
                     <SelectContent>
-                      {allItems?.filter(s => s.isDrill !== 2).slice().sort((a, b) => {
+                      {allItems?.filter(s => s.isDrill !== 2 && s.archived !== 1).slice().sort((a, b) => {
                         const groupOrder = (s: typeof a) => s.isDrill === 0 ? 0 : 1;
                         const gA = groupOrder(a), gB = groupOrder(b);
                         if (gA !== gB) return gA - gB;
@@ -514,7 +514,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   }}>
                     <SelectTrigger className="rounded-xl h-11 border-primary/20 bg-primary/5 flex-1"><SelectValue placeholder="Routine / Connection..." /></SelectTrigger>
                     <SelectContent>
-                      {routines?.map(routine => (
+                      {routines?.filter(r => r.archived !== 1).map(routine => (
                         <SelectItem key={`r-${routine.id}`} value={routine.id.toString()}>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="font-mono text-[10px] bg-primary/10 border-primary/20 text-primary">Routine</Badge>
@@ -522,7 +522,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           </div>
                         </SelectItem>
                       ))}
-                      {allItems?.filter(s => s.isDrill === 2 && s.skillIds).map(conn => (
+                      {allItems?.filter(s => s.isDrill === 2 && s.skillIds && s.archived !== 1).map(conn => (
                         <SelectItem key={`c-${conn.id}`} value={`conn-${conn.id}`}>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="font-mono text-[10px] bg-red-100 border-red-200 text-red-500 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">Connection</Badge>
@@ -580,7 +580,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     <Select key={`conn-skill-${newConnSkillIds.length}`} onValueChange={(v) => setNewConnSkillIds(prev => [...prev, parseInt(v)])}>
                       <SelectTrigger className="rounded-lg h-8 text-xs"><SelectValue placeholder="Add skill to connection..." /></SelectTrigger>
                       <SelectContent>
-                        {allItems?.filter(s => s.isDrill === 0).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
+                        {allItems?.filter(s => s.isDrill === 0 && s.archived !== 1).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
                           <SelectItem key={s.id} value={s.id.toString()}><span className="text-xs">{s.code} — {s.name}</span></SelectItem>
                         ))}
                       </SelectContent>
@@ -612,7 +612,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       <Select key={`routine-skill-${newRoutineSkillIds.length}`} onValueChange={(v) => setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, parseInt(v)] : prev)} disabled={newRoutineSkillIds.length >= 10}>
                         <SelectTrigger className="rounded-lg h-8 text-xs flex-1" disabled={newRoutineSkillIds.length >= 10}><SelectValue placeholder={newRoutineSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."} /></SelectTrigger>
                         <SelectContent>
-                          {allItems?.filter(s => s.isDrill === 0).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
+                          {allItems?.filter(s => s.isDrill === 0 && s.archived !== 1).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
                             <SelectItem key={s.id} value={s.id.toString()}><span className="text-xs">{s.code} — {s.name}</span></SelectItem>
                           ))}
                         </SelectContent>

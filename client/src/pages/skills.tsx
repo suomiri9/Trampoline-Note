@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Pencil, X, Target, GripVertical, ArrowUpDown, Check } from "lucide-react";
+import { Trash2, Plus, Pencil, X, Target, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertSkillSchema, type Skill } from "@shared/schema";
@@ -70,6 +70,7 @@ export default function SkillsPage() {
   const { data: allItems, createSkill, deleteSkill, updateSkill, reorderSkills, isCreating, isUpdating } = useSkills();
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   const [reorderMode, setReorderMode] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   
   const [connName, setConnName] = useState("");
   const [connCode, setConnCode] = useState("");
@@ -78,9 +79,15 @@ export default function SkillsPage() {
 
   const sensors = useDndSensors();
 
-  const skills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 0)) : undefined;
-  const drills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 1)) : undefined;
-  const frequentConnections = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 2)) : undefined;
+  const archivedFilter = (item: Skill) => showArchived ? item.archived === 1 : item.archived !== 1;
+  const skills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 0 && archivedFilter(item))) : undefined;
+  const drills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 1 && archivedFilter(item))) : undefined;
+  const frequentConnections = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 2 && archivedFilter(item))) : undefined;
+  const archivedCount = allItems ? allItems.filter(i => i.archived === 1).length : 0;
+
+  const toggleArchive = async (skill: Skill) => {
+    await updateSkill({ id: skill.id, archived: skill.archived === 1 ? 0 : 1 });
+  };
 
   const handleDragEnd = (items: Skill[] | undefined) => (event: DragEndEvent) => {
     if (!items) return;
@@ -230,10 +237,19 @@ export default function SkillsPage() {
         <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-2xl shrink-0 icon-3d">
           <Target className="w-6 h-6 text-red-500" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-display font-bold">Skills</h1>
           <p className="text-muted-foreground text-sm">Manage your skills, drills, and frequent connections.</p>
         </div>
+        <Button
+          variant={showArchived ? "default" : "outline"}
+          size="sm"
+          onClick={() => { setShowArchived(v => !v); cancelEditing(); setReorderMode(false); }}
+          className="gap-1.5 shrink-0"
+          data-testid="button-toggle-archived"
+        >
+          {showArchived ? <><ArchiveRestore className="h-4 w-4" /> Active</> : <><Archive className="h-4 w-4" /> Archived{archivedCount > 0 ? ` (${archivedCount})` : ""}</>}
+        </Button>
       </div>
       <Tabs defaultValue="skills" className="space-y-8" onValueChange={() => { cancelEditing(); setReorderMode(false); }}>
         <TabsList className="grid w-full max-w-lg grid-cols-3">
@@ -322,6 +338,7 @@ export default function SkillsPage() {
                             {!reorderMode && (
                               <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
                                 <Button variant="ghost" size="icon" onClick={() => startEditing(skill)}><Pencil className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => toggleArchive(skill)} data-testid={`button-archive-skill-${skill.id}`}>{skill.archived === 1 ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</Button>
                                 <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: skill.id, name: skill.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                               </TableCell>
                             )}
@@ -413,6 +430,7 @@ export default function SkillsPage() {
                             {!reorderMode && (
                               <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
                                 <Button variant="ghost" size="icon" onClick={() => startEditing(drill)}><Pencil className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => toggleArchive(drill)} data-testid={`button-archive-skill-${drill.id}`}>{drill.archived === 1 ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</Button>
                                 <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: drill.id, name: drill.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                               </TableCell>
                             )}
@@ -527,6 +545,7 @@ export default function SkillsPage() {
                             {!reorderMode && (
                               <TableCell className="text-right space-x-2">
                                 <Button variant="ghost" size="icon" onClick={() => startEditing(conn)}><Pencil className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => toggleArchive(conn)} data-testid={`button-archive-skill-${conn.id}`}>{conn.archived === 1 ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</Button>
                                 <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ id: conn.id, name: conn.name })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                               </TableCell>
                             )}

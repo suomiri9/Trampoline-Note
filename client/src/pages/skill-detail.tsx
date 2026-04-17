@@ -27,7 +27,7 @@ export default function SkillDetailPage() {
 
   const currentType = skill?.isDrill ?? 0;
   const orderedIds = allSkills
-    ? allSkills.filter(s => s.isDrill === currentType).map(s => s.id)
+    ? allSkills.filter(s => s.isDrill === currentType && (s.archived !== 1 || s.id === skillId)).map(s => s.id)
     : [];
   const currentIndex = orderedIds.indexOf(skillId);
 

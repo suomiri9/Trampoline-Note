@@ -313,7 +313,7 @@ export default function ScorePage() {
                         <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value?.toString()}>
                           <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
                           <SelectContent>
-                            {routines?.map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>)}
+                            {routines?.filter(r => r.archived !== 1 || r.id === field.value).map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </FormItem>
@@ -369,7 +369,7 @@ export default function ScorePage() {
                           <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value?.toString()}>
                             <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
                             <SelectContent>
-                              {routines?.map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>)}
+                              {routines?.filter(r => r.archived !== 1 || r.id === field.value).map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </FormItem>

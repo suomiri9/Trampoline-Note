@@ -30,7 +30,7 @@ export default function RoutineDetailPage() {
   const { data: routines, isLoading: routinesLoading } = useRoutines();
   const routine = routines?.find(r => r.id === routineId);
 
-  const orderedIds = routines ? routines.map(r => r.id) : [];
+  const orderedIds = routines ? routines.filter(r => r.archived !== 1 || r.id === routineId).map(r => r.id) : [];
   const currentIndex = orderedIds.indexOf(routineId);
 
   const goTo = useCallback((id: number) => navigate(`/routines/${id}`, { replace: true }), [navigate]);

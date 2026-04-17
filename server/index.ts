@@ -70,6 +70,8 @@ async function runMigrations() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS focus_memo text;
       ALTER TABLE skills ADD COLUMN IF NOT EXISTS sort_order integer;
       ALTER TABLE routines ADD COLUMN IF NOT EXISTS code text;
+      ALTER TABLE skills ADD COLUMN IF NOT EXISTS archived integer NOT NULL DEFAULT 0;
+      ALTER TABLE routines ADD COLUMN IF NOT EXISTS archived integer NOT NULL DEFAULT 0;
     `);
     console.log("Database migrations applied");
   } catch (err) {
