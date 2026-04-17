@@ -544,6 +544,26 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         <button type="button" onClick={() => setShowNewSkill(false)}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
                       </div>
                     </div>
+                    {(() => {
+                      const dupItems = allItems?.filter(s => (newSkillIsDrill ? s.isDrill === 1 : s.isDrill === 0) && s.archived !== 1) || [];
+                      if (dupItems.length === 0) return null;
+                      return (
+                        <Select value="" onValueChange={(v) => {
+                          const src = dupItems.find(s => s.id === parseInt(v));
+                          if (!src) return;
+                          setNewSkillName(`${src.name} (copy)`);
+                          setNewSkillCode(src.code);
+                          setNewSkillDD(src.difficulty.toString());
+                        }}>
+                          <SelectTrigger className="rounded-lg h-8 text-xs" data-testid="select-duplicate-inline-skill"><SelectValue placeholder={`Duplicate from existing ${newSkillIsDrill ? "drill" : "skill"}...`} /></SelectTrigger>
+                          <SelectContent>
+                            {dupItems.map(s => (
+                              <SelectItem key={s.id} value={s.id.toString()}><span className="text-xs"><span className="font-mono">{s.code}</span> — {s.name}</span></SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
                     <div className="flex gap-2">
                       <Input placeholder="Name" value={newSkillName} onChange={e => setNewSkillName(e.target.value)} className="rounded-lg h-9 text-xs flex-1" />
                       <Input placeholder="Code" value={newSkillCode} onChange={e => setNewSkillCode(e.target.value)} className="rounded-lg h-9 text-xs w-20" />
@@ -567,6 +587,26 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         <button type="button" onClick={() => setShowNewConn(false)}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
                       </div>
                     </div>
+                    {(() => {
+                      const dupConns = allItems?.filter(s => s.isDrill === 2 && s.archived !== 1) || [];
+                      if (dupConns.length === 0) return null;
+                      return (
+                        <Select value="" onValueChange={(v) => {
+                          const src = dupConns.find(s => s.id === parseInt(v));
+                          if (!src) return;
+                          setNewConnName(`${src.name} (copy)`);
+                          setNewConnCode(src.code);
+                          setNewConnSkillIds(src.skillIds || []);
+                        }}>
+                          <SelectTrigger className="rounded-lg h-8 text-xs" data-testid="select-duplicate-inline-connection"><SelectValue placeholder="Duplicate from existing connection..." /></SelectTrigger>
+                          <SelectContent>
+                            {dupConns.map(s => (
+                              <SelectItem key={s.id} value={s.id.toString()}><span className="text-xs"><span className="font-mono">{s.code}</span> — {s.name}</span></SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
                     <div className="flex gap-2">
                       <Input placeholder="Name" value={newConnName} onChange={e => setNewConnName(e.target.value)} className="rounded-lg h-9 text-xs flex-1" />
                       <Input placeholder="Code" value={newConnCode} onChange={e => setNewConnCode(e.target.value)} className="rounded-lg h-9 text-xs w-20" />
@@ -604,6 +644,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         <button type="button" onClick={() => setShowNewRoutine(false)}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
                       </div>
                     </div>
+                    {(() => {
+                      const dupRoutines = routines?.filter(r => r.archived !== 1) || [];
+                      if (dupRoutines.length === 0) return null;
+                      return (
+                        <Select value="" onValueChange={(v) => {
+                          const src = dupRoutines.find(r => r.id === parseInt(v));
+                          if (!src) return;
+                          setNewRoutineName(`${src.name} (copy)`);
+                          setNewRoutineSkillIds(src.skillIds.slice(0, 10));
+                        }}>
+                          <SelectTrigger className="rounded-lg h-8 text-xs" data-testid="select-duplicate-inline-routine"><SelectValue placeholder="Duplicate from existing routine..." /></SelectTrigger>
+                          <SelectContent>
+                            {dupRoutines.map(r => (
+                              <SelectItem key={r.id} value={r.id.toString()}><span className="text-xs">{r.name}</span></SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
                     <div className="flex gap-2">
                       <Input placeholder="Name" value={newRoutineName} onChange={e => setNewRoutineName(e.target.value)} className="rounded-lg h-9 text-xs flex-1" />
                       <Input placeholder="Code" value={newRoutineCode} onChange={e => setNewRoutineCode(e.target.value)} className="rounded-lg h-9 text-xs w-20" />

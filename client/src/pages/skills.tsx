@@ -86,6 +86,10 @@ export default function SkillsPage() {
   const frequentConnections = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 2 && archivedFilter(item))) : undefined;
   const archivedCount = allItems ? allItems.filter(i => i.archived === 1).length : 0;
 
+  const activeSkills = allItems ? sortByOrder(allItems.filter(i => i.isDrill === 0 && i.archived !== 1)) : [];
+  const activeDrills = allItems ? sortByOrder(allItems.filter(i => i.isDrill === 1 && i.archived !== 1)) : [];
+  const activeConnections = allItems ? sortByOrder(allItems.filter(i => i.isDrill === 2 && i.archived !== 1)) : [];
+
   const toggleArchive = async (skill: Skill) => {
     await updateSkill({ id: skill.id, archived: skill.archived === 1 ? 0 : 1 });
   };
@@ -273,6 +277,25 @@ export default function SkillsPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
+                  {!editingSkill && activeSkills.length > 0 && (
+                    <div className="mb-3">
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Duplicate from existing</label>
+                      <Select value="" onValueChange={(v) => {
+                        const src = activeSkills.find(s => s.id === parseInt(v));
+                        if (!src) return;
+                        skillForm.reset({ name: `${src.name} (copy)`, code: src.code, difficulty: src.difficulty, isDrill: 0 });
+                      }}>
+                        <SelectTrigger data-testid="select-duplicate-skill"><SelectValue placeholder="Pick a skill to copy..." /></SelectTrigger>
+                        <SelectContent>
+                          {activeSkills.map(s => (
+                            <SelectItem key={s.id} value={s.id.toString()}>
+                              <span className="font-mono mr-2">{s.code}</span> {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <Form {...skillForm}>
                     <form onSubmit={skillForm.handleSubmit(onSkillSubmit)} className="space-y-3">
                       <FormField control={skillForm.control} name="name" render={({ field }) => (
@@ -372,6 +395,25 @@ export default function SkillsPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
+                  {!editingSkill && activeDrills.length > 0 && (
+                    <div className="mb-3">
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Duplicate from existing</label>
+                      <Select value="" onValueChange={(v) => {
+                        const src = activeDrills.find(s => s.id === parseInt(v));
+                        if (!src) return;
+                        drillForm.reset({ name: `${src.name} (copy)`, code: src.code, difficulty: src.difficulty, isDrill: 1 });
+                      }}>
+                        <SelectTrigger data-testid="select-duplicate-drill"><SelectValue placeholder="Pick a drill to copy..." /></SelectTrigger>
+                        <SelectContent>
+                          {activeDrills.map(s => (
+                            <SelectItem key={s.id} value={s.id.toString()}>
+                              <span className="font-mono mr-2">{s.code}</span> {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <Form {...drillForm}>
                     <form onSubmit={drillForm.handleSubmit(onDrillSubmit)} className="space-y-3">
                       <FormField control={drillForm.control} name="name" render={({ field }) => (
@@ -472,6 +514,27 @@ export default function SkillsPage() {
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
                   <div className="space-y-3">
+                    {!editingSkill && activeConnections.length > 0 && (
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Duplicate from existing</label>
+                        <Select value="" onValueChange={(v) => {
+                          const src = activeConnections.find(s => s.id === parseInt(v));
+                          if (!src) return;
+                          setConnName(`${src.name} (copy)`);
+                          setConnCode(src.code);
+                          setConnSkillIds(src.skillIds || []);
+                        }}>
+                          <SelectTrigger data-testid="select-duplicate-connection"><SelectValue placeholder="Pick a connection to copy..." /></SelectTrigger>
+                          <SelectContent>
+                            {activeConnections.map(s => (
+                              <SelectItem key={s.id} value={s.id.toString()}>
+                                <span className="font-mono mr-2">{s.code}</span> {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Connection Name</label>
                       <Input value={connName} onChange={e => setConnName(e.target.value)} placeholder="e.g. Barani + Back Tuck" />

@@ -139,6 +139,26 @@ export default function RoutinesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {!editingRoutine && allRoutines && allRoutines.filter(r => r.archived !== 1).length > 0 && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Duplicate from existing</label>
+                <Select value="" onValueChange={(v) => {
+                  const src = allRoutines?.find(r => r.id === parseInt(v));
+                  if (!src) return;
+                  setName(`${src.name} (copy)`);
+                  const slots: (number | null)[] = new Array(10).fill(null);
+                  src.skillIds.slice(0, 10).forEach((id, i) => { slots[i] = id; });
+                  setSelectedSkillIds(slots);
+                }}>
+                  <SelectTrigger data-testid="select-duplicate-routine"><SelectValue placeholder="Pick a routine to copy..." /></SelectTrigger>
+                  <SelectContent>
+                    {allRoutines.filter(r => r.archived !== 1).map(r => (
+                      <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Input 
               placeholder="Routine Name" 
               value={name} 
