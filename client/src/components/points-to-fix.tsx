@@ -283,7 +283,7 @@ export function PointsToFix() {
                         No skills match "{searchQuery}".
                       </p>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+                      <div className="grid gap-3 items-start [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
                         {filteredSkillIds.map((sid) => {
                           const s = skillById(sid);
                           const groupPoints = groupsBySkill.get(sid) || [];
