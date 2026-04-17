@@ -4,7 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useSkills } from "@/hooks/use-skills";
 import { useToast } from "@/hooks/use-toast";
-import { Target, Plus, X, Trash2, Loader2 } from "lucide-react";
+import { Target, Plus, X, Trash2, Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -61,11 +61,13 @@ export function PointsToFix() {
   const [open, setOpen] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [draftSkillIds, setDraftSkillIds] = useState<number[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (!open) {
       setDraftName("");
       setDraftSkillIds([]);
+      setSearchQuery("");
     }
   }, [open]);
 
@@ -152,7 +154,7 @@ export function PointsToFix() {
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Target className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -189,6 +191,18 @@ export function PointsToFix() {
                 for (const id of groupsBySkill.keys()) {
                   if (!orderedSkillIds.includes(id)) orderedSkillIds.push(id);
                 }
+
+                const q = searchQuery.trim().toLowerCase();
+                const filteredSkillIds = q
+                  ? orderedSkillIds.filter((id) => {
+                      const s = skillById(id);
+                      const code = (s?.code || "").toLowerCase();
+                      const name = (s?.name || "").toLowerCase();
+                      return code.includes(q) || name.includes(q);
+                    })
+                  : orderedSkillIds;
+                const showUnlinked = !q && unlinked.length > 0;
+                const noResults = q && filteredSkillIds.length === 0;
 
                 const renderPointRow = (p: PointToFix, currentSkillId: number | null) => {
                   const otherSkills =
@@ -264,42 +278,70 @@ export function PointsToFix() {
 
                 return (
                   <div className="space-y-3">
-                    {orderedSkillIds.map((sid) => {
-                      const s = skillById(sid);
-                      const groupPoints = groupsBySkill.get(sid) || [];
-                      const header = (
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Badge
-                            variant="outline"
-                            className="px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm border-border/60 text-muted-foreground shrink-0"
-                          >
-                            {s?.code || "?"}
-                          </Badge>
-                          <span className="text-sm font-semibold text-foreground truncate">
-                            {s?.name || "Unknown skill"}
-                          </span>
-                        </div>
-                      );
-                      return renderCard(
-                        `card-${sid}`,
-                        `group-skill-${sid}`,
-                        header,
-                        groupPoints,
-                        sid,
-                      );
-                    })}
-                    {unlinked.length > 0 &&
-                      renderCard(
-                        "card-unlinked",
-                        "group-unlinked",
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-sm font-semibold text-foreground truncate">
-                            General
-                          </span>
-                        </div>,
-                        unlinked,
-                        null,
+                    <div className="relative">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <Input
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search by skill name or code..."
+                        className="pl-9 pr-9"
+                        data-testid="input-search-skill"
+                      />
+                      {searchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery("")}
+                          data-testid="button-clear-search"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       )}
+                    </div>
+                    {noResults ? (
+                      <p className="text-sm text-muted-foreground italic py-4 text-center">
+                        No skills match "{searchQuery}".
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+                        {filteredSkillIds.map((sid) => {
+                          const s = skillById(sid);
+                          const groupPoints = groupsBySkill.get(sid) || [];
+                          const header = (
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Badge
+                                variant="outline"
+                                className="px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm border-border/60 text-muted-foreground shrink-0"
+                              >
+                                {s?.code || "?"}
+                              </Badge>
+                              <span className="text-sm font-semibold text-foreground truncate">
+                                {s?.name || "Unknown skill"}
+                              </span>
+                            </div>
+                          );
+                          return renderCard(
+                            `card-${sid}`,
+                            `group-skill-${sid}`,
+                            header,
+                            groupPoints,
+                            sid,
+                          );
+                        })}
+                        {showUnlinked &&
+                          renderCard(
+                            "card-unlinked",
+                            "group-unlinked",
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-sm font-semibold text-foreground truncate">
+                                General
+                              </span>
+                            </div>,
+                            unlinked,
+                            null,
+                          )}
+                      </div>
+                    )}
                   </div>
                 );
               })()
