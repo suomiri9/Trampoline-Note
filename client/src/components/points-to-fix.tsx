@@ -199,32 +199,30 @@ export function PointsToFix() {
                     <div
                       key={`${currentSkillId ?? "u"}-${p.id}`}
                       data-testid={`point-row-${p.id}`}
-                      className="flex items-start gap-2 p-2.5 rounded-lg bg-muted/40 border border-border"
+                      className="flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl bg-secondary/30"
                     >
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className="font-medium text-sm"
-                          data-testid={`text-point-name-${p.id}`}
-                        >
-                          {p.name}
-                        </p>
-                        {otherSkills.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {otherSkills.map((sid) => {
-                              const s = skillById(sid);
-                              return (
-                                <Badge
-                                  key={sid}
-                                  variant="outline"
-                                  className="text-[10px] px-1.5 py-0 font-mono"
-                                >
-                                  {s?.code || "?"}
-                                </Badge>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
+                      <p
+                        className="text-sm flex-1 min-w-0 break-words"
+                        data-testid={`text-point-name-${p.id}`}
+                      >
+                        {p.name}
+                      </p>
+                      {otherSkills.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1">
+                          {otherSkills.map((sid) => {
+                            const s = skillById(sid);
+                            return (
+                              <Badge
+                                key={sid}
+                                variant="outline"
+                                className="px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm border-border/60 text-muted-foreground"
+                              >
+                                {s?.code || "?"}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      )}
                       <Button
                         type="button"
                         variant="ghost"
@@ -232,7 +230,7 @@ export function PointsToFix() {
                         onClick={() => removePoint(p.id)}
                         disabled={mutation.isPending}
                         data-testid={`button-remove-point-${p.id}`}
-                        className="shrink-0 h-7 w-7"
+                        className="shrink-0 h-6 w-6 -mr-1 opacity-50 hover:opacity-100"
                       >
                         <Trash2 className="w-3.5 h-3.5 text-destructive" />
                       </Button>
@@ -240,48 +238,74 @@ export function PointsToFix() {
                   );
                 };
 
+                const renderCard = (
+                  key: string,
+                  testId: string,
+                  header: React.ReactNode,
+                  groupPoints: PointToFix[],
+                  currentSkillId: number | null,
+                ) => (
+                  <div
+                    key={key}
+                    data-testid={testId}
+                    className="card-3d p-4 sm:p-5 rounded-2xl"
+                  >
+                    <div className="flex justify-between items-center mb-3">
+                      {header}
+                      <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                        {groupPoints.length} {groupPoints.length === 1 ? "point" : "points"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1.5 pt-3 border-t border-border/40">
+                      {groupPoints.map((p) => renderPointRow(p, currentSkillId))}
+                    </div>
+                  </div>
+                );
+
                 return (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {orderedSkillIds.map((sid) => {
                       const s = skillById(sid);
                       const groupPoints = groupsBySkill.get(sid) || [];
-                      return (
-                        <div key={sid} className="space-y-1.5" data-testid={`group-skill-${sid}`}>
-                          <div className="flex items-center gap-2 px-1">
-                            <Badge
-                              variant="secondary"
-                              className="font-mono text-[10px] px-1.5 py-0"
-                            >
-                              {s?.code || "?"}
-                            </Badge>
-                            <span className="text-xs font-semibold text-foreground truncate">
-                              {s?.name || "Unknown skill"}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground">
-                              {groupPoints.length}
-                            </span>
+                      const header = (
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-950/30 shrink-0">
+                            <Target className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                           </div>
-                          <div className="space-y-1.5">
-                            {groupPoints.map((p) => renderPointRow(p, sid))}
-                          </div>
+                          <Badge
+                            variant="outline"
+                            className="px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm border-border/60 text-muted-foreground shrink-0"
+                          >
+                            {s?.code || "?"}
+                          </Badge>
+                          <span className="text-sm font-semibold text-foreground truncate">
+                            {s?.name || "Unknown skill"}
+                          </span>
                         </div>
                       );
+                      return renderCard(
+                        `card-${sid}`,
+                        `group-skill-${sid}`,
+                        header,
+                        groupPoints,
+                        sid,
+                      );
                     })}
-                    {unlinked.length > 0 && (
-                      <div className="space-y-1.5" data-testid="group-unlinked">
-                        <div className="flex items-center gap-2 px-1">
-                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    {unlinked.length > 0 &&
+                      renderCard(
+                        "card-unlinked",
+                        "group-unlinked",
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800/30 shrink-0">
+                            <Target className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                          </div>
+                          <span className="text-sm font-semibold text-foreground truncate">
                             General
                           </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {unlinked.length}
-                          </span>
-                        </div>
-                        <div className="space-y-1.5">
-                          {unlinked.map((p) => renderPointRow(p, null))}
-                        </div>
-                      </div>
-                    )}
+                        </div>,
+                        unlinked,
+                        null,
+                      )}
                   </div>
                 );
               })()
