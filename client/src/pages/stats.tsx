@@ -12,14 +12,14 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import {
   format, parseISO, eachDayOfInterval, eachWeekOfInterval,
   startOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear,
-  addWeeks, isWithinInterval,
+  addWeeks, addMonths, addYears, isWithinInterval,
 } from "date-fns";
 
 type Range = "week" | "month" | "year" | "all";
 
 export default function StatsPage() {
   const [range, setRange] = useState<Range>("week");
-  const [weekOffset, setWeekOffset] = useState(0); // 0 = current week, -1 = last week, etc.
+  const [offset, setOffset] = useState(0); // 0 = current period, -1 = previous, etc.
   const touchStartX = useRef<number | null>(null);
 
   const { data: notes, isLoading: notesLoading } = useNotes();
@@ -58,7 +58,7 @@ export default function StatsPage() {
 
   if (range === "week") {
     const baseMonday = startOfWeek(today, { weekStartsOn: 1 });
-    const weekStart = addWeeks(baseMonday, weekOffset);
+    const weekStart = addWeeks(baseMonday, offset);
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
     const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
@@ -78,25 +78,29 @@ export default function StatsPage() {
       };
     });
   } else if (range === "month") {
-    const monthStart = startOfMonth(today);
-    const monthEnd = endOfMonth(today);
+    const refDay = addMonths(today, offset);
+    const monthStart = startOfMonth(refDay);
+    const monthEnd = endOfMonth(refDay);
     const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
     xTickInterval = 4;
     periodLabel = `${format(monthStart, "d MMM")} – ${format(monthEnd, "d MMM yyyy")}`;
     chartData = days.map(day => {
       const key = format(day, "yyyy-MM-dd");
       const found = ddByDate[key];
-      return { date: format(day, "d MMM"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0 };
+      const isFuture = day > today;
+      return { date: format(day, "d MMM"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, isFuture };
     });
   } else if (range === "year") {
     useWeekly = true;
-    const yearStart = startOfYear(today);
-    const yearEnd = endOfYear(today);
+    const refDay = addYears(today, offset);
+    const yearStart = startOfYear(refDay);
+    const yearEnd = endOfYear(refDay);
+    const yearNum = refDay.getFullYear();
     const weeks = eachWeekOfInterval({ start: yearStart, end: yearEnd }, { weekStartsOn: 1 });
     periodLabel = `${format(yearStart, "d MMM yyyy")} – ${format(yearEnd, "d MMM yyyy")}`;
     const filteredWeeks = weeks.filter(ws => {
       const wEnd = endOfWeek(ws, { weekStartsOn: 1 });
-      return ws.getFullYear() === today.getFullYear() || wEnd.getFullYear() === today.getFullYear();
+      return ws.getFullYear() === yearNum || wEnd.getFullYear() === yearNum;
     });
     let lastMonth = -1;
     chartData = filteredWeeks.map(ws => {
@@ -104,7 +108,7 @@ export default function StatsPage() {
       const wEnd = endOfWeek(ws, { weekStartsOn: 1 });
       const bEnd = wEnd > yearEnd ? yearEnd : wEnd;
       const m = bStart.getMonth();
-      const label = m !== lastMonth && bStart.getFullYear() === today.getFullYear() ? format(bStart, "MMM") : "";
+      const label = m !== lastMonth && bStart.getFullYear() === yearNum ? format(bStart, "MMM") : "";
       lastMonth = m;
       if (bStart > today) {
         return { date: label, difficulty: null, sessions: 0 };
@@ -157,18 +161,19 @@ export default function StatsPage() {
   const totalDDInRange = chartData.reduce((sum, d) => sum + (d.difficulty ?? 0), 0);
   const totalSessionsInRange = chartData.reduce((sum, d) => sum + d.sessions, 0);
 
-  const isCurrentWeek = weekOffset === 0;
+  const isCurrentPeriod = offset === 0;
+  const navigable = range !== "all";
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || range !== "week") return;
+    if (touchStartX.current === null || !navigable) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     if (Math.abs(dx) > 50) {
-      if (dx > 0) setWeekOffset(w => w - 1);        // swipe right = go back
-      else if (dx < 0 && !isCurrentWeek) setWeekOffset(w => w + 1); // swipe left = go forward
+      if (dx > 0) setOffset(w => w - 1);        // swipe right = go back
+      else if (dx < 0 && !isCurrentPeriod) setOffset(w => w + 1); // swipe left = go forward
     }
     touchStartX.current = null;
   };
@@ -190,7 +195,7 @@ export default function StatsPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold flex items-center justify-between gap-3">
               <span>{useWeekly ? "Weekly" : "Daily"} Total Difficulty</span>
-              <Select value={range} onValueChange={(v) => { setRange(v as Range); setWeekOffset(0); }}>
+              <Select value={range} onValueChange={(v) => { setRange(v as Range); setOffset(0); }}>
                 <SelectTrigger className="w-36 h-8 rounded-xl text-xs border-border/50">
                   <SelectValue />
                 </SelectTrigger>
@@ -204,25 +209,27 @@ export default function StatsPage() {
             </CardTitle>
 
             <div className="flex items-center justify-between mt-2">
-              {range === "week" ? (
+              {navigable ? (
                 <div className="flex items-center gap-2">
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-9 w-9 rounded-lg"
-                    onClick={() => setWeekOffset(w => w - 1)}
+                    onClick={() => setOffset(w => w - 1)}
+                    data-testid="button-prev-period"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <span className="text-xs font-medium text-foreground/80 min-w-[140px] text-center">
+                  <span className="text-xs font-medium text-foreground/80 min-w-[180px] text-center" data-testid="text-period-label">
                     {periodLabel}
                   </span>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-9 w-9 rounded-lg"
-                    disabled={isCurrentWeek}
-                    onClick={() => setWeekOffset(w => w + 1)}
+                    disabled={isCurrentPeriod}
+                    onClick={() => setOffset(w => w + 1)}
+                    data-testid="button-next-period"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
