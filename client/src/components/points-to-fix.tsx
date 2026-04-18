@@ -4,7 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useSkills } from "@/hooks/use-skills";
 import { useToast } from "@/hooks/use-toast";
-import { Target, Plus, X, Trash2, Loader2, Search } from "lucide-react";
+import { Wrench, Plus, X, Trash2, Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -147,20 +147,22 @@ export function PointsToFix() {
     <>
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
+        size="icon"
         onClick={() => setOpen(true)}
         data-testid="button-points-to-fix"
-        className="rounded-2xl h-12 px-4 font-semibold flex items-center gap-2 relative"
+        title="Points to Fix"
+        aria-label="Points to Fix"
+        className="rounded-2xl h-12 w-12 shrink-0 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50 icon-3d"
       >
-        <Target className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-        Points to Fix
+        <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Target className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               Points to Fix
               {mutation.isPending && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
