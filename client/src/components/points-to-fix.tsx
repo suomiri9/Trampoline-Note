@@ -283,43 +283,48 @@ export function PointsToFix() {
                         No skills match "{searchQuery}".
                       </p>
                     ) : (
-                      <div className="grid gap-3 items-start [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
-                        {filteredSkillIds.map((sid) => {
-                          const s = skillById(sid);
-                          const groupPoints = groupsBySkill.get(sid) || [];
-                          const header = (
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Badge
-                                variant="outline"
-                                className="px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm border-border/60 text-muted-foreground shrink-0"
-                              >
-                                {s?.code || "?"}
-                              </Badge>
-                              <span className="text-sm font-semibold text-foreground truncate">
-                                {s?.name || "Unknown skill"}
-                              </span>
-                            </div>
-                          );
-                          return renderCard(
-                            `card-${sid}`,
-                            `group-skill-${sid}`,
-                            header,
-                            groupPoints,
-                            sid,
-                          );
-                        })}
-                        {showUnlinked &&
-                          renderCard(
-                            "card-unlinked",
-                            "group-unlinked",
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-sm font-semibold text-foreground truncate">
-                                General
-                              </span>
-                            </div>,
-                            unlinked,
-                            null,
-                          )}
+                      <div className="space-y-3">
+                        {showUnlinked && (
+                          <div className="grid gap-3 items-start [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
+                            {renderCard(
+                              "card-unlinked",
+                              "group-unlinked",
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-sm font-semibold text-foreground truncate">
+                                  General
+                                </span>
+                              </div>,
+                              unlinked,
+                              null,
+                            )}
+                          </div>
+                        )}
+                        <div className="grid gap-3 items-start [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
+                          {filteredSkillIds.map((sid) => {
+                            const s = skillById(sid);
+                            const groupPoints = groupsBySkill.get(sid) || [];
+                            const header = (
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Badge
+                                  variant="outline"
+                                  className="px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm border-border/60 text-muted-foreground shrink-0"
+                                >
+                                  {s?.code || "?"}
+                                </Badge>
+                                <span className="text-sm font-semibold text-foreground truncate">
+                                  {s?.name || "Unknown skill"}
+                                </span>
+                              </div>
+                            );
+                            return renderCard(
+                              `card-${sid}`,
+                              `group-skill-${sid}`,
+                              header,
+                              groupPoints,
+                              sid,
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>
