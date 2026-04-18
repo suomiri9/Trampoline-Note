@@ -147,15 +147,13 @@ export function PointsToFix() {
     <>
       <Button
         type="button"
-        variant="ghost"
-        size="icon"
+        variant="outline"
         onClick={() => setOpen(true)}
         data-testid="button-points-to-fix"
-        title="Points to Fix"
-        aria-label="Points to Fix"
-        className="rounded-2xl h-12 w-12 shrink-0 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50 icon-3d"
+        className="rounded-2xl h-12 px-4 font-semibold flex items-center gap-2 relative"
       >
         <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+        Points to Fix
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>

@@ -39,9 +39,9 @@ export default function Home() {
             <h1 className="text-3xl font-display font-bold">Training Log</h1>
             <p className="text-muted-foreground text-sm">Track your trampoline sessions, skills, and progress.</p>
           </div>
-          <PointsToFix />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <PointsToFix />
           <Button
             onClick={handleCreateNew}
             className="rounded-2xl h-12 px-6 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition-all btn-3d flex items-center gap-2"
