@@ -124,8 +124,20 @@ export function PointsToFix() {
     setDraftSkillIds([]);
   };
 
-  const removePoint = (id: string) => {
+  const removePoint = (id: string, fromSkillId: number | null) => {
     if (mutation.isPending) return;
+    const target = points.find((p) => p.id === id);
+    if (!target) return;
+    // If the point is linked to multiple skills and we're removing it from one
+    // specific skill card, just unlink that skill — keep the point under the others.
+    if (fromSkillId !== null && target.skillIds.length > 1) {
+      mutation.mutate(
+        points.map((p) =>
+          p.id === id ? { ...p, skillIds: p.skillIds.filter((sid) => sid !== fromSkillId) } : p,
+        ),
+      );
+      return;
+    }
     mutation.mutate(points.filter((p) => p.id !== id));
   };
 
@@ -212,7 +224,7 @@ export function PointsToFix() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={() => removePoint(p.id)}
+                        onClick={() => removePoint(p.id, currentSkillId)}
                         disabled={mutation.isPending}
                         data-testid={`button-remove-point-${p.id}`}
                         className="shrink-0 h-6 w-6 -mr-1 opacity-50 hover:opacity-100"
