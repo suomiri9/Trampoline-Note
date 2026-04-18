@@ -32,6 +32,7 @@ const scoreDefaults = {
   category: "vol" as const,
   competitionName: "",
   rank: undefined as number | undefined,
+  trial: undefined as number | undefined,
   execution: 0,
   difficulty: 0,
   horizontal: 0,
@@ -114,6 +115,7 @@ export default function ScorePage() {
       category: score.category as any,
       competitionName: score.competitionName ?? "",
       rank: score.rank ?? undefined,
+      trial: score.trial ?? undefined,
       execution: score.execution,
       difficulty: score.difficulty,
       horizontal: score.horizontal,
@@ -262,7 +264,7 @@ export default function ScorePage() {
                       </Popover>
                     </FormItem>
                   )} />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     <FormField control={form.control} name="type" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Type</FormLabel>
@@ -286,6 +288,22 @@ export default function ScorePage() {
                             <SelectItem value="both">Set and Vol</SelectItem>
                           </SelectContent>
                         </Select>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="trial" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Trial</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={1}
+                            placeholder="e.g. 1"
+                            value={field.value ?? ""}
+                            onChange={e => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                            className="rounded-xl h-11"
+                            data-testid="input-trial"
+                          />
+                        </FormControl>
                       </FormItem>
                     )} />
                   </div>
@@ -441,6 +459,11 @@ export default function ScorePage() {
                     <Badge variant="secondary" className="rounded-lg capitalize text-[10px]">
                       {score.category === "both" ? "Set & Vol" : score.category}
                     </Badge>
+                    {score.trial != null && (
+                      <Badge variant="outline" className="rounded-lg text-[10px]" data-testid={`badge-trial-${score.id}`}>
+                        Trial {score.trial}
+                      </Badge>
+                    )}
                     {routine && (
                       <Badge variant="secondary" className="rounded-lg text-[10px]">
                         {routine.name}{score.attempt != null ? ` (attempt ${score.attempt})` : ""}
