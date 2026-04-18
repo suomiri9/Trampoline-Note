@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { SafeUser } from "@shared/models/auth";
 
@@ -62,6 +63,7 @@ export function PointsToFix() {
   const [draftName, setDraftName] = useState("");
   const [draftSkillIds, setDraftSkillIds] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [confirmClose, setConfirmClose] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -160,10 +162,8 @@ export function PointsToFix() {
         open={open}
         onOpenChange={(next) => {
           if (!next && (draftName.trim() || draftSkillIds.length > 0)) {
-            const ok = window.confirm(
-              "You have an unsaved point. Close without adding it?",
-            );
-            if (!ok) return;
+            setConfirmClose(true);
+            return;
           }
           setOpen(next);
         }}
@@ -420,6 +420,19 @@ export function PointsToFix() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmClose}
+        onOpenChange={setConfirmClose}
+        title="Discard unsaved point?"
+        description="You have a point you haven't added yet. Closing will discard it."
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        onConfirm={() => {
+          setConfirmClose(false);
+          setOpen(false);
+        }}
+      />
     </>
   );
 }
