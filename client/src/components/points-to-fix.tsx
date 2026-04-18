@@ -156,7 +156,18 @@ export function PointsToFix() {
         Points to Fix
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next && (draftName.trim() || draftSkillIds.length > 0)) {
+            const ok = window.confirm(
+              "You have an unsaved point. Close without adding it?",
+            );
+            if (!ok) return;
+          }
+          setOpen(next);
+        }}
+      >
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
