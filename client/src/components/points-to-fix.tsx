@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useSkills } from "@/hooks/use-skills";
@@ -12,11 +12,29 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { SafeUser } from "@shared/models/auth";
+import type { Routine } from "@shared/schema";
 
 export type PointToFix = {
   id: string;
   name: string;
   skillIds: number[];
+  routineIds: number[];
+};
+
+type LinkType = "skill" | "drill" | "connection" | "routine";
+
+const TYPE_LABEL: Record<LinkType, string> = {
+  skill: "Skill",
+  drill: "Drill",
+  connection: "Connection",
+  routine: "Routine",
+};
+
+const TYPE_ORDER: Record<LinkType, number> = {
+  skill: 0,
+  drill: 1,
+  connection: 2,
+  routine: 3,
 };
 
 function parsePoints(raw: string | null | undefined): PointToFix[] {
@@ -36,6 +54,11 @@ function parsePoints(raw: string | null | undefined): PointToFix[] {
               (x): x is number => typeof x === "number" && Number.isInteger(x) && x > 0,
             )
           : [],
+        routineIds: Array.isArray(p.routineIds)
+          ? (p.routineIds as unknown[]).filter(
+              (x): x is number => typeof x === "number" && Number.isInteger(x) && x > 0,
+            )
+          : [],
       }));
   } catch {
     // Legacy plain-text focus memo — migrate each non-empty line into a point.
@@ -47,6 +70,7 @@ function parsePoints(raw: string | null | undefined): PointToFix[] {
         id: `legacy-${i}-${Date.now()}`,
         name: line,
         skillIds: [],
+        routineIds: [],
       }));
   }
 }
@@ -56,12 +80,14 @@ export function PointsToFix() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: skills } = useSkills();
+  const { data: routines } = useQuery<Routine[]>({ queryKey: ["/api/routines"] });
 
   const points = useMemo(() => parsePoints(user?.focusMemo), [user?.focusMemo]);
 
   const [open, setOpen] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [draftSkillIds, setDraftSkillIds] = useState<number[]>([]);
+  const [draftRoutineIds, setDraftRoutineIds] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmClose, setConfirmClose] = useState(false);
 
@@ -69,6 +95,7 @@ export function PointsToFix() {
     if (!open) {
       setDraftName("");
       setDraftSkillIds([]);
+      setDraftRoutineIds([]);
       setSearchQuery("");
     }
   }, [open]);
@@ -88,12 +115,18 @@ export function PointsToFix() {
     },
   });
 
+  const skillTypeOf = (isDrill: number | null | undefined): LinkType =>
+    isDrill === 1 ? "drill" : isDrill === 2 ? "connection" : "skill";
+
   const sortedActiveSkills = useMemo(
     () =>
       (skills || [])
         .filter((s) => s.archived !== 1)
         .slice()
         .sort((a, b) => {
+          const tA = TYPE_ORDER[skillTypeOf(a.isDrill)];
+          const tB = TYPE_ORDER[skillTypeOf(b.isDrill)];
+          if (tA !== tB) return tA - tB;
           const oA = a.sortOrder ?? 999999;
           const oB = b.sortOrder ?? 999999;
           if (oA !== oB) return oA - oB;
@@ -102,14 +135,33 @@ export function PointsToFix() {
     [skills],
   );
 
-  const addSkillToDraft = (idStr: string) => {
+  const sortedActiveRoutines = useMemo(
+    () =>
+      (routines || [])
+        .filter((r) => r.archived !== 1)
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [routines],
+  );
+
+  const addSkillToDraft = (val: string) => {
+    // val format: "skill:<id>" or "routine:<id>"
+    const [kind, idStr] = val.split(":");
     const id = parseInt(idStr);
     if (!Number.isFinite(id)) return;
-    setDraftSkillIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    if (kind === "routine") {
+      setDraftRoutineIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    } else {
+      setDraftSkillIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    }
   };
 
   const removeSkillFromDraft = (id: number) => {
     setDraftSkillIds((prev) => prev.filter((x) => x !== id));
+  };
+
+  const removeRoutineFromDraft = (id: number) => {
+    setDraftRoutineIds((prev) => prev.filter((x) => x !== id));
   };
 
   const addPoint = () => {
@@ -120,22 +172,37 @@ export function PointsToFix() {
       id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name,
       skillIds: draftSkillIds,
+      routineIds: draftRoutineIds,
     };
     mutation.mutate([...points, newPoint]);
     setDraftName("");
     setDraftSkillIds([]);
+    setDraftRoutineIds([]);
   };
 
-  const removePoint = (id: string, fromSkillId: number | null) => {
+  const removePoint = (
+    id: string,
+    fromSkillId: number | null,
+    fromRoutineId: number | null,
+  ) => {
     if (mutation.isPending) return;
     const target = points.find((p) => p.id === id);
     if (!target) return;
-    // If the point is linked to multiple skills and we're removing it from one
-    // specific skill card, just unlink that skill — keep the point under the others.
-    if (fromSkillId !== null && target.skillIds.length > 1) {
+    const totalLinks = target.skillIds.length + target.routineIds.length;
+    if (fromSkillId !== null && totalLinks > 1) {
       mutation.mutate(
         points.map((p) =>
           p.id === id ? { ...p, skillIds: p.skillIds.filter((sid) => sid !== fromSkillId) } : p,
+        ),
+      );
+      return;
+    }
+    if (fromRoutineId !== null && totalLinks > 1) {
+      mutation.mutate(
+        points.map((p) =>
+          p.id === id
+            ? { ...p, routineIds: p.routineIds.filter((rid) => rid !== fromRoutineId) }
+            : p,
         ),
       );
       return;
@@ -144,6 +211,7 @@ export function PointsToFix() {
   };
 
   const skillById = (id: number) => skills?.find((s) => s.id === id);
+  const routineById = (id: number) => routines?.find((r) => r.id === id);
 
   return (
     <>
@@ -161,7 +229,10 @@ export function PointsToFix() {
       <Dialog
         open={open}
         onOpenChange={(next) => {
-          if (!next && (draftName.trim() || draftSkillIds.length > 0)) {
+          if (
+            !next &&
+            (draftName.trim() || draftSkillIds.length > 0 || draftRoutineIds.length > 0)
+          ) {
             setConfirmClose(true);
             return;
           }
@@ -187,9 +258,10 @@ export function PointsToFix() {
             ) : (
               (() => {
                 const groupsBySkill = new Map<number, PointToFix[]>();
+                const groupsByRoutine = new Map<number, PointToFix[]>();
                 const unlinked: PointToFix[] = [];
                 for (const p of points) {
-                  if (p.skillIds.length === 0) {
+                  if (p.skillIds.length === 0 && p.routineIds.length === 0) {
                     unlinked.push(p);
                   } else {
                     for (const sid of p.skillIds) {
@@ -197,13 +269,24 @@ export function PointsToFix() {
                       arr.push(p);
                       groupsBySkill.set(sid, arr);
                     }
+                    for (const rid of p.routineIds) {
+                      const arr = groupsByRoutine.get(rid) || [];
+                      arr.push(p);
+                      groupsByRoutine.set(rid, arr);
+                    }
                   }
                 }
                 const orderedSkillIds = sortedActiveSkills
                   .map((s) => s.id)
                   .filter((id) => groupsBySkill.has(id));
-                for (const id of groupsBySkill.keys()) {
+                for (const id of Array.from(groupsBySkill.keys())) {
                   if (!orderedSkillIds.includes(id)) orderedSkillIds.push(id);
+                }
+                const orderedRoutineIds = sortedActiveRoutines
+                  .map((r) => r.id)
+                  .filter((id) => groupsByRoutine.has(id));
+                for (const id of Array.from(groupsByRoutine.keys())) {
+                  if (!orderedRoutineIds.includes(id)) orderedRoutineIds.push(id);
                 }
 
                 const q = searchQuery.trim().toLowerCase();
@@ -215,13 +298,26 @@ export function PointsToFix() {
                       return code.includes(q) || name.includes(q);
                     })
                   : orderedSkillIds;
+                const filteredRoutineIds = q
+                  ? orderedRoutineIds.filter((id) => {
+                      const r = routineById(id);
+                      const code = (r?.code || "").toLowerCase();
+                      const name = (r?.name || "").toLowerCase();
+                      return code.includes(q) || name.includes(q);
+                    })
+                  : orderedRoutineIds;
                 const showUnlinked = !q && unlinked.length > 0;
-                const noResults = q && filteredSkillIds.length === 0;
+                const noResults =
+                  q && filteredSkillIds.length === 0 && filteredRoutineIds.length === 0;
 
-                const renderPointRow = (p: PointToFix, currentSkillId: number | null) => {
+                const renderPointRow = (
+                  p: PointToFix,
+                  currentSkillId: number | null,
+                  currentRoutineId: number | null,
+                ) => {
                   return (
                     <div
-                      key={`${currentSkillId ?? "u"}-${p.id}`}
+                      key={`${currentSkillId ?? "u"}-${currentRoutineId ?? "u"}-${p.id}`}
                       data-testid={`point-row-${p.id}`}
                       className="flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl bg-secondary/30"
                     >
@@ -235,7 +331,7 @@ export function PointsToFix() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={() => removePoint(p.id, currentSkillId)}
+                        onClick={() => removePoint(p.id, currentSkillId, currentRoutineId)}
                         disabled={mutation.isPending}
                         data-testid={`button-remove-point-${p.id}`}
                         className="shrink-0 h-6 w-6 -mr-1 opacity-50 hover:opacity-100"
@@ -252,6 +348,7 @@ export function PointsToFix() {
                   header: React.ReactNode,
                   groupPoints: PointToFix[],
                   currentSkillId: number | null,
+                  currentRoutineId: number | null,
                 ) => (
                   <div
                     key={key}
@@ -262,7 +359,9 @@ export function PointsToFix() {
                       {header}
                     </div>
                     <div className="flex flex-col gap-1.5 pt-3 border-t border-border/40">
-                      {groupPoints.map((p) => renderPointRow(p, currentSkillId))}
+                      {groupPoints.map((p) =>
+                        renderPointRow(p, currentSkillId, currentRoutineId),
+                      )}
                     </div>
                   </div>
                 );
@@ -274,7 +373,7 @@ export function PointsToFix() {
                       <Input
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search by skill name or code..."
+                        placeholder="Search by skill or routine..."
                         className="pl-9 pr-9"
                         data-testid="input-search-skill"
                       />
@@ -291,7 +390,7 @@ export function PointsToFix() {
                     </div>
                     {noResults ? (
                       <p className="text-sm text-muted-foreground italic py-4 text-center">
-                        No skills match "{searchQuery}".
+                        No matches for "{searchQuery}".
                       </p>
                     ) : (
                       <div className="space-y-3">
@@ -308,6 +407,7 @@ export function PointsToFix() {
                                 </div>,
                                 unlinked,
                                 null,
+                                null,
                               )}
                             </div>
                           </div>
@@ -316,6 +416,7 @@ export function PointsToFix() {
                           {filteredSkillIds.map((sid) => {
                             const s = skillById(sid);
                             const groupPoints = groupsBySkill.get(sid) || [];
+                            const t = skillTypeOf(s?.isDrill);
                             const header = (
                               <div className="flex items-center gap-2 min-w-0">
                                 <Badge
@@ -327,6 +428,12 @@ export function PointsToFix() {
                                 <span className="text-sm font-semibold text-foreground truncate">
                                   {s?.name || "Unknown skill"}
                                 </span>
+                                <Badge
+                                  variant="secondary"
+                                  className="px-1.5 py-0 h-4 text-[9px] uppercase tracking-wider shrink-0"
+                                >
+                                  {TYPE_LABEL[t]}
+                                </Badge>
                               </div>
                             );
                             return renderCard(
@@ -335,6 +442,40 @@ export function PointsToFix() {
                               header,
                               groupPoints,
                               sid,
+                              null,
+                            );
+                          })}
+                          {filteredRoutineIds.map((rid) => {
+                            const r = routineById(rid);
+                            const groupPoints = groupsByRoutine.get(rid) || [];
+                            const header = (
+                              <div className="flex items-center gap-2 min-w-0">
+                                {r?.code && (
+                                  <Badge
+                                    variant="outline"
+                                    className="px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm border-border/60 text-muted-foreground shrink-0"
+                                  >
+                                    {r.code}
+                                  </Badge>
+                                )}
+                                <span className="text-sm font-semibold text-foreground truncate">
+                                  {r?.name || "Unknown routine"}
+                                </span>
+                                <Badge
+                                  variant="secondary"
+                                  className="px-1.5 py-0 h-4 text-[9px] uppercase tracking-wider shrink-0"
+                                >
+                                  {TYPE_LABEL.routine}
+                                </Badge>
+                              </div>
+                            );
+                            return renderCard(
+                              `card-r-${rid}`,
+                              `group-routine-${rid}`,
+                              header,
+                              groupPoints,
+                              null,
+                              rid,
                             );
                           })}
                         </div>
@@ -365,39 +506,105 @@ export function PointsToFix() {
 
               <div className="space-y-2">
                 <label className="text-xs font-medium text-muted-foreground">
-                  Linked skills (optional)
+                  Linked skills & routines (optional)
                 </label>
                 <Select value="" onValueChange={addSkillToDraft}>
                   <SelectTrigger data-testid="select-point-skill">
-                    <SelectValue placeholder="Add a skill..." />
+                    <SelectValue placeholder="Add a skill, drill, connection or routine..." />
                   </SelectTrigger>
                   <SelectContent>
                     {sortedActiveSkills
                       .filter((s) => !draftSkillIds.includes(s.id))
-                      .map((s) => (
-                        <SelectItem key={s.id} value={s.id.toString()}>
-                          <span className="font-mono mr-2">{s.code}</span>
-                          {s.name}
+                      .map((s) => {
+                        const t = skillTypeOf(s.isDrill);
+                        return (
+                          <SelectItem
+                            key={`s-${s.id}`}
+                            value={`skill:${s.id}`}
+                            data-testid={`option-skill-${s.id}`}
+                          >
+                            <span className="inline-flex items-center gap-2">
+                              <span className="font-mono text-xs text-muted-foreground w-12 shrink-0">
+                                {s.code}
+                              </span>
+                              <span className="flex-1">{s.name}</span>
+                              <Badge
+                                variant="secondary"
+                                className="px-1.5 py-0 h-4 text-[9px] uppercase tracking-wider"
+                              >
+                                {TYPE_LABEL[t]}
+                              </Badge>
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    {sortedActiveRoutines
+                      .filter((r) => !draftRoutineIds.includes(r.id))
+                      .map((r) => (
+                        <SelectItem
+                          key={`r-${r.id}`}
+                          value={`routine:${r.id}`}
+                          data-testid={`option-routine-${r.id}`}
+                        >
+                          <span className="inline-flex items-center gap-2">
+                            <span className="font-mono text-xs text-muted-foreground w-12 shrink-0">
+                              {r.code || ""}
+                            </span>
+                            <span className="flex-1">{r.name}</span>
+                            <Badge
+                              variant="secondary"
+                              className="px-1.5 py-0 h-4 text-[9px] uppercase tracking-wider"
+                            >
+                              {TYPE_LABEL.routine}
+                            </Badge>
+                          </span>
                         </SelectItem>
                       ))}
                   </SelectContent>
                 </Select>
-                {draftSkillIds.length > 0 && (
+                {(draftSkillIds.length > 0 || draftRoutineIds.length > 0) && (
                   <div className="flex flex-wrap gap-1.5 p-2 rounded-lg bg-muted/30">
                     {draftSkillIds.map((id) => {
                       const s = skillById(id);
+                      const t = skillTypeOf(s?.isDrill);
                       return (
                         <Badge
-                          key={id}
+                          key={`ds-${id}`}
                           variant="secondary"
                           className="pr-1 gap-1"
                           data-testid={`badge-draft-skill-${id}`}
                         >
                           <span className="font-mono">{s?.code || "?"}</span>
+                          <span className="text-[9px] uppercase opacity-70">
+                            {TYPE_LABEL[t]}
+                          </span>
                           <button
                             type="button"
                             onClick={() => removeSkillFromDraft(id)}
                             data-testid={`button-remove-draft-skill-${id}`}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      );
+                    })}
+                    {draftRoutineIds.map((id) => {
+                      const r = routineById(id);
+                      return (
+                        <Badge
+                          key={`dr-${id}`}
+                          variant="secondary"
+                          className="pr-1 gap-1"
+                          data-testid={`badge-draft-routine-${id}`}
+                        >
+                          <span>{r?.name || "?"}</span>
+                          <span className="text-[9px] uppercase opacity-70">
+                            {TYPE_LABEL.routine}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeRoutineFromDraft(id)}
+                            data-testid={`button-remove-draft-routine-${id}`}
                           >
                             <X className="w-3 h-3" />
                           </button>
