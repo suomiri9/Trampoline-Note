@@ -429,7 +429,7 @@ export function PointsToFix() {
                                   {s?.code || "?"}
                                 </span>
                                 <span className="text-muted-foreground">-</span>
-                                <span className="text-sm text-muted-foreground truncate">
+                                <span className="text-sm text-muted-foreground break-words min-w-0">
                                   {s?.name || "Unknown skill"}
                                 </span>
                                 {t !== "skill" && (
@@ -463,7 +463,7 @@ export function PointsToFix() {
                                     <span className="text-muted-foreground">-</span>
                                   </>
                                 )}
-                                <span className="text-sm text-muted-foreground truncate">
+                                <span className="text-sm text-muted-foreground break-words min-w-0">
                                   {r?.name || "Unknown routine"}
                                 </span>
                                 <span className="text-[9px] uppercase tracking-wider font-semibold shrink-0 text-blue-600 dark:text-blue-400">
