@@ -297,17 +297,19 @@ export function PointsToFix() {
                       <div className="space-y-3">
                         {showUnlinked && (
                           <div className="grid gap-3 items-start [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
-                            {renderCard(
-                              "card-unlinked",
-                              "group-unlinked",
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-sm font-semibold text-foreground truncate">
-                                  General
-                                </span>
-                              </div>,
-                              unlinked,
-                              null,
-                            )}
+                            <div className="sm:col-span-2">
+                              {renderCard(
+                                "card-unlinked",
+                                "group-unlinked",
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-sm font-semibold text-foreground truncate">
+                                    General
+                                  </span>
+                                </div>,
+                                unlinked,
+                                null,
+                              )}
+                            </div>
                           </div>
                         )}
                         <div className="grid gap-3 items-start [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
