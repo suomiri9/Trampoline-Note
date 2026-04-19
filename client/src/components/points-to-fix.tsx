@@ -517,6 +517,12 @@ export function PointsToFix() {
                       .filter((s) => !draftSkillIds.includes(s.id))
                       .map((s) => {
                         const t = skillTypeOf(s.isDrill);
+                        const typeColor =
+                          t === "drill"
+                            ? "text-yellow-600 dark:text-yellow-400"
+                            : t === "connection"
+                              ? "text-red-500 dark:text-red-400"
+                              : "";
                         return (
                           <SelectItem
                             key={`s-${s.id}`}
@@ -524,16 +530,18 @@ export function PointsToFix() {
                             data-testid={`option-skill-${s.id}`}
                           >
                             <span className="inline-flex items-center gap-2">
-                              <span className="font-mono text-xs text-muted-foreground w-12 shrink-0">
+                              <span className="font-mono text-xs font-semibold text-foreground">
                                 {s.code}
                               </span>
-                              <span className="flex-1">{s.name}</span>
-                              <Badge
-                                variant="secondary"
-                                className="px-1.5 py-0 h-4 text-[9px] uppercase tracking-wider"
-                              >
-                                {TYPE_LABEL[t]}
-                              </Badge>
+                              <span className="text-muted-foreground">-</span>
+                              <span className="flex-1 text-muted-foreground">{s.name}</span>
+                              {t !== "skill" && (
+                                <span
+                                  className={`text-[9px] uppercase tracking-wider font-semibold ${typeColor}`}
+                                >
+                                  {TYPE_LABEL[t]}
+                                </span>
+                              )}
                             </span>
                           </SelectItem>
                         );
@@ -547,16 +555,18 @@ export function PointsToFix() {
                           data-testid={`option-routine-${r.id}`}
                         >
                           <span className="inline-flex items-center gap-2">
-                            <span className="font-mono text-xs text-muted-foreground w-12 shrink-0">
-                              {r.code || ""}
-                            </span>
-                            <span className="flex-1">{r.name}</span>
-                            <Badge
-                              variant="secondary"
-                              className="px-1.5 py-0 h-4 text-[9px] uppercase tracking-wider"
-                            >
+                            {r.code && (
+                              <>
+                                <span className="font-mono text-xs font-semibold text-foreground">
+                                  {r.code}
+                                </span>
+                                <span className="text-muted-foreground">-</span>
+                              </>
+                            )}
+                            <span className="flex-1 text-muted-foreground">{r.name}</span>
+                            <span className="text-[9px] uppercase tracking-wider font-semibold text-blue-600 dark:text-blue-400">
                               {TYPE_LABEL.routine}
-                            </Badge>
+                            </span>
                           </span>
                         </SelectItem>
                       ))}
