@@ -417,23 +417,28 @@ export function PointsToFix() {
                             const s = skillById(sid);
                             const groupPoints = groupsBySkill.get(sid) || [];
                             const t = skillTypeOf(s?.isDrill);
+                            const typeColor =
+                              t === "drill"
+                                ? "text-yellow-600 dark:text-yellow-400"
+                                : t === "connection"
+                                  ? "text-red-500 dark:text-red-400"
+                                  : "";
                             const header = (
-                              <div className="flex items-center gap-2 min-w-0">
-                                <Badge
-                                  variant="outline"
-                                  className="px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm border-border/60 text-muted-foreground shrink-0"
-                                >
+                              <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                                <span className="font-mono text-xs font-semibold text-foreground">
                                   {s?.code || "?"}
-                                </Badge>
-                                <span className="text-sm font-semibold text-foreground truncate">
+                                </span>
+                                <span className="text-muted-foreground">-</span>
+                                <span className="text-sm text-muted-foreground truncate">
                                   {s?.name || "Unknown skill"}
                                 </span>
-                                <Badge
-                                  variant="secondary"
-                                  className="px-1.5 py-0 h-4 text-[9px] uppercase tracking-wider shrink-0"
-                                >
-                                  {TYPE_LABEL[t]}
-                                </Badge>
+                                {t !== "skill" && (
+                                  <span
+                                    className={`text-[9px] uppercase tracking-wider font-semibold shrink-0 ${typeColor}`}
+                                  >
+                                    {TYPE_LABEL[t]}
+                                  </span>
+                                )}
                               </div>
                             );
                             return renderCard(
@@ -449,24 +454,21 @@ export function PointsToFix() {
                             const r = routineById(rid);
                             const groupPoints = groupsByRoutine.get(rid) || [];
                             const header = (
-                              <div className="flex items-center gap-2 min-w-0">
+                              <div className="flex items-center gap-2 min-w-0 flex-wrap">
                                 {r?.code && (
-                                  <Badge
-                                    variant="outline"
-                                    className="px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm border-border/60 text-muted-foreground shrink-0"
-                                  >
-                                    {r.code}
-                                  </Badge>
+                                  <>
+                                    <span className="font-mono text-xs font-semibold text-foreground">
+                                      {r.code}
+                                    </span>
+                                    <span className="text-muted-foreground">-</span>
+                                  </>
                                 )}
-                                <span className="text-sm font-semibold text-foreground truncate">
+                                <span className="text-sm text-muted-foreground truncate">
                                   {r?.name || "Unknown routine"}
                                 </span>
-                                <Badge
-                                  variant="secondary"
-                                  className="px-1.5 py-0 h-4 text-[9px] uppercase tracking-wider shrink-0"
-                                >
+                                <span className="text-[9px] uppercase tracking-wider font-semibold shrink-0 text-blue-600 dark:text-blue-400">
                                   {TYPE_LABEL.routine}
-                                </Badge>
+                                </span>
                               </div>
                             );
                             return renderCard(
