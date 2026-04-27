@@ -83,6 +83,8 @@
 .overflow-scroll-touch {
   -webkit-overflow-scrolling: touch;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-x: contain;
 }
 
 .pb-safe {

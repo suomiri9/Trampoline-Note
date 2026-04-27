@@ -254,7 +254,7 @@ export function PointsToFix() {
           setOpen(next);
         }}
       >
-        <DialogContent ref={dialogContentRef} className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent ref={dialogContentRef} className="max-w-3xl w-[calc(100vw-32px)] max-h-[85vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
