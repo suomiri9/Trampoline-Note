@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { calcDDFromSkillIds } from "@/lib/training-utils";
-import { useDndSensors } from "@/hooks/use-dnd-sensors";
+import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
+import { SortableChip } from "@/components/sortable-chip";
 import { PageLayout } from "@/components/page-layout";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { SortableContext, useSortable, verticalListSortingStrategy, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 
@@ -82,6 +83,16 @@ export default function SkillsPage() {
   const [archiveTarget, setArchiveTarget] = useState<{ id: number; name: string; kind: string } | null>(null);
 
   const sensors = useDndSensors();
+  const longPressSensors = useLongPressDndSensors();
+
+  const handleConnChipDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = parseInt(String(active.id).split("-")[1]);
+    const newIdx = parseInt(String(over.id).split("-")[1]);
+    if (isNaN(oldIdx) || isNaN(newIdx)) return;
+    setConnSkillIds(prev => arrayMove(prev, oldIdx, newIdx));
+  };
 
   const archivedFilter = (item: Skill) => showArchived ? item.archived === 1 : item.archived !== 1;
   const skills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 0 && archivedFilter(item))) : undefined;
@@ -588,18 +599,24 @@ export default function SkillsPage() {
                       </Popover>
                     </div>
 
-                    <div className="min-h-[80px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-2 items-start">
-                      {connSkillIds.map((id, idx) => {
-                        const s = skills?.find(sk => sk.id === id);
-                        return (
-                          <Badge key={idx} variant="secondary" className="pr-1 gap-1">
-                            {s?.code}
-                            <button onClick={() => removeSkillFromConn(idx)}><X className="h-3 w-3" /></button>
-                          </Badge>
-                        );
-                      })}
-                      {connSkillIds.length === 0 && <span className="text-xs text-muted-foreground p-2">No skills added yet</span>}
-                    </div>
+                    <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleConnChipDragEnd}>
+                      <SortableContext items={connSkillIds.map((_, i) => `cs-${i}`)} strategy={rectSortingStrategy}>
+                        <div className="min-h-[80px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-2 items-start">
+                          {connSkillIds.map((id, idx) => {
+                            const s = skills?.find(sk => sk.id === id);
+                            return (
+                              <SortableChip key={`cs-${idx}`} uid={`cs-${idx}`}>
+                                <Badge variant="secondary" className="pr-1 gap-1" data-testid={`chip-conn-skill-${idx}`}>
+                                  {s?.code}
+                                  <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => removeSkillFromConn(idx)} data-testid={`btn-remove-conn-skill-${idx}`}><X className="h-3 w-3" /></button>
+                                </Badge>
+                              </SortableChip>
+                            );
+                          })}
+                          {connSkillIds.length === 0 && <span className="text-xs text-muted-foreground p-2">No skills added yet</span>}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
 
                     <div className="pt-2 flex justify-between items-center">
                       <span className="text-sm font-medium">Total DD:</span>

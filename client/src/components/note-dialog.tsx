@@ -5,11 +5,12 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { CalendarIcon, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, X, Search } from "lucide-react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { SortableContext, useSortable, verticalListSortingStrategy, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { type Note } from "@shared/schema";
 import { parseNoteSkills, calculateTotalDD, type SkillItem } from "@/lib/training-utils";
-import { useDndSensors } from "@/hooks/use-dnd-sensors";
+import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
+import { SortableChip } from "@/components/sortable-chip";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
 
@@ -146,6 +147,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   })();
 
   const sensors = useDndSensors();
+  const longPressSensors = useLongPressDndSensors();
+
+  const handleNewConnChipDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = parseInt(String(active.id).split("-")[1]);
+    const newIdx = parseInt(String(over.id).split("-")[1]);
+    if (isNaN(oldIdx) || isNaN(newIdx)) return;
+    setNewConnSkillIds(prev => arrayMove(prev, oldIdx, newIdx));
+  };
+
+  const handleNewRoutineChipDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = parseInt(String(active.id).split("-")[1]);
+    const newIdx = parseInt(String(over.id).split("-")[1]);
+    if (isNaN(oldIdx) || isNaN(newIdx)) return;
+    setNewRoutineSkillIds(prev => arrayMove(prev, oldIdx, newIdx));
+  };
 
   const buildGroups = (skills: SkillItem[]) => {
     const groups: Array<{ items: SkillItem[] }> = [];
@@ -689,12 +709,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       );
                     })()}
                     <Input placeholder="Name (e.g. Ba+BT)" value={newConnName} onChange={e => setNewConnName(e.target.value)} className="rounded-lg h-9 text-xs" />
-                    <div className="flex flex-wrap gap-1">
-                      {newConnSkillIds.map((sid, i) => {
-                        const s = allItems?.find(sk => sk.id === sid);
-                        return <Badge key={i} variant="outline" className="font-mono text-[10px] gap-1">{s?.code}<button type="button" onClick={() => setNewConnSkillIds(prev => prev.filter((_, j) => j !== i))}><X className="h-2.5 w-2.5" /></button></Badge>;
-                      })}
-                    </div>
+                    <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleNewConnChipDragEnd}>
+                      <SortableContext items={newConnSkillIds.map((_, i) => `nc-${i}`)} strategy={rectSortingStrategy}>
+                        <div className="flex flex-wrap gap-1">
+                          {newConnSkillIds.map((sid, i) => {
+                            const s = allItems?.find(sk => sk.id === sid);
+                            return (
+                              <SortableChip key={`nc-${i}`} uid={`nc-${i}`}>
+                                <Badge variant="outline" className="font-mono text-[10px] gap-1" data-testid={`chip-new-conn-skill-${i}`}>
+                                  {s?.code}
+                                  <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => setNewConnSkillIds(prev => prev.filter((_, j) => j !== i))} data-testid={`btn-remove-new-conn-skill-${i}`}>
+                                    <X className="h-2.5 w-2.5" />
+                                  </button>
+                                </Badge>
+                              </SortableChip>
+                            );
+                          })}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
                     <Popover open={connSkillPickerOpen} onOpenChange={setConnSkillPickerOpen}>
                       <PopoverTrigger asChild>
                         <Button type="button" variant="outline" role="combobox" className="rounded-lg h-8 w-full justify-start font-normal text-xs text-muted-foreground" data-testid="btn-open-conn-skill-picker">
@@ -786,12 +819,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       <span className={cn("text-[10px] shrink-0", newRoutineSkillIds.length >= 10 ? "text-red-500 font-bold" : "text-muted-foreground")}>{newRoutineSkillIds.length}/10</span>
                     </div>
                     {newRoutineSkillIds.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-1 border-t border-primary/10">
-                        {newRoutineSkillIds.map((sid, i) => {
-                          const s = allItems?.find(sk => sk.id === sid);
-                          return <Badge key={i} variant="outline" className="font-mono text-[10px] gap-1">{s?.code}<button type="button" onClick={() => setNewRoutineSkillIds(prev => prev.filter((_, j) => j !== i))}><X className="h-2.5 w-2.5" /></button></Badge>;
-                        })}
-                      </div>
+                      <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleNewRoutineChipDragEnd}>
+                        <SortableContext items={newRoutineSkillIds.map((_, i) => `nr-${i}`)} strategy={rectSortingStrategy}>
+                          <div className="flex flex-wrap gap-1 pt-1 border-t border-primary/10">
+                            {newRoutineSkillIds.map((sid, i) => {
+                              const s = allItems?.find(sk => sk.id === sid);
+                              return (
+                                <SortableChip key={`nr-${i}`} uid={`nr-${i}`}>
+                                  <Badge variant="outline" className="font-mono text-[10px] gap-1" data-testid={`chip-new-routine-skill-${i}`}>
+                                    {s?.code}
+                                    <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => setNewRoutineSkillIds(prev => prev.filter((_, j) => j !== i))} data-testid={`btn-remove-new-routine-skill-${i}`}>
+                                      <X className="h-2.5 w-2.5" />
+                                    </button>
+                                  </Badge>
+                                </SortableChip>
+                              );
+                            })}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
                     )}
                     <Button type="button" size="sm" className="w-full h-8 rounded-lg text-xs" disabled={!newRoutineName || newRoutineSkillIds.length === 0 || isCreatingRoutine} onClick={async () => {
                       try {
