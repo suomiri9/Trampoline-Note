@@ -507,7 +507,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         }}
                       >
                         <CommandInput placeholder="Search by name or code..." className="h-10" />
-                        <CommandList className="max-h-[320px]">
+                        <CommandList className="max-h-[320px] overscroll-contain" onWheel={(e) => e.stopPropagation()}>
                           <CommandEmpty>No matches.</CommandEmpty>
                           {(() => {
                             const skillsList = (allItems || [])
@@ -602,8 +602,17 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       </Command>
                     </PopoverContent>
                   </Popover>
-                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); }} data-testid="btn-new-skill"><Plus className="h-3.5 w-3.5" />S<span className="text-muted-foreground/50">or</span><span className="text-yellow-500">D</span></Button>
-                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2 border-border text-foreground" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setNewRoutineName(""); setNewRoutineSkillIds([]); }} data-testid="btn-new-routine"><Plus className="h-3.5 w-3.5" />R<span className="text-muted-foreground/50">or</span><span className="text-red-500">C</span></Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl px-3" data-testid="btn-new-item"><Plus className="h-4 w-4" /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                      <DropdownMenuItem className="cursor-pointer text-xs" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); }} data-testid="menu-new-skill">New Skill</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-yellow-600 dark:text-yellow-400" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(true); }} data-testid="menu-new-drill">New Drill</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-red-500 dark:text-red-400" onClick={() => { setShowNewConn(true); setShowNewSkill(false); setShowNewRoutine(false); setNewConnName(""); setNewConnSkillIds([]); }} data-testid="menu-new-connection">New Connection</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-blue-600 dark:text-blue-400" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setNewRoutineName(""); setNewRoutineSkillIds([]); }} data-testid="menu-new-routine">New Routine</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
                 {showNewSkill && (
