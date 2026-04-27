@@ -645,8 +645,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       );
                     })()}
                     <div className="flex gap-2">
-                      <Input placeholder="Name" value={newSkillName} onChange={e => setNewSkillName(e.target.value)} className="rounded-lg h-9 text-xs flex-1" />
-                      <Input placeholder="Code" value={newSkillCode} onChange={e => setNewSkillCode(e.target.value)} className="rounded-lg h-9 text-xs w-20" />
+                      <Input placeholder="Name" value={newSkillName} onChange={e => setNewSkillName(e.target.value)} className="rounded-lg h-9 text-xs w-1/2" />
+                      <Input placeholder="Code" value={newSkillCode} onChange={e => setNewSkillCode(e.target.value)} className="rounded-lg h-9 text-xs w-1/2" />
                     </div>
                     <Input type="number" step="0.1" min="0" placeholder="DD" value={newSkillDD} onChange={e => setNewSkillDD(e.target.value)} className="rounded-lg h-9 text-xs w-20" />
                     <Button type="button" size="sm" className="w-full h-8 rounded-lg text-xs" disabled={!newSkillName || !newSkillCode || isCreatingSkill} onClick={async () => {
