@@ -124,10 +124,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [showNewRoutine, setShowNewRoutine] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [newConnName, setNewConnName] = useState("");
-  const [newConnCode, setNewConnCode] = useState("");
   const [newConnSkillIds, setNewConnSkillIds] = useState<number[]>([]);
   const [newRoutineName, setNewRoutineName] = useState("");
-  const [newRoutineCode, setNewRoutineCode] = useState("");
   const [newRoutineSkillIds, setNewRoutineSkillIds] = useState<number[]>([]);
   const [showNewSkill, setShowNewSkill] = useState(false);
   const [newSkillName, setNewSkillName] = useState("");
@@ -206,10 +204,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         setShowNewConn(false);
         setShowNewRoutine(false);
         setNewConnName("");
-        setNewConnCode("");
         setNewConnSkillIds([]);
         setNewRoutineName("");
-        setNewRoutineCode("");
         setNewRoutineSkillIds([]);
         setShowNewSkill(false);
         setNewSkillName("");
@@ -574,12 +570,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     {connList.map(item => (
                                       <CommandItem
                                         key={`c-${item.id}`}
-                                        value={`${item.code} ${item.name} connection`}
+                                        value={`${item.name} connection`}
                                         onSelect={() => { addSkill(item.id.toString()); setPickerOpen(false); }}
                                         data-testid={`pick-conn-${item.id}`}
                                       >
-                                        <span className="font-mono text-xs font-semibold text-foreground mr-2">{item.code}</span>
-                                        <span className="text-muted-foreground">- {item.name}</span>
+                                        <span className="font-mono text-xs font-semibold text-foreground mr-2">{item.name}</span>
                                         <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-red-500 dark:text-red-400">Connection</span>
                                       </CommandItem>
                                     ))}
@@ -590,14 +585,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     {routineList.map(r => (
                                       <CommandItem
                                         key={`r-${r.id}`}
-                                        value={`${r.code || ""} ${r.name} routine`}
+                                        value={`${r.name} routine`}
                                         onSelect={() => { addRoutine(r.id.toString()); setPickerOpen(false); }}
                                         data-testid={`pick-routine-${r.id}`}
                                       >
-                                        {r.code && (
-                                          <span className="font-mono text-xs font-semibold text-foreground mr-2">{r.code}</span>
-                                        )}
-                                        <span className="text-muted-foreground">{r.code ? "- " : ""}{r.name}</span>
+                                        <span className="font-mono text-xs font-semibold text-foreground mr-2">{r.name}</span>
                                         <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-blue-600 dark:text-blue-400">Routine</span>
                                       </CommandItem>
                                     ))}
@@ -611,7 +603,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     </PopoverContent>
                   </Popover>
                   <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); }} data-testid="btn-new-skill"><Plus className="h-3.5 w-3.5" />S<span className="text-muted-foreground/50">or</span><span className="text-yellow-500">D</span></Button>
-                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2 border-border text-foreground" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setNewRoutineName(""); setNewRoutineCode(""); setNewRoutineSkillIds([]); }} data-testid="btn-new-routine"><Plus className="h-3.5 w-3.5" />R<span className="text-muted-foreground/50">or</span><span className="text-red-500">C</span></Button>
+                  <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2 border-border text-foreground" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setNewRoutineName(""); setNewRoutineSkillIds([]); }} data-testid="btn-new-routine"><Plus className="h-3.5 w-3.5" />R<span className="text-muted-foreground/50">or</span><span className="text-red-500">C</span></Button>
                 </div>
 
                 {showNewSkill && (
@@ -662,7 +654,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-red-600 dark:text-red-400">New Connection</span>
                       <div className="flex gap-1">
-                        <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground" onClick={() => { setShowNewConn(false); setShowNewRoutine(true); setNewRoutineName(""); setNewRoutineCode(""); setNewRoutineSkillIds([]); }}>Switch to Routine</Button>
+                        <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground" onClick={() => { setShowNewConn(false); setShowNewRoutine(true); setNewRoutineName(""); setNewRoutineSkillIds([]); }}>Switch to Routine</Button>
                         <button type="button" onClick={() => setShowNewConn(false)}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
                       </div>
                     </div>
@@ -674,22 +666,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           const src = dupConns.find(s => s.id === parseInt(v));
                           if (!src) return;
                           setNewConnName(`${src.name} (copy)`);
-                          setNewConnCode(src.code);
                           setNewConnSkillIds(src.skillIds || []);
                         }}>
                           <SelectTrigger className="rounded-lg h-8 text-xs" data-testid="select-duplicate-inline-connection"><SelectValue placeholder="Duplicate from existing connection..." /></SelectTrigger>
                           <SelectContent>
                             {dupConns.map(s => (
-                              <SelectItem key={s.id} value={s.id.toString()}><span className="text-xs"><span className="font-mono">{s.code}</span> — {s.name}</span></SelectItem>
+                              <SelectItem key={s.id} value={s.id.toString()}><span className="text-xs">{s.name}</span></SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       );
                     })()}
-                    <div className="flex gap-2">
-                      <Input placeholder="Name" value={newConnName} onChange={e => setNewConnName(e.target.value)} className="rounded-lg h-9 text-xs flex-1" />
-                      <Input placeholder="Code" value={newConnCode} onChange={e => setNewConnCode(e.target.value)} className="rounded-lg h-9 text-xs w-20" />
-                    </div>
+                    <Input placeholder="Name (e.g. Ba+BT)" value={newConnName} onChange={e => setNewConnName(e.target.value)} className="rounded-lg h-9 text-xs" />
                     <div className="flex flex-wrap gap-1">
                       {newConnSkillIds.map((sid, i) => {
                         const s = allItems?.find(sk => sk.id === sid);
@@ -704,11 +692,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button type="button" size="sm" className="w-full h-8 rounded-lg text-xs bg-red-500 hover:bg-red-600 text-white" disabled={!newConnName || !newConnCode || newConnSkillIds.length === 0 || isCreatingSkill} onClick={async () => {
+                    <Button type="button" size="sm" className="w-full h-8 rounded-lg text-xs bg-red-500 hover:bg-red-600 text-white" disabled={!newConnName || newConnSkillIds.length === 0 || isCreatingSkill} onClick={async () => {
                       try {
                         const dd = newConnSkillIds.reduce((acc, sid) => acc + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0);
-                        await createSkill({ name: newConnName, code: newConnCode, difficulty: dd, isDrill: 2, skillIds: newConnSkillIds });
-                        setNewConnName(""); setNewConnCode(""); setNewConnSkillIds([]); setShowNewConn(false);
+                        await createSkill({ name: newConnName, code: newConnName, difficulty: dd, isDrill: 2, skillIds: newConnSkillIds });
+                        setNewConnName(""); setNewConnSkillIds([]); setShowNewConn(false);
                       } catch {}
                     }}>Save Connection</Button>
                   </div>
@@ -719,7 +707,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-primary">New Routine</span>
                       <div className="flex gap-1">
-                        <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground" onClick={() => { setShowNewRoutine(false); setShowNewConn(true); setNewConnName(""); setNewConnCode(""); setNewConnSkillIds([]); }}>Switch to Connection</Button>
+                        <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground" onClick={() => { setShowNewRoutine(false); setShowNewConn(true); setNewConnName(""); setNewConnSkillIds([]); }}>Switch to Connection</Button>
                         <button type="button" onClick={() => setShowNewRoutine(false)}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
                       </div>
                     </div>
@@ -742,10 +730,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         </Select>
                       );
                     })()}
-                    <div className="flex gap-2">
-                      <Input placeholder="Name" value={newRoutineName} onChange={e => setNewRoutineName(e.target.value)} className="rounded-lg h-9 text-xs flex-1" />
-                      <Input placeholder="Code" value={newRoutineCode} onChange={e => setNewRoutineCode(e.target.value)} className="rounded-lg h-9 text-xs w-20" />
-                    </div>
+                    <Input placeholder="Name" value={newRoutineName} onChange={e => setNewRoutineName(e.target.value)} className="rounded-lg h-9 text-xs" />
                     <div className="flex items-center gap-2">
                       <Select key={`routine-skill-${newRoutineSkillIds.length}`} onValueChange={(v) => setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, parseInt(v)] : prev)} disabled={newRoutineSkillIds.length >= 10}>
                         <SelectTrigger className="rounded-lg h-8 text-xs flex-1" disabled={newRoutineSkillIds.length >= 10}><SelectValue placeholder={newRoutineSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."} /></SelectTrigger>
@@ -765,10 +750,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         })}
                       </div>
                     )}
-                    <Button type="button" size="sm" className="w-full h-8 rounded-lg text-xs" disabled={!newRoutineName || !newRoutineCode || newRoutineSkillIds.length === 0 || isCreatingRoutine} onClick={async () => {
+                    <Button type="button" size="sm" className="w-full h-8 rounded-lg text-xs" disabled={!newRoutineName || newRoutineSkillIds.length === 0 || isCreatingRoutine} onClick={async () => {
                       try {
-                        await createRoutine({ name: newRoutineName, code: newRoutineCode, skillIds: newRoutineSkillIds });
-                        setNewRoutineName(""); setNewRoutineCode(""); setNewRoutineSkillIds([]); setShowNewRoutine(false);
+                        await createRoutine({ name: newRoutineName, code: newRoutineName, skillIds: newRoutineSkillIds });
+                        setNewRoutineName(""); setNewRoutineSkillIds([]); setShowNewRoutine(false);
                       } catch {}
                     }}>Save Routine</Button>
                   </div>

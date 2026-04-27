@@ -74,7 +74,6 @@ export default function SkillsPage() {
   const [showArchived, setShowArchived] = useState(false);
   
   const [connName, setConnName] = useState("");
-  const [connCode, setConnCode] = useState("");
   const [connSkillIds, setConnSkillIds] = useState<number[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<{ id: number; name: string; kind: string } | null>(null);
@@ -167,13 +166,13 @@ export default function SkillsPage() {
   };
 
   const onConnectionSubmit = async () => {
-    if (!connName || !connCode || connSkillIds.length === 0) return;
+    if (!connName || connSkillIds.length === 0) return;
     
     const totalDifficulty = calcDDFromSkillIds(connSkillIds, skills || []);
 
     const payload = {
       name: connName,
-      code: connCode,
+      code: connName,
       difficulty: totalDifficulty,
       isDrill: 2,
       skillIds: connSkillIds
@@ -187,7 +186,6 @@ export default function SkillsPage() {
     }
     
     setConnName("");
-    setConnCode("");
     setConnSkillIds([]);
   };
 
@@ -195,7 +193,6 @@ export default function SkillsPage() {
     setEditingSkill(skill);
     if (skill.isDrill === 2) {
       setConnName(skill.name);
-      setConnCode(skill.code);
       setConnSkillIds(skill.skillIds || []);
     } else if (skill.isDrill === 1) {
       drillForm.reset({
@@ -219,7 +216,6 @@ export default function SkillsPage() {
     setEditingSkill(null);
     if (isDrill === 2) {
       setConnName("");
-      setConnCode("");
       setConnSkillIds([]);
     } else if (isDrill === 1) {
       drillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 1 });
@@ -533,14 +529,13 @@ export default function SkillsPage() {
                           const src = activeConnections.find(s => s.id === parseInt(v));
                           if (!src) return;
                           setConnName(`${src.name} (copy)`);
-                          setConnCode(src.code);
                           setConnSkillIds(src.skillIds || []);
                         }}>
                           <SelectTrigger data-testid="select-duplicate-connection"><SelectValue placeholder="Pick a connection to copy..." /></SelectTrigger>
                           <SelectContent>
                             {activeConnections.map(s => (
                               <SelectItem key={s.id} value={s.id.toString()}>
-                                <span className="font-mono mr-2">{s.code}</span> {s.name}
+                                {s.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -549,11 +544,7 @@ export default function SkillsPage() {
                     )}
                     <div className="space-y-2">
                       <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Connection Name</label>
-                      <Input value={connName} onChange={e => setConnName(e.target.value)} placeholder="e.g. Barani + Back Tuck" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Combined Code</label>
-                      <Input value={connCode} onChange={e => setConnCode(e.target.value)} placeholder="e.g. Ba+BT" />
+                      <Input value={connName} onChange={e => setConnName(e.target.value)} placeholder="e.g. Ba+BT" />
                     </div>
                     
                     <div className="space-y-2">
@@ -595,7 +586,7 @@ export default function SkillsPage() {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button className="flex-1" onClick={onConnectionSubmit} disabled={isCreating || isUpdating || !connName || !connCode || connSkillIds.length === 0}>
+                      <Button className="flex-1" onClick={onConnectionSubmit} disabled={isCreating || isUpdating || !connName || connSkillIds.length === 0}>
                         {editingSkill ? "Update Connection" : "Save Connection"}
                       </Button>
                       {editingSkill && <Button variant="outline" onClick={cancelEditing}>Cancel</Button>}

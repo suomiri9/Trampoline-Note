@@ -94,12 +94,14 @@ export default function RoutinesPage() {
       await updateRoutine({
         id: editingRoutine.id,
         name,
+        code: name,
         skillIds: selectedSkillIds as number[],
       });
       setEditingRoutine(null);
     } else {
       await createRoutine({
         name,
+        code: name,
         skillIds: selectedSkillIds as number[],
       });
     }

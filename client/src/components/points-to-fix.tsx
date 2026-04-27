@@ -423,15 +423,20 @@ export function PointsToFix() {
                                 : t === "connection"
                                   ? "text-red-500 dark:text-red-400"
                                   : "";
+                            const sameCodeName = !!s && s.code === s.name;
                             const header = (
                               <div className="flex items-center gap-2 min-w-0 flex-wrap">
                                 <span className="font-mono text-xs font-semibold text-foreground">
                                   {s?.code || "?"}
                                 </span>
-                                <span className="text-muted-foreground">-</span>
-                                <span className="text-sm text-muted-foreground truncate">
-                                  {s?.name || "Unknown skill"}
-                                </span>
+                                {!sameCodeName && (
+                                  <>
+                                    <span className="text-muted-foreground">-</span>
+                                    <span className="text-sm text-muted-foreground truncate">
+                                      {s?.name || "Unknown skill"}
+                                    </span>
+                                  </>
+                                )}
                                 {t !== "skill" && (
                                   <span
                                     className={`text-[9px] uppercase tracking-wider font-semibold shrink-0 ${typeColor}`}
@@ -455,15 +460,7 @@ export function PointsToFix() {
                             const groupPoints = groupsByRoutine.get(rid) || [];
                             const header = (
                               <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                                {r?.code && (
-                                  <>
-                                    <span className="font-mono text-xs font-semibold text-foreground">
-                                      {r.code}
-                                    </span>
-                                    <span className="text-muted-foreground">-</span>
-                                  </>
-                                )}
-                                <span className="text-sm text-muted-foreground truncate">
+                                <span className="font-mono text-xs font-semibold text-foreground">
                                   {r?.name || "Unknown routine"}
                                 </span>
                                 <span className="text-[9px] uppercase tracking-wider font-semibold shrink-0 text-blue-600 dark:text-blue-400">
@@ -525,6 +522,7 @@ export function PointsToFix() {
                             : t === "connection"
                               ? "text-red-500 dark:text-red-400"
                               : "";
+                        const sameCodeName = s.code === s.name;
                         return (
                           <SelectItem
                             key={`s-${s.id}`}
@@ -535,8 +533,12 @@ export function PointsToFix() {
                               <span className="font-mono text-xs font-semibold text-foreground">
                                 {s.code}
                               </span>
-                              <span className="text-muted-foreground">-</span>
-                              <span className="flex-1 text-muted-foreground">{s.name}</span>
+                              {!sameCodeName && (
+                                <>
+                                  <span className="text-muted-foreground">-</span>
+                                  <span className="flex-1 text-muted-foreground">{s.name}</span>
+                                </>
+                              )}
                               {t !== "skill" && (
                                 <span
                                   className={`text-[9px] uppercase tracking-wider font-semibold ${typeColor}`}
@@ -557,15 +559,9 @@ export function PointsToFix() {
                           data-testid={`option-routine-${r.id}`}
                         >
                           <span className="inline-flex items-center gap-2">
-                            {r.code && (
-                              <>
-                                <span className="font-mono text-xs font-semibold text-foreground">
-                                  {r.code}
-                                </span>
-                                <span className="text-muted-foreground">-</span>
-                              </>
-                            )}
-                            <span className="flex-1 text-muted-foreground">{r.name}</span>
+                            <span className="font-mono text-xs font-semibold text-foreground">
+                              {r.name}
+                            </span>
                             <span className="text-[9px] uppercase tracking-wider font-semibold text-blue-600 dark:text-blue-400">
                               {TYPE_LABEL.routine}
                             </span>
