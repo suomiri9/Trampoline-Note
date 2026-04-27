@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Trash2, Plus, GripVertical, Pencil, X, Layers, Archive, ArchiveRestore, MoreVertical, Search } from "lucide-react";
+import { Trash2, GripVertical, Pencil, X, Layers, Archive, ArchiveRestore, MoreVertical, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { type Routine } from "@shared/schema";
@@ -21,19 +21,20 @@ import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-function SortableSkillSlot({ id, children }: { id: string; children: React.ReactNode }) {
+function SortableFilledSlot({ id, children }: { id: string; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
-      className="flex items-center gap-2 group"
+      className="flex items-center gap-2 flex-1 min-w-0"
     >
       <button
         type="button"
-        className="touch-none cursor-grab active:cursor-grabbing flex items-center justify-center w-5 h-5 text-muted-foreground/40 hover:text-muted-foreground shrink-0"
+        className="touch-none cursor-grab active:cursor-grabbing flex items-center justify-center w-5 h-5 text-muted-foreground/60 hover:text-foreground shrink-0"
         {...attributes}
         {...listeners}
+        data-testid={`btn-grip-routine-${id}`}
       >
         <GripVertical className="h-3.5 w-3.5" />
       </button>
@@ -52,9 +53,9 @@ export default function RoutinesPage() {
   const [name, setName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<{ id: number; name: string } | null>(null);
-  const [selectedSkillIds, setSelectedSkillIds] = useState<(number | null)[]>(new Array(10).fill(null));
+  const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
   const [showArchived, setShowArchived] = useState(false);
-  const [openSlotIndex, setOpenSlotIndex] = useState<number | null>(null);
+  const [topPickerOpen, setTopPickerOpen] = useState(false);
 
   const routines = allRoutines?.filter(r => showArchived ? r.archived === 1 : r.archived !== 1);
   const archivedCount = allRoutines ? allRoutines.filter(r => r.archived === 1).length : 0;
@@ -75,10 +76,12 @@ export default function RoutinesPage() {
 
   const sensors = useDndSensors();
 
-  const handleAddSkill = (index: number, skillId: string) => {
-    const newIds = [...selectedSkillIds];
-    newIds[index] = parseInt(skillId);
-    setSelectedSkillIds(newIds);
+  const handleAddSkill = (skillId: number) => {
+    setSelectedSkillIds(prev => prev.length >= 10 ? prev : [...prev, skillId]);
+  };
+
+  const handleRemoveSkill = (index: number) => {
+    setSelectedSkillIds(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -91,39 +94,39 @@ export default function RoutinesPage() {
   };
 
   const handleCreate = async () => {
-    if (!name || selectedSkillIds.some(id => id === null)) return;
-    
+    if (!name || selectedSkillIds.length !== 10) return;
+
     if (editingRoutine) {
       await updateRoutine({
         id: editingRoutine.id,
         name,
         code: name,
-        skillIds: selectedSkillIds as number[],
+        skillIds: selectedSkillIds,
       });
       setEditingRoutine(null);
     } else {
       await createRoutine({
         name,
         code: name,
-        skillIds: selectedSkillIds as number[],
+        skillIds: selectedSkillIds,
       });
     }
-    
+
     setName("");
-    setSelectedSkillIds(new Array(10).fill(null));
+    setSelectedSkillIds([]);
   };
 
   const startEditing = (routine: Routine) => {
     setEditingRoutine(routine);
     setName(routine.name);
-    setSelectedSkillIds(routine.skillIds);
+    setSelectedSkillIds(routine.skillIds.slice(0, 10));
   };
 
   const cancelEditing = () => {
     setEditingRoutine(null);
     setName("");
-    setSelectedSkillIds(new Array(10).fill(null));
-    setOpenSlotIndex(null);
+    setSelectedSkillIds([]);
+    setTopPickerOpen(false);
   };
 
 
@@ -163,9 +166,7 @@ export default function RoutinesPage() {
                   const src = allRoutines?.find(r => r.id === parseInt(v));
                   if (!src) return;
                   setName(`${src.name} (copy)`);
-                  const slots: (number | null)[] = new Array(10).fill(null);
-                  src.skillIds.slice(0, 10).forEach((id, i) => { slots[i] = id; });
-                  setSelectedSkillIds(slots);
+                  setSelectedSkillIds(src.skillIds.slice(0, 10));
                 }}>
                   <SelectTrigger data-testid="select-duplicate-routine"><SelectValue placeholder="Pick a routine to copy..." /></SelectTrigger>
                   <SelectContent>
@@ -181,63 +182,80 @@ export default function RoutinesPage() {
               value={name} 
               onChange={e => setName(e.target.value)} 
             />
+            <div className="flex items-center gap-2">
+              <Popover open={topPickerOpen} onOpenChange={(v) => { if (selectedSkillIds.length >= 10) return; setTopPickerOpen(v); }}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    disabled={selectedSkillIds.length >= 10}
+                    className="h-10 flex-1 justify-start font-normal text-muted-foreground"
+                    data-testid="btn-open-routine-top-picker"
+                  >
+                    <Search className="h-3.5 w-3.5 mr-2 opacity-60" />
+                    {selectedSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
+                  <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
+                    <CommandInput placeholder="Search by name or code..." className="h-10" />
+                    <CommandList className="max-h-[280px] overscroll-contain" onWheel={(e) => e.stopPropagation()}>
+                      <CommandEmpty>No matches.</CommandEmpty>
+                      <CommandGroup heading="Skills">
+                        {skills?.slice().sort((a, b) => {
+                          const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
+                          if (oA !== oB) return oA - oB;
+                          return b.difficulty - a.difficulty;
+                        }).map(skill => (
+                          <CommandItem
+                            key={skill.id}
+                            value={`${skill.code} ${skill.name} skill`}
+                            onSelect={() => { handleAddSkill(skill.id); setTopPickerOpen(false); }}
+                            data-testid={`pick-routine-skill-${skill.id}`}
+                          >
+                            <span className="font-mono text-xs font-semibold text-foreground mr-2">{skill.code}</span>
+                            {skill.code !== skill.name && <span className="text-muted-foreground">- {skill.name}</span>}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <span className={cn("text-xs shrink-0 font-mono", selectedSkillIds.length >= 10 ? "text-red-500 font-bold" : "text-muted-foreground")} data-testid="text-routine-count">{selectedSkillIds.length}/10</span>
+            </div>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={selectedSkillIds.map((_, i) => `slot-${i}`)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-2">
-                  {selectedSkillIds.map((id, index) => {
-                    const selectedSkill = skills?.find(s => s.id === id);
+                  {Array.from({ length: 10 }).map((_, index) => {
+                    const id = selectedSkillIds[index];
+                    const skill = id !== undefined ? skills?.find(s => s.id === id) : null;
                     return (
-                      <SortableSkillSlot key={`slot-${index}`} id={`slot-${index}`}>
+                      <div key={index} className="flex items-center gap-2 min-h-[40px]" data-testid={`row-routine-slot-${index}`}>
                         <span className="text-xs font-mono text-muted-foreground w-5 shrink-0">{index + 1}.</span>
-                        <Popover open={openSlotIndex === index} onOpenChange={(v) => setOpenSlotIndex(v ? index : null)}>
-                          <PopoverTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              role="combobox"
-                              className={cn("h-10 flex-1 justify-start font-normal", !selectedSkill && "text-muted-foreground")}
-                              data-testid={`btn-open-routine-slot-${index}`}
-                            >
-                              <Search className="h-3.5 w-3.5 mr-2 opacity-60" />
-                              {selectedSkill ? <span className="font-mono">{selectedSkill.code}</span> : "Skill Code"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
-                            <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
-                              <CommandInput placeholder="Search by name or code..." className="h-10" />
-                              <CommandList className="max-h-[280px] overscroll-contain" onWheel={(e) => e.stopPropagation()}>
-                                <CommandEmpty>No matches.</CommandEmpty>
-                                <CommandGroup heading="Skills">
-                                  {skills?.slice().sort((a, b) => {
-                                    const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
-                                    if (oA !== oB) return oA - oB;
-                                    return b.difficulty - a.difficulty;
-                                  }).map(skill => (
-                                    <CommandItem
-                                      key={skill.id}
-                                      value={`${skill.code} ${skill.name} skill`}
-                                      onSelect={() => { handleAddSkill(index, skill.id.toString()); setOpenSlotIndex(null); }}
-                                      data-testid={`pick-routine-slot-${index}-skill-${skill.id}`}
-                                    >
-                                      <span className="font-mono text-xs font-semibold text-foreground mr-2">{skill.code}</span>
-                                      {skill.code !== skill.name && <span className="text-muted-foreground">- {skill.name}</span>}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                        <div className="w-16 flex justify-end">
-                          {selectedSkill ? (
-                            <Badge variant="outline" className="font-mono bg-secondary/50">
-                              {selectedSkill.difficulty.toFixed(1)}
+                        {skill ? (
+                          <SortableFilledSlot id={`slot-${index}`}>
+                            <Badge variant="outline" className="font-mono bg-secondary/50 px-2 py-1">
+                              {skill.code}
                             </Badge>
-                          ) : (
-                            <div className="w-8 h-4 bg-muted/20 rounded-full" />
-                          )}
-                        </div>
-                      </SortableSkillSlot>
+                            <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">{skill.name}</span>
+                            <Badge variant="outline" className="font-mono text-[10px] shrink-0">
+                              {skill.difficulty.toFixed(1)}
+                            </Badge>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSkill(index)}
+                              className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-destructive shrink-0"
+                              data-testid={`btn-remove-routine-slot-${index}`}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </SortableFilledSlot>
+                        ) : (
+                          <div className="flex-1" />
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -253,7 +271,7 @@ export default function RoutinesPage() {
               <Button 
                 className="flex-1 h-11" 
                 onClick={handleCreate} 
-                disabled={isCreating || isUpdating || !name || selectedSkillIds.some(id => id === null)}
+                disabled={isCreating || isUpdating || !name || selectedSkillIds.length !== 10}
               >
                 {isCreating || isUpdating ? "Saving..." : editingRoutine ? "Update Routine" : "Save Routine"}
               </Button>
