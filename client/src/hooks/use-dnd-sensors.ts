@@ -9,7 +9,7 @@ export function useDndSensors() {
 
 export function useLongPressDndSensors() {
   return useSensors(
-    useSensor(MouseSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 5 } })
+    useSensor(MouseSensor, { activationConstraint: { delay: 120, tolerance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
   );
 }
