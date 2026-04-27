@@ -55,10 +55,26 @@ CommandInput.displayName = CommandPrimitive.Input.displayName
 const CommandList = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
->(({ className, ...props }, ref) => (
+>(({ className, style, onTouchMove, onWheel, ...props }, ref) => (
   <CommandPrimitive.List
     ref={ref}
-    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
+    className={cn(
+      "max-h-[300px] overflow-y-auto overflow-x-hidden overscroll-contain",
+      className,
+    )}
+    style={{
+      WebkitOverflowScrolling: "touch",
+      touchAction: "pan-y",
+      ...style,
+    }}
+    onTouchMove={(e) => {
+      e.stopPropagation();
+      onTouchMove?.(e);
+    }}
+    onWheel={(e) => {
+      e.stopPropagation();
+      onWheel?.(e);
+    }}
     {...props}
   />
 ))

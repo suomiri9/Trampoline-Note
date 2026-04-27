@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -148,6 +148,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   const sensors = useDndSensors();
   const longPressSensors = useLongPressDndSensors();
+  const dialogBodyRef = useRef<HTMLDivElement>(null);
 
   const handleNewConnChipDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -418,7 +419,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
           </DialogHeader>
         </div>
 
-        <div className="flex-1 overflow-scroll-touch min-h-0 px-6 pb-6 text-foreground">
+        <div ref={dialogBodyRef} className="flex-1 overflow-scroll-touch min-h-0 px-6 pb-6 text-foreground">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-4">
@@ -520,7 +521,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         Search skills, drills, connections, routines...
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
+                    <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
                       <Command
                         filter={(value, search) => {
                           const v = value.toLowerCase();
@@ -529,7 +530,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         }}
                       >
                         <CommandInput placeholder="Search by name or code..." className="h-10" />
-                        <CommandList className="max-h-[320px] overscroll-contain" onWheel={(e) => e.stopPropagation()}>
+                        <CommandList className="max-h-[320px]">
                           <CommandEmpty>No matches.</CommandEmpty>
                           {(() => {
                             const skillsList = (allItems || [])
@@ -735,10 +736,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           Add skill to connection...
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
+                      <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
                         <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
                           <CommandInput placeholder="Search by name or code..." className="h-10" />
-                          <CommandList className="max-h-[280px] overscroll-contain" onWheel={(e) => e.stopPropagation()}>
+                          <CommandList className="max-h-[280px]">
                             <CommandEmpty>No matches.</CommandEmpty>
                             <CommandGroup heading="Skills">
                               {allItems?.filter(s => s.isDrill === 0 && s.archived !== 1).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
@@ -799,10 +800,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             {newRoutineSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
+                        <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
                           <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
                             <CommandInput placeholder="Search by name or code..." className="h-10" />
-                            <CommandList className="max-h-[280px] overscroll-contain" onWheel={(e) => e.stopPropagation()}>
+                            <CommandList className="max-h-[280px]">
                               <CommandEmpty>No matches.</CommandEmpty>
                               <CommandGroup heading="Skills">
                                 {allItems?.filter(s => s.isDrill === 0 && s.archived !== 1).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (

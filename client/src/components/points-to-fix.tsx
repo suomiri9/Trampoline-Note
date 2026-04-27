@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -101,6 +101,7 @@ export function PointsToFix() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const dialogContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) {
@@ -253,7 +254,7 @@ export function PointsToFix() {
           setOpen(next);
         }}
       >
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent ref={dialogContentRef} className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -422,6 +423,7 @@ export function PointsToFix() {
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent
+                          container={dialogContentRef.current}
                           className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]"
                           align="start"
                         >
@@ -436,10 +438,7 @@ export function PointsToFix() {
                               placeholder="Search by name or code..."
                               className="h-10"
                             />
-                            <CommandList
-                              className="max-h-[320px] overscroll-contain"
-                              onWheel={(e) => e.stopPropagation()}
-                            >
+                            <CommandList className="max-h-[320px]">
                               <CommandEmpty>No matches.</CommandEmpty>
                               {filterSkillsList.length > 0 && (
                                 <CommandGroup heading="Skills">
@@ -703,6 +702,7 @@ export function PointsToFix() {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent
+                        container={dialogContentRef.current}
                         className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]"
                         align="start"
                       >
@@ -717,10 +717,7 @@ export function PointsToFix() {
                             placeholder="Search by name or code..."
                             className="h-10"
                           />
-                          <CommandList
-                            className="max-h-[320px] overscroll-contain"
-                            onWheel={(e) => e.stopPropagation()}
-                          >
+                          <CommandList className="max-h-[320px]">
                             <CommandEmpty>No matches.</CommandEmpty>
                             {linkSkillsList.length > 0 && (
                               <CommandGroup heading="Skills">

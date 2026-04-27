@@ -574,7 +574,7 @@ export default function SkillsPage() {
                         <PopoverContent className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
                           <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
                             <CommandInput placeholder="Search by name or code..." className="h-10" />
-                            <CommandList className="max-h-[320px] overscroll-contain" onWheel={(e) => e.stopPropagation()}>
+                            <CommandList className="max-h-[320px]">
                               <CommandEmpty>No matches.</CommandEmpty>
                               <CommandGroup heading="Skills">
                                 {skills?.slice().sort((a, b) => {
