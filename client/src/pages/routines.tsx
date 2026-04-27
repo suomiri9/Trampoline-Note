@@ -227,7 +227,7 @@ export default function RoutinesPage() {
             </div>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={selectedSkillIds.map((_, i) => `slot-${i}`)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-2">
+                <div className="space-y-2">
                   {Array.from({ length: 10 }).map((_, index) => {
                     const id = selectedSkillIds[index];
                     const skill = id !== undefined ? skills?.find(s => s.id === id) : null;
