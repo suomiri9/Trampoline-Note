@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, X } from "lucide-react";
+import { CalendarIcon, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, X, Search } from "lucide-react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -50,6 +50,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -114,6 +122,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [editingRoutineIdx, setEditingRoutineIdx] = useState<number | null>(null);
   const [showNewConn, setShowNewConn] = useState(false);
   const [showNewRoutine, setShowNewRoutine] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [newConnName, setNewConnName] = useState("");
   const [newConnCode, setNewConnCode] = useState("");
   const [newConnSkillIds, setNewConnSkillIds] = useState<number[]>([]);
@@ -480,58 +489,128 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 </div>
 
                 <div className="flex gap-2">
-                  <Select key={selectedSkills.length} onValueChange={addSkill}>
-                    <SelectTrigger className="rounded-xl h-11 flex-1"><SelectValue placeholder="Add a skill or drill..." /></SelectTrigger>
-                    <SelectContent>
-                      {allItems?.filter(s => s.isDrill !== 2 && s.archived !== 1).slice().sort((a, b) => {
-                        const groupOrder = (s: typeof a) => s.isDrill === 0 ? 0 : 1;
-                        const gA = groupOrder(a), gB = groupOrder(b);
-                        if (gA !== gB) return gA - gB;
-                        const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
-                        if (oA !== oB) return oA - oB;
-                        return b.difficulty - a.difficulty;
-                      }).map(item => (
-                        <SelectItem key={item.id} value={item.id.toString()}>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="font-mono text-[10px]">{item.code}</Badge>
-                            <span>{item.name}</span>
-                            {item.isDrill === 1 && <span className="text-[10px] text-yellow-500 ml-auto font-medium">(Drill)</span>}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        className="rounded-xl h-11 flex-1 justify-start font-normal text-muted-foreground"
+                        data-testid="btn-open-picker"
+                      >
+                        <Search className="h-4 w-4 mr-2 opacity-60" />
+                        Search skills, drills, connections, routines...
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
+                      <Command
+                        filter={(value, search) => {
+                          const v = value.toLowerCase();
+                          const s = search.toLowerCase();
+                          return v.includes(s) ? 1 : 0;
+                        }}
+                      >
+                        <CommandInput placeholder="Search by name or code..." className="h-10" />
+                        <CommandList className="max-h-[320px]">
+                          <CommandEmpty>No matches.</CommandEmpty>
+                          {(() => {
+                            const skillsList = (allItems || [])
+                              .filter(s => s.isDrill === 0 && s.archived !== 1)
+                              .slice()
+                              .sort((a, b) => {
+                                const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
+                                if (oA !== oB) return oA - oB;
+                                return b.difficulty - a.difficulty;
+                              });
+                            const drillsList = (allItems || [])
+                              .filter(s => s.isDrill === 1 && s.archived !== 1)
+                              .slice()
+                              .sort((a, b) => {
+                                const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
+                                if (oA !== oB) return oA - oB;
+                                return b.difficulty - a.difficulty;
+                              });
+                            const connList = (allItems || [])
+                              .filter(s => s.isDrill === 2 && s.skillIds && s.archived !== 1)
+                              .slice();
+                            const routineList = (routines || [])
+                              .filter(r => r.archived !== 1)
+                              .slice();
+                            return (
+                              <>
+                                {skillsList.length > 0 && (
+                                  <CommandGroup heading="Skills">
+                                    {skillsList.map(item => (
+                                      <CommandItem
+                                        key={`s-${item.id}`}
+                                        value={`${item.code} ${item.name} skill`}
+                                        onSelect={() => { addSkill(item.id.toString()); setPickerOpen(false); }}
+                                        data-testid={`pick-skill-${item.id}`}
+                                      >
+                                        <span className="font-mono text-xs font-semibold text-foreground mr-2">{item.code}</span>
+                                        <span className="text-muted-foreground">- {item.name}</span>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                )}
+                                {drillsList.length > 0 && (
+                                  <CommandGroup heading="Drills">
+                                    {drillsList.map(item => (
+                                      <CommandItem
+                                        key={`d-${item.id}`}
+                                        value={`${item.code} ${item.name} drill`}
+                                        onSelect={() => { addSkill(item.id.toString()); setPickerOpen(false); }}
+                                        data-testid={`pick-drill-${item.id}`}
+                                      >
+                                        <span className="font-mono text-xs font-semibold text-foreground mr-2">{item.code}</span>
+                                        <span className="text-muted-foreground">- {item.name}</span>
+                                        <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-yellow-600 dark:text-yellow-400">Drill</span>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                )}
+                                {connList.length > 0 && (
+                                  <CommandGroup heading="Connections">
+                                    {connList.map(item => (
+                                      <CommandItem
+                                        key={`c-${item.id}`}
+                                        value={`${item.code} ${item.name} connection`}
+                                        onSelect={() => { addSkill(item.id.toString()); setPickerOpen(false); }}
+                                        data-testid={`pick-conn-${item.id}`}
+                                      >
+                                        <span className="font-mono text-xs font-semibold text-foreground mr-2">{item.code}</span>
+                                        <span className="text-muted-foreground">- {item.name}</span>
+                                        <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-red-500 dark:text-red-400">Connection</span>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                )}
+                                {routineList.length > 0 && (
+                                  <CommandGroup heading="Routines">
+                                    {routineList.map(r => (
+                                      <CommandItem
+                                        key={`r-${r.id}`}
+                                        value={`${r.code || ""} ${r.name} routine`}
+                                        onSelect={() => { addRoutine(r.id.toString()); setPickerOpen(false); }}
+                                        data-testid={`pick-routine-${r.id}`}
+                                      >
+                                        {r.code && (
+                                          <span className="font-mono text-xs font-semibold text-foreground mr-2">{r.code}</span>
+                                        )}
+                                        <span className="text-muted-foreground">{r.code ? "- " : ""}{r.name}</span>
+                                        <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-blue-600 dark:text-blue-400">Routine</span>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); }} data-testid="btn-new-skill"><Plus className="h-3.5 w-3.5" />S<span className="text-muted-foreground/50">or</span><span className="text-yellow-500">D</span></Button>
-                </div>
-
-                <div className="flex gap-2">
-                  <Select key={`routine-select-${selectedSkills.length}`} onValueChange={(val) => {
-                    if (val.startsWith("conn-")) {
-                      addSkill(val.replace("conn-", ""));
-                    } else {
-                      addRoutine(val);
-                    }
-                  }}>
-                    <SelectTrigger className="rounded-xl h-11 border-primary/20 bg-primary/5 flex-1"><SelectValue placeholder="Routine / Connection..." /></SelectTrigger>
-                    <SelectContent>
-                      {routines?.filter(r => r.archived !== 1).map(routine => (
-                        <SelectItem key={`r-${routine.id}`} value={routine.id.toString()}>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="font-mono text-[10px] bg-primary/10 border-primary/20 text-primary">Routine</Badge>
-                            <span>{routine.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                      {allItems?.filter(s => s.isDrill === 2 && s.skillIds && s.archived !== 1).map(conn => (
-                        <SelectItem key={`c-${conn.id}`} value={`conn-${conn.id}`}>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="font-mono text-[10px] bg-red-100 border-red-200 text-red-500 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">Connection</Badge>
-                            <span>{conn.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl text-[10px] gap-1 px-2 border-border text-foreground" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setNewRoutineName(""); setNewRoutineCode(""); setNewRoutineSkillIds([]); }} data-testid="btn-new-routine"><Plus className="h-3.5 w-3.5" />R<span className="text-muted-foreground/50">or</span><span className="text-red-500">C</span></Button>
                 </div>
 
