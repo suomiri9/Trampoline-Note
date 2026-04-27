@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Pencil, X, Target, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore, MoreVertical } from "lucide-react";
+import { Trash2, Plus, Pencil, X, Target, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore, MoreVertical, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,6 +17,8 @@ import { insertSkillSchema, type Skill } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
@@ -75,6 +77,7 @@ export default function SkillsPage() {
   
   const [connName, setConnName] = useState("");
   const [connSkillIds, setConnSkillIds] = useState<number[]>([]);
+  const [connSkillPickerOpen, setConnSkillPickerOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<{ id: number; name: string; kind: string } | null>(null);
 
@@ -214,6 +217,7 @@ export default function SkillsPage() {
   const cancelEditing = () => {
     const isDrill = editingSkill?.isDrill;
     setEditingSkill(null);
+    setConnSkillPickerOpen(false);
     if (isDrill === 2) {
       setConnName("");
       setConnSkillIds([]);
@@ -549,20 +553,39 @@ export default function SkillsPage() {
                     
                     <div className="space-y-2">
                       <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Build Sequence</label>
-                      <Select onValueChange={addSkillToConn}>
-                        <SelectTrigger><SelectValue placeholder="Add skill to sequence..." /></SelectTrigger>
-                        <SelectContent>
-                          {skills?.slice().sort((a, b) => {
-                            const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
-                            if (oA !== oB) return oA - oB;
-                            return b.difficulty - a.difficulty;
-                          }).map(s => (
-                            <SelectItem key={s.id} value={s.id.toString()}>
-                              <span className="font-mono mr-2">{s.code}</span> {s.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={connSkillPickerOpen} onOpenChange={setConnSkillPickerOpen}>
+                        <PopoverTrigger asChild>
+                          <Button type="button" variant="outline" role="combobox" className="w-full justify-start font-normal text-muted-foreground" data-testid="btn-open-conn-skill-picker">
+                            <Search className="h-4 w-4 mr-2 opacity-60" />
+                            Add skill to sequence...
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
+                          <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
+                            <CommandInput placeholder="Search by name or code..." className="h-10" />
+                            <CommandList className="max-h-[320px] overscroll-contain" onWheel={(e) => e.stopPropagation()}>
+                              <CommandEmpty>No matches.</CommandEmpty>
+                              <CommandGroup heading="Skills">
+                                {skills?.slice().sort((a, b) => {
+                                  const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
+                                  if (oA !== oB) return oA - oB;
+                                  return b.difficulty - a.difficulty;
+                                }).map(s => (
+                                  <CommandItem
+                                    key={s.id}
+                                    value={`${s.code} ${s.name} skill`}
+                                    onSelect={() => { addSkillToConn(s.id.toString()); setConnSkillPickerOpen(false); }}
+                                    data-testid={`pick-conn-skill-${s.id}`}
+                                  >
+                                    <span className="font-mono text-xs font-semibold text-foreground mr-2">{s.code}</span>
+                                    {s.code !== s.name && <span className="text-muted-foreground">- {s.name}</span>}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
 
                     <div className="min-h-[80px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-2 items-start">

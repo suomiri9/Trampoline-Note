@@ -123,6 +123,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [showNewConn, setShowNewConn] = useState(false);
   const [showNewRoutine, setShowNewRoutine] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [connSkillPickerOpen, setConnSkillPickerOpen] = useState(false);
+  const [routineSkillPickerOpen, setRoutineSkillPickerOpen] = useState(false);
   const [newConnName, setNewConnName] = useState("");
   const [newConnSkillIds, setNewConnSkillIds] = useState<number[]>([]);
   const [newRoutineName, setNewRoutineName] = useState("");
@@ -693,14 +695,30 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         return <Badge key={i} variant="outline" className="font-mono text-[10px] gap-1">{s?.code}<button type="button" onClick={() => setNewConnSkillIds(prev => prev.filter((_, j) => j !== i))}><X className="h-2.5 w-2.5" /></button></Badge>;
                       })}
                     </div>
-                    <Select key={`conn-skill-${newConnSkillIds.length}`} onValueChange={(v) => setNewConnSkillIds(prev => [...prev, parseInt(v)])}>
-                      <SelectTrigger className="rounded-lg h-8 text-xs"><SelectValue placeholder="Add skill to connection..." /></SelectTrigger>
-                      <SelectContent>
-                        {allItems?.filter(s => s.isDrill === 0 && s.archived !== 1).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
-                          <SelectItem key={s.id} value={s.id.toString()}><span className="text-xs">{s.code} — {s.name}</span></SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={connSkillPickerOpen} onOpenChange={setConnSkillPickerOpen}>
+                      <PopoverTrigger asChild>
+                        <Button type="button" variant="outline" role="combobox" className="rounded-lg h-8 w-full justify-start font-normal text-xs text-muted-foreground" data-testid="btn-open-conn-skill-picker">
+                          <Search className="h-3.5 w-3.5 mr-2 opacity-60" />
+                          Add skill to connection...
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
+                        <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
+                          <CommandInput placeholder="Search by name or code..." className="h-10" />
+                          <CommandList className="max-h-[280px] overscroll-contain" onWheel={(e) => e.stopPropagation()}>
+                            <CommandEmpty>No matches.</CommandEmpty>
+                            <CommandGroup heading="Skills">
+                              {allItems?.filter(s => s.isDrill === 0 && s.archived !== 1).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
+                                <CommandItem key={s.id} value={`${s.code} ${s.name} skill`} onSelect={() => { setNewConnSkillIds(prev => [...prev, s.id]); setConnSkillPickerOpen(false); }} data-testid={`pick-conn-skill-${s.id}`}>
+                                  <span className="font-mono text-xs font-semibold text-foreground mr-2">{s.code}</span>
+                                  {s.code !== s.name && <span className="text-muted-foreground">- {s.name}</span>}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <Button type="button" size="sm" className="w-full h-8 rounded-lg text-xs bg-red-500 hover:bg-red-600 text-white" disabled={!newConnName || newConnSkillIds.length === 0 || isCreatingSkill} onClick={async () => {
                       try {
                         const dd = newConnSkillIds.reduce((acc, sid) => acc + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0);
@@ -741,14 +759,30 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     })()}
                     <Input placeholder="Name" value={newRoutineName} onChange={e => setNewRoutineName(e.target.value)} className="rounded-lg h-9 text-xs" />
                     <div className="flex items-center gap-2">
-                      <Select key={`routine-skill-${newRoutineSkillIds.length}`} onValueChange={(v) => setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, parseInt(v)] : prev)} disabled={newRoutineSkillIds.length >= 10}>
-                        <SelectTrigger className="rounded-lg h-8 text-xs flex-1" disabled={newRoutineSkillIds.length >= 10}><SelectValue placeholder={newRoutineSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."} /></SelectTrigger>
-                        <SelectContent>
-                          {allItems?.filter(s => s.isDrill === 0 && s.archived !== 1).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
-                            <SelectItem key={s.id} value={s.id.toString()}><span className="text-xs">{s.code} — {s.name}</span></SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={routineSkillPickerOpen} onOpenChange={(v) => { if (newRoutineSkillIds.length >= 10) return; setRoutineSkillPickerOpen(v); }}>
+                        <PopoverTrigger asChild>
+                          <Button type="button" variant="outline" role="combobox" disabled={newRoutineSkillIds.length >= 10} className="rounded-lg h-8 flex-1 justify-start font-normal text-xs text-muted-foreground" data-testid="btn-open-routine-skill-picker">
+                            <Search className="h-3.5 w-3.5 mr-2 opacity-60" />
+                            {newRoutineSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
+                          <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
+                            <CommandInput placeholder="Search by name or code..." className="h-10" />
+                            <CommandList className="max-h-[280px] overscroll-contain" onWheel={(e) => e.stopPropagation()}>
+                              <CommandEmpty>No matches.</CommandEmpty>
+                              <CommandGroup heading="Skills">
+                                {allItems?.filter(s => s.isDrill === 0 && s.archived !== 1).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
+                                  <CommandItem key={s.id} value={`${s.code} ${s.name} skill`} onSelect={() => { setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, s.id] : prev); setRoutineSkillPickerOpen(false); }} data-testid={`pick-routine-skill-${s.id}`}>
+                                    <span className="font-mono text-xs font-semibold text-foreground mr-2">{s.code}</span>
+                                    {s.code !== s.name && <span className="text-muted-foreground">- {s.name}</span>}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       <span className={cn("text-[10px] shrink-0", newRoutineSkillIds.length >= 10 ? "text-red-500 font-bold" : "text-muted-foreground")}>{newRoutineSkillIds.length}/10</span>
                     </div>
                     {newRoutineSkillIds.length > 0 && (

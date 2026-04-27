@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, GripVertical, Pencil, X, Layers, Archive, ArchiveRestore, MoreVertical } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Trash2, Plus, GripVertical, Pencil, X, Layers, Archive, ArchiveRestore, MoreVertical, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { type Routine } from "@shared/schema";
@@ -52,6 +54,7 @@ export default function RoutinesPage() {
   const [archiveTarget, setArchiveTarget] = useState<{ id: number; name: string } | null>(null);
   const [selectedSkillIds, setSelectedSkillIds] = useState<(number | null)[]>(new Array(10).fill(null));
   const [showArchived, setShowArchived] = useState(false);
+  const [openSlotIndex, setOpenSlotIndex] = useState<number | null>(null);
 
   const routines = allRoutines?.filter(r => showArchived ? r.archived === 1 : r.archived !== 1);
   const archivedCount = allRoutines ? allRoutines.filter(r => r.archived === 1).length : 0;
@@ -120,6 +123,7 @@ export default function RoutinesPage() {
     setEditingRoutine(null);
     setName("");
     setSelectedSkillIds(new Array(10).fill(null));
+    setOpenSlotIndex(null);
   };
 
 
@@ -185,22 +189,45 @@ export default function RoutinesPage() {
                     return (
                       <SortableSkillSlot key={`slot-${index}`} id={`slot-${index}`}>
                         <span className="text-xs font-mono text-muted-foreground w-5 shrink-0">{index + 1}.</span>
-                        <Select onValueChange={(val) => handleAddSkill(index, val)} value={id?.toString() || ""}>
-                          <SelectTrigger className="flex-1">
-                            <SelectValue placeholder="Skill Code" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {skills?.slice().sort((a, b) => {
-                              const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
-                              if (oA !== oB) return oA - oB;
-                              return b.difficulty - a.difficulty;
-                            }).map(skill => (
-                              <SelectItem key={skill.id} value={skill.id.toString()}>
-                                <span className="font-mono">{skill.code}</span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Popover open={openSlotIndex === index} onOpenChange={(v) => setOpenSlotIndex(v ? index : null)}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              role="combobox"
+                              className={cn("h-10 flex-1 justify-start font-normal", !selectedSkill && "text-muted-foreground")}
+                              data-testid={`btn-open-routine-slot-${index}`}
+                            >
+                              <Search className="h-3.5 w-3.5 mr-2 opacity-60" />
+                              {selectedSkill ? <span className="font-mono">{selectedSkill.code}</span> : "Skill Code"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
+                            <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
+                              <CommandInput placeholder="Search by name or code..." className="h-10" />
+                              <CommandList className="max-h-[280px] overscroll-contain" onWheel={(e) => e.stopPropagation()}>
+                                <CommandEmpty>No matches.</CommandEmpty>
+                                <CommandGroup heading="Skills">
+                                  {skills?.slice().sort((a, b) => {
+                                    const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
+                                    if (oA !== oB) return oA - oB;
+                                    return b.difficulty - a.difficulty;
+                                  }).map(skill => (
+                                    <CommandItem
+                                      key={skill.id}
+                                      value={`${skill.code} ${skill.name} skill`}
+                                      onSelect={() => { handleAddSkill(index, skill.id.toString()); setOpenSlotIndex(null); }}
+                                      data-testid={`pick-routine-slot-${index}-skill-${skill.id}`}
+                                    >
+                                      <span className="font-mono text-xs font-semibold text-foreground mr-2">{skill.code}</span>
+                                      {skill.code !== skill.name && <span className="text-muted-foreground">- {skill.name}</span>}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                         <div className="w-16 flex justify-end">
                           {selectedSkill ? (
                             <Badge variant="outline" className="font-mono bg-secondary/50">
