@@ -10,7 +10,15 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import type { SafeUser } from "@shared/models/auth";
 import type { Routine } from "@shared/schema";
 
@@ -88,7 +96,10 @@ export function PointsToFix() {
   const [draftName, setDraftName] = useState("");
   const [draftSkillIds, setDraftSkillIds] = useState<number[]>([]);
   const [draftRoutineIds, setDraftRoutineIds] = useState<number[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [filterKind, setFilterKind] = useState<"skill" | "routine" | null>(null);
+  const [filterId, setFilterId] = useState<number | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
 
   useEffect(() => {
@@ -96,7 +107,10 @@ export function PointsToFix() {
       setDraftName("");
       setDraftSkillIds([]);
       setDraftRoutineIds([]);
-      setSearchQuery("");
+      setFilterKind(null);
+      setFilterId(null);
+      setFilterOpen(false);
+      setLinkOpen(false);
     }
   }, [open]);
 
@@ -289,26 +303,34 @@ export function PointsToFix() {
                   if (!orderedRoutineIds.includes(id)) orderedRoutineIds.push(id);
                 }
 
-                const q = searchQuery.trim().toLowerCase();
-                const filteredSkillIds = q
-                  ? orderedSkillIds.filter((id) => {
-                      const s = skillById(id);
-                      const code = (s?.code || "").toLowerCase();
-                      const name = (s?.name || "").toLowerCase();
-                      return code.includes(q) || name.includes(q);
-                    })
-                  : orderedSkillIds;
-                const filteredRoutineIds = q
-                  ? orderedRoutineIds.filter((id) => {
-                      const r = routineById(id);
-                      const code = (r?.code || "").toLowerCase();
-                      const name = (r?.name || "").toLowerCase();
-                      return code.includes(q) || name.includes(q);
-                    })
-                  : orderedRoutineIds;
-                const showUnlinked = !q && unlinked.length > 0;
+                const hasFilter = filterKind !== null && filterId !== null;
+                const filteredSkillIds =
+                  filterKind === "skill" && filterId !== null
+                    ? orderedSkillIds.filter((id) => id === filterId)
+                    : filterKind === "routine"
+                      ? []
+                      : orderedSkillIds;
+                const filteredRoutineIds =
+                  filterKind === "routine" && filterId !== null
+                    ? orderedRoutineIds.filter((id) => id === filterId)
+                    : filterKind === "skill"
+                      ? []
+                      : orderedRoutineIds;
+                const showUnlinked = !hasFilter && unlinked.length > 0;
                 const noResults =
-                  q && filteredSkillIds.length === 0 && filteredRoutineIds.length === 0;
+                  hasFilter && filteredSkillIds.length === 0 && filteredRoutineIds.length === 0;
+
+                const filterSkill =
+                  filterKind === "skill" && filterId !== null ? skillById(filterId) : null;
+                const filterRoutine =
+                  filterKind === "routine" && filterId !== null ? routineById(filterId) : null;
+                const filterLabel = filterSkill
+                  ? filterSkill.code === filterSkill.name
+                    ? filterSkill.code
+                    : `${filterSkill.code} - ${filterSkill.name}`
+                  : filterRoutine
+                    ? filterRoutine.name
+                    : "";
 
                 const renderPointRow = (
                   p: PointToFix,
@@ -366,31 +388,177 @@ export function PointsToFix() {
                   </div>
                 );
 
+                const filterSkillsList = sortedActiveSkills.filter(
+                  (s) => groupsBySkill.has(s.id) && s.isDrill === 0,
+                );
+                const filterDrillsList = sortedActiveSkills.filter(
+                  (s) => groupsBySkill.has(s.id) && s.isDrill === 1,
+                );
+                const filterConnList = sortedActiveSkills.filter(
+                  (s) => groupsBySkill.has(s.id) && s.isDrill === 2,
+                );
+                const filterRoutinesList = sortedActiveRoutines.filter((r) =>
+                  groupsByRoutine.has(r.id),
+                );
+
                 return (
                   <div className="space-y-3">
-                    <div className="relative">
-                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                      <Input
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search by skill or routine..."
-                        className="pl-9 pr-9"
-                        data-testid="input-search-skill"
-                      />
-                      {searchQuery && (
-                        <button
-                          type="button"
-                          onClick={() => setSearchQuery("")}
-                          data-testid="button-clear-search"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    <div className="flex gap-2">
+                      <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            role="combobox"
+                            className="rounded-xl h-11 flex-1 justify-start font-normal text-muted-foreground"
+                            data-testid="btn-open-filter"
+                          >
+                            <Search className="h-4 w-4 mr-2 opacity-60" />
+                            {hasFilter ? (
+                              <span className="truncate text-foreground">{filterLabel}</span>
+                            ) : (
+                              <span>Search by skill, drill, connection or routine...</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]"
+                          align="start"
                         >
-                          <X className="w-4 h-4" />
-                        </button>
+                          <Command
+                            filter={(value, search) => {
+                              const v = value.toLowerCase();
+                              const s = search.toLowerCase();
+                              return v.includes(s) ? 1 : 0;
+                            }}
+                          >
+                            <CommandInput
+                              placeholder="Search by name or code..."
+                              className="h-10"
+                            />
+                            <CommandList
+                              className="max-h-[320px] overscroll-contain"
+                              onWheel={(e) => e.stopPropagation()}
+                            >
+                              <CommandEmpty>No matches.</CommandEmpty>
+                              {filterSkillsList.length > 0 && (
+                                <CommandGroup heading="Skills">
+                                  {filterSkillsList.map((s) => (
+                                    <CommandItem
+                                      key={`fs-${s.id}`}
+                                      value={`${s.code} ${s.name} skill`}
+                                      onSelect={() => {
+                                        setFilterKind("skill");
+                                        setFilterId(s.id);
+                                        setFilterOpen(false);
+                                      }}
+                                      data-testid={`filter-skill-${s.id}`}
+                                    >
+                                      <span className="font-mono text-xs font-semibold text-foreground mr-2">
+                                        {s.code}
+                                      </span>
+                                      {s.code !== s.name && (
+                                        <span className="text-muted-foreground">- {s.name}</span>
+                                      )}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              )}
+                              {filterDrillsList.length > 0 && (
+                                <CommandGroup heading="Drills">
+                                  {filterDrillsList.map((s) => (
+                                    <CommandItem
+                                      key={`fd-${s.id}`}
+                                      value={`${s.code} ${s.name} drill`}
+                                      onSelect={() => {
+                                        setFilterKind("skill");
+                                        setFilterId(s.id);
+                                        setFilterOpen(false);
+                                      }}
+                                      data-testid={`filter-drill-${s.id}`}
+                                    >
+                                      <span className="font-mono text-xs font-semibold text-foreground mr-2">
+                                        {s.code}
+                                      </span>
+                                      {s.code !== s.name && (
+                                        <span className="text-muted-foreground">- {s.name}</span>
+                                      )}
+                                      <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-yellow-600 dark:text-yellow-400">
+                                        Drill
+                                      </span>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              )}
+                              {filterConnList.length > 0 && (
+                                <CommandGroup heading="Connections">
+                                  {filterConnList.map((s) => (
+                                    <CommandItem
+                                      key={`fc-${s.id}`}
+                                      value={`${s.name} connection`}
+                                      onSelect={() => {
+                                        setFilterKind("skill");
+                                        setFilterId(s.id);
+                                        setFilterOpen(false);
+                                      }}
+                                      data-testid={`filter-conn-${s.id}`}
+                                    >
+                                      <span className="font-mono text-xs font-semibold text-foreground mr-2">
+                                        {s.name}
+                                      </span>
+                                      <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-red-500 dark:text-red-400">
+                                        Connection
+                                      </span>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              )}
+                              {filterRoutinesList.length > 0 && (
+                                <CommandGroup heading="Routines">
+                                  {filterRoutinesList.map((r) => (
+                                    <CommandItem
+                                      key={`fr-${r.id}`}
+                                      value={`${r.name} routine`}
+                                      onSelect={() => {
+                                        setFilterKind("routine");
+                                        setFilterId(r.id);
+                                        setFilterOpen(false);
+                                      }}
+                                      data-testid={`filter-routine-${r.id}`}
+                                    >
+                                      <span className="font-mono text-xs font-semibold text-foreground mr-2">
+                                        {r.name}
+                                      </span>
+                                      <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-blue-600 dark:text-blue-400">
+                                        Routine
+                                      </span>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              )}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      {hasFilter && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-11 shrink-0 rounded-xl px-3"
+                          onClick={() => {
+                            setFilterKind(null);
+                            setFilterId(null);
+                          }}
+                          data-testid="button-clear-filter"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       )}
                     </div>
                     {noResults ? (
                       <p className="text-sm text-muted-foreground italic py-4 text-center">
-                        No matches for "{searchQuery}".
+                        No matches for "{filterLabel}".
                       </p>
                     ) : (
                       <div className="space-y-3">
@@ -507,69 +675,150 @@ export function PointsToFix() {
                 <label className="text-xs font-medium text-muted-foreground">
                   Linked skills & routines (optional)
                 </label>
-                <Select value="" onValueChange={addSkillToDraft}>
-                  <SelectTrigger data-testid="select-point-skill">
-                    <SelectValue placeholder="Add a skill, drill, connection or routine..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sortedActiveSkills
-                      .filter((s) => !draftSkillIds.includes(s.id))
-                      .map((s) => {
-                        const t = skillTypeOf(s.isDrill);
-                        const typeColor =
-                          t === "drill"
-                            ? "text-yellow-600 dark:text-yellow-400"
-                            : t === "connection"
-                              ? "text-red-500 dark:text-red-400"
-                              : "";
-                        const sameCodeName = s.code === s.name;
-                        return (
-                          <SelectItem
-                            key={`s-${s.id}`}
-                            value={`skill:${s.id}`}
-                            data-testid={`option-skill-${s.id}`}
-                          >
-                            <span className="inline-flex items-center gap-2">
-                              <span className="font-mono text-xs font-semibold text-foreground">
-                                {s.code}
-                              </span>
-                              {!sameCodeName && (
-                                <>
-                                  <span className="text-muted-foreground">-</span>
-                                  <span className="flex-1 text-muted-foreground">{s.name}</span>
-                                </>
-                              )}
-                              {t !== "skill" && (
-                                <span
-                                  className={`text-[9px] uppercase tracking-wider font-semibold ${typeColor}`}
-                                >
-                                  {TYPE_LABEL[t]}
-                                </span>
-                              )}
-                            </span>
-                          </SelectItem>
-                        );
-                      })}
-                    {sortedActiveRoutines
-                      .filter((r) => !draftRoutineIds.includes(r.id))
-                      .map((r) => (
-                        <SelectItem
-                          key={`r-${r.id}`}
-                          value={`routine:${r.id}`}
-                          data-testid={`option-routine-${r.id}`}
+                {(() => {
+                  const linkSkillsList = sortedActiveSkills.filter(
+                    (s) => s.isDrill === 0 && !draftSkillIds.includes(s.id),
+                  );
+                  const linkDrillsList = sortedActiveSkills.filter(
+                    (s) => s.isDrill === 1 && !draftSkillIds.includes(s.id),
+                  );
+                  const linkConnList = sortedActiveSkills.filter(
+                    (s) => s.isDrill === 2 && !draftSkillIds.includes(s.id),
+                  );
+                  const linkRoutinesList = sortedActiveRoutines.filter(
+                    (r) => !draftRoutineIds.includes(r.id),
+                  );
+                  return (
+                    <Popover open={linkOpen} onOpenChange={setLinkOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          className="rounded-xl h-11 w-full justify-start font-normal text-muted-foreground"
+                          data-testid="btn-open-link"
                         >
-                          <span className="inline-flex items-center gap-2">
-                            <span className="font-mono text-xs font-semibold text-foreground">
-                              {r.name}
-                            </span>
-                            <span className="text-[9px] uppercase tracking-wider font-semibold text-blue-600 dark:text-blue-400">
-                              {TYPE_LABEL.routine}
-                            </span>
-                          </span>
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+                          <Search className="h-4 w-4 mr-2 opacity-60" />
+                          Add a skill, drill, connection or routine...
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]"
+                        align="start"
+                      >
+                        <Command
+                          filter={(value, search) => {
+                            const v = value.toLowerCase();
+                            const s = search.toLowerCase();
+                            return v.includes(s) ? 1 : 0;
+                          }}
+                        >
+                          <CommandInput
+                            placeholder="Search by name or code..."
+                            className="h-10"
+                          />
+                          <CommandList
+                            className="max-h-[320px] overscroll-contain"
+                            onWheel={(e) => e.stopPropagation()}
+                          >
+                            <CommandEmpty>No matches.</CommandEmpty>
+                            {linkSkillsList.length > 0 && (
+                              <CommandGroup heading="Skills">
+                                {linkSkillsList.map((s) => (
+                                  <CommandItem
+                                    key={`ls-${s.id}`}
+                                    value={`${s.code} ${s.name} skill`}
+                                    onSelect={() => {
+                                      addSkillToDraft(`skill:${s.id}`);
+                                      setLinkOpen(false);
+                                    }}
+                                    data-testid={`option-skill-${s.id}`}
+                                  >
+                                    <span className="font-mono text-xs font-semibold text-foreground mr-2">
+                                      {s.code}
+                                    </span>
+                                    {s.code !== s.name && (
+                                      <span className="text-muted-foreground">- {s.name}</span>
+                                    )}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            )}
+                            {linkDrillsList.length > 0 && (
+                              <CommandGroup heading="Drills">
+                                {linkDrillsList.map((s) => (
+                                  <CommandItem
+                                    key={`ld-${s.id}`}
+                                    value={`${s.code} ${s.name} drill`}
+                                    onSelect={() => {
+                                      addSkillToDraft(`skill:${s.id}`);
+                                      setLinkOpen(false);
+                                    }}
+                                    data-testid={`option-drill-${s.id}`}
+                                  >
+                                    <span className="font-mono text-xs font-semibold text-foreground mr-2">
+                                      {s.code}
+                                    </span>
+                                    {s.code !== s.name && (
+                                      <span className="text-muted-foreground">- {s.name}</span>
+                                    )}
+                                    <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-yellow-600 dark:text-yellow-400">
+                                      Drill
+                                    </span>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            )}
+                            {linkConnList.length > 0 && (
+                              <CommandGroup heading="Connections">
+                                {linkConnList.map((s) => (
+                                  <CommandItem
+                                    key={`lc-${s.id}`}
+                                    value={`${s.name} connection`}
+                                    onSelect={() => {
+                                      addSkillToDraft(`skill:${s.id}`);
+                                      setLinkOpen(false);
+                                    }}
+                                    data-testid={`option-conn-${s.id}`}
+                                  >
+                                    <span className="font-mono text-xs font-semibold text-foreground mr-2">
+                                      {s.name}
+                                    </span>
+                                    <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-red-500 dark:text-red-400">
+                                      Connection
+                                    </span>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            )}
+                            {linkRoutinesList.length > 0 && (
+                              <CommandGroup heading="Routines">
+                                {linkRoutinesList.map((r) => (
+                                  <CommandItem
+                                    key={`lr-${r.id}`}
+                                    value={`${r.name} routine`}
+                                    onSelect={() => {
+                                      addSkillToDraft(`routine:${r.id}`);
+                                      setLinkOpen(false);
+                                    }}
+                                    data-testid={`option-routine-${r.id}`}
+                                  >
+                                    <span className="font-mono text-xs font-semibold text-foreground mr-2">
+                                      {r.name}
+                                    </span>
+                                    <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-blue-600 dark:text-blue-400">
+                                      Routine
+                                    </span>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            )}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  );
+                })()}
                 {(draftSkillIds.length > 0 || draftRoutineIds.length > 0) && (
                   <div className="flex flex-wrap gap-1.5 p-2 rounded-lg bg-muted/30">
                     {draftSkillIds.map((id) => {
