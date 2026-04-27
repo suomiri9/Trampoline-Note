@@ -514,11 +514,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         type="button"
                         variant="outline"
                         role="combobox"
-                        className="rounded-xl h-11 flex-1 justify-start font-normal text-muted-foreground"
+                        className="rounded-xl h-11 flex-1 min-w-0 justify-start font-normal text-muted-foreground"
                         data-testid="btn-open-picker"
                       >
-                        <Search className="h-4 w-4 mr-2 opacity-60" />
-                        Search skills, drills, connections, routines...
+                        <Search className="h-4 w-4 mr-2 opacity-60 shrink-0" />
+                        <span className="truncate">Search skills, drills...</span>
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
@@ -731,9 +731,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     </DndContext>
                     <Popover open={connSkillPickerOpen} onOpenChange={setConnSkillPickerOpen}>
                       <PopoverTrigger asChild>
-                        <Button type="button" variant="outline" role="combobox" className="rounded-lg h-8 w-full justify-start font-normal text-xs text-muted-foreground" data-testid="btn-open-conn-skill-picker">
-                          <Search className="h-3.5 w-3.5 mr-2 opacity-60" />
-                          Add skill to connection...
+                        <Button type="button" variant="outline" role="combobox" className="rounded-lg h-8 w-full min-w-0 justify-start font-normal text-xs text-muted-foreground" data-testid="btn-open-conn-skill-picker">
+                          <Search className="h-3.5 w-3.5 mr-2 opacity-60 shrink-0" />
+                          <span className="truncate">Add skill to connection...</span>
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
@@ -795,9 +795,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     <div className="flex items-center gap-2">
                       <Popover open={routineSkillPickerOpen} onOpenChange={(v) => { if (newRoutineSkillIds.length >= 10) return; setRoutineSkillPickerOpen(v); }}>
                         <PopoverTrigger asChild>
-                          <Button type="button" variant="outline" role="combobox" disabled={newRoutineSkillIds.length >= 10} className="rounded-lg h-8 flex-1 justify-start font-normal text-xs text-muted-foreground" data-testid="btn-open-routine-skill-picker">
-                            <Search className="h-3.5 w-3.5 mr-2 opacity-60" />
-                            {newRoutineSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."}
+                          <Button type="button" variant="outline" role="combobox" disabled={newRoutineSkillIds.length >= 10} className="rounded-lg h-8 flex-1 min-w-0 justify-start font-normal text-xs text-muted-foreground" data-testid="btn-open-routine-skill-picker">
+                            <Search className="h-3.5 w-3.5 mr-2 opacity-60 shrink-0" />
+                            <span className="truncate">{newRoutineSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."}</span>
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
