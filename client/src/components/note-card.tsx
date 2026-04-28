@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Calendar, MoreVertical, Pencil, Trash2, Activity } from "lucide-react";
+import { Calendar, MoreVertical, Pencil, Trash2, Clock } from "lucide-react";
 import { type Note } from "@shared/schema";
 import { parseNoteSkills, calculateTotalDD } from "@/lib/training-utils";
 import { StarRating } from "./star-rating";
@@ -75,7 +75,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
         </div>
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <div className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/20 px-2.5 py-1 rounded-lg w-fit">
-            <Activity className="w-3 h-3 shrink-0" />
+            <Clock className="w-3 h-3 shrink-0" />
             <span className="whitespace-nowrap">{note.startTime || "??:??"} - {note.endTime || "??:??"}</span>
           </div>
           {note.sleepScore != null ? (
