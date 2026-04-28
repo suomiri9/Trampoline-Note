@@ -132,7 +132,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                           <div className="flex items-center justify-between py-2 px-3">
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none">ROUTINE</Badge>
-                              <span className="text-sm font-bold text-primary">{item.routineName || "Routine"}</span>
+                              <span className="text-sm font-bold text-primary">{routine?.name || item.routineName || "Routine"}</span>
                               {displaySkillIds.length > baseSkillIds.length && (
                                 <span className="text-[11px] font-mono text-muted-foreground">{displaySkillIds.length} skills</span>
                               )}
@@ -166,7 +166,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                           <div className="flex items-center justify-between py-2 px-3">
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-red-500 text-white border-none">CONN</Badge>
-                              <span className="text-sm font-bold text-red-600 dark:text-red-400">{item.fcName || "Connection"}</span>
+                              <span className="text-sm font-bold text-red-600 dark:text-red-400">{fc?.name || item.fcName || "Connection"}</span>
                               {displaySkillIds.length < baseSkillIds.length && (
                                 <span className="text-[11px] font-mono text-muted-foreground">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
                               )}

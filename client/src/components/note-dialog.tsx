@@ -914,7 +914,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
                                         <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none shrink-0">ROUTINE</Badge>
-                                        <span className="font-bold text-primary truncate">{item.routineName}</span>
+                                        <span className="font-bold text-primary truncate">{routine?.name || item.routineName}</span>
                                         {displaySkillIds.length < 10 && (
                                           <span className="text-[11px] font-mono text-muted-foreground shrink-0">attempt {displaySkillIds.length}/10</span>
                                         )}
@@ -960,7 +960,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
                                         <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-red-500 text-white border-none shrink-0">CONN</Badge>
-                                        <span className="font-bold text-red-600 dark:text-red-400 truncate">{item.fcName}</span>
+                                        <span className="font-bold text-red-600 dark:text-red-400 truncate">{fc?.name || item.fcName}</span>
                                         {displaySkillIds.length < baseSkillIds.length && (
                                           <span className="text-[11px] font-mono text-muted-foreground shrink-0">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
                                         )}
@@ -1101,7 +1101,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
             ? (allItems?.find(s => s.id === rItem.fcId)?.skillIds ?? [])
             : (routines?.find(r => r.id === rItem.routineId)?.skillIds ?? []);
           const displaySkillIds = rItem.customSkillIds ?? baseSkillIds;
-          const title = isFC ? (rItem.fcName || "Edit Connection") : (rItem.routineName || "Edit Routine");
+          const liveName = isFC
+            ? allItems?.find(s => s.id === rItem.fcId)?.name
+            : routines?.find(r => r.id === rItem.routineId)?.name;
+          const title = liveName || (isFC ? (rItem.fcName || "Edit Connection") : (rItem.routineName || "Edit Routine"));
 
           return (
             <div className="absolute inset-0 bg-background z-30 flex flex-col rounded-[24px] overflow-hidden p-4">
