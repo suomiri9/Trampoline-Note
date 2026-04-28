@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, X, Search } from "lucide-react";
+import { CalendarIcon, Clock, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, X, Search } from "lucide-react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -442,17 +442,16 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </FormItem>
                 )} />
                 <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
                   <FormField control={form.control} name="startTime" render={({ field }) => (
                     <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
-                      <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Start</span>
-                      <FormControl><Input type="time" className="rounded-xl h-9 px-2 text-sm flex-1 min-w-0" {...field} value={field.value || ""} /></FormControl>
+                      <FormControl><Input type="time" aria-label="Start time" className="rounded-xl h-9 px-2 text-sm flex-1 min-w-0" {...field} value={field.value || ""} /></FormControl>
                     </FormItem>
                   )} />
                   <span className="text-muted-foreground text-sm">→</span>
                   <FormField control={form.control} name="endTime" render={({ field }) => (
                     <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
-                      <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">End</span>
-                      <FormControl><Input type="time" className="rounded-xl h-9 px-2 text-sm flex-1 min-w-0" {...field} value={field.value || ""} /></FormControl>
+                      <FormControl><Input type="time" aria-label="End time" className="rounded-xl h-9 px-2 text-sm flex-1 min-w-0" {...field} value={field.value || ""} /></FormControl>
                     </FormItem>
                   )} />
                 </div>
