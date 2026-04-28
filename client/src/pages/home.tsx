@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, BookOpen, Loader2, Activity, LayoutDashboard } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, BookOpen, Loader2, Activity, LayoutDashboard, ChevronDown } from "lucide-react";
 import { useNotes } from "@/hooks/use-notes";
 import { NoteCard } from "@/components/note-card";
 import { NoteDialog } from "@/components/note-dialog";
@@ -8,10 +8,13 @@ import { PageLayout } from "@/components/page-layout";
 import { Button } from "@/components/ui/button";
 import { type Note } from "@shared/schema";
 
+const PAGE_SIZE = 30;
+
 export default function Home() {
   const { data: notes, isLoading, isError, error } = useNotes();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const handleCreateNew = () => {
     setNoteToEdit(null);
@@ -27,6 +30,15 @@ export default function Home() {
   const sortedNotes = notes 
     ? [...notes].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     : [];
+
+  const visibleNotes = sortedNotes.slice(0, visibleCount);
+  const hasMore = sortedNotes.length > visibleCount;
+
+  useEffect(() => {
+    if (visibleCount > sortedNotes.length && sortedNotes.length > 0) {
+      setVisibleCount(Math.max(PAGE_SIZE, sortedNotes.length));
+    }
+  }, [sortedNotes.length, visibleCount]);
 
   return (
     <PageLayout>
@@ -81,16 +93,35 @@ export default function Home() {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {sortedNotes.map((note, index) => (
-              <NoteCard
-                key={note.id}
-                note={note}
-                index={index}
-                onEdit={handleEdit}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {visibleNotes.map((note, index) => (
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  index={index}
+                  onEdit={handleEdit}
+                />
+              ))}
+            </div>
+            {hasMore && (
+              <div className="mt-6 flex flex-col items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+                  className="rounded-xl h-11 px-6 font-medium gap-2"
+                  data-testid="btn-load-more-notes"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                  Load {Math.min(PAGE_SIZE, sortedNotes.length - visibleCount)} more
+                </Button>
+                <span className="text-xs text-muted-foreground" data-testid="text-notes-count">
+                  Showing {visibleNotes.length} of {sortedNotes.length}
+                </span>
+              </div>
+            )}
+          </>
         )}
       </main>
 
