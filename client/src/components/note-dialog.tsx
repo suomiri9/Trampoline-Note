@@ -149,6 +149,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const sensors = useDndSensors();
   const longPressSensors = useLongPressDndSensors();
   const dialogBodyRef = useRef<HTMLDivElement>(null);
+  const practiceListRef = useRef<HTMLDivElement>(null);
+  const prevSkillsLenRef = useRef(0);
 
   const handleNewConnChipDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -207,6 +209,22 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       sleepScore: null,
     },
   });
+
+  useEffect(() => {
+    if (!open) {
+      prevSkillsLenRef.current = 0;
+      return;
+    }
+    if (selectedSkills.length > prevSkillsLenRef.current) {
+      const el = practiceListRef.current;
+      if (el) {
+        requestAnimationFrame(() => {
+          el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+        });
+      }
+    }
+    prevSkillsLenRef.current = selectedSkills.length;
+  }, [selectedSkills.length, open]);
 
   useEffect(() => {
     if (open) {
@@ -878,7 +896,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </div>
 
                   <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handlePracticeListDragEnd}>
-                  <div className="max-h-[300px] overflow-scroll-touch">
+                  <div ref={practiceListRef} className="max-h-[300px] overflow-scroll-touch">
                     {(() => {
                       const groups: Array<{ items: typeof selectedSkills; indices: number[] }> = [];
                       let curItems: typeof selectedSkills = [];
