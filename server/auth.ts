@@ -17,7 +17,7 @@ declare module "express-session" {
 const cookieOptions: session.CookieOptions = {
   httpOnly: true,
   secure: true,
-  sameSite: "lax" as const,
+  sameSite: "none" as const,
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
@@ -171,7 +171,7 @@ export async function setupAuth(app: Express) {
 
       if (!user) {
         req.session.destroy(() => {});
-        res.clearCookie("connect.sid", { httpOnly: true, secure: true, sameSite: "lax" });
+        res.clearCookie("connect.sid", { httpOnly: true, secure: true, sameSite: "none" });
         return res.status(401).json({ message: "Unauthorized" });
       }
 
@@ -190,7 +190,7 @@ export async function setupAuth(app: Express) {
       if (err) {
         return res.status(500).json({ message: "Logout failed" });
       }
-      res.clearCookie("connect.sid", { httpOnly: true, secure: true, sameSite: "lax" });
+      res.clearCookie("connect.sid", { httpOnly: true, secure: true, sameSite: "none" });
       res.json({ message: "Logged out" });
     });
   });
