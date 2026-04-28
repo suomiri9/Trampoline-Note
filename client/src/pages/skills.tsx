@@ -571,7 +571,7 @@ export default function SkillsPage() {
                             Add skill to sequence...
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
+                        <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
                           <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
                             <CommandInput placeholder="Search by name or code..." className="h-10" />
                             <CommandList className="max-h-[320px]">

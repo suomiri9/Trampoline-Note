@@ -538,7 +538,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         <span className="truncate">Search skills, drills...</span>
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
+                    <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width]" align="start">
                       <Command
                         filter={(value, search) => {
                           const v = value.toLowerCase();
@@ -753,7 +753,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           <span className="truncate">Add skill to connection...</span>
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
+                      <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width]" align="start">
                         <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
                           <CommandInput placeholder="Search by name or code..." className="h-10" />
                           <CommandList className="max-h-[280px]">
@@ -817,7 +817,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             <span className="truncate">{newRoutineSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."}</span>
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]" align="start">
+                        <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width]" align="start">
                           <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
                             <CommandInput placeholder="Search by name or code..." className="h-10" />
                             <CommandList className="max-h-[280px]">

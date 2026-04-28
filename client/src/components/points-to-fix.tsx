@@ -424,7 +424,7 @@ export function PointsToFix() {
                         </PopoverTrigger>
                         <PopoverContent
                           container={dialogContentRef.current}
-                          className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]"
+                          className="p-0 w-[--radix-popover-trigger-width]"
                           align="start"
                         >
                           <Command
@@ -703,7 +703,7 @@ export function PointsToFix() {
                       </PopoverTrigger>
                       <PopoverContent
                         container={dialogContentRef.current}
-                        className="p-0 w-[--radix-popover-trigger-width] max-w-[420px]"
+                        className="p-0 w-[--radix-popover-trigger-width]"
                         align="start"
                       >
                         <Command
