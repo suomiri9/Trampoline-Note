@@ -73,6 +73,8 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
   const settleRef = useRef(settle);
   settleRef.current = settle;
 
+  const cancelEditRef = useRef<() => void>(() => {});
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -80,6 +82,7 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
       if (drag.current) return;
       e.preventDefault();
       e.stopPropagation();
+      cancelEditRef.current();
       el.scrollTop += e.deltaY;
       updatePreview();
       if (timer.current) window.clearTimeout(timer.current);
@@ -108,7 +111,10 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
     const el = ref.current;
     if (!el || !drag.current) return;
     const dy = e.clientY - drag.current.startY;
-    if (Math.abs(dy) > 2) drag.current.moved = true;
+    if (Math.abs(dy) > 2 && !drag.current.moved) {
+      drag.current.moved = true;
+      cancelEditRef.current();
+    }
     el.scrollTop = drag.current.startTop - dy;
     updatePreview();
   };
@@ -131,6 +137,15 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
   const inputDisplay = editText !== null ? editText : renderItem(visibleValue);
 
   useEffect(() => {
+    cancelEditRef.current = () => {
+      setEditText(null);
+      if (inputRef.current && document.activeElement === inputRef.current) {
+        inputRef.current.blur();
+      }
+    };
+  });
+
+  useEffect(() => {
     const targets: HTMLElement[] = [];
     if (inputRef.current) targets.push(inputRef.current);
     if (containerRef.current) targets.push(containerRef.current);
@@ -144,6 +159,7 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
       if (!ref.current || !touch) return;
       const dy = e.touches[0].clientY - touch.y;
       if (!touch.moved && Math.abs(dy) < 4) return;
+      if (!touch.moved) cancelEditRef.current();
       touch.moved = true;
       e.preventDefault();
       ref.current.scrollTop = touch.top - dy;
@@ -310,7 +326,7 @@ export function TimeField({ value, onChange, ariaLabel, className, testId }: Tim
           {display || placeholder}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto rounded-2xl p-3" align="start">
+      <PopoverContent className="w-auto rounded-2xl p-3" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
         <div className="flex items-center gap-1">
           <Wheel
             items={hours}
