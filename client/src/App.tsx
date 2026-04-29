@@ -12,18 +12,15 @@ import RoutineDetailPage from "@/pages/routine-detail";
 import StatsPage from "@/pages/stats";
 import LoginPage from "@/pages/login";
 import ScorePage from "@/pages/score";
+import SettingsPage from "@/pages/settings";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Target, Layers, BarChart3, Trophy, LogOut, Loader2, Settings } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { LayoutDashboard, Target, Layers, BarChart3, Trophy, Loader2, Settings } from "lucide-react";
+import { useEffect } from "react";
 
 function Navigation() {
   const [location] = useLocation();
-  const { user, logout, isLoggingOut } = useAuth();
-  const [showSignOutAlert, setShowSignOutAlert] = useState(false);
+  const { user } = useAuth();
   const navItems = [
     { href: "/", label: "Training", icon: LayoutDashboard,
       activeClass: "bg-blue-50 dark:bg-blue-950/40 shadow-sm",
@@ -62,47 +59,20 @@ function Navigation() {
       ))}
 
       {user && (
-        <Popover>
-          <PopoverTrigger asChild>
-            <div
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer text-muted-foreground hover:bg-secondary"
-              data-testid="btn-open-settings"
-            >
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline">Settings</span>
-            </div>
-          </PopoverTrigger>
-          <PopoverContent align="end" side="top" className="w-56 rounded-2xl p-3 mb-2">
-            <div className="mb-3 px-1">
-              <p className="text-xs font-semibold text-foreground truncate" data-testid="text-account-name">
-                {user.displayName ?? (user.firstName ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}` : "My Account")}
-              </p>
-              {user.email && (
-                <p className="text-xs text-muted-foreground truncate mt-0.5" data-testid="text-account-email">{user.email}</p>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2 h-9 rounded-xl text-sm text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={() => setShowSignOutAlert(true)}
-              disabled={isLoggingOut}
-              data-testid="btn-sign-out"
-            >
-              {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
-              Sign out
-            </Button>
-          </PopoverContent>
-        </Popover>
+        <Link href="/settings">
+          <div className={cn(
+            "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer",
+            location === "/settings"
+              ? "bg-zinc-100 dark:bg-zinc-800/40 shadow-sm text-zinc-600 dark:text-zinc-400 font-semibold"
+              : "text-muted-foreground hover:bg-secondary"
+          )}
+          data-testid="link-settings"
+          >
+            <Settings className={cn("w-4 h-4", location === "/settings" && "text-zinc-600 dark:text-zinc-400")} />
+            <span className="hidden sm:inline">Settings</span>
+          </div>
+        </Link>
       )}
-
-      <ConfirmDialog
-        open={showSignOutAlert}
-        onOpenChange={setShowSignOutAlert}
-        title="Sign out?"
-        description="Are you sure you want to sign out of your account?"
-        onConfirm={() => logout()}
-        confirmLabel="Sign out"
-      />
     </nav>
   );
 }
@@ -118,6 +88,7 @@ function Router() {
         <Route path="/skills/:id" component={SkillDetailPage} />
         <Route path="/routines" component={RoutinesPage} />
         <Route path="/routines/:id" component={RoutineDetailPage} />
+        <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>
     </div>
