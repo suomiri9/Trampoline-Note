@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { useTimeFormat, formatTime } from "@/hooks/use-time-format";
+import { useTimeFormat, formatTime, parseTimeInput } from "@/hooks/use-time-format";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface TimeFieldProps {
@@ -147,7 +148,8 @@ export function TimeField({ value, onChange, ariaLabel, className, testId }: Tim
           {display || placeholder}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto rounded-2xl p-3" align="start">
+      <PopoverContent className="w-auto rounded-2xl p-3 space-y-3" align="start">
+        <TypedTimeInput value={value || ""} onChange={onChange} tf={tf} testId={testId ? `${testId}-typed` : undefined} />
         <div className="flex items-center gap-1">
           <Wheel
             items={hours}
@@ -179,5 +181,52 @@ export function TimeField({ value, onChange, ariaLabel, className, testId }: Tim
         </div>
       </PopoverContent>
     </Popover>
+  );
+}
+
+interface TypedTimeInputProps {
+  value: string;
+  onChange: (v: string) => void;
+  tf: "12h" | "24h";
+  testId?: string;
+}
+
+function TypedTimeInput({ value, onChange, tf, testId }: TypedTimeInputProps) {
+  const [text, setText] = useState(() => formatTime(value, tf, ""));
+
+  useEffect(() => {
+    setText(formatTime(value, tf, ""));
+  }, [value, tf]);
+
+  const commit = () => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const parsed = parseTimeInput(trimmed);
+    if (parsed) {
+      onChange(parsed);
+      setText(formatTime(parsed, tf, ""));
+    } else {
+      setText(formatTime(value, tf, ""));
+    }
+  };
+
+  return (
+    <Input
+      type="text"
+      inputMode="text"
+      placeholder={tf === "24h" ? "HH:MM" : "h:mm am/pm"}
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          commit();
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+      className="rounded-xl h-9 px-3 text-sm text-center font-medium"
+      data-testid={testId}
+    />
   );
 }
