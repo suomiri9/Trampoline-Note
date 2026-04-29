@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { Input } from "@/components/ui/input";
-import { useTimeFormat, parseTimeInput } from "@/hooks/use-time-format";
+import { useEffect, useRef, useState } from "react";
+import { useTimeFormat, formatTime } from "@/hooks/use-time-format";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 interface TimeFieldProps {
@@ -11,161 +11,172 @@ interface TimeFieldProps {
   testId?: string;
 }
 
-type Period = "am" | "pm";
+const ITEM_HEIGHT = 36;
+const VISIBLE = 5;
+const PAD = ((VISIBLE - 1) / 2) * ITEM_HEIGHT;
+const HEIGHT = VISIBLE * ITEM_HEIGHT;
 
-function splitFor12h(value: string | null | undefined): { text: string; period: Period } {
-  if (!value) return { text: "", period: "am" };
-  const m = /^(\d{1,2}):(\d{2})/.exec(value);
-  if (!m) return { text: "", period: "am" };
-  const h = parseInt(m[1], 10);
-  const mm = m[2];
-  const period: Period = h >= 12 ? "pm" : "am";
-  let h12 = h % 12;
-  if (h12 === 0) h12 = 12;
-  return { text: `${h12}:${mm}`, period };
+function pad2(n: number) { return String(n).padStart(2, "0"); }
+
+function nowHHMM(): string {
+  const d = new Date();
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
-function splitFor24h(value: string | null | undefined): string {
-  if (!value) return "";
-  const m = /^(\d{1,2}):(\d{2})/.exec(value);
-  if (!m) return "";
-  return `${String(parseInt(m[1], 10)).padStart(2, "0")}:${m[2]}`;
+interface WheelProps<T extends string | number> {
+  items: T[];
+  value: T;
+  onChange: (v: T) => void;
+  testId?: string;
+  render?: (v: T) => string;
+  width?: number;
 }
 
-function combine12h(text: string, period: Period): string | null {
-  const t = text.trim();
-  if (!t) return null;
-  const parsed = parseTimeInput(t);
-  if (!parsed) return null;
-  if (/[ap]m?$/i.test(t)) {
-    return parsed;
-  }
-  const m = /^(\d{2}):(\d{2})$/.exec(parsed)!;
-  const h = parseInt(m[1], 10);
-  const mm = m[2];
-  let h12 = h % 12;
-  if (h12 === 0) h12 = 12;
-  let h24 = h12 % 12;
-  if (period === "pm") h24 += 12;
-  return `${String(h24).padStart(2, "0")}:${mm}`;
-}
-
-function TimeField12({ value, onChange, ariaLabel, className, testId }: TimeFieldProps) {
-  const initial = splitFor12h(value);
-  const [text, setText] = useState(initial.text);
-  const [period, setPeriod] = useState<Period>(initial.period);
+function Wheel<T extends string | number>({ items, value, onChange, testId, render, width = 56 }: WheelProps<T>) {
+  const ref = useRef<HTMLDivElement>(null);
+  const timer = useRef<number | null>(null);
+  const idx = Math.max(0, items.indexOf(value));
 
   useEffect(() => {
-    const next = splitFor12h(value);
-    setText(next.text);
-    setPeriod(next.period);
-  }, [value]);
+    const el = ref.current;
+    if (!el) return;
+    const target = idx * ITEM_HEIGHT;
+    if (Math.abs(el.scrollTop - target) > 0.5) {
+      el.scrollTop = target;
+    }
+  }, [idx]);
 
-  const commit = (newText: string, newPeriod: Period) => {
-    const trimmed = newText.trim();
-    if (!trimmed) {
-      if (value) onChange("");
-      setText("");
-      return;
-    }
-    const combined = combine12h(trimmed, newPeriod);
-    if (combined) {
-      onChange(combined);
-      const split = splitFor12h(combined);
-      setText(split.text);
-      setPeriod(split.period);
-    } else {
-      const fallback = splitFor12h(value);
-      setText(fallback.text);
-      setPeriod(fallback.period);
-    }
-  };
-
-  const togglePeriod = (next: Period) => {
-    setPeriod(next);
-    if (text.trim()) {
-      commit(text, next);
-    }
+  const onScroll = () => {
+    const el = ref.current;
+    if (!el) return;
+    if (timer.current) window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => {
+      const i = Math.round(el.scrollTop / ITEM_HEIGHT);
+      const clamped = Math.max(0, Math.min(items.length - 1, i));
+      const target = clamped * ITEM_HEIGHT;
+      if (Math.abs(el.scrollTop - target) > 0.5) {
+        el.scrollTo({ top: target, behavior: "smooth" });
+      }
+      if (items[clamped] !== value) onChange(items[clamped]);
+    }, 120);
   };
 
   return (
-    <div className={cn("flex items-center gap-1.5 flex-1 min-w-0", className)}>
-      <Input
-        type="text"
-        inputMode="numeric"
-        aria-label={ariaLabel}
-        placeholder="h:mm"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => commit(text, period)}
-        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-        className="rounded-xl h-9 px-2 text-sm flex-1 min-w-0"
+    <div className="relative" style={{ height: HEIGHT, width }}>
+      <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-9 rounded-lg bg-secondary/60 border-y border-border/60" />
+      <div
+        ref={ref}
+        onScroll={onScroll}
+        className="h-full overflow-y-auto snap-y snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         data-testid={testId}
-      />
-      <div className="inline-flex p-0.5 rounded-lg bg-secondary/50 border border-border/50 shrink-0">
-        {(["am", "pm"] as const).map((p) => (
-          <button
-            key={p}
-            type="button"
-            onClick={() => togglePeriod(p)}
+      >
+        <div style={{ height: PAD }} />
+        {items.map((item, i) => (
+          <div
+            key={String(item)}
+            onClick={() => onChange(item)}
             className={cn(
-              "px-2 h-7 rounded-md text-[11px] font-bold uppercase transition-all",
-              period === p
-                ? "bg-background shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground"
+              "flex items-center justify-center text-base font-semibold snap-center cursor-pointer select-none transition-all",
+              i === idx ? "text-foreground scale-100" : "text-muted-foreground/50 scale-95"
             )}
-            data-testid={testId ? `${testId}-${p}` : undefined}
-            aria-pressed={period === p}
-            aria-label={p === "am" ? "AM" : "PM"}
+            style={{ height: ITEM_HEIGHT }}
           >
-            {p}
-          </button>
+            {render ? render(item) : String(item)}
+          </div>
         ))}
+        <div style={{ height: PAD }} />
       </div>
     </div>
   );
 }
 
-function TimeField24({ value, onChange, ariaLabel, className, testId }: TimeFieldProps) {
-  const [text, setText] = useState(() => splitFor24h(value));
+export function TimeField({ value, onChange, ariaLabel, className, testId }: TimeFieldProps) {
+  const [tf] = useTimeFormat();
+  const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    setText(splitFor24h(value));
-  }, [value]);
+  const display = value ? formatTime(value, tf, "") : "";
+  const placeholder = tf === "24h" ? "HH:MM" : "h:mm";
 
-  const commit = () => {
-    const trimmed = text.trim();
-    if (!trimmed) {
-      if (value) onChange("");
-      setText("");
-      return;
+  const handleOpen = (next: boolean) => {
+    if (next && !value) {
+      onChange(nowHHMM());
     }
-    const parsed = parseTimeInput(trimmed);
-    if (parsed) {
-      onChange(parsed);
-      setText(splitFor24h(parsed));
-    } else {
-      setText(splitFor24h(value));
+    setOpen(next);
+  };
+
+  const current = value || nowHHMM();
+  const m = /^(\d{1,2}):(\d{2})/.exec(current);
+  const h24 = m ? parseInt(m[1], 10) : 0;
+  const mm = m ? parseInt(m[2], 10) : 0;
+
+  const period: "am" | "pm" = h24 >= 12 ? "pm" : "am";
+  let displayHour = h24;
+  if (tf === "12h") {
+    displayHour = h24 % 12;
+    if (displayHour === 0) displayHour = 12;
+  }
+
+  const minutes = Array.from({ length: 60 }, (_, i) => i);
+  const hours = tf === "12h"
+    ? Array.from({ length: 12 }, (_, i) => i + 1)
+    : Array.from({ length: 24 }, (_, i) => i);
+
+  const setParts = (h: number, mins: number, p: "am" | "pm") => {
+    let h24Out = h;
+    if (tf === "12h") {
+      h24Out = h % 12;
+      if (p === "pm") h24Out += 12;
     }
+    onChange(`${pad2(h24Out)}:${pad2(mins)}`);
   };
 
   return (
-    <Input
-      type="text"
-      inputMode="numeric"
-      aria-label={ariaLabel}
-      placeholder="HH:MM"
-      value={text}
-      onChange={(e) => setText(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-      className={cn("rounded-xl h-9 px-2 text-sm flex-1 min-w-0", className)}
-      data-testid={testId}
-    />
+    <Popover open={open} onOpenChange={handleOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={ariaLabel}
+          className={cn(
+            "rounded-xl h-9 px-3 text-sm flex-1 min-w-0 border border-input bg-transparent text-left truncate",
+            !display && "text-muted-foreground",
+            className
+          )}
+          data-testid={testId}
+        >
+          {display || placeholder}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto rounded-2xl p-3" align="start">
+        <div className="flex items-center gap-1">
+          <Wheel
+            items={hours}
+            value={displayHour}
+            onChange={(h) => setParts(h, mm, period)}
+            testId={testId ? `${testId}-hour` : undefined}
+            render={(v) => tf === "24h" ? pad2(v) : String(v)}
+            width={56}
+          />
+          <span className="text-xl font-bold text-muted-foreground">:</span>
+          <Wheel
+            items={minutes}
+            value={mm}
+            onChange={(mins) => setParts(displayHour, mins, period)}
+            testId={testId ? `${testId}-minute` : undefined}
+            render={pad2}
+            width={56}
+          />
+          {tf === "12h" && (
+            <Wheel
+              items={["am", "pm"]}
+              value={period}
+              onChange={(p) => setParts(displayHour, mm, p as "am" | "pm")}
+              testId={testId ? `${testId}-period` : undefined}
+              render={(v) => String(v).toUpperCase()}
+              width={56}
+            />
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
-}
-
-export function TimeField(props: TimeFieldProps) {
-  const [tf] = useTimeFormat();
-  return tf === "12h" ? <TimeField12 {...props} /> : <TimeField24 {...props} />;
 }
