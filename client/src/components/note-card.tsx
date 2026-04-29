@@ -107,6 +107,12 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                         currentGroup = [];
                       }
                       groups.push({ id: -1 });
+                    } else if (item.id === -2 || item.id === -3) {
+                      if (currentGroup.length > 0) {
+                        groups.push(currentGroup);
+                        currentGroup = [];
+                      }
+                      groups.push([item]);
                     } else {
                       currentGroup.push(item);
                     }

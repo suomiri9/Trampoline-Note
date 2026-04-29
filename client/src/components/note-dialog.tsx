@@ -272,11 +272,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     if (fcItem && fcItem.skillIds) {
       setSelectedSkills(prev => {
         let newSkills = [...prev];
-        if (isConnectMode && newSkills.length > 0) {
-          if (newSkills[newSkills.length - 1].id === -1) {
-            newSkills.pop();
-          }
-        } else if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
+        if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
           newSkills.push({ id: -1 });
         }
         newSkills.push({ id: -3, fcId: id, fcName: fcItem.name, customSkillIds: fcItem.skillIds! } as any);
@@ -287,12 +283,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     }
     setSelectedSkills(prev => {
       let newSkills = [...prev];
-      if (isConnectMode && newSkills.length > 0) {
+      const lastNonSep = [...newSkills].reverse().find(s => s.id !== -1);
+      const canExtendChain = isConnectMode && lastNonSep && lastNonSep.id !== -2 && lastNonSep.id !== -3;
+      if (canExtendChain) {
         if (newSkills[newSkills.length - 1].id === -1) {
           newSkills.pop();
         }
-        const lastSkill = [...newSkills].reverse().find(s => s.id !== -1);
-        const reps = lastSkill?.reps || 1;
+        const reps = lastNonSep!.reps || 1;
         newSkills.push({ id, reps });
       } else {
         if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
@@ -312,11 +309,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
     setSelectedSkills(prev => {
       let newSkills = [...prev];
-      if (isConnectMode && newSkills.length > 0) {
-        if (newSkills[newSkills.length - 1].id === -1) {
-          newSkills.pop();
-        }
-      } else if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
+      if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
         newSkills.push({ id: -1 });
       }
       newSkills.push({ id: -2, routineId, routineName: routine.name });
@@ -903,13 +896,17 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       let curIndices: number[] = [];
                       selectedSkills.forEach((item, idx) => {
                         if (item.id === -1) {
-                          groups.push({ items: curItems, indices: curIndices });
+                          if (curItems.length) groups.push({ items: curItems, indices: curIndices });
+                          curItems = []; curIndices = [];
+                        } else if (item.id === -2 || item.id === -3) {
+                          if (curItems.length) groups.push({ items: curItems, indices: curIndices });
+                          groups.push({ items: [item], indices: [idx] });
                           curItems = []; curIndices = [];
                         } else {
                           curItems.push(item); curIndices.push(idx);
                         }
                       });
-                      groups.push({ items: curItems, indices: curIndices });
+                      if (curItems.length) groups.push({ items: curItems, indices: curIndices });
                       const nonEmpty = groups.filter(g => g.items.length > 0);
 
                       return (
