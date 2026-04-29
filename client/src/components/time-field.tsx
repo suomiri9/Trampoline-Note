@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useTimeFormat, formatTime, parseTimeInput } from "@/hooks/use-time-format";
+import { useTimeFormat, formatTime } from "@/hooks/use-time-format";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface TimeFieldProps {
@@ -110,9 +109,33 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
     if (wasMoved) settle();
   };
 
+  const [editText, setEditText] = useState<string | null>(null);
+  const renderItem = (item: T) => (render ? render(item) : String(item));
+  const inputDisplay = editText !== null ? editText : renderItem(value);
+
+  const commitEdit = () => {
+    if (editText === null) return;
+    const trimmed = editText.trim();
+    if (trimmed) {
+      let found: T | undefined;
+      if (typeof items[0] === "number") {
+        const n = parseInt(trimmed, 10);
+        if (!Number.isNaN(n) && (items as unknown as number[]).includes(n)) found = n as T;
+      } else {
+        const lower = trimmed.toLowerCase();
+        const list = items as unknown as string[];
+        const exact = list.find((s) => s.toLowerCase() === lower);
+        const prefix = exact ? undefined : list.find((s) => s.toLowerCase().startsWith(lower));
+        if (exact) found = exact as unknown as T;
+        else if (prefix) found = prefix as unknown as T;
+      }
+      if (found !== undefined && found !== value) onChange(found);
+    }
+    setEditText(null);
+  };
+
   return (
     <div className="relative" style={{ height: HEIGHT, width }}>
-      <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-9 rounded-lg bg-secondary/60 border-y border-border/60" />
       <div
         ref={ref}
         onScroll={onScroll}
@@ -130,19 +153,41 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
             key={String(item)}
             onClick={(e) => {
               if (drag.current?.moved) { e.preventDefault(); return; }
+              if (i === idx) return;
               onChange(item);
             }}
             className={cn(
               "flex items-center justify-center text-base font-semibold cursor-pointer select-none transition-all",
-              i === idx ? "text-foreground scale-100" : "text-muted-foreground/50 scale-95"
+              i === idx ? "invisible" : "text-muted-foreground/50 scale-95"
             )}
             style={{ height: ITEM_HEIGHT }}
           >
-            {render ? render(item) : String(item)}
+            {renderItem(item)}
           </div>
         ))}
         <div style={{ height: PAD }} />
       </div>
+      <input
+        type="text"
+        inputMode={typeof items[0] === "number" ? "numeric" : "text"}
+        value={inputDisplay}
+        onFocus={(e) => { setEditText(renderItem(value)); e.currentTarget.select(); }}
+        onChange={(e) => setEditText(e.target.value)}
+        onBlur={commitEdit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
+          if (e.key === "Escape") { setEditText(null); (e.target as HTMLInputElement).blur(); }
+        }}
+        onWheel={(e) => {
+          if (!ref.current) return;
+          ref.current.scrollTop += e.deltaY;
+          if (timer.current) window.clearTimeout(timer.current);
+          timer.current = window.setTimeout(() => settleRef.current(), 100);
+        }}
+        className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-9 mx-0.5 text-center text-base font-semibold bg-secondary/60 rounded-lg border-y border-border/60 outline-none focus:ring-2 focus:ring-primary/40"
+        data-testid={testId ? `${testId}-input` : undefined}
+        aria-label="Edit value"
+      />
     </div>
   );
 }
@@ -203,8 +248,7 @@ export function TimeField({ value, onChange, ariaLabel, className, testId }: Tim
           {display || placeholder}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto rounded-2xl p-3 space-y-3" align="start">
-        <TypedTimeInput value={value || ""} onChange={onChange} tf={tf} testId={testId ? `${testId}-typed` : undefined} />
+      <PopoverContent className="w-auto rounded-2xl p-3" align="start">
         <div className="flex items-center gap-1">
           <Wheel
             items={hours}
@@ -239,49 +283,3 @@ export function TimeField({ value, onChange, ariaLabel, className, testId }: Tim
   );
 }
 
-interface TypedTimeInputProps {
-  value: string;
-  onChange: (v: string) => void;
-  tf: "12h" | "24h";
-  testId?: string;
-}
-
-function TypedTimeInput({ value, onChange, tf, testId }: TypedTimeInputProps) {
-  const [text, setText] = useState(() => formatTime(value, tf, ""));
-
-  useEffect(() => {
-    setText(formatTime(value, tf, ""));
-  }, [value, tf]);
-
-  const commit = () => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    const parsed = parseTimeInput(trimmed);
-    if (parsed) {
-      onChange(parsed);
-      setText(formatTime(parsed, tf, ""));
-    } else {
-      setText(formatTime(value, tf, ""));
-    }
-  };
-
-  return (
-    <Input
-      type="text"
-      inputMode="text"
-      placeholder={tf === "24h" ? "HH:MM" : "h:mm am/pm"}
-      value={text}
-      onChange={(e) => setText(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          commit();
-          (e.target as HTMLInputElement).blur();
-        }
-      }}
-      className="rounded-xl h-9 px-3 text-sm text-center font-medium"
-      data-testid={testId}
-    />
-  );
-}
