@@ -67,7 +67,8 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
       <div
         ref={ref}
         onScroll={onScroll}
-        className="h-full overflow-y-auto snap-y snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="h-full overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={{ touchAction: "pan-y" }}
         data-testid={testId}
       >
         <div style={{ height: PAD }} />
@@ -76,7 +77,7 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
             key={String(item)}
             onClick={() => onChange(item)}
             className={cn(
-              "flex items-center justify-center text-base font-semibold snap-center cursor-pointer select-none transition-all",
+              "flex items-center justify-center text-base font-semibold cursor-pointer select-none transition-all",
               i === idx ? "text-foreground scale-100" : "text-muted-foreground/50 scale-95"
             )}
             style={{ height: ITEM_HEIGHT }}
