@@ -61,6 +61,24 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
     if (items[clamped] !== value) onChange(items[clamped]);
   };
 
+  const settleRef = useRef(settle);
+  settleRef.current = settle;
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      if (drag.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+      el.scrollTop += e.deltaY;
+      if (timer.current) window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => settleRef.current(), 100);
+    };
+    el.addEventListener("wheel", handler, { passive: false });
+    return () => el.removeEventListener("wheel", handler);
+  }, []);
+
   const onScroll = () => {
     if (drag.current) return;
     if (timer.current) window.clearTimeout(timer.current);
