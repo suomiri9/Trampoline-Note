@@ -123,10 +123,47 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
   };
 
   const [editText, setEditText] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const renderItem = (item: T) => (render ? render(item) : String(item));
   const visibleIdx = previewIdx !== null ? previewIdx : idx;
   const visibleValue = items[visibleIdx] ?? value;
   const inputDisplay = editText !== null ? editText : renderItem(visibleValue);
+
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+    let touch: { y: number; top: number; moved: boolean } | null = null;
+    const onStart = (e: TouchEvent) => {
+      if (!ref.current || e.touches.length !== 1) return;
+      touch = { y: e.touches[0].clientY, top: ref.current.scrollTop, moved: false };
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!ref.current || !touch) return;
+      const dy = e.touches[0].clientY - touch.y;
+      if (!touch.moved && Math.abs(dy) < 4) return;
+      touch.moved = true;
+      e.preventDefault();
+      ref.current.scrollTop = touch.top - dy;
+      updatePreview();
+    };
+    const onEnd = () => {
+      if (touch?.moved) {
+        if (timer.current) window.clearTimeout(timer.current);
+        settleRef.current();
+      }
+      touch = null;
+    };
+    input.addEventListener("touchstart", onStart, { passive: true });
+    input.addEventListener("touchmove", onMove, { passive: false });
+    input.addEventListener("touchend", onEnd);
+    input.addEventListener("touchcancel", onEnd);
+    return () => {
+      input.removeEventListener("touchstart", onStart);
+      input.removeEventListener("touchmove", onMove);
+      input.removeEventListener("touchend", onEnd);
+      input.removeEventListener("touchcancel", onEnd);
+    };
+  }, []);
 
   const commitEdit = () => {
     if (editText === null) return;
@@ -183,6 +220,7 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
         <div style={{ height: PAD }} />
       </div>
       <input
+        ref={inputRef}
         type="text"
         inputMode={typeof items[0] === "number" ? "numeric" : "text"}
         value={inputDisplay}
@@ -196,9 +234,11 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
         onWheel={(e) => {
           if (!ref.current) return;
           ref.current.scrollTop += e.deltaY;
+          updatePreview();
           if (timer.current) window.clearTimeout(timer.current);
           timer.current = window.setTimeout(() => settleRef.current(), 100);
         }}
+        style={{ touchAction: "pan-y" }}
         className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-9 mx-0.5 text-center text-base font-semibold bg-secondary/60 rounded-lg border-y border-border/60 outline-none focus:ring-2 focus:ring-primary/40"
         data-testid={testId ? `${testId}-input` : undefined}
         aria-label="Edit value"
