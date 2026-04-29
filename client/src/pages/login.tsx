@@ -35,7 +35,7 @@ export default function LoginPage() {
             <Activity className="w-8 h-8" />
           </div>
           <div>
-            <h1 className="text-3xl font-display font-bold tracking-tight">Trampoline Log</h1>
+            <h1 className="text-3xl font-display font-bold tracking-tight">Trampoline Note</h1>
             <p className="text-muted-foreground mt-1.5">Track your training, skills, and scores.</p>
           </div>
         </div>
