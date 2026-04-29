@@ -52,6 +52,16 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2 h-11 rounded-xl text-sm text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 mt-2"
+              onClick={() => setShowSignOutAlert(true)}
+              disabled={isLoggingOut}
+              data-testid="btn-sign-out"
+            >
+              {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+              Sign out
+            </Button>
           </div>
         </section>
 
@@ -86,19 +96,6 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl card-3d p-5">
-          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Session</h2>
-          <Button
-            variant="outline"
-            className="w-full justify-start gap-2 h-11 rounded-xl text-sm text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
-            onClick={() => setShowSignOutAlert(true)}
-            disabled={isLoggingOut}
-            data-testid="btn-sign-out"
-          >
-            {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
-            Sign out
-          </Button>
-        </section>
       </main>
 
       <ConfirmDialog
