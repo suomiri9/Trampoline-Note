@@ -124,14 +124,17 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
 
   const [editText, setEditText] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const renderItem = (item: T) => (render ? render(item) : String(item));
   const visibleIdx = previewIdx !== null ? previewIdx : idx;
   const visibleValue = items[visibleIdx] ?? value;
   const inputDisplay = editText !== null ? editText : renderItem(visibleValue);
 
   useEffect(() => {
-    const input = inputRef.current;
-    if (!input) return;
+    const targets: HTMLElement[] = [];
+    if (inputRef.current) targets.push(inputRef.current);
+    if (containerRef.current) targets.push(containerRef.current);
+    if (targets.length === 0) return;
     let touch: { y: number; top: number; moved: boolean } | null = null;
     const onStart = (e: TouchEvent) => {
       if (!ref.current || e.touches.length !== 1) return;
@@ -153,15 +156,19 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
       }
       touch = null;
     };
-    input.addEventListener("touchstart", onStart, { passive: true });
-    input.addEventListener("touchmove", onMove, { passive: false });
-    input.addEventListener("touchend", onEnd);
-    input.addEventListener("touchcancel", onEnd);
+    targets.forEach((t) => {
+      t.addEventListener("touchstart", onStart, { passive: true });
+      t.addEventListener("touchmove", onMove, { passive: false });
+      t.addEventListener("touchend", onEnd);
+      t.addEventListener("touchcancel", onEnd);
+    });
     return () => {
-      input.removeEventListener("touchstart", onStart);
-      input.removeEventListener("touchmove", onMove);
-      input.removeEventListener("touchend", onEnd);
-      input.removeEventListener("touchcancel", onEnd);
+      targets.forEach((t) => {
+        t.removeEventListener("touchstart", onStart);
+        t.removeEventListener("touchmove", onMove);
+        t.removeEventListener("touchend", onEnd);
+        t.removeEventListener("touchcancel", onEnd);
+      });
     };
   }, []);
 
@@ -187,7 +194,7 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
   };
 
   return (
-    <div className="relative" style={{ height: HEIGHT, width }}>
+    <div ref={containerRef} className="relative" style={{ height: HEIGHT, width, touchAction: "none" }}>
       <div
         ref={ref}
         onScroll={onScroll}
@@ -196,7 +203,7 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
         className="h-full overflow-y-auto overscroll-contain cursor-grab active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={{ touchAction: "pan-y" }}
+        style={{ touchAction: "none" }}
         data-testid={testId}
       >
         <div style={{ height: PAD }} />
@@ -238,7 +245,7 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
           if (timer.current) window.clearTimeout(timer.current);
           timer.current = window.setTimeout(() => settleRef.current(), 100);
         }}
-        style={{ touchAction: "pan-y" }}
+        style={{ touchAction: "none" }}
         className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-9 mx-0.5 text-center text-base font-semibold bg-secondary/60 rounded-lg border-y border-border/60 outline-none focus:ring-2 focus:ring-primary/40"
         data-testid={testId ? `${testId}-input` : undefined}
         aria-label="Edit value"
