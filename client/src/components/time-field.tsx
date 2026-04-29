@@ -37,16 +37,25 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
   const timer = useRef<number | null>(null);
   const drag = useRef<{ startY: number; startTop: number; pointerId: number; moved: boolean } | null>(null);
   const idx = Math.max(0, items.indexOf(value));
+  const [previewIdx, setPreviewIdx] = useState<number | null>(null);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (drag.current) return;
+    if (drag.current || previewIdx !== null) return;
     const target = idx * ITEM_HEIGHT;
     if (Math.abs(el.scrollTop - target) > 0.5) {
       el.scrollTop = target;
     }
-  }, [idx]);
+  }, [idx, previewIdx]);
+
+  const updatePreview = () => {
+    const el = ref.current;
+    if (!el) return;
+    const i = Math.round(el.scrollTop / ITEM_HEIGHT);
+    const clamped = Math.max(0, Math.min(items.length - 1, i));
+    setPreviewIdx((prev) => (prev === clamped ? prev : clamped));
+  };
 
   const settle = () => {
     const el = ref.current;
@@ -57,6 +66,7 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
     if (Math.abs(el.scrollTop - target) > 0.5) {
       el.scrollTo({ top: target, behavior: "smooth" });
     }
+    setPreviewIdx(null);
     if (items[clamped] !== value) onChange(items[clamped]);
   };
 
@@ -71,6 +81,7 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
       e.preventDefault();
       e.stopPropagation();
       el.scrollTop += e.deltaY;
+      updatePreview();
       if (timer.current) window.clearTimeout(timer.current);
       timer.current = window.setTimeout(() => settleRef.current(), 100);
     };
@@ -80,6 +91,7 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
 
   const onScroll = () => {
     if (drag.current) return;
+    updatePreview();
     if (timer.current) window.clearTimeout(timer.current);
     timer.current = window.setTimeout(settle, 120);
   };
@@ -98,6 +110,7 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
     const dy = e.clientY - drag.current.startY;
     if (Math.abs(dy) > 2) drag.current.moved = true;
     el.scrollTop = drag.current.startTop - dy;
+    updatePreview();
   };
 
   const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -111,7 +124,9 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
 
   const [editText, setEditText] = useState<string | null>(null);
   const renderItem = (item: T) => (render ? render(item) : String(item));
-  const inputDisplay = editText !== null ? editText : renderItem(value);
+  const visibleIdx = previewIdx !== null ? previewIdx : idx;
+  const visibleValue = items[visibleIdx] ?? value;
+  const inputDisplay = editText !== null ? editText : renderItem(visibleValue);
 
   const commitEdit = () => {
     if (editText === null) return;
@@ -153,12 +168,12 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
             key={String(item)}
             onClick={(e) => {
               if (drag.current?.moved) { e.preventDefault(); return; }
-              if (i === idx) return;
+              if (i === visibleIdx) return;
               onChange(item);
             }}
             className={cn(
               "flex items-center justify-center text-base font-semibold cursor-pointer select-none transition-all",
-              i === idx ? "invisible" : "text-muted-foreground/50 scale-95"
+              i === visibleIdx ? "invisible" : "text-muted-foreground/50 scale-95"
             )}
             style={{ height: ITEM_HEIGHT }}
           >
