@@ -272,10 +272,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     if (fcItem && fcItem.skillIds) {
       setSelectedSkills(prev => {
         let newSkills = [...prev];
-        if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
-          newSkills.push({ id: -1 });
+        if (isConnectMode && newSkills.length > 0) {
+          if (newSkills[newSkills.length - 1].id === -1) {
+            newSkills.pop();
+          }
+          const lastNonSep = [...newSkills].reverse().find(s => s.id !== -1);
+          const reps = lastNonSep?.reps || 1;
+          newSkills.push({ id: -3, fcId: id, fcName: fcItem.name, customSkillIds: fcItem.skillIds!, reps } as any);
+        } else {
+          if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
+            newSkills.push({ id: -1 });
+          }
+          newSkills.push({ id: -3, fcId: id, fcName: fcItem.name, customSkillIds: fcItem.skillIds! } as any);
         }
-        newSkills.push({ id: -3, fcId: id, fcName: fcItem.name, customSkillIds: fcItem.skillIds! } as any);
         form.setValue('skills', JSON.stringify(newSkills));
         return newSkills;
       });
@@ -283,13 +292,12 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     }
     setSelectedSkills(prev => {
       let newSkills = [...prev];
-      const lastNonSep = [...newSkills].reverse().find(s => s.id !== -1);
-      const canExtendChain = isConnectMode && lastNonSep && lastNonSep.id !== -2 && lastNonSep.id !== -3;
-      if (canExtendChain) {
+      if (isConnectMode && newSkills.length > 0) {
         if (newSkills[newSkills.length - 1].id === -1) {
           newSkills.pop();
         }
-        const reps = lastNonSep!.reps || 1;
+        const lastNonSep = [...newSkills].reverse().find(s => s.id !== -1);
+        const reps = lastNonSep?.reps || 1;
         newSkills.push({ id, reps });
       } else {
         if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
@@ -309,10 +317,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
     setSelectedSkills(prev => {
       let newSkills = [...prev];
-      if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
-        newSkills.push({ id: -1 });
+      if (isConnectMode && newSkills.length > 0) {
+        if (newSkills[newSkills.length - 1].id === -1) {
+          newSkills.pop();
+        }
+        const lastNonSep = [...newSkills].reverse().find(s => s.id !== -1);
+        const reps = lastNonSep?.reps || 1;
+        newSkills.push({ id: -2, routineId, routineName: routine.name, reps });
+      } else {
+        if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
+          newSkills.push({ id: -1 });
+        }
+        newSkills.push({ id: -2, routineId, routineName: routine.name });
       }
-      newSkills.push({ id: -2, routineId, routineName: routine.name });
       form.setValue('skills', JSON.stringify(newSkills));
       return newSkills;
     });
@@ -896,17 +913,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       let curIndices: number[] = [];
                       selectedSkills.forEach((item, idx) => {
                         if (item.id === -1) {
-                          if (curItems.length) groups.push({ items: curItems, indices: curIndices });
-                          curItems = []; curIndices = [];
-                        } else if (item.id === -2 || item.id === -3) {
-                          if (curItems.length) groups.push({ items: curItems, indices: curIndices });
-                          groups.push({ items: [item], indices: [idx] });
+                          groups.push({ items: curItems, indices: curIndices });
                           curItems = []; curIndices = [];
                         } else {
                           curItems.push(item); curIndices.push(idx);
                         }
                       });
-                      if (curItems.length) groups.push({ items: curItems, indices: curIndices });
+                      groups.push({ items: curItems, indices: curIndices });
                       const nonEmpty = groups.filter(g => g.items.length > 0);
 
                       return (
@@ -922,12 +935,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                 const baseSkillIds = routine?.skillIds ?? [];
                                 const displaySkillIds = item.customSkillIds ?? baseSkillIds;
                                 return (
-                                  <div key={idx}>
+                                  <div key={idx} className={cn(
+                                    iIdx > 0 && isConnected ? "border-t border-border/20" : "",
+                                    isConnected ? "bg-red-50/60 dark:bg-red-900/10" : ""
+                                  )}>
                                     <div
-                                      className="w-full px-3 py-2 text-sm flex justify-between items-center hover:bg-secondary/20 active:bg-secondary/40 transition-colors cursor-pointer bg-primary/5"
+                                      className={cn(
+                                        "w-full px-3 py-2 text-sm flex justify-between items-center transition-colors cursor-pointer",
+                                        isConnected
+                                          ? "hover:bg-red-100/40 active:bg-red-100/60 dark:hover:bg-red-900/20 dark:active:bg-red-900/30"
+                                          : "hover:bg-secondary/20 active:bg-secondary/40 bg-primary/5"
+                                      )}
                                       onClick={() => setEditingRoutineIdx(idx)}
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
+                                        {isConnected && (
+                                          <span className={cn("text-[9px] font-black uppercase tracking-wider shrink-0", iIdx === 0 ? "text-red-500" : "text-red-400/50 pl-1")}>
+                                            {iIdx === 0 ? "C" : "└"}
+                                          </span>
+                                        )}
                                         <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none shrink-0">ROUTINE</Badge>
                                         <span className="font-bold text-primary truncate">{routine?.name || item.routineName}</span>
                                         {displaySkillIds.length < 10 && (
@@ -945,17 +971,21 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) + 1)}>+</button>
                                         </div>
                                         )}
-                                        <DropdownMenu>
-                                          <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end" className="w-36 rounded-xl">
-                                            <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { updateSkillNote(idx, ""); } }}><MessageSquare className="h-3.5 w-3.5" /> {item.note !== undefined && item.note !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
-                                            <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
-                                            <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
+                                        {(!isConnected || iIdx === 0) ? (
+                                          <DropdownMenu>
+                                            <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                                              <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { updateSkillNote(idx, ""); } }}><MessageSquare className="h-3.5 w-3.5" /> {item.note !== undefined && item.note !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
+                                              <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                                              <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                          </DropdownMenu>
+                                        ) : (
+                                          <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground/50 hover:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3 w-3" /></Button>
+                                        )}
                                       </div>
                                     </div>
-                                    {(item.note !== undefined && item.note !== null) && (
+                                    {(item.note !== undefined && item.note !== null) && !isConnected && (
                                       <div className="px-3 pb-2 bg-primary/5">
                                         <input type="text" placeholder="Type a note..." value={item.note || ""} onChange={(e) => updateSkillNote(idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 outline-none focus:bg-muted/50 placeholder:text-muted-foreground/40" data-testid={`input-skill-note-${idx}`} />
                                       </div>
@@ -968,12 +998,20 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                 const baseSkillIds = fc?.skillIds ?? [];
                                 const displaySkillIds = item.customSkillIds ?? baseSkillIds;
                                 return (
-                                  <div key={idx}>
+                                  <div key={idx} className={cn(
+                                    iIdx > 0 && isConnected ? "border-t border-border/20" : "",
+                                    "bg-red-50/60 dark:bg-red-900/10"
+                                  )}>
                                     <div
-                                      className="w-full px-3 py-2 text-sm flex justify-between items-center hover:bg-red-100/40 active:bg-red-100/60 dark:hover:bg-red-900/20 dark:active:bg-red-900/30 transition-colors cursor-pointer bg-red-50/60 dark:bg-red-900/10"
+                                      className="w-full px-3 py-2 text-sm flex justify-between items-center hover:bg-red-100/40 active:bg-red-100/60 dark:hover:bg-red-900/20 dark:active:bg-red-900/30 transition-colors cursor-pointer"
                                       onClick={() => setEditingRoutineIdx(idx)}
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
+                                        {isConnected && (
+                                          <span className={cn("text-[9px] font-black uppercase tracking-wider shrink-0", iIdx === 0 ? "text-red-500" : "text-red-400/50 pl-1")}>
+                                            {iIdx === 0 ? "C" : "└"}
+                                          </span>
+                                        )}
                                         <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-red-500 text-white border-none shrink-0">CONN</Badge>
                                         <span className="font-bold text-red-600 dark:text-red-400 truncate">{fc?.name || item.fcName}</span>
                                         {displaySkillIds.length < baseSkillIds.length && (
@@ -988,17 +1026,21 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) + 1)}>+</button>
                                         </div>
                                         )}
-                                        <DropdownMenu>
-                                          <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end" className="w-36 rounded-xl">
-                                            <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { updateSkillNote(idx, ""); } }}><MessageSquare className="h-3.5 w-3.5" /> {item.note !== undefined && item.note !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
-                                            <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
-                                            <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
+                                        {(!isConnected || iIdx === 0) ? (
+                                          <DropdownMenu>
+                                            <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                                              <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { updateSkillNote(idx, ""); } }}><MessageSquare className="h-3.5 w-3.5" /> {item.note !== undefined && item.note !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
+                                              <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                                              <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                          </DropdownMenu>
+                                        ) : (
+                                          <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground/50 hover:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3 w-3" /></Button>
+                                        )}
                                       </div>
                                     </div>
-                                    {(item.note !== undefined && item.note !== null) && (
+                                    {(item.note !== undefined && item.note !== null) && !isConnected && (
                                       <div className="px-3 pb-2 bg-red-50/60 dark:bg-red-900/10">
                                         <input type="text" placeholder="Type a note..." value={item.note || ""} onChange={(e) => updateSkillNote(idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 outline-none focus:bg-muted/50 placeholder:text-muted-foreground/40" data-testid={`input-skill-note-${idx}`} />
                                       </div>

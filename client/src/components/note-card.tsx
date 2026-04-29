@@ -107,12 +107,6 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                         currentGroup = [];
                       }
                       groups.push({ id: -1 });
-                    } else if (item.id === -2 || item.id === -3) {
-                      if (currentGroup.length > 0) {
-                        groups.push(currentGroup);
-                        currentGroup = [];
-                      }
-                      groups.push([item]);
                     } else {
                       currentGroup.push(item);
                     }
@@ -190,8 +184,25 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                     const isSingle = group.length === 1;
                     const reps = group[0]?.reps || 1;
 
-                    const lineDD = group.reduce((acc, skillItem) => {
-                      const skill = allItems?.find(s => s.id === skillItem.id);
+                    const lineDD = group.reduce((acc, gItem: any) => {
+                      if (gItem.id === -2) {
+                        const r = routines?.find(rt => rt.id === gItem.routineId);
+                        const sIds = gItem.customSkillIds ?? r?.skillIds ?? [];
+                        const count = gItem.attempt ?? sIds.length;
+                        return acc + sIds.slice(0, count).reduce((a: number, sId: number) => {
+                          const sk = allItems?.find(s => s.id === sId);
+                          return a + (sk?.difficulty || 0);
+                        }, 0);
+                      }
+                      if (gItem.id === -3) {
+                        const fc = allItems?.find(s => s.id === gItem.fcId);
+                        const sIds = gItem.customSkillIds ?? fc?.skillIds ?? [];
+                        return acc + sIds.reduce((a: number, sId: number) => {
+                          const sk = allItems?.find(s => s.id === sId);
+                          return a + (sk?.difficulty || 0);
+                        }, 0);
+                      }
+                      const skill = allItems?.find(s => s.id === gItem.id);
                       return acc + (skill?.difficulty || 0);
                     }, 0);
 
@@ -203,8 +214,31 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                           : "bg-red-50/60 dark:bg-red-900/10"
                       )}>
                         <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
-                          {group.map((skillItem, skillIdx) => {
-                            const skill = allItems?.find(s => s.id === skillItem.id);
+                          {group.map((gItem: any, skillIdx) => {
+                            const sep = skillIdx < group.length - 1 ? (
+                              <span className="text-red-400/70 font-bold text-xs">+</span>
+                            ) : null;
+                            if (gItem.id === -2) {
+                              const r = routines?.find(rt => rt.id === gItem.routineId);
+                              return (
+                                <div key={skillIdx} className="flex items-center gap-1.5">
+                                  <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none shrink-0">ROUTINE</Badge>
+                                  <span className="text-[11px] font-bold text-primary truncate max-w-[120px]">{r?.name || gItem.routineName}</span>
+                                  {sep}
+                                </div>
+                              );
+                            }
+                            if (gItem.id === -3) {
+                              const fc = allItems?.find(s => s.id === gItem.fcId);
+                              return (
+                                <div key={skillIdx} className="flex items-center gap-1.5">
+                                  <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-red-500 text-white border-none shrink-0">CONN</Badge>
+                                  <span className="text-[11px] font-bold text-red-600 dark:text-red-400 truncate max-w-[120px]">{fc?.name || gItem.fcName}</span>
+                                  {sep}
+                                </div>
+                              );
+                            }
+                            const skill = allItems?.find(s => s.id === gItem.id);
                             if (!skill) return null;
                             return (
                               <div key={skillIdx} className="flex items-center gap-1.5">
@@ -218,9 +252,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
                                 )}>
                                   {skill.code}
                                 </Badge>
-                                {skillIdx < group.length - 1 && (
-                                  <span className="text-red-400/70 font-bold text-xs">+</span>
-                                )}
+                                {sep}
                               </div>
                             );
                           })}
