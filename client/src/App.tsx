@@ -14,7 +14,7 @@ import LoginPage from "@/pages/login";
 import ScorePage from "@/pages/score";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Target, Layers, BarChart3, Trophy, LogOut, Loader2, UserCircle } from "lucide-react";
+import { LayoutDashboard, Target, Layers, BarChart3, Trophy, LogOut, Loader2, Settings } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -64,20 +64,21 @@ function Navigation() {
       {user && (
         <Popover>
           <PopoverTrigger asChild>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer text-muted-foreground hover:bg-secondary">
-              <UserCircle className="w-4 h-4" />
-              <span className="hidden sm:inline max-w-[80px] truncate">
-                {user.displayName ?? user.firstName ?? user.email?.split("@")[0] ?? "Account"}
-              </span>
+            <div
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer text-muted-foreground hover:bg-secondary"
+              data-testid="btn-open-settings"
+            >
+              <Settings className="w-4 h-4" />
+              <span className="hidden sm:inline">Settings</span>
             </div>
           </PopoverTrigger>
           <PopoverContent align="end" side="top" className="w-56 rounded-2xl p-3 mb-2">
             <div className="mb-3 px-1">
-              <p className="text-xs font-semibold text-foreground truncate">
+              <p className="text-xs font-semibold text-foreground truncate" data-testid="text-account-name">
                 {user.displayName ?? (user.firstName ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}` : "My Account")}
               </p>
               {user.email && (
-                <p className="text-xs text-muted-foreground truncate mt-0.5">{user.email}</p>
+                <p className="text-xs text-muted-foreground truncate mt-0.5" data-testid="text-account-email">{user.email}</p>
               )}
             </div>
             <Button
@@ -85,6 +86,7 @@ function Navigation() {
               className="w-full justify-start gap-2 h-9 rounded-xl text-sm text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={() => setShowSignOutAlert(true)}
               disabled={isLoggingOut}
+              data-testid="btn-sign-out"
             >
               {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
               Sign out
