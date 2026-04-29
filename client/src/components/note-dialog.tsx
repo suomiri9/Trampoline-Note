@@ -839,7 +839,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     })()}
                     <Input placeholder="Name" value={newRoutineName} onChange={e => setNewRoutineName(e.target.value)} className="rounded-lg h-9 text-xs" />
                     <div className="flex items-center gap-2">
-                      <Popover open={routineSkillPickerOpen} onOpenChange={(v) => { if (newRoutineSkillIds.length >= 10) return; setRoutineSkillPickerOpen(v); }}>
+                      <Popover open={routineSkillPickerOpen} onOpenChange={(v) => { if (!v) { setRoutineSkillPickerOpen(false); return; } if (newRoutineSkillIds.length < 10) setRoutineSkillPickerOpen(true); }}>
                         <PopoverTrigger asChild>
                           <Button type="button" variant="outline" role="combobox" disabled={newRoutineSkillIds.length >= 10} className="rounded-lg h-8 flex-1 min-w-0 justify-start font-normal text-xs text-muted-foreground" data-testid="btn-open-routine-skill-picker">
                             <Search className="h-3.5 w-3.5 mr-2 opacity-60 shrink-0" />
@@ -873,10 +873,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               const s = allItems?.find(sk => sk.id === sid);
                               return (
                                 <SortableChip key={`nr-${i}`} uid={`nr-${i}`}>
-                                  <Badge variant="outline" className="font-mono text-[10px] gap-1" data-testid={`chip-new-routine-skill-${i}`}>
-                                    {s?.code}
-                                    <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => setNewRoutineSkillIds(prev => prev.filter((_, j) => j !== i))} data-testid={`btn-remove-new-routine-skill-${i}`}>
-                                      <X className="h-2.5 w-2.5" />
+                                  <Badge variant="outline" className="font-mono text-[10px] gap-0 pr-0 py-0 items-stretch overflow-hidden" data-testid={`chip-new-routine-skill-${i}`}>
+                                    <span className="py-0.5 pl-2 pr-1 flex items-center">{s?.code}</span>
+                                    <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => setNewRoutineSkillIds(prev => prev.filter((_, j) => j !== i))} className="px-2 flex items-center justify-center hover:bg-muted/60 active:bg-muted" data-testid={`btn-remove-new-routine-skill-${i}`} aria-label="Remove">
+                                      <X className="h-3 w-3" />
                                     </button>
                                   </Badge>
                                 </SortableChip>
