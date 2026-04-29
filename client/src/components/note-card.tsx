@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useDeleteNote } from "@/hooks/use-notes";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
+import { useTimeFormat, formatTime } from "@/hooks/use-time-format";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -31,6 +32,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
   const deleteNote = useDeleteNote();
   const { data: allItems } = useSkills();
   const { data: routines } = useRoutines();
+  const [timeFormat] = useTimeFormat();
   const { toast } = useToast();
 
   const handleDelete = () => {
@@ -76,7 +78,7 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <div className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/20 px-2.5 py-1 rounded-lg w-fit">
             <Clock className="w-3 h-3 shrink-0" />
-            <span className="whitespace-nowrap">{note.startTime || "??:??"} - {note.endTime || "??:??"}</span>
+            <span className="whitespace-nowrap">{formatTime(note.startTime, timeFormat)} - {formatTime(note.endTime, timeFormat)}</span>
           </div>
           {note.sleepScore != null ? (
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/20 px-2.5 py-1 rounded-lg w-fit">

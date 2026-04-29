@@ -1,13 +1,16 @@
 import { useState } from "react";
-import { Settings as SettingsIcon, LogOut, Loader2, Mail, User as UserIcon } from "lucide-react";
+import { Settings as SettingsIcon, LogOut, Loader2, Mail, User as UserIcon, Clock } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { PageLayout } from "@/components/page-layout";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useTimeFormat } from "@/hooks/use-time-format";
+import { cn } from "@/lib/utils";
 
 export default function SettingsPage() {
   const { user, logout, isLoggingOut } = useAuth();
   const [showSignOutAlert, setShowSignOutAlert] = useState(false);
+  const [timeFormat, setTimeFormat] = useTimeFormat();
 
   const displayName =
     user?.displayName ??
@@ -49,6 +52,37 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+          </div>
+        </section>
+
+        <section className="rounded-2xl card-3d p-5">
+          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Preferences</h2>
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-secondary/50 mt-0.5">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">Time format</p>
+              <p className="text-xs text-muted-foreground mb-3">Used in the training log and when adding entries.</p>
+              <div className="inline-flex p-1 rounded-xl bg-secondary/50 border border-border/50">
+                {(["12h", "24h"] as const).map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setTimeFormat(opt)}
+                    className={cn(
+                      "px-4 h-8 rounded-lg text-xs font-semibold transition-all",
+                      timeFormat === opt
+                        ? "bg-background shadow-sm text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    data-testid={`btn-time-format-${opt}`}
+                  >
+                    {opt === "12h" ? "12-hour" : "24-hour"}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 

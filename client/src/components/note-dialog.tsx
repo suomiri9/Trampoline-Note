@@ -42,6 +42,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { TimeField } from "./time-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -473,13 +474,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   <Clock className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
                   <FormField control={form.control} name="startTime" render={({ field }) => (
                     <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
-                      <FormControl><Input type="time" aria-label="Start time" className="rounded-xl h-9 px-2 text-sm flex-1 min-w-0" {...field} value={field.value || ""} /></FormControl>
+                      <FormControl><TimeField ariaLabel="Start time" value={field.value || ""} onChange={field.onChange} testId="input-start-time" /></FormControl>
                     </FormItem>
                   )} />
                   <span className="text-muted-foreground text-sm">→</span>
                   <FormField control={form.control} name="endTime" render={({ field }) => (
                     <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
-                      <FormControl><Input type="time" aria-label="End time" className="rounded-xl h-9 px-2 text-sm flex-1 min-w-0" {...field} value={field.value || ""} /></FormControl>
+                      <FormControl><TimeField ariaLabel="End time" value={field.value || ""} onChange={field.onChange} testId="input-end-time" /></FormControl>
                     </FormItem>
                   )} />
                 </div>
