@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
+import { useRecentSkills, addRecentSkill } from "@/hooks/use-recent-skills";
 import { calcDDFromSkillIds } from "@/lib/training-utils";
 import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { SortableChip } from "@/components/sortable-chip";
@@ -72,6 +73,7 @@ function sortByOrder(items: Skill[]): Skill[] {
 export default function SkillsPage() {
   const [, navigate] = useLocation();
   const { data: allItems, createSkill, deleteSkill, updateSkill, reorderSkills, isCreating, isUpdating } = useSkills();
+  const recentSkillIds = useRecentSkills();
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   const [reorderMode, setReorderMode] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -240,7 +242,9 @@ export default function SkillsPage() {
   };
 
   const addSkillToConn = (idStr: string) => {
-    setConnSkillIds(prev => [...prev, parseInt(idStr)]);
+    const id = parseInt(idStr);
+    addRecentSkill(id);
+    setConnSkillIds(prev => [...prev, id]);
   };
 
   const removeSkillFromConn = (idx: number) => {
@@ -576,6 +580,27 @@ export default function SkillsPage() {
                             <CommandInput placeholder="Search by name or code..." className="h-10" />
                             <CommandList className="max-h-[320px]">
                               <CommandEmpty>No matches.</CommandEmpty>
+                              {(() => {
+                                const recents = recentSkillIds
+                                  .map(id => skills?.find(s => s.id === id))
+                                  .filter((s): s is NonNullable<typeof s> => !!s);
+                                if (recents.length === 0) return null;
+                                return (
+                                  <CommandGroup heading="Recent">
+                                    {recents.map(s => (
+                                      <CommandItem
+                                        key={`recent-${s.id}`}
+                                        value={`${s.code} ${s.name} recent`}
+                                        onSelect={() => { addSkillToConn(s.id.toString()); setConnSkillPickerOpen(false); }}
+                                        data-testid={`pick-conn-recent-${s.id}`}
+                                      >
+                                        <span className="font-mono text-xs font-semibold text-foreground mr-2">{s.code}</span>
+                                        {s.code !== s.name && <span className="text-muted-foreground">- {s.name}</span>}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                );
+                              })()}
                               <CommandGroup heading="Skills">
                                 {skills?.slice().sort((a, b) => {
                                   const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
