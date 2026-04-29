@@ -631,9 +631,9 @@ export default function SkillsPage() {
                             const s = skills?.find(sk => sk.id === id);
                             return (
                               <SortableChip key={`cs-${idx}`} uid={`cs-${idx}`}>
-                                <Badge variant="secondary" className="pr-1 gap-1" data-testid={`chip-conn-skill-${idx}`}>
-                                  {s?.code}
-                                  <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => removeSkillFromConn(idx)} data-testid={`btn-remove-conn-skill-${idx}`}><X className="h-3 w-3" /></button>
+                                <Badge variant="secondary" className="gap-0 pr-0 py-0 items-stretch overflow-hidden" data-testid={`chip-conn-skill-${idx}`}>
+                                  <span className="py-0.5 pl-2.5 pr-1.5 flex items-center">{s?.code}</span>
+                                  <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => removeSkillFromConn(idx)} className="px-2.5 flex items-center justify-center hover:bg-muted/60 active:bg-muted" data-testid={`btn-remove-conn-skill-${idx}`} aria-label="Remove"><X className="h-3.5 w-3.5" /></button>
                                 </Badge>
                               </SortableChip>
                             );

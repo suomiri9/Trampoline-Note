@@ -747,10 +747,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             const s = allItems?.find(sk => sk.id === sid);
                             return (
                               <SortableChip key={`nc-${i}`} uid={`nc-${i}`}>
-                                <Badge variant="outline" className="font-mono text-[10px] gap-1" data-testid={`chip-new-conn-skill-${i}`}>
-                                  {s?.code}
-                                  <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => setNewConnSkillIds(prev => prev.filter((_, j) => j !== i))} data-testid={`btn-remove-new-conn-skill-${i}`}>
-                                    <X className="h-2.5 w-2.5" />
+                                <Badge variant="outline" className="font-mono text-[10px] gap-0 pr-0 py-0 items-stretch overflow-hidden" data-testid={`chip-new-conn-skill-${i}`}>
+                                  <span className="py-0.5 pl-2 pr-1 flex items-center">{s?.code}</span>
+                                  <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => setNewConnSkillIds(prev => prev.filter((_, j) => j !== i))} className="px-2 flex items-center justify-center hover:bg-muted/60 active:bg-muted" data-testid={`btn-remove-new-conn-skill-${i}`} aria-label="Remove">
+                                    <X className="h-3 w-3" />
                                   </button>
                                 </Badge>
                               </SortableChip>
