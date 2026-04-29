@@ -740,25 +740,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       );
                     })()}
                     <Input placeholder="Name (e.g. Ba+BT)" value={newConnName} onChange={e => setNewConnName(e.target.value)} className="rounded-lg h-9 text-xs" />
-                    <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleNewConnChipDragEnd}>
-                      <SortableContext items={newConnSkillIds.map((_, i) => `nc-${i}`)} strategy={rectSortingStrategy}>
-                        <div className="flex flex-wrap gap-1">
-                          {newConnSkillIds.map((sid, i) => {
-                            const s = allItems?.find(sk => sk.id === sid);
-                            return (
-                              <SortableChip key={`nc-${i}`} uid={`nc-${i}`}>
-                                <Badge variant="outline" className="font-mono text-[10px] gap-0 pr-0 py-0 items-stretch overflow-hidden" data-testid={`chip-new-conn-skill-${i}`}>
-                                  <span className="py-0.5 pl-2 pr-1 flex items-center">{s?.code}</span>
-                                  <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => setNewConnSkillIds(prev => prev.filter((_, j) => j !== i))} className="px-2 flex items-center justify-center hover:bg-muted/60 active:bg-muted" data-testid={`btn-remove-new-conn-skill-${i}`} aria-label="Remove">
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                </Badge>
-                              </SortableChip>
-                            );
-                          })}
-                        </div>
-                      </SortableContext>
-                    </DndContext>
                     <Popover open={connSkillPickerOpen} onOpenChange={setConnSkillPickerOpen}>
                       <PopoverTrigger asChild>
                         <Button type="button" variant="outline" role="combobox" className="rounded-lg h-8 w-full min-w-0 justify-start font-normal text-xs text-muted-foreground" data-testid="btn-open-conn-skill-picker">
@@ -799,6 +780,27 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         </Command>
                       </PopoverContent>
                     </Popover>
+                    {newConnSkillIds.length > 0 && (
+                      <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleNewConnChipDragEnd}>
+                        <SortableContext items={newConnSkillIds.map((_, i) => `nc-${i}`)} strategy={rectSortingStrategy}>
+                          <div className="flex flex-wrap gap-1 pt-1 border-t border-red-500/10">
+                            {newConnSkillIds.map((sid, i) => {
+                              const s = allItems?.find(sk => sk.id === sid);
+                              return (
+                                <SortableChip key={`nc-${i}`} uid={`nc-${i}`}>
+                                  <Badge variant="outline" className="font-mono text-[10px] gap-0 pr-0 py-0 items-stretch overflow-hidden" data-testid={`chip-new-conn-skill-${i}`}>
+                                    <span className="py-0.5 pl-2 pr-1 flex items-center">{s?.code}</span>
+                                    <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => setNewConnSkillIds(prev => prev.filter((_, j) => j !== i))} className="px-2 flex items-center justify-center hover:bg-muted/60 active:bg-muted" data-testid={`btn-remove-new-conn-skill-${i}`} aria-label="Remove">
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </Badge>
+                                </SortableChip>
+                              );
+                            })}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    )}
                     <Button type="button" size="sm" className="w-full h-8 rounded-lg text-xs bg-red-500 hover:bg-red-600 text-white" disabled={!newConnName || newConnSkillIds.length === 0 || isCreatingSkill} onClick={async () => {
                       try {
                         const dd = newConnSkillIds.reduce((acc, sid) => acc + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0);
