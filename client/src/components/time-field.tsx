@@ -36,30 +36,60 @@ interface WheelProps<T extends string | number> {
 function Wheel<T extends string | number>({ items, value, onChange, testId, render, width = 56 }: WheelProps<T>) {
   const ref = useRef<HTMLDivElement>(null);
   const timer = useRef<number | null>(null);
+  const drag = useRef<{ startY: number; startTop: number; pointerId: number; moved: boolean } | null>(null);
   const idx = Math.max(0, items.indexOf(value));
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (drag.current) return;
     const target = idx * ITEM_HEIGHT;
     if (Math.abs(el.scrollTop - target) > 0.5) {
       el.scrollTop = target;
     }
   }, [idx]);
 
-  const onScroll = () => {
+  const settle = () => {
     const el = ref.current;
     if (!el) return;
+    const i = Math.round(el.scrollTop / ITEM_HEIGHT);
+    const clamped = Math.max(0, Math.min(items.length - 1, i));
+    const target = clamped * ITEM_HEIGHT;
+    if (Math.abs(el.scrollTop - target) > 0.5) {
+      el.scrollTo({ top: target, behavior: "smooth" });
+    }
+    if (items[clamped] !== value) onChange(items[clamped]);
+  };
+
+  const onScroll = () => {
+    if (drag.current) return;
     if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => {
-      const i = Math.round(el.scrollTop / ITEM_HEIGHT);
-      const clamped = Math.max(0, Math.min(items.length - 1, i));
-      const target = clamped * ITEM_HEIGHT;
-      if (Math.abs(el.scrollTop - target) > 0.5) {
-        el.scrollTo({ top: target, behavior: "smooth" });
-      }
-      if (items[clamped] !== value) onChange(items[clamped]);
-    }, 120);
+    timer.current = window.setTimeout(settle, 120);
+  };
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = ref.current;
+    if (!el) return;
+    if (e.pointerType === "touch") return;
+    drag.current = { startY: e.clientY, startTop: el.scrollTop, pointerId: e.pointerId, moved: false };
+    el.setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = ref.current;
+    if (!el || !drag.current) return;
+    const dy = e.clientY - drag.current.startY;
+    if (Math.abs(dy) > 2) drag.current.moved = true;
+    el.scrollTop = drag.current.startTop - dy;
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = ref.current;
+    if (!el || !drag.current) return;
+    const wasMoved = drag.current.moved;
+    try { el.releasePointerCapture(drag.current.pointerId); } catch {}
+    drag.current = null;
+    if (wasMoved) settle();
   };
 
   return (
@@ -68,7 +98,11 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
       <div
         ref={ref}
         onScroll={onScroll}
-        className="h-full overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        className="h-full overflow-y-auto overscroll-contain cursor-grab active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{ touchAction: "pan-y" }}
         data-testid={testId}
       >
@@ -76,7 +110,10 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
         {items.map((item, i) => (
           <div
             key={String(item)}
-            onClick={() => onChange(item)}
+            onClick={(e) => {
+              if (drag.current?.moved) { e.preventDefault(); return; }
+              onChange(item);
+            }}
             className={cn(
               "flex items-center justify-center text-base font-semibold cursor-pointer select-none transition-all",
               i === idx ? "text-foreground scale-100" : "text-muted-foreground/50 scale-95"
