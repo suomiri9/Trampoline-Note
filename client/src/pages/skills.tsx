@@ -581,6 +581,23 @@ export default function SkillsPage() {
                             <CommandInput placeholder="Search by name or code..." className="h-10" />
                             <CommandList className="max-h-[320px]">
                               <CommandEmpty>No matches.</CommandEmpty>
+                              <CommandGroup heading="Skills">
+                                {skills?.slice().sort((a, b) => {
+                                  const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
+                                  if (oA !== oB) return oA - oB;
+                                  return b.difficulty - a.difficulty;
+                                }).map(s => (
+                                  <CommandItem
+                                    key={s.id}
+                                    value={`${s.code} ${s.name} skill`}
+                                    onSelect={() => { addSkillToConn(s.id.toString()); setConnSkillPickerOpen(false); }}
+                                    data-testid={`pick-conn-skill-${s.id}`}
+                                  >
+                                    <span className="font-mono text-xs font-semibold text-foreground mr-2">{s.code}</span>
+                                    {s.code !== s.name && <span className="text-muted-foreground">- {s.name}</span>}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
                               {(() => {
                                 const recents = recentSkillIds
                                   .map(id => skills?.find(s => s.id === id))
@@ -602,23 +619,6 @@ export default function SkillsPage() {
                                   </CommandGroup>
                                 );
                               })()}
-                              <CommandGroup heading="Skills">
-                                {skills?.slice().sort((a, b) => {
-                                  const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
-                                  if (oA !== oB) return oA - oB;
-                                  return b.difficulty - a.difficulty;
-                                }).map(s => (
-                                  <CommandItem
-                                    key={s.id}
-                                    value={`${s.code} ${s.name} skill`}
-                                    onSelect={() => { addSkillToConn(s.id.toString()); setConnSkillPickerOpen(false); }}
-                                    data-testid={`pick-conn-skill-${s.id}`}
-                                  >
-                                    <span className="font-mono text-xs font-semibold text-foreground mr-2">{s.code}</span>
-                                    {s.code !== s.name && <span className="text-muted-foreground">- {s.name}</span>}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
                             </CommandList>
                           </Command>
                         </PopoverContent>

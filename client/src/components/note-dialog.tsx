@@ -753,6 +753,14 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           <CommandInput placeholder="Search by name or code..." className="h-10" />
                           <CommandList className="max-h-[280px]">
                             <CommandEmpty>No matches.</CommandEmpty>
+                            <CommandGroup heading="Skills">
+                              {allItems?.filter(s => s.isDrill === 0 && s.archived !== 1).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
+                                <CommandItem key={s.id} value={`${s.code} ${s.name} skill`} onSelect={() => { addRecentSkill(s.id); setNewConnSkillIds(prev => [...prev, s.id]); setConnSkillPickerOpen(false); }} data-testid={`pick-conn-skill-${s.id}`}>
+                                  <span className="font-mono text-xs font-semibold text-foreground mr-2">{s.code}</span>
+                                  {s.code !== s.name && <span className="text-muted-foreground">- {s.name}</span>}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
                             {(() => {
                               const recents = globalRecentSkillIds
                                 .map(id => allItems?.find(s => s.id === id && s.isDrill === 0 && s.archived !== 1))
@@ -769,14 +777,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                 </CommandGroup>
                               );
                             })()}
-                            <CommandGroup heading="Skills">
-                              {allItems?.filter(s => s.isDrill === 0 && s.archived !== 1).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
-                                <CommandItem key={s.id} value={`${s.code} ${s.name} skill`} onSelect={() => { addRecentSkill(s.id); setNewConnSkillIds(prev => [...prev, s.id]); setConnSkillPickerOpen(false); }} data-testid={`pick-conn-skill-${s.id}`}>
-                                  <span className="font-mono text-xs font-semibold text-foreground mr-2">{s.code}</span>
-                                  {s.code !== s.name && <span className="text-muted-foreground">- {s.name}</span>}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
                           </CommandList>
                         </Command>
                       </PopoverContent>
