@@ -568,11 +568,12 @@ export default function SkillsPage() {
                     
                     <div className="space-y-2">
                       <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Build Sequence</label>
+                      <div className="flex items-center gap-2">
                       <Popover open={connSkillPickerOpen} onOpenChange={setConnSkillPickerOpen}>
                         <PopoverTrigger asChild>
-                          <Button type="button" variant="outline" role="combobox" className="w-full justify-start font-normal text-muted-foreground" data-testid="btn-open-conn-skill-picker">
-                            <Search className="h-4 w-4 mr-2 opacity-60" />
-                            Add skill to sequence...
+                          <Button type="button" variant="outline" role="combobox" className="h-9 flex-1 min-w-0 justify-start font-normal text-sm text-muted-foreground" data-testid="btn-open-conn-skill-picker">
+                            <Search className="h-3.5 w-3.5 mr-2 opacity-60 shrink-0" />
+                            <span className="truncate">Add skill to sequence...</span>
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
@@ -622,6 +623,8 @@ export default function SkillsPage() {
                           </Command>
                         </PopoverContent>
                       </Popover>
+                      <span className="text-xs shrink-0 text-muted-foreground" data-testid="text-conn-skill-count">{connSkillIds.length}</span>
+                      </div>
                     </div>
 
                     <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleConnChipDragEnd}>

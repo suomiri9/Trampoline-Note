@@ -740,9 +740,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       );
                     })()}
                     <Input placeholder="Name (e.g. Ba+BT)" value={newConnName} onChange={e => setNewConnName(e.target.value)} className="rounded-lg h-9 text-xs" />
+                    <div className="flex items-center gap-2">
                     <Popover open={connSkillPickerOpen} onOpenChange={setConnSkillPickerOpen}>
                       <PopoverTrigger asChild>
-                        <Button type="button" variant="outline" role="combobox" className="rounded-lg h-8 w-full min-w-0 justify-start font-normal text-xs text-muted-foreground" data-testid="btn-open-conn-skill-picker">
+                        <Button type="button" variant="outline" role="combobox" className="rounded-lg h-8 flex-1 min-w-0 justify-start font-normal text-xs text-muted-foreground" data-testid="btn-open-conn-skill-picker">
                           <Search className="h-3.5 w-3.5 mr-2 opacity-60 shrink-0" />
                           <span className="truncate">Add skill to connection...</span>
                         </Button>
@@ -780,6 +781,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         </Command>
                       </PopoverContent>
                     </Popover>
+                    <span className="text-[10px] shrink-0 text-muted-foreground" data-testid="text-new-conn-skill-count">{newConnSkillIds.length}</span>
+                    </div>
                     {newConnSkillIds.length > 0 && (
                       <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleNewConnChipDragEnd}>
                         <SortableContext items={newConnSkillIds.map((_, i) => `nc-${i}`)} strategy={rectSortingStrategy}>
