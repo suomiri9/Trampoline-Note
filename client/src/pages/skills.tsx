@@ -623,7 +623,7 @@ export default function SkillsPage() {
                           </Command>
                         </PopoverContent>
                       </Popover>
-                      <span className="text-xs shrink-0 text-muted-foreground" data-testid="text-conn-skill-count">{connSkillIds.length}</span>
+                      <span className="text-xs shrink-0 text-muted-foreground" data-testid="text-conn-skill-count">{connSkillIds.length} skills</span>
                       </div>
                     </div>
 

@@ -781,7 +781,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         </Command>
                       </PopoverContent>
                     </Popover>
-                    <span className="text-[10px] shrink-0 text-muted-foreground" data-testid="text-new-conn-skill-count">{newConnSkillIds.length}</span>
+                    <span className="text-[10px] shrink-0 text-muted-foreground" data-testid="text-new-conn-skill-count">{newConnSkillIds.length} skills</span>
                     </div>
                     {newConnSkillIds.length > 0 && (
                       <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleNewConnChipDragEnd}>
