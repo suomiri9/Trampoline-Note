@@ -598,33 +598,28 @@ export default function SkillsPage() {
                                   </CommandItem>
                                 ))}
                               </CommandGroup>
-                              {(() => {
-                                const recents = recentSkillIds
-                                  .map(id => skills?.find(s => s.id === id))
-                                  .filter((s): s is NonNullable<typeof s> => !!s);
-                                if (recents.length === 0) return null;
-                                return (
-                                  <CommandGroup heading="Recent">
-                                    {recents.map(s => (
-                                      <CommandItem
-                                        key={`recent-${s.id}`}
-                                        value={`${s.code} ${s.name} recent`}
-                                        onSelect={() => { addSkillToConn(s.id.toString()); setConnSkillPickerOpen(false); }}
-                                        data-testid={`pick-conn-recent-${s.id}`}
-                                      >
-                                        <span className="font-mono text-xs font-semibold text-foreground mr-2">{s.code}</span>
-                                        {s.code !== s.name && <span className="text-muted-foreground">- {s.name}</span>}
-                                      </CommandItem>
-                                    ))}
-                                  </CommandGroup>
-                                );
-                              })()}
                             </CommandList>
                           </Command>
                         </PopoverContent>
                       </Popover>
                       <span className="text-xs shrink-0 text-muted-foreground" data-testid="text-conn-skill-count">{connSkillIds.length} skills</span>
                       </div>
+                      {(() => {
+                        const recents = recentSkillIds
+                          .map(id => skills?.find(s => s.id === id))
+                          .filter((s): s is NonNullable<typeof s> => !!s);
+                        if (recents.length === 0) return null;
+                        return (
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {recents.map(s => (
+                                <button key={`conn-recent-${s.id}`} type="button" onClick={() => addSkillToConn(s.id.toString())} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95" data-testid={`btn-conn-recent-${s.id}`}>{s.code}</button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleConnChipDragEnd}>
