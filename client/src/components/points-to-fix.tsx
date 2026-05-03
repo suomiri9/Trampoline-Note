@@ -4,7 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useSkills } from "@/hooks/use-skills";
 import { useToast } from "@/hooks/use-toast";
-import { Wrench, Plus, X, Trash2, Loader2, Search } from "lucide-react";
+import { Wrench, Plus, X, Trash2, Loader2, Search, Pencil, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -96,6 +96,8 @@ export function PointsToFix() {
   const [draftName, setDraftName] = useState("");
   const [draftSkillIds, setDraftSkillIds] = useState<number[]>([]);
   const [draftRoutineIds, setDraftRoutineIds] = useState<number[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
   const [filterKind, setFilterKind] = useState<"skill" | "routine" | null>(null);
   const [filterId, setFilterId] = useState<number | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -112,8 +114,31 @@ export function PointsToFix() {
       setFilterId(null);
       setFilterOpen(false);
       setLinkOpen(false);
+      setEditingId(null);
+      setEditingName("");
     }
   }, [open]);
+
+  const startEdit = (p: PointToFix) => {
+    setEditingId(p.id);
+    setEditingName(p.name);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingName("");
+  };
+
+  const saveEdit = () => {
+    if (mutation.isPending) return;
+    if (editingId === null) return;
+    const name = editingName.trim();
+    if (!name) return;
+    const next = points.map((p) => (p.id === editingId ? { ...p, name } : p));
+    mutation.mutate(next);
+    setEditingId(null);
+    setEditingName("");
+  };
 
   const mutation = useMutation({
     mutationFn: async (next: PointToFix[]) => {
@@ -338,29 +363,86 @@ export function PointsToFix() {
                   currentSkillId: number | null,
                   currentRoutineId: number | null,
                 ) => {
+                  const isEditing = editingId === p.id;
                   return (
                     <div
                       key={`${currentSkillId ?? "u"}-${currentRoutineId ?? "u"}-${p.id}`}
                       data-testid={`point-row-${p.id}`}
                       className="flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl bg-secondary/30"
                     >
-                      <p
-                        className="text-sm flex-1 min-w-0 break-words"
-                        data-testid={`text-point-name-${p.id}`}
-                      >
-                        {p.name}
-                      </p>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removePoint(p.id, currentSkillId, currentRoutineId)}
-                        disabled={mutation.isPending}
-                        data-testid={`button-remove-point-${p.id}`}
-                        className="shrink-0 h-6 w-6 -mr-1 opacity-50 hover:opacity-100"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                      </Button>
+                      {isEditing ? (
+                        <>
+                          <Input
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                            maxLength={200}
+                            autoFocus
+                            data-testid={`input-edit-point-${p.id}`}
+                            className="flex-1 min-w-0 h-8 text-sm"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && editingName.trim()) {
+                                e.preventDefault();
+                                saveEdit();
+                              } else if (e.key === "Escape") {
+                                e.preventDefault();
+                                cancelEdit();
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={saveEdit}
+                            disabled={!editingName.trim() || mutation.isPending}
+                            data-testid={`button-save-point-${p.id}`}
+                            className="shrink-0 h-6 w-6 opacity-70 hover:opacity-100"
+                          >
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={cancelEdit}
+                            data-testid={`button-cancel-edit-point-${p.id}`}
+                            className="shrink-0 h-6 w-6 -mr-1 opacity-50 hover:opacity-100"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <p
+                            className="text-sm flex-1 min-w-0 break-words"
+                            data-testid={`text-point-name-${p.id}`}
+                          >
+                            {p.name}
+                          </p>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => startEdit(p)}
+                            disabled={mutation.isPending || editingId !== null}
+                            data-testid={`button-edit-point-${p.id}`}
+                            className="shrink-0 h-6 w-6 opacity-50 hover:opacity-100"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removePoint(p.id, currentSkillId, currentRoutineId)}
+                            disabled={mutation.isPending}
+                            data-testid={`button-remove-point-${p.id}`}
+                            className="shrink-0 h-6 w-6 -mr-1 opacity-50 hover:opacity-100"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   );
                 };
