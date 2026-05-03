@@ -102,6 +102,7 @@ export function PointsToFix() {
   const [filterId, setFilterId] = useState<number | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const dialogContentRef = useRef<HTMLDivElement>(null);
 
@@ -114,6 +115,7 @@ export function PointsToFix() {
       setFilterId(null);
       setFilterOpen(false);
       setLinkOpen(false);
+      setAddOpen(false);
       setEditingId(null);
       setEditingName("");
     }
@@ -218,6 +220,7 @@ export function PointsToFix() {
     setDraftName("");
     setDraftSkillIds([]);
     setDraftRoutineIds([]);
+    setAddOpen(false);
   };
 
   const removePoint = (
@@ -636,6 +639,248 @@ export function PointsToFix() {
                           <X className="h-4 w-4" />
                         </Button>
                       )}
+                      <Popover open={addOpen} onOpenChange={setAddOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="h-11 shrink-0 rounded-xl px-3 gap-1"
+                            data-testid="button-open-add-point"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          container={dialogContentRef.current}
+                          className="w-[min(360px,calc(100vw-48px))] p-3 space-y-3"
+                          align="end"
+                        >
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                            Add new point
+                          </p>
+                          <Input
+                            value={draftName}
+                            onChange={(e) => setDraftName(e.target.value)}
+                            placeholder="e.g. Land cleaner, tighter tuck..."
+                            maxLength={200}
+                            data-testid="input-point-name"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && draftName.trim()) {
+                                e.preventDefault();
+                                addPoint();
+                              }
+                            }}
+                          />
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-muted-foreground">
+                              Linked skills & routines (optional)
+                            </label>
+                            {(() => {
+                              const linkSkillsList = sortedActiveSkills.filter(
+                                (s) => s.isDrill === 0 && !draftSkillIds.includes(s.id),
+                              );
+                              const linkDrillsList = sortedActiveSkills.filter(
+                                (s) => s.isDrill === 1 && !draftSkillIds.includes(s.id),
+                              );
+                              const linkConnList = sortedActiveSkills.filter(
+                                (s) => s.isDrill === 2 && !draftSkillIds.includes(s.id),
+                              );
+                              const linkRoutinesList = sortedActiveRoutines.filter(
+                                (r) => !draftRoutineIds.includes(r.id),
+                              );
+                              return (
+                                <Popover open={linkOpen} onOpenChange={setLinkOpen}>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      role="combobox"
+                                      className="rounded-xl h-10 w-full justify-start font-normal text-muted-foreground text-xs"
+                                      data-testid="btn-open-link"
+                                    >
+                                      <Search className="h-4 w-4 mr-2 opacity-60" />
+                                      Add skill, drill, connection or routine...
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    container={dialogContentRef.current}
+                                    className="p-0 w-[--radix-popover-trigger-width]"
+                                    align="start"
+                                  >
+                                    <Command
+                                      filter={(value, search) => {
+                                        const v = value.toLowerCase();
+                                        const s = search.toLowerCase();
+                                        return v.includes(s) ? 1 : 0;
+                                      }}
+                                    >
+                                      <CommandInput
+                                        placeholder="Search by name or code..."
+                                        className="h-10"
+                                      />
+                                      <CommandList className="max-h-[260px]">
+                                        <CommandEmpty>No matches.</CommandEmpty>
+                                        {linkSkillsList.length > 0 && (
+                                          <CommandGroup heading="Skills">
+                                            {linkSkillsList.map((s) => (
+                                              <CommandItem
+                                                key={`ls-${s.id}`}
+                                                value={`${s.code} ${s.name} skill`}
+                                                onSelect={() => {
+                                                  addSkillToDraft(`skill:${s.id}`);
+                                                  setLinkOpen(false);
+                                                }}
+                                                data-testid={`option-skill-${s.id}`}
+                                              >
+                                                <span className="font-mono text-xs font-semibold text-foreground mr-2">
+                                                  {s.code}
+                                                </span>
+                                                {s.code !== s.name && (
+                                                  <span className="text-muted-foreground">- {s.name}</span>
+                                                )}
+                                              </CommandItem>
+                                            ))}
+                                          </CommandGroup>
+                                        )}
+                                        {linkDrillsList.length > 0 && (
+                                          <CommandGroup heading="Drills">
+                                            {linkDrillsList.map((s) => (
+                                              <CommandItem
+                                                key={`ld-${s.id}`}
+                                                value={`${s.code} ${s.name} drill`}
+                                                onSelect={() => {
+                                                  addSkillToDraft(`skill:${s.id}`);
+                                                  setLinkOpen(false);
+                                                }}
+                                                data-testid={`option-drill-${s.id}`}
+                                              >
+                                                <span className="font-mono text-xs font-semibold text-foreground mr-2">
+                                                  {s.code}
+                                                </span>
+                                                {s.code !== s.name && (
+                                                  <span className="text-muted-foreground">- {s.name}</span>
+                                                )}
+                                                <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-yellow-600 dark:text-yellow-400">
+                                                  Drill
+                                                </span>
+                                              </CommandItem>
+                                            ))}
+                                          </CommandGroup>
+                                        )}
+                                        {linkConnList.length > 0 && (
+                                          <CommandGroup heading="Connections">
+                                            {linkConnList.map((s) => (
+                                              <CommandItem
+                                                key={`lc-${s.id}`}
+                                                value={`${s.name} connection`}
+                                                onSelect={() => {
+                                                  addSkillToDraft(`skill:${s.id}`);
+                                                  setLinkOpen(false);
+                                                }}
+                                                data-testid={`option-conn-${s.id}`}
+                                              >
+                                                <span className="font-mono text-xs font-semibold text-foreground mr-2">
+                                                  {s.name}
+                                                </span>
+                                                <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-red-500 dark:text-red-400">
+                                                  Connection
+                                                </span>
+                                              </CommandItem>
+                                            ))}
+                                          </CommandGroup>
+                                        )}
+                                        {linkRoutinesList.length > 0 && (
+                                          <CommandGroup heading="Routines">
+                                            {linkRoutinesList.map((r) => (
+                                              <CommandItem
+                                                key={`lr-${r.id}`}
+                                                value={`${r.name} routine`}
+                                                onSelect={() => {
+                                                  addSkillToDraft(`routine:${r.id}`);
+                                                  setLinkOpen(false);
+                                                }}
+                                                data-testid={`option-routine-${r.id}`}
+                                              >
+                                                <span className="font-mono text-xs font-semibold text-foreground mr-2">
+                                                  {r.name}
+                                                </span>
+                                                <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-blue-600 dark:text-blue-400">
+                                                  Routine
+                                                </span>
+                                              </CommandItem>
+                                            ))}
+                                          </CommandGroup>
+                                        )}
+                                      </CommandList>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
+                              );
+                            })()}
+                            {(draftSkillIds.length > 0 || draftRoutineIds.length > 0) && (
+                              <div className="flex flex-wrap gap-1.5 p-2 rounded-lg bg-muted/30">
+                                {draftSkillIds.map((id) => {
+                                  const s = skillById(id);
+                                  const t = skillTypeOf(s?.isDrill);
+                                  return (
+                                    <Badge
+                                      key={`ds-${id}`}
+                                      variant="secondary"
+                                      className="pr-1 gap-1"
+                                      data-testid={`badge-draft-skill-${id}`}
+                                    >
+                                      <span className="font-mono">{s?.code || "?"}</span>
+                                      <span className="text-[9px] uppercase opacity-70">
+                                        {TYPE_LABEL[t]}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => removeSkillFromDraft(id)}
+                                        data-testid={`button-remove-draft-skill-${id}`}
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </Badge>
+                                  );
+                                })}
+                                {draftRoutineIds.map((id) => {
+                                  const r = routineById(id);
+                                  return (
+                                    <Badge
+                                      key={`dr-${id}`}
+                                      variant="secondary"
+                                      className="pr-1 gap-1"
+                                      data-testid={`badge-draft-routine-${id}`}
+                                    >
+                                      <span>{r?.name || "?"}</span>
+                                      <span className="text-[9px] uppercase opacity-70">
+                                        {TYPE_LABEL.routine}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => removeRoutineFromDraft(id)}
+                                        data-testid={`button-remove-draft-routine-${id}`}
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={addPoint}
+                            disabled={!draftName.trim() || mutation.isPending}
+                            data-testid="button-add-point"
+                            className="w-full gap-2"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Add Point
+                          </Button>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     {noResults ? (
                       <p className="text-sm text-muted-foreground italic py-4 text-center">
@@ -734,234 +979,6 @@ export function PointsToFix() {
               })()
             )}
 
-            <div className="border-t border-border pt-4 space-y-3">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Add new point
-              </p>
-              <Input
-                value={draftName}
-                onChange={(e) => setDraftName(e.target.value)}
-                placeholder="e.g. Land cleaner, tighter tuck..."
-                maxLength={200}
-                data-testid="input-point-name"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && draftName.trim()) {
-                    e.preventDefault();
-                    addPoint();
-                  }
-                }}
-              />
-
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Linked skills & routines (optional)
-                </label>
-                {(() => {
-                  const linkSkillsList = sortedActiveSkills.filter(
-                    (s) => s.isDrill === 0 && !draftSkillIds.includes(s.id),
-                  );
-                  const linkDrillsList = sortedActiveSkills.filter(
-                    (s) => s.isDrill === 1 && !draftSkillIds.includes(s.id),
-                  );
-                  const linkConnList = sortedActiveSkills.filter(
-                    (s) => s.isDrill === 2 && !draftSkillIds.includes(s.id),
-                  );
-                  const linkRoutinesList = sortedActiveRoutines.filter(
-                    (r) => !draftRoutineIds.includes(r.id),
-                  );
-                  return (
-                    <Popover open={linkOpen} onOpenChange={setLinkOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          role="combobox"
-                          className="rounded-xl h-11 w-full justify-start font-normal text-muted-foreground"
-                          data-testid="btn-open-link"
-                        >
-                          <Search className="h-4 w-4 mr-2 opacity-60" />
-                          Add a skill, drill, connection or routine...
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        container={dialogContentRef.current}
-                        className="p-0 w-[--radix-popover-trigger-width]"
-                        align="start"
-                      >
-                        <Command
-                          filter={(value, search) => {
-                            const v = value.toLowerCase();
-                            const s = search.toLowerCase();
-                            return v.includes(s) ? 1 : 0;
-                          }}
-                        >
-                          <CommandInput
-                            placeholder="Search by name or code..."
-                            className="h-10"
-                          />
-                          <CommandList className="max-h-[320px]">
-                            <CommandEmpty>No matches.</CommandEmpty>
-                            {linkSkillsList.length > 0 && (
-                              <CommandGroup heading="Skills">
-                                {linkSkillsList.map((s) => (
-                                  <CommandItem
-                                    key={`ls-${s.id}`}
-                                    value={`${s.code} ${s.name} skill`}
-                                    onSelect={() => {
-                                      addSkillToDraft(`skill:${s.id}`);
-                                      setLinkOpen(false);
-                                    }}
-                                    data-testid={`option-skill-${s.id}`}
-                                  >
-                                    <span className="font-mono text-xs font-semibold text-foreground mr-2">
-                                      {s.code}
-                                    </span>
-                                    {s.code !== s.name && (
-                                      <span className="text-muted-foreground">- {s.name}</span>
-                                    )}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            )}
-                            {linkDrillsList.length > 0 && (
-                              <CommandGroup heading="Drills">
-                                {linkDrillsList.map((s) => (
-                                  <CommandItem
-                                    key={`ld-${s.id}`}
-                                    value={`${s.code} ${s.name} drill`}
-                                    onSelect={() => {
-                                      addSkillToDraft(`skill:${s.id}`);
-                                      setLinkOpen(false);
-                                    }}
-                                    data-testid={`option-drill-${s.id}`}
-                                  >
-                                    <span className="font-mono text-xs font-semibold text-foreground mr-2">
-                                      {s.code}
-                                    </span>
-                                    {s.code !== s.name && (
-                                      <span className="text-muted-foreground">- {s.name}</span>
-                                    )}
-                                    <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-yellow-600 dark:text-yellow-400">
-                                      Drill
-                                    </span>
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            )}
-                            {linkConnList.length > 0 && (
-                              <CommandGroup heading="Connections">
-                                {linkConnList.map((s) => (
-                                  <CommandItem
-                                    key={`lc-${s.id}`}
-                                    value={`${s.name} connection`}
-                                    onSelect={() => {
-                                      addSkillToDraft(`skill:${s.id}`);
-                                      setLinkOpen(false);
-                                    }}
-                                    data-testid={`option-conn-${s.id}`}
-                                  >
-                                    <span className="font-mono text-xs font-semibold text-foreground mr-2">
-                                      {s.name}
-                                    </span>
-                                    <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-red-500 dark:text-red-400">
-                                      Connection
-                                    </span>
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            )}
-                            {linkRoutinesList.length > 0 && (
-                              <CommandGroup heading="Routines">
-                                {linkRoutinesList.map((r) => (
-                                  <CommandItem
-                                    key={`lr-${r.id}`}
-                                    value={`${r.name} routine`}
-                                    onSelect={() => {
-                                      addSkillToDraft(`routine:${r.id}`);
-                                      setLinkOpen(false);
-                                    }}
-                                    data-testid={`option-routine-${r.id}`}
-                                  >
-                                    <span className="font-mono text-xs font-semibold text-foreground mr-2">
-                                      {r.name}
-                                    </span>
-                                    <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-blue-600 dark:text-blue-400">
-                                      Routine
-                                    </span>
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            )}
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  );
-                })()}
-                {(draftSkillIds.length > 0 || draftRoutineIds.length > 0) && (
-                  <div className="flex flex-wrap gap-1.5 p-2 rounded-lg bg-muted/30">
-                    {draftSkillIds.map((id) => {
-                      const s = skillById(id);
-                      const t = skillTypeOf(s?.isDrill);
-                      return (
-                        <Badge
-                          key={`ds-${id}`}
-                          variant="secondary"
-                          className="pr-1 gap-1"
-                          data-testid={`badge-draft-skill-${id}`}
-                        >
-                          <span className="font-mono">{s?.code || "?"}</span>
-                          <span className="text-[9px] uppercase opacity-70">
-                            {TYPE_LABEL[t]}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => removeSkillFromDraft(id)}
-                            data-testid={`button-remove-draft-skill-${id}`}
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </Badge>
-                      );
-                    })}
-                    {draftRoutineIds.map((id) => {
-                      const r = routineById(id);
-                      return (
-                        <Badge
-                          key={`dr-${id}`}
-                          variant="secondary"
-                          className="pr-1 gap-1"
-                          data-testid={`badge-draft-routine-${id}`}
-                        >
-                          <span>{r?.name || "?"}</span>
-                          <span className="text-[9px] uppercase opacity-70">
-                            {TYPE_LABEL.routine}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => removeRoutineFromDraft(id)}
-                            data-testid={`button-remove-draft-routine-${id}`}
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              <Button
-                type="button"
-                onClick={addPoint}
-                disabled={!draftName.trim() || mutation.isPending}
-                data-testid="button-add-point"
-                className="w-full gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Add Point
-              </Button>
-            </div>
           </div>
         </DialogContent>
       </Dialog>
