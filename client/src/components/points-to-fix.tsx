@@ -655,22 +655,6 @@ export function PointsToFix() {
                           className="w-[min(360px,calc(100vw-48px))] p-3 space-y-3"
                           align="end"
                         >
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                            Add new point
-                          </p>
-                          <Input
-                            value={draftName}
-                            onChange={(e) => setDraftName(e.target.value)}
-                            placeholder="e.g. Land cleaner, tighter tuck..."
-                            maxLength={200}
-                            data-testid="input-point-name"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && draftName.trim()) {
-                                e.preventDefault();
-                                addPoint();
-                              }
-                            }}
-                          />
                           <div className="space-y-2">
                             <label className="text-xs font-medium text-muted-foreground">
                               Linked skills & routines (optional)
@@ -868,6 +852,24 @@ export function PointsToFix() {
                                 })}
                               </div>
                             )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                              New point
+                            </label>
+                            <Input
+                              value={draftName}
+                              onChange={(e) => setDraftName(e.target.value)}
+                              placeholder="e.g. Land cleaner, tighter tuck..."
+                              maxLength={200}
+                              data-testid="input-point-name"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && draftName.trim()) {
+                                  e.preventDefault();
+                                  addPoint();
+                                }
+                              }}
+                            />
                           </div>
                           <Button
                             type="button"
