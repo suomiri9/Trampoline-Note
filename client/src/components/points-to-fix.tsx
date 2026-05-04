@@ -282,7 +282,7 @@ export function PointsToFix() {
           setOpen(next);
         }}
       >
-        <DialogContent ref={dialogContentRef} className="sm:max-w-[500px] md:max-w-[680px] w-[calc(100vw-32px)] max-h-[85vh] overflow-y-auto overflow-x-hidden">
+        <DialogContent ref={dialogContentRef} className="sm:max-w-[500px] md:max-w-[680px] w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] max-h-[85vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -461,7 +461,7 @@ export function PointsToFix() {
                   <div
                     key={key}
                     data-testid={testId}
-                    className="card-3d p-4 sm:p-5 rounded-2xl"
+                    className="card-3d p-3 sm:p-5 rounded-2xl"
                   >
                     <div className="flex justify-between items-center mb-3">
                       {header}
