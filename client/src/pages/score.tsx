@@ -186,7 +186,7 @@ export default function ScorePage() {
     const total = Number(e || 0) + Number(d || 0) + Number(h || 0) + Number(t || 0);
     form.setValue("total", Number(total.toFixed(2)));
 
-    if (cat === "both") {
+    if (cat === "both" || cat === "vol_vol") {
       const total2 = Number(e2 || 0) + Number(d2 || 0) + Number(h2 || 0) + Number(t2 || 0);
       form.setValue("totalVol", Number(total2.toFixed(2)));
     }
@@ -285,6 +285,7 @@ export default function ScorePage() {
                             <SelectItem value="set">Set Only</SelectItem>
                             <SelectItem value="vol">Vol Only</SelectItem>
                             <SelectItem value="both">Set and Vol</SelectItem>
+                            <SelectItem value="vol_vol">Vol and Vol</SelectItem>
                           </SelectContent>
                         </Select>
                       </FormItem>
@@ -305,12 +306,16 @@ export default function ScorePage() {
 
                 <div className="space-y-4 relative min-h-[280px]">
                   <h3 className="font-bold text-sm uppercase tracking-wider text-primary/60">
-                    {form.watch("category") === "both" ? "Set Score" : "Score Details"}
+                    {form.watch("category") === "both"
+                      ? "Set Score"
+                      : form.watch("category") === "vol_vol"
+                        ? "Vol Score 1"
+                        : "Score Details"}
                   </h3>
                   <div className="flex gap-2 items-end">
                     <FormField control={form.control} name="routineId" render={({ field }) => (
                       <FormItem className="flex-1">
-                        <FormLabel>Routine</FormLabel>
+                        <FormLabel>{form.watch("category") === "vol_vol" ? "Routine (Vol 1)" : "Routine"}</FormLabel>
                         <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value?.toString()}>
                           <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
                           <SelectContent>
@@ -360,13 +365,15 @@ export default function ScorePage() {
                   </div>
                 </div>
 
-                {form.watch("category") === "both" && (
+                {(form.watch("category") === "both" || form.watch("category") === "vol_vol") && (
                   <div className="space-y-4 pt-4 border-t border-primary/10 relative min-h-[280px]">
-                    <h3 className="font-bold text-sm uppercase tracking-wider text-primary/60">Vol Score</h3>
+                    <h3 className="font-bold text-sm uppercase tracking-wider text-primary/60">
+                      {form.watch("category") === "vol_vol" ? "Vol Score 2" : "Vol Score"}
+                    </h3>
                     <div className="flex gap-2 items-end">
                       <FormField control={form.control} name="routineIdVol" render={({ field }) => (
                         <FormItem className="flex-1">
-                          <FormLabel>Routine (Vol)</FormLabel>
+                          <FormLabel>{form.watch("category") === "vol_vol" ? "Routine (Vol 2)" : "Routine (Vol)"}</FormLabel>
                           <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value?.toString()}>
                             <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
                             <SelectContent>
@@ -440,16 +447,16 @@ export default function ScorePage() {
                       {score.type}
                     </Badge>
                     <Badge variant="secondary" className="rounded-lg capitalize text-[10px]">
-                      {score.category === "both" ? "Set & Vol" : score.category}
+                      {score.category === "both" ? "Set & Vol" : score.category === "vol_vol" ? "Vol & Vol" : score.category}
                     </Badge>
                     {routine && (
                       <Badge variant="secondary" className="rounded-lg text-[10px]">
-                        {routine.name}{score.attempt != null ? ` (attempt ${score.attempt})` : ""}
+                        {score.category === "vol_vol" ? "Vol 1: " : ""}{routine.name}{score.attempt != null ? ` (attempt ${score.attempt})` : ""}
                       </Badge>
                     )}
-                    {routineVol && score.category === "both" && (
+                    {routineVol && (score.category === "both" || score.category === "vol_vol") && (
                       <Badge variant="secondary" className="rounded-lg text-[10px]">
-                        Vol: {routineVol.name}{score.attemptVol != null ? ` (attempt ${score.attemptVol})` : ""}
+                        {score.category === "vol_vol" ? "Vol 2: " : "Vol: "}{routineVol.name}{score.attemptVol != null ? ` (attempt ${score.attemptVol})` : ""}
                       </Badge>
                     )}
                   </div>
@@ -462,7 +469,11 @@ export default function ScorePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                     <div className="bg-secondary/5 p-2 rounded-lg">
                       <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">
-                        {score.category === "both" ? "Set Score" : "Scores"}
+                        {score.category === "both"
+                          ? "Set Score"
+                          : score.category === "vol_vol"
+                            ? "Vol Score 1"
+                            : "Scores"}
                       </p>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono">
                         <span>E: {score.execution.toFixed(1)}</span>
@@ -472,9 +483,9 @@ export default function ScorePage() {
                         <span className="font-bold text-primary">Total: {score.total.toFixed(2)}</span>
                       </div>
                     </div>
-                    {score.category === "both" && (
+                    {(score.category === "both" || score.category === "vol_vol") && (
                       <div className="bg-primary/5 p-2 rounded-lg">
-                        <p className="text-[10px] font-bold text-primary/60 uppercase mb-1">Vol Score</p>
+                        <p className="text-[10px] font-bold text-primary/60 uppercase mb-1">{score.category === "vol_vol" ? "Vol Score 2" : "Vol Score"}</p>
                         <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono">
                           <span>E: {score.executionVol?.toFixed(1)}</span>
                           <span>D: {score.difficultyVol?.toFixed(1)}</span>
@@ -487,7 +498,7 @@ export default function ScorePage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-6 sm:pl-4">
-                  {score.category === "both" && (
+                  {(score.category === "both" || score.category === "vol_vol") && (
                     <div className="text-right">
                       <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider leading-none mb-1">Grand Total</p>
                       <p className="text-2xl font-display font-black text-primary leading-none">

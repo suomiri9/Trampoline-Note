@@ -42,7 +42,7 @@ export const scores = pgTable("scores", {
   routineId: integer("routine_id").references(() => routines.id),
   routineIdVol: integer("routine_id_vol").references(() => routines.id),
   type: text("type").notNull().default("practice"), // "practice" or "competition"
-  category: text("category").notNull().default("vol"), // "set", "vol", or "both"
+  category: text("category").notNull().default("vol"), // "set", "vol", "both", or "vol_vol"
   competitionName: text("competition_name"),
   rank: integer("rank"),
   // Set scores (also used for single vol)
@@ -52,7 +52,7 @@ export const scores = pgTable("scores", {
   timeOfFlight: real("time_of_flight").notNull().default(0),
   total: real("total").notNull().default(0),
   attempt: integer("attempt"), // null = full 10 skills, 1-9 = partial attempt
-  // Vol scores (only used when category is "both")
+  // Vol scores (used when category is "both" or "vol_vol")
   executionVol: real("execution_vol"),
   difficultyVol: real("difficulty_vol"),
   horizontalVol: real("horizontal_vol"),
