@@ -501,9 +501,9 @@ export function PointsToFix() {
                           >
                             <Search className="h-4 w-4 mr-2 opacity-60 shrink-0" />
                             {hasFilter ? (
-                              <span className="truncate text-foreground">{filterLabel}</span>
+                              <span className="truncate min-w-0 flex-1 text-left text-foreground">{filterLabel}</span>
                             ) : (
-                              <span className="truncate">Search by skill, drill, connection or routine...</span>
+                              <span className="truncate min-w-0 flex-1 text-left">Search...</span>
                             )}
                           </Button>
                         </PopoverTrigger>
