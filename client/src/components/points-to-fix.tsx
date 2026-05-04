@@ -489,21 +489,21 @@ export function PointsToFix() {
 
                 return (
                   <div className="space-y-3">
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 min-w-0">
                       <Popover open={filterOpen} onOpenChange={setFilterOpen}>
                         <PopoverTrigger asChild>
                           <Button
                             type="button"
                             variant="outline"
                             role="combobox"
-                            className="rounded-xl h-11 flex-1 justify-start font-normal text-muted-foreground"
+                            className="rounded-xl h-11 flex-1 min-w-0 justify-start font-normal text-muted-foreground"
                             data-testid="btn-open-filter"
                           >
-                            <Search className="h-4 w-4 mr-2 opacity-60" />
+                            <Search className="h-4 w-4 mr-2 opacity-60 shrink-0" />
                             {hasFilter ? (
                               <span className="truncate text-foreground">{filterLabel}</span>
                             ) : (
-                              <span>Search by skill, drill, connection or routine...</span>
+                              <span className="truncate">Search by skill, drill, connection or routine...</span>
                             )}
                           </Button>
                         </PopoverTrigger>
