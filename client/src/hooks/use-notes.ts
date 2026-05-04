@@ -28,6 +28,20 @@ export function useNotes() {
   });
 }
 
+export function useNotesPage(limit: number) {
+  return useQuery({
+    queryKey: [api.notes.list.path, { limit }],
+    queryFn: async () => {
+      const url = `${api.notes.list.path}?limit=${limit + 1}`;
+      const res = await fetch(url, { credentials: "include" });
+      const data = await handleResponse(res, "Failed to fetch notes");
+      const all = api.notes.list.responses[200].parse(data);
+      const hasMore = all.length > limit;
+      return { items: hasMore ? all.slice(0, limit) : all, hasMore };
+    },
+  });
+}
+
 export function useNote(id: number) {
   return useQuery({
     queryKey: [api.notes.get.path, id],
@@ -57,7 +71,7 @@ export function useCreateNote() {
       return api.notes.create.responses[201].parse(responseData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.notes.list.path] });
+      invalidateAllNotes(queryClient);
       invalidateAllHistory(queryClient);
     },
   });
@@ -78,7 +92,7 @@ export function useUpdateNote() {
       return responseData;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [api.notes.list.path] });
+      invalidateAllNotes(queryClient);
       queryClient.invalidateQueries({ queryKey: [api.notes.get.path, variables.id] });
       invalidateAllHistory(queryClient);
     },
@@ -97,9 +111,15 @@ export function useDeleteNote() {
       await handleResponse(res, "Failed to delete note");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.notes.list.path] });
+      invalidateAllNotes(queryClient);
       invalidateAllHistory(queryClient);
     },
+  });
+}
+
+function invalidateAllNotes(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({
+    predicate: (query) => query.queryKey[0] === api.notes.list.path,
   });
 }
 

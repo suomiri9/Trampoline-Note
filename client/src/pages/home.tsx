@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Plus, BookOpen, Loader2, Activity, LayoutDashboard, ChevronDown } from "lucide-react";
-import { useNotes } from "@/hooks/use-notes";
+import { useNotesPage } from "@/hooks/use-notes";
 import { NoteCard } from "@/components/note-card";
 import { NoteDialog } from "@/components/note-dialog";
 import { PointsToFix } from "@/components/points-to-fix";
@@ -11,10 +11,10 @@ import { type Note } from "@shared/schema";
 const PAGE_SIZE = 30;
 
 export default function Home() {
-  const { data: notes, isLoading, isError, error } = useNotes();
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const { data, isLoading, isError, error, isFetching } = useNotesPage(limit);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const handleCreateNew = () => {
     setNoteToEdit(null);
@@ -26,19 +26,8 @@ export default function Home() {
     setIsDialogOpen(true);
   };
 
-  // Sort notes newest first
-  const sortedNotes = notes 
-    ? [...notes].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    : [];
-
-  const visibleNotes = sortedNotes.slice(0, visibleCount);
-  const hasMore = sortedNotes.length > visibleCount;
-
-  useEffect(() => {
-    if (visibleCount > sortedNotes.length && sortedNotes.length > 0) {
-      setVisibleCount(Math.max(PAGE_SIZE, sortedNotes.length));
-    }
-  }, [sortedNotes.length, visibleCount]);
+  const visibleNotes = data?.items ?? [];
+  const hasMore = data?.hasMore ?? false;
 
   return (
     <PageLayout>
@@ -75,7 +64,7 @@ export default function Home() {
             <h3 className="font-semibold mb-1">Failed to load notes</h3>
             <p className="text-sm opacity-90">{(error as Error).message}</p>
           </div>
-        ) : sortedNotes.length === 0 ? (
+        ) : visibleNotes.length === 0 ? (
           <div className="py-24 px-6 flex flex-col items-center justify-center text-center rounded-[2rem] card-3d">
             <div className="w-16 h-16 mb-6 rounded-full bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
               <BookOpen className="w-8 h-8 text-blue-500" />
@@ -109,15 +98,20 @@ export default function Home() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+                  onClick={() => setLimit((l) => l + PAGE_SIZE)}
+                  disabled={isFetching}
                   className="rounded-xl h-11 px-6 font-medium gap-2"
                   data-testid="btn-load-more-notes"
                 >
-                  <ChevronDown className="w-4 h-4" />
-                  Load {Math.min(PAGE_SIZE, sortedNotes.length - visibleCount)} more
+                  {isFetching ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                  Load {PAGE_SIZE} more
                 </Button>
                 <span className="text-xs text-muted-foreground" data-testid="text-notes-count">
-                  Showing {visibleNotes.length} of {sortedNotes.length}
+                  Showing {visibleNotes.length}
                 </span>
               </div>
             )}

@@ -31,7 +31,17 @@ export async function registerRoutes(
 
   // Notes
   app.get(api.notes.list.path, isAuthenticated, async (req, res) => {
-    const notesList = await storage.getNotes(getUserId(req));
+    const limitRaw = req.query.limit;
+    const offsetRaw = req.query.offset;
+    const limit =
+      typeof limitRaw === "string" && /^\d+$/.test(limitRaw)
+        ? Math.min(parseInt(limitRaw, 10), 200)
+        : undefined;
+    const offset =
+      typeof offsetRaw === "string" && /^\d+$/.test(offsetRaw)
+        ? parseInt(offsetRaw, 10)
+        : undefined;
+    const notesList = await storage.getNotes(getUserId(req), { limit, offset });
     res.json(notesList);
   });
 
