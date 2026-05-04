@@ -891,7 +891,7 @@ export function PointsToFix() {
                     ) : (
                       <div className="space-y-3">
                         {showUnlinked && (
-                          <div className="grid gap-3 items-start [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
+                          <div className="grid gap-3 items-start [grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr))]">
                             <div className="sm:col-span-2">
                               {renderCard(
                                 "card-unlinked",
@@ -908,7 +908,7 @@ export function PointsToFix() {
                             </div>
                           </div>
                         )}
-                        <div className="grid gap-3 items-start [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
+                        <div className="grid gap-3 items-start [grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr))]">
                           {filteredSkillIds.map((sid) => {
                             const s = skillById(sid);
                             const groupPoints = groupsBySkill.get(sid) || [];
