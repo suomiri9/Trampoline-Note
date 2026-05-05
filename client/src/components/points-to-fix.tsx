@@ -17,6 +17,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -35,7 +42,23 @@ export type PointToFix = {
   name: string;
   skillIds: number[];
   routineIds: number[];
+  /** Sub-category for unlinked points. Ignored when the point is linked to
+      any skill or routine. Defaults to "General" for legacy points. */
+  category?: string;
 };
+
+export const POINT_CATEGORIES = [
+  "General",
+  "Forward",
+  "Backward",
+  "Twisting",
+  "Connection",
+  "Landing",
+] as const;
+export type PointCategory = typeof POINT_CATEGORIES[number];
+
+const isPointCategory = (v: unknown): v is PointCategory =>
+  typeof v === "string" && (POINT_CATEGORIES as readonly string[]).includes(v);
 
 type LinkType = "skill" | "drill" | "connection" | "routine";
 
@@ -78,6 +101,7 @@ function parsePoints(raw: string | null | undefined): PointToFix[] {
               (x): x is number => typeof x === "number" && Number.isInteger(x) && x !== 0,
             )
           : [],
+        category: isPointCategory(p.category) ? p.category : undefined,
       }));
   } catch {
     // Legacy plain-text focus memo — migrate each non-empty line into a point.
@@ -108,6 +132,7 @@ export function PointsToFix() {
   const [draftName, setDraftName] = useState("");
   const [draftSkillIds, setDraftSkillIds] = useState<number[]>([]);
   const [draftRoutineIds, setDraftRoutineIds] = useState<number[]>([]);
+  const [draftCategory, setDraftCategory] = useState<PointCategory>("General");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [filterKind, setFilterKind] = useState<"skill" | "routine" | null>(null);
@@ -133,6 +158,7 @@ export function PointsToFix() {
       setDraftName("");
       setDraftSkillIds([]);
       setDraftRoutineIds([]);
+      setDraftCategory("General");
       setFilterKind(null);
       setFilterId(null);
       setFilterOpen(false);
@@ -259,17 +285,31 @@ export function PointsToFix() {
     if (mutation.isPending) return;
     const name = draftName.trim();
     if (!name) return;
+    const isUnlinkedDraft =
+      draftSkillIds.length === 0 && draftRoutineIds.length === 0;
     const newPoint: PointToFix = {
       id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name,
       skillIds: draftSkillIds,
       routineIds: draftRoutineIds,
+      ...(isUnlinkedDraft ? { category: draftCategory } : {}),
     };
     mutation.mutate({ next: [...points, newPoint], pendingIds: [newPoint.id] });
     setDraftName("");
     setDraftSkillIds([]);
     setDraftRoutineIds([]);
+    setDraftCategory("General");
     setAddOpen(false);
+  };
+
+  const setPointCategory = (id: string, category: PointCategory) => {
+    if (mutation.isPending) return;
+    const target = points.find((p) => p.id === id);
+    if (!target) return;
+    if (target.skillIds.length > 0 || target.routineIds.length > 0) return;
+    if ((target.category ?? "General") === category) return;
+    const next = points.map((p) => (p.id === id ? { ...p, category } : p));
+    mutation.mutate({ next, pendingIds: [id] });
   };
 
   const removePoint = (
@@ -493,7 +533,7 @@ export function PointsToFix() {
                                 <MoreVertical className="w-3.5 h-3.5" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-32 rounded-xl">
+                            <DropdownMenuContent align="end" className="w-40 rounded-xl">
                               <DropdownMenuItem
                                 className="cursor-pointer gap-2 text-xs"
                                 onClick={() => startEdit(p)}
@@ -501,6 +541,36 @@ export function PointsToFix() {
                               >
                                 <Pencil className="h-3.5 w-3.5" /> Edit
                               </DropdownMenuItem>
+                              {p.skillIds.length === 0 && p.routineIds.length === 0 && (
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger
+                                    className="cursor-pointer gap-2 text-xs"
+                                    data-testid={`button-category-point-${p.id}`}
+                                  >
+                                    Category
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent className="rounded-xl">
+                                    <DropdownMenuRadioGroup
+                                      value={p.category ?? "General"}
+                                      onValueChange={(v) =>
+                                        setPointCategory(p.id, v as PointCategory)
+                                      }
+                                    >
+                                      {POINT_CATEGORIES.map((c) => (
+                                        <DropdownMenuRadioItem
+                                          key={c}
+                                          value={c}
+                                          className="cursor-pointer text-xs"
+                                          data-testid={`button-set-category-${p.id}-${c.toLowerCase()}`}
+                                        >
+                                          {c}
+                                        </DropdownMenuRadioItem>
+                                      ))}
+                                    </DropdownMenuRadioGroup>
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              )}
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive"
                                 onClick={() =>
@@ -954,6 +1024,31 @@ export function PointsToFix() {
                                 }
                               }}
                             />
+                            {draftSkillIds.length === 0 && draftRoutineIds.length === 0 && (
+                              <div className="space-y-1.5 pt-1">
+                                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                                  Category
+                                </label>
+                                <div className="flex flex-wrap gap-1">
+                                  {POINT_CATEGORIES.map((c) => {
+                                    const active = draftCategory === c;
+                                    return (
+                                      <Button
+                                        key={c}
+                                        type="button"
+                                        size="sm"
+                                        variant={active ? "default" : "outline"}
+                                        onClick={() => setDraftCategory(c)}
+                                        className="h-7 px-2.5 rounded-lg text-[11px] font-medium"
+                                        data-testid={`button-draft-category-${c.toLowerCase()}`}
+                                      >
+                                        {c}
+                                      </Button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
                           <Button
                             type="button"
@@ -974,24 +1069,39 @@ export function PointsToFix() {
                       </p>
                     ) : (
                       <div className="space-y-3">
-                        {showUnlinked && (
-                          <div className="grid gap-3 items-start [grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr))]">
-                            <div className="sm:col-span-2">
-                              {renderCard(
-                                "card-unlinked",
-                                "group-unlinked",
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className="text-sm font-semibold text-foreground truncate">
-                                    General
-                                  </span>
-                                </div>,
-                                unlinked,
-                                null,
-                                null,
+                        {showUnlinked && (() => {
+                          const byCategory = new Map<PointCategory, PointToFix[]>();
+                          for (const p of unlinked) {
+                            const cat: PointCategory = isPointCategory(p.category)
+                              ? p.category
+                              : "General";
+                            const arr = byCategory.get(cat) || [];
+                            arr.push(p);
+                            byCategory.set(cat, arr);
+                          }
+                          const orderedCats = POINT_CATEGORIES.filter((c) =>
+                            byCategory.has(c),
+                          );
+                          if (orderedCats.length === 0) return null;
+                          return (
+                            <div className="grid gap-3 items-start [grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr))]">
+                              {orderedCats.map((cat) =>
+                                renderCard(
+                                  `card-cat-${cat}`,
+                                  `group-category-${cat.toLowerCase()}`,
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="text-sm font-semibold text-foreground truncate">
+                                      {cat}
+                                    </span>
+                                  </div>,
+                                  byCategory.get(cat) || [],
+                                  null,
+                                  null,
+                                ),
                               )}
                             </div>
-                          </div>
-                        )}
+                          );
+                        })()}
                         <div className="grid gap-3 items-start [grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr))]">
                           {filteredSkillIds.map((sid) => {
                             const s = skillById(sid);
