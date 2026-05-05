@@ -434,7 +434,7 @@ export default function SettingsPage() {
                       className="text-[11px] text-muted-foreground mt-2"
                       data-testid="text-download-wipe-warning"
                     >
-                      ⚠️ The download stays on this device through tab closes and restarts. It is wiped if you turn offline mode off, clear this site's browser data, or use a different browser. Your phone may also evict it if storage runs very low.
+                      ⚠️ The download stays on this device through tab closes and restarts. It is wiped if you turn offline mode off, clear this site's browser data, or open the app in a different browser. The device may also evict it if storage runs very low.
                     </p>
                   </div>
                 );
