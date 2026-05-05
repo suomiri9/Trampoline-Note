@@ -19,6 +19,7 @@ import { eq, desc, and, isNull, sql, gte } from "drizzle-orm";
 export interface IStorage {
   // Notes
   getNotes(userId: string, opts?: { limit?: number; offset?: number }): Promise<NoteResponse[]>;
+  getNotesCount(userId: string): Promise<number>;
   getNote(id: number): Promise<NoteResponse | undefined>;
   createNote(userId: string, note: CreateNoteRequest): Promise<NoteResponse>;
   updateNote(id: number, userId: string, updates: UpdateNoteRequest): Promise<NoteResponse>;
@@ -63,6 +64,14 @@ export class DatabaseStorage implements IStorage {
       return await base.limit(opts.limit).offset(opts.offset ?? 0);
     }
     return await base;
+  }
+
+  async getNotesCount(userId: string): Promise<number> {
+    const [row] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(notes)
+      .where(eq(notes.userId, userId));
+    return row?.count ?? 0;
   }
 
   async getNote(id: number): Promise<NoteResponse | undefined> {

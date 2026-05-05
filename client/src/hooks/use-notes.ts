@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { api, buildUrl, type NoteInput, type NoteUpdateInput } from "@shared/routes";
 
 // Utility to parse standard error responses if needed
@@ -31,13 +31,16 @@ export function useNotes() {
 export function useNotesPage(limit: number) {
   return useQuery({
     queryKey: [api.notes.list.path, { limit }],
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      const url = `${api.notes.list.path}?limit=${limit + 1}`;
+      const url = `${api.notes.list.path}?limit=${limit}`;
       const res = await fetch(url, { credentials: "include" });
+      const totalHeader = res.headers.get("X-Total-Count");
       const data = await handleResponse(res, "Failed to fetch notes");
       const all = api.notes.list.responses[200].parse(data);
-      const hasMore = all.length > limit;
-      return { items: hasMore ? all.slice(0, limit) : all, hasMore };
+      const total = totalHeader !== null ? parseInt(totalHeader, 10) : all.length;
+      const hasMore = all.length < total;
+      return { items: all, hasMore, total };
     },
   });
 }

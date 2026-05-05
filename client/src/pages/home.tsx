@@ -28,6 +28,7 @@ export default function Home() {
 
   const visibleNotes = data?.items ?? [];
   const hasMore = data?.hasMore ?? false;
+  const total = data?.total ?? visibleNotes.length;
 
   return (
     <PageLayout>
@@ -93,8 +94,8 @@ export default function Home() {
                 />
               ))}
             </div>
-            {hasMore && (
-              <div className="mt-6 flex flex-col items-center gap-2">
+            <div className="mt-6 flex flex-col items-center gap-2">
+              {hasMore && (
                 <Button
                   type="button"
                   variant="outline"
@@ -110,11 +111,11 @@ export default function Home() {
                   )}
                   Load {PAGE_SIZE} more
                 </Button>
-                <span className="text-xs text-muted-foreground" data-testid="text-notes-count">
-                  Showing {visibleNotes.length}
-                </span>
-              </div>
-            )}
+              )}
+              <span className="text-xs text-muted-foreground" data-testid="text-notes-count">
+                Showing {visibleNotes.length} of {total}
+              </span>
+            </div>
           </>
         )}
       </main>

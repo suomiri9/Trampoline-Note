@@ -41,7 +41,13 @@ export async function registerRoutes(
       typeof offsetRaw === "string" && /^\d+$/.test(offsetRaw)
         ? parseInt(offsetRaw, 10)
         : undefined;
-    const notesList = await storage.getNotes(getUserId(req), { limit, offset });
+    const userId = getUserId(req);
+    const [notesList, total] = await Promise.all([
+      storage.getNotes(userId, { limit, offset }),
+      storage.getNotesCount(userId),
+    ]);
+    res.setHeader("X-Total-Count", String(total));
+    res.setHeader("Access-Control-Expose-Headers", "X-Total-Count");
     res.json(notesList);
   });
 
