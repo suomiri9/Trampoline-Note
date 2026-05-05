@@ -3,6 +3,9 @@ import { api, buildUrl, type NoteInput, type NoteUpdateInput } from "@shared/rou
 import { isQueuedOfflineResult, tryNetworkOrEnqueue, type OfflineQueuedResult } from "@/lib/offline-queue";
 import type { z } from "zod";
 
+// eslint-disable-next-line no-console
+console.log('[use-notes] module loaded BUILD-MARKER-v6');
+
 // Utility to parse standard error responses if needed
 async function handleResponse(res: Response, fallbackError: string) {
   if (!res.ok) {
