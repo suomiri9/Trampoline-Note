@@ -79,6 +79,8 @@ export default function StatsPage() {
   type ChartPoint = { date: string; difficulty: number | null; sessions: number };
   let chartData: ChartPoint[] = [];
   let xTickInterval: number | "preserveStartEnd" = 0;
+  let xTicks: string[] | undefined;
+  let xTickFormatter: ((v: string) => string) | undefined;
   let useWeekly = false;
   let periodLabel = "";
 
@@ -122,17 +124,20 @@ export default function StatsPage() {
     const yearEnd = endOfYear(refDay);
     const days = eachDayOfInterval({ start: yearStart, end: yearEnd });
     periodLabel = `${format(yearStart, "d MMM yyyy")} – ${format(yearEnd, "d MMM yyyy")}`;
-    let lastMonth = -1;
     chartData = days.map(day => {
       const key = format(day, "yyyy-MM-dd");
       const found = ddByDate[key];
       const isFuture = day > today;
-      const m = day.getMonth();
-      const label = m !== lastMonth ? format(day, "MMM") : "";
-      lastMonth = m;
-      return { date: label, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, isFuture };
+      return { date: key, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, isFuture };
     });
-    xTickInterval = Math.max(1, Math.floor(days.length / 12));
+    // Force a tick on the first of every month so all 12 month labels render.
+    xTicks = days
+      .filter((d) => d.getDate() === 1)
+      .map((d) => format(d, "yyyy-MM-dd"));
+    xTickInterval = 0;
+    xTickFormatter = (v: string) => {
+      try { return format(parseISO(v), "MMM"); } catch { return v; }
+    };
   } else {
     const allKeys = Object.keys(ddByDate).sort();
     if (allKeys.length > 0) {
@@ -263,6 +268,8 @@ export default function StatsPage() {
                     tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                     dy={10}
                     interval={xTickInterval}
+                    ticks={xTicks}
+                    tickFormatter={xTickFormatter}
                   />
                   <YAxis
                     axisLine={false}
@@ -277,6 +284,9 @@ export default function StatsPage() {
                       fontSize: '12px'
                     }}
                     formatter={(value: any) => value !== null ? [Number(value).toFixed(1), useWeekly ? "Week DD" : "DD"] : [useWeekly ? "No training" : "Rest day", ""]}
+                    labelFormatter={range === "year" ? (v: string) => {
+                      try { return format(parseISO(v), "d MMM"); } catch { return v; }
+                    } : undefined}
                     cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '4 4' }}
                   />
                   <Line
