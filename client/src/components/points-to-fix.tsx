@@ -4,7 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useSkills } from "@/hooks/use-skills";
 import { useToast } from "@/hooks/use-toast";
-import { Wrench, Plus, X, Trash2, Loader2, Search, Pencil, Check } from "lucide-react";
+import { Wrench, Plus, X, Trash2, Loader2, Search, Pencil, Check, MoreVertical } from "lucide-react";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { useOnline } from "@/hooks/use-online";
@@ -14,6 +14,12 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Command,
   CommandEmpty,
@@ -440,34 +446,42 @@ export function PointsToFix() {
                           >
                             {p.name}
                           </p>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => startEdit(p)}
-                            disabled={mutation.isPending || editingId !== null}
-                            data-testid={`button-edit-point-${p.id}`}
-                            className="shrink-0 h-6 w-6 opacity-50 hover:opacity-100"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              setDeleteTarget({
-                                id: p.id,
-                                fromSkillId: currentSkillId,
-                                fromRoutineId: currentRoutineId,
-                              })
-                            }
-                            disabled={mutation.isPending}
-                            data-testid={`button-remove-point-${p.id}`}
-                            className="shrink-0 h-6 w-6 -mr-1 opacity-50 hover:opacity-100"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                disabled={mutation.isPending || editingId !== null}
+                                data-testid={`button-point-actions-${p.id}`}
+                                className="shrink-0 h-6 w-6 -mr-1 opacity-50 hover:opacity-100"
+                              >
+                                <MoreVertical className="w-3.5 h-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-32 rounded-xl">
+                              <DropdownMenuItem
+                                className="cursor-pointer gap-2 text-xs"
+                                onClick={() => startEdit(p)}
+                                data-testid={`button-edit-point-${p.id}`}
+                              >
+                                <Pencil className="h-3.5 w-3.5" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive"
+                                onClick={() =>
+                                  setDeleteTarget({
+                                    id: p.id,
+                                    fromSkillId: currentSkillId,
+                                    fromRoutineId: currentRoutineId,
+                                  })
+                                }
+                                data-testid={`button-remove-point-${p.id}`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </>
                       )}
                     </div>
