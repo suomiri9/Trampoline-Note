@@ -110,14 +110,21 @@ export default function StatsPage() {
     const monthStart = startOfMonth(refDay);
     const monthEnd = endOfMonth(refDay);
     const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-    xTickInterval = 4;
     periodLabel = `${format(monthStart, "d MMM")} – ${format(monthEnd, "d MMM yyyy")}`;
     chartData = days.map(day => {
       const key = format(day, "yyyy-MM-dd");
       const found = ddByDate[key];
       const isFuture = day > today;
-      return { date: format(day, "d MMM"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, isFuture };
+      return { date: key, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, isFuture };
     });
+    // Force a tick on every Monday so the X-axis aligns to weeks.
+    xTicks = days
+      .filter((d) => d.getDay() === 1)
+      .map((d) => format(d, "yyyy-MM-dd"));
+    xTickInterval = 0;
+    xTickFormatter = (v: string) => {
+      try { return format(parseISO(v), "d MMM"); } catch { return v; }
+    };
   } else if (range === "year") {
     const refDay = addYears(today, offset);
     const yearStart = startOfYear(refDay);
@@ -284,7 +291,7 @@ export default function StatsPage() {
                       fontSize: '12px'
                     }}
                     formatter={(value: any) => value !== null ? [Number(value).toFixed(1), useWeekly ? "Week DD" : "DD"] : [useWeekly ? "No training" : "Rest day", ""]}
-                    labelFormatter={range === "year" ? (v: string) => {
+                    labelFormatter={(range === "year" || range === "month") ? (v: string) => {
                       try { return format(parseISO(v), "d MMM"); } catch { return v; }
                     } : undefined}
                     cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '4 4' }}
