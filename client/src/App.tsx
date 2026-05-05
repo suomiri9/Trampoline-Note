@@ -20,6 +20,7 @@ import { useEffect } from "react";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { drainQueue } from "@/lib/offline-queue";
 import { useToast } from "@/hooks/use-toast";
+import { OfflineIndicator } from "@/components/offline-indicator";
 
 function Navigation() {
   const [location] = useLocation();
@@ -191,6 +192,7 @@ function AppContent() {
   return (
     <>
       <Navigation />
+      <OfflineIndicator />
       <Router />
     </>
   );

@@ -78,6 +78,18 @@ export default function SettingsPage() {
     }
   }, [showFailedDialog, failedCount]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash.replace(/^#/, "");
+    if (!hash) return;
+    const el = document.getElementById(hash);
+    if (el) {
+      requestAnimationFrame(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, []);
+
   const displayName =
     user?.displayName ??
     (user?.firstName ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}` : "My Account");
@@ -202,7 +214,7 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl card-3d p-5">
+        <section id="offline" className="rounded-2xl card-3d p-5 scroll-mt-4">
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Offline</h2>
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-xl bg-secondary/50 mt-0.5">
