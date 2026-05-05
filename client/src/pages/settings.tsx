@@ -330,6 +330,9 @@ export default function SettingsPage() {
               {offlineModeEnabled && (
                 <p className="text-xs text-muted-foreground mt-1">
                   Avoid using multiple devices while offline mode is on to prevent mix-ups. Anything you create offline will sync when you reconnect.
+                  {storageBytes !== null && (
+                    <span data-testid="text-storage-usage"> Storage usage: {formatBytes(storageBytes)}.</span>
+                  )}
                 </p>
               )}
               {offlineModeEnabled && (
@@ -342,14 +345,6 @@ export default function SettingsPage() {
                     >
                       {pendingCount} {pendingCount === 1 ? "entry" : "entries"}
                     </p>
-                    {storageBytes !== null && (
-                      <p
-                        className="text-[11px] text-muted-foreground mt-0.5"
-                        data-testid="text-storage-usage"
-                      >
-                        Storage usage: {formatBytes(storageBytes)}
-                      </p>
-                    )}
                   </div>
                   <Button
                     type="button"
