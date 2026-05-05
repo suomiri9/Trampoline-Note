@@ -418,16 +418,30 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   const onSubmit = (values: FormValues) => {
     // eslint-disable-next-line no-console
-    console.log('[note-dialog] onSubmit fired', { isEditing });
-    const payload = {
-      ...values,
-      date: format(values.date, "yyyy-MM-dd"),
-      startTime: values.startTime || null,
-      endTime: values.endTime || null,
-      skills: JSON.stringify(selectedSkills) || null,
-      rating: values.rating || null,
-      sleepScore: values.sleepScore || null,
-    };
+    console.log('[note-dialog] onSubmit fired', { isEditing, valuesDate: values.date, dateType: typeof values.date, isDate: values.date instanceof Date });
+    let payload: any;
+    try {
+      payload = {
+        ...values,
+        date: format(values.date, "yyyy-MM-dd"),
+        startTime: values.startTime || null,
+        endTime: values.endTime || null,
+        skills: JSON.stringify(selectedSkills) || null,
+        rating: values.rating || null,
+        sleepScore: values.sleepScore || null,
+      };
+      // eslint-disable-next-line no-console
+      console.log('[note-dialog] payload built', payload);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[note-dialog] payload build threw', e);
+      toast({
+        title: "Couldn't save",
+        description: e instanceof Error ? e.message : "Bad form data.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (isEditing && noteToEdit) {
       updateNote.mutate({ id: noteToEdit.id, ...payload }, {
