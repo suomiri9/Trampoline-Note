@@ -345,7 +345,8 @@ export default function SettingsPage() {
             )}
             <Button
               variant="outline"
-              className="w-full justify-start gap-2 h-11 rounded-xl text-sm text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 mt-2"
+              size="sm"
+              className="gap-2 h-9 rounded-lg text-sm text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 mt-2 w-fit"
               onClick={handleSignOutClick}
               disabled={isLoggingOut}
               data-testid="btn-sign-out"
