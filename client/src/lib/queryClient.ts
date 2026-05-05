@@ -57,7 +57,13 @@ export const getQueryFn: <T>(options: {
       // that would defeat the wipe performed by disableOfflineMode() and
       // could leak data on a shared device.
       if (cacheKey && offlineModeOn) {
-        await cacheSet(cacheKey, data);
+        // Don't waste storage on archived items — they aren't needed offline.
+        const toCache = Array.isArray(data)
+          ? (data as Array<Record<string, unknown>>).filter(
+              (item) => item?.archived !== 1,
+            )
+          : data;
+        await cacheSet(cacheKey, toCache);
       }
       return data;
     } catch (err) {

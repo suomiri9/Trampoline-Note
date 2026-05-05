@@ -63,6 +63,8 @@ export default function SettingsPage() {
   const [downloadStatus, setDownloadStatus] = useState<{
     sw: boolean;
     skillsCount: number | null;
+    drillsCount: number | null;
+    connectionsCount: number | null;
     routinesCount: number | null;
   } | null>(null);
 
@@ -83,10 +85,16 @@ export default function SettingsPage() {
         // ignore
       }
       let skillsCount: number | null = null;
+      let drillsCount: number | null = null;
+      let connectionsCount: number | null = null;
       let routinesCount: number | null = null;
       try {
-        const skills = await cacheGet<unknown[]>("skills");
-        skillsCount = Array.isArray(skills) ? skills.length : null;
+        const skills = await cacheGet<Array<{ isDrill?: number }>>("skills");
+        if (Array.isArray(skills)) {
+          skillsCount = skills.filter((s) => (s.isDrill ?? 0) === 0).length;
+          drillsCount = skills.filter((s) => s.isDrill === 1).length;
+          connectionsCount = skills.filter((s) => s.isDrill === 2).length;
+        }
       } catch {
         // ignore
       }
@@ -96,7 +104,14 @@ export default function SettingsPage() {
       } catch {
         // ignore
       }
-      if (alive) setDownloadStatus({ sw, skillsCount, routinesCount });
+      if (alive)
+        setDownloadStatus({
+          sw,
+          skillsCount,
+          drillsCount,
+          connectionsCount,
+          routinesCount,
+        });
     };
     void check();
     const interval = setInterval(check, 3000);
@@ -384,10 +399,13 @@ export default function SettingsPage() {
                 </p>
               )}
               {offlineModeEnabled && downloadStatus && (() => {
-                const { sw, skillsCount, routinesCount } = downloadStatus;
-                const skillsReady = skillsCount !== null && skillsCount > 0;
+                const { sw, skillsCount, drillsCount, connectionsCount, routinesCount } = downloadStatus;
+                const skillsLoaded = skillsCount !== null;
+                const drillsLoaded = drillsCount !== null;
+                const connectionsLoaded = connectionsCount !== null;
                 const routinesReady = routinesCount !== null;
-                const allReady = sw && skillsReady && routinesReady;
+                const allReady =
+                  sw && skillsLoaded && drillsLoaded && connectionsLoaded && routinesReady;
                 const StatusIcon = ({ ready }: { ready: boolean }) =>
                   ready ? (
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -408,9 +426,21 @@ export default function SettingsPage() {
                         <span className="flex-1">App ready to launch offline</span>
                       </li>
                       <li className="flex items-center gap-2" data-testid="status-skills">
-                        <StatusIcon ready={skillsReady} />
+                        <StatusIcon ready={skillsLoaded} />
                         <span className="flex-1">
-                          Skills{skillsReady ? ` (${skillsCount})` : ""}
+                          Skills{skillsLoaded ? ` (${skillsCount})` : ""}
+                        </span>
+                      </li>
+                      <li className="flex items-center gap-2" data-testid="status-drills">
+                        <StatusIcon ready={drillsLoaded} />
+                        <span className="flex-1">
+                          Drills{drillsLoaded ? ` (${drillsCount})` : ""}
+                        </span>
+                      </li>
+                      <li className="flex items-center gap-2" data-testid="status-connections">
+                        <StatusIcon ready={connectionsLoaded} />
+                        <span className="flex-1">
+                          Connections{connectionsLoaded ? ` (${connectionsCount})` : ""}
                         </span>
                       </li>
                       <li className="flex items-center gap-2" data-testid="status-routines">
