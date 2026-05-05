@@ -72,6 +72,14 @@ type CreateNoteResult =
 export function useCreateNote() {
   const queryClient = useQueryClient();
   return useMutation<CreateNoteResult, Error, NoteInput>({
+    onMutate: (vars) => {
+      // eslint-disable-next-line no-console
+      console.log('[useCreateNote] onMutate (before mutationFn)', vars);
+    },
+    onSettled: (data, error) => {
+      // eslint-disable-next-line no-console
+      console.log('[useCreateNote] onSettled', { hasData: !!data, hasError: !!error, error });
+    },
     mutationFn: async (data: NoteInput) => {
       // eslint-disable-next-line no-console
       console.log('[useCreateNote] mutationFn start', data);
