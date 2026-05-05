@@ -108,11 +108,18 @@ function AppContent() {
     let cancelled = false;
     const tryDrain = async () => {
       if (typeof navigator !== "undefined" && !navigator.onLine) return;
-      const { synced } = await drainQueue();
+      const { synced, rejected } = await drainQueue();
       if (cancelled) return;
       if (synced > 0) {
         toast({
           title: `Synced ${synced} offline ${synced === 1 ? "entry" : "entries"}.`,
+        });
+      }
+      if (rejected > 0) {
+        toast({
+          title: `${rejected} offline ${rejected === 1 ? "entry was" : "entries were"} rejected.`,
+          description: "Open Settings to review or discard them.",
+          variant: "destructive",
         });
       }
     };

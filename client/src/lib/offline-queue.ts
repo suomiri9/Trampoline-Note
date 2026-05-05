@@ -4,9 +4,15 @@ import {
   queueAll,
   queueDelete,
   queueCount,
+  queueMoveToFailed,
+  failedAll,
+  failedDelete,
+  failedClearAll,
+  failedCount,
   cacheClearAll,
   type QueueKind,
   type QueuedItem,
+  type FailedItem,
 } from './offline-db';
 import { queryClient } from './queryClient';
 
@@ -66,13 +72,41 @@ export async function getQueueCount(): Promise<number> {
   return queueCount();
 }
 
+export async function getFailedCount(): Promise<number> {
+  return failedCount();
+}
+
+export async function getFailedItems(): Promise<FailedItem[]> {
+  const items = await failedAll();
+  return items.sort((a, b) => (b.failedAt ?? 0) - (a.failedAt ?? 0));
+}
+
+export async function discardFailedItem(id: number): Promise<void> {
+  await failedDelete(id);
+  notifyQueueChange();
+}
+
+export async function discardAllFailedItems(): Promise<void> {
+  await failedClearAll();
+  notifyQueueChange();
+}
+
+export type { FailedItem } from './offline-db';
+
 let draining = false;
 
-export async function drainQueue(): Promise<{ synced: number; failed: number }> {
-  if (draining) return { synced: 0, failed: 0 };
+export interface DrainResult {
+  synced: number;
+  failed: number;
+  rejected: number;
+}
+
+export async function drainQueue(): Promise<DrainResult> {
+  if (draining) return { synced: 0, failed: 0, rejected: 0 };
   draining = true;
   let synced = 0;
   let failed = 0;
+  let rejected = 0;
   try {
     const items: QueuedItem[] = await queueAll();
     items.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
@@ -86,11 +120,55 @@ export async function drainQueue(): Promise<{ synced: number; failed: number }> 
         });
         if (!res.ok) {
           failed += 1;
-          // Stop on auth errors so we don't churn the queue.
+          // Stop on auth errors so we don't churn the queue and keep
+          // items intact for a future drain after the user re-auths.
           if (res.status === 401 || res.status === 403) break;
-          // For 4xx other than auth, drop the item — server rejected it.
+          // For 4xx other than auth, the server rejected the payload —
+          // move it to the failed list so the user can inspect/discard
+          // it instead of silently losing the data.
           if (res.status >= 400 && res.status < 500 && item.id != null) {
-            await queueDelete(item.id);
+            let errorMessage: string | undefined;
+            try {
+              const data = await res.clone().json();
+              if (data && typeof data.message === 'string') {
+                errorMessage = data.message;
+              }
+            } catch {
+              try {
+                const text = await res.text();
+                if (text) errorMessage = text.slice(0, 500);
+              } catch {
+                // ignore
+              }
+            }
+            try {
+              // Atomic: failed-insert + queue-delete in one IndexedDB
+              // transaction. If persisting to the failed store fails
+              // for any reason (quota, transaction error, etc.), the
+              // queued item stays in place so we don't silently drop
+              // the user's entry.
+              await queueMoveToFailed(item.id, {
+                kind: item.kind,
+                url: item.url,
+                method: item.method,
+                body: item.body,
+                tempId: item.tempId,
+                createdAt: item.createdAt,
+                failedAt: Date.now(),
+                status: res.status,
+                errorMessage,
+              });
+              rejected += 1;
+            } catch (err) {
+              // Couldn't persist to the failed store — leave the item
+              // in the queue so the next drain (or a manual retry) can
+              // try again. Surface this as a transient failure.
+              // eslint-disable-next-line no-console
+              console.warn(
+                '[offline-queue] failed to move rejected item to failed store; will retry next drain',
+                err,
+              );
+            }
           }
           continue;
         }
@@ -120,7 +198,7 @@ export async function drainQueue(): Promise<{ synced: number; failed: number }> 
     });
   }
   notifyQueueChange();
-  return { synced, failed };
+  return { synced, failed, rejected };
 }
 
 export async function clearOfflineDataAndQueue(): Promise<void> {
@@ -134,6 +212,25 @@ export function useQueueCount(): number {
     let alive = true;
     const refresh = () => {
       getQueueCount().then((c) => {
+        if (alive) setCount(c);
+      });
+    };
+    refresh();
+    const unsub = subscribeQueueChange(refresh);
+    return () => {
+      alive = false;
+      unsub();
+    };
+  }, []);
+  return count;
+}
+
+export function useFailedCount(): number {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const refresh = () => {
+      getFailedCount().then((c) => {
         if (alive) setCount(c);
       });
     };

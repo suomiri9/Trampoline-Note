@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "4e5vrQxiYSeBmS14OtnT6"
+uri = "file://screenshots/rejected-entries-preview.jpg"
+type = "image"
+title = "Rejected offline entries — preview"

@@ -1,7 +1,8 @@
 const DB_NAME = 'tn-offline';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_CACHE = 'cache';
 const STORE_QUEUE = 'queue';
+const STORE_FAILED = 'failed';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -20,6 +21,9 @@ function openDb(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(STORE_QUEUE)) {
         db.createObjectStore(STORE_QUEUE, { keyPath: 'id', autoIncrement: true });
+      }
+      if (!db.objectStoreNames.contains(STORE_FAILED)) {
+        db.createObjectStore(STORE_FAILED, { keyPath: 'id', autoIncrement: true });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -74,6 +78,7 @@ export async function cacheClearAll(): Promise<void> {
   try {
     await withStore(STORE_CACHE, 'readwrite', (s) => s.clear());
     await withStore(STORE_QUEUE, 'readwrite', (s) => s.clear());
+    await withStore(STORE_FAILED, 'readwrite', (s) => s.clear());
   } catch {
     // ignore
   }
@@ -118,6 +123,107 @@ export async function queueDelete(id: number): Promise<void> {
 export async function queueCount(): Promise<number> {
   try {
     return await withStore<number>(STORE_QUEUE, 'readonly', (s) =>
+      s.count() as IDBRequest<number>,
+    );
+  } catch {
+    return 0;
+  }
+}
+
+export interface FailedItem {
+  id?: number;
+  kind: QueueKind;
+  url: string;
+  method: string;
+  body: unknown;
+  tempId: number;
+  createdAt: number;
+  failedAt: number;
+  status: number;
+  errorMessage?: string;
+}
+
+/**
+ * Atomically move a queued item to the failed store: both the failed
+ * insert and the queue delete happen inside a single IndexedDB
+ * transaction, so if either fails the original queued item stays put
+ * instead of being silently lost.
+ */
+export async function queueMoveToFailed(
+  queueId: number,
+  failure: Omit<FailedItem, 'id'>,
+): Promise<void> {
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction([STORE_QUEUE, STORE_FAILED], 'readwrite');
+    let settled = false;
+    tx.oncomplete = () => {
+      if (!settled) {
+        settled = true;
+        resolve();
+      }
+    };
+    tx.onerror = () => {
+      if (!settled) {
+        settled = true;
+        reject(tx.error ?? new Error('queueMoveToFailed transaction failed'));
+      }
+    };
+    tx.onabort = () => {
+      if (!settled) {
+        settled = true;
+        reject(tx.error ?? new Error('queueMoveToFailed transaction aborted'));
+      }
+    };
+    try {
+      const failedStore = tx.objectStore(STORE_FAILED);
+      const addReq = failedStore.add(failure);
+      addReq.onsuccess = () => {
+        const queueStore = tx.objectStore(STORE_QUEUE);
+        queueStore.delete(queueId);
+      };
+      addReq.onerror = () => {
+        try { tx.abort(); } catch { /* ignore */ }
+      };
+    } catch (err) {
+      try { tx.abort(); } catch { /* ignore */ }
+      if (!settled) {
+        settled = true;
+        reject(err as Error);
+      }
+    }
+  });
+}
+
+export async function failedAll(): Promise<FailedItem[]> {
+  try {
+    return await withStore<FailedItem[]>(STORE_FAILED, 'readonly', (s) =>
+      s.getAll() as IDBRequest<FailedItem[]>,
+    );
+  } catch {
+    return [];
+  }
+}
+
+export async function failedDelete(id: number): Promise<void> {
+  try {
+    await withStore(STORE_FAILED, 'readwrite', (s) => s.delete(id));
+  } catch {
+    // ignore
+  }
+}
+
+export async function failedClearAll(): Promise<void> {
+  try {
+    await withStore(STORE_FAILED, 'readwrite', (s) => s.clear());
+  } catch {
+    // ignore
+  }
+}
+
+export async function failedCount(): Promise<number> {
+  try {
+    return await withStore<number>(STORE_FAILED, 'readonly', (s) =>
       s.count() as IDBRequest<number>,
     );
   } catch {
