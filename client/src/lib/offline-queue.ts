@@ -388,19 +388,52 @@ async function applyOptimisticFocusMemo(focusMemo: string): Promise<any> {
 /**
  * Queue a focus-memo PATCH while collapsing any prior queued focus-memo
  * update — only the most recent state needs to reach the server.
+ *
+ * `pendingPointIds` is a sidecar list of point ids that have been added
+ * or edited offline since the last successful sync. We accumulate it
+ * across successive offline edits (filtered to ids still present in the
+ * new focus memo) so the UI can mark exactly those rows as pending.
+ * The server's zod schema ignores unknown fields, so it's safe to ship.
  */
-export async function enqueueFocusMemoUpdate(focusMemo: string): Promise<any> {
+export async function enqueueFocusMemoUpdate(
+  focusMemo: string,
+  pendingPointIds: string[] = [],
+): Promise<any> {
   const existing = await queueAll();
+  let priorPending: string[] = [];
   for (const item of existing) {
-    if (item.kind === 'focusMemo' && item.id != null) {
-      await queueDelete(item.id);
+    if (item.kind === 'focusMemo') {
+      const body = item.body as { pendingPointIds?: unknown } | null;
+      if (body && Array.isArray(body.pendingPointIds)) {
+        for (const id of body.pendingPointIds) {
+          if (typeof id === 'string') priorPending.push(id);
+        }
+      }
+      if (item.id != null) await queueDelete(item.id);
     }
   }
+  // Keep only ids that still exist in the new focus memo, then union
+  // with the ids touched by this mutation so a single badge appears
+  // per row regardless of how many offline edits stacked up.
+  const liveIds = new Set<string>();
+  try {
+    const arr = JSON.parse(focusMemo);
+    if (Array.isArray(arr)) {
+      for (const p of arr) {
+        if (p && typeof p.id === 'string') liveIds.add(p.id);
+      }
+    }
+  } catch {
+    // ignore — legacy plain-text focus memo has no ids to track
+  }
+  const merged = Array.from(
+    new Set([...priorPending, ...pendingPointIds].filter((id) => liveIds.has(id))),
+  );
   await queueAdd({
     kind: 'focusMemo',
     url: urlForKind('focusMemo'),
     method: 'PATCH',
-    body: { focusMemo },
+    body: { focusMemo, pendingPointIds: merged },
     tempId: 0,
     createdAt: Date.now(),
   });
@@ -418,12 +451,13 @@ export async function tryNetworkOrEnqueueFocusMemo<T extends object>(
   focusMemo: string,
   doFetch: (signal: AbortSignal) => Promise<T>,
   timeoutMs = 12000,
+  pendingPointIds: string[] = [],
 ): Promise<T | (T & { _queuedOffline: true })> {
   const offline = getOfflineModeEnabled();
   const onLine = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
   const enqueue = async (): Promise<T & { _queuedOffline: true }> => {
-    const u = await enqueueFocusMemoUpdate(focusMemo);
+    const u = await enqueueFocusMemoUpdate(focusMemo, pendingPointIds);
     return { ...(u as object), _queuedOffline: true } as T & { _queuedOffline: true };
   };
 

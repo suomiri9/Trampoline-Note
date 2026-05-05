@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tryNetworkOrEnqueueFocusMemo } from "@/lib/offline-queue";
 import { useAuth } from "@/hooks/use-auth";
 import { useSkills } from "@/hooks/use-skills";
-import { useHasQueuedFocusMemo } from "@/hooks/use-has-queued-focus-memo";
+import { useQueuedFocusMemoPointIds } from "@/hooks/use-queued-focus-memo-point-ids";
 import { useToast } from "@/hooks/use-toast";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { Wrench, Plus, X, Trash2, Loader2, Search, Pencil, Check, MoreVertical } from "lucide-react";
@@ -100,7 +100,7 @@ export function PointsToFix() {
   const { toast } = useToast();
   const { data: skills } = useSkills();
   const { data: routines } = useQuery<Routine[]>({ queryKey: ["/api/routines"] });
-  const hasQueuedFocusMemo = useHasQueuedFocusMemo();
+  const queuedPointIds = useQueuedFocusMemoPointIds();
 
   const points = useMemo(() => parsePoints(user?.focusMemo), [user?.focusMemo]);
 
@@ -158,14 +158,21 @@ export function PointsToFix() {
     if (editingId === null) return;
     const name = editingName.trim();
     if (!name) return;
-    const next = points.map((p) => (p.id === editingId ? { ...p, name } : p));
-    mutation.mutate(next);
+    const editedId = editingId;
+    const next = points.map((p) => (p.id === editedId ? { ...p, name } : p));
+    mutation.mutate({ next, pendingIds: [editedId] });
     setEditingId(null);
     setEditingName("");
   };
 
   const mutation = useMutation({
-    mutationFn: async (next: PointToFix[]) => {
+    mutationFn: async ({
+      next,
+      pendingIds,
+    }: {
+      next: PointToFix[];
+      pendingIds: string[];
+    }) => {
       const focusMemoStr = JSON.stringify(next);
       return await tryNetworkOrEnqueueFocusMemo<SafeUser>(
         focusMemoStr,
@@ -182,6 +189,8 @@ export function PointsToFix() {
           }
           return res.json() as Promise<SafeUser>;
         },
+        12000,
+        pendingIds,
       );
     },
     onSuccess: (updatedUser: any) => {
@@ -256,7 +265,7 @@ export function PointsToFix() {
       skillIds: draftSkillIds,
       routineIds: draftRoutineIds,
     };
-    mutation.mutate([...points, newPoint]);
+    mutation.mutate({ next: [...points, newPoint], pendingIds: [newPoint.id] });
     setDraftName("");
     setDraftSkillIds([]);
     setDraftRoutineIds([]);
@@ -273,24 +282,26 @@ export function PointsToFix() {
     if (!target) return;
     const totalLinks = target.skillIds.length + target.routineIds.length;
     if (fromSkillId !== null && totalLinks > 1) {
-      mutation.mutate(
-        points.map((p) =>
+      mutation.mutate({
+        next: points.map((p) =>
           p.id === id ? { ...p, skillIds: p.skillIds.filter((sid) => sid !== fromSkillId) } : p,
         ),
-      );
+        pendingIds: [id],
+      });
       return;
     }
     if (fromRoutineId !== null && totalLinks > 1) {
-      mutation.mutate(
-        points.map((p) =>
+      mutation.mutate({
+        next: points.map((p) =>
           p.id === id
             ? { ...p, routineIds: p.routineIds.filter((rid) => rid !== fromRoutineId) }
             : p,
         ),
-      );
+        pendingIds: [id],
+      });
       return;
     }
-    mutation.mutate(points.filter((p) => p.id !== id));
+    mutation.mutate({ next: points.filter((p) => p.id !== id), pendingIds: [] });
   };
 
   const skillById = (id: number) => skills?.find((s) => s.id === id);
@@ -321,14 +332,11 @@ export function PointsToFix() {
       >
         <DialogContent ref={dialogContentRef} className="sm:max-w-[500px] md:max-w-[680px] w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] max-h-[85vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 flex-wrap">
+            <DialogTitle className="flex items-center gap-2">
               <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               Points to Fix
               {mutation.isPending && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
-              )}
-              {hasQueuedFocusMemo && !mutation.isPending && (
-                <PendingSyncBadge testId="badge-pending-focus-memo" />
               )}
             </DialogTitle>
           </DialogHeader>
@@ -461,6 +469,16 @@ export function PointsToFix() {
                             data-testid={`text-point-name-${p.id}`}
                           >
                             {p.name}
+                            {queuedPointIds.has(p.id) && (
+                              <>
+                                {" "}
+                                <PendingSyncBadge
+                                  size="xs"
+                                  className="align-middle inline-flex"
+                                  testId={`badge-pending-point-${p.id}`}
+                                />
+                              </>
+                            )}
                           </p>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
