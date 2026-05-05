@@ -130,13 +130,10 @@
 
 /* 3D depth system */
 .card-3d {
-  background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.92) 100%);
+  background: hsl(var(--card));
   box-shadow:
-    0 1px 0 0 hsl(0 0% 100% / 0.08) inset,
-    0 0 0 1px hsl(var(--border) / 0.5),
-    0 2px 4px -1px hsl(222 47% 11% / 0.06),
-    0 4px 8px -2px hsl(222 47% 11% / 0.05),
-    0 8px 16px -4px hsl(222 47% 11% / 0.04);
+    0 0 0 1px hsl(var(--border) / 0.35),
+    0 1px 2px 0 hsl(222 47% 11% / 0.025);
   transition: box-shadow 0.25s ease, transform 0.25s ease;
 }
 
