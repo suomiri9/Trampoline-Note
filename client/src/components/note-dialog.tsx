@@ -429,16 +429,41 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
     if (isEditing && noteToEdit) {
       updateNote.mutate({ id: noteToEdit.id, ...payload }, {
-        onSuccess: () => { 
-          onOpenChange(false); 
-          toast({ title: "Session updated" }); 
-        }
+        onSuccess: () => {
+          onOpenChange(false);
+          toast({ title: "Session updated" });
+        },
+        onError: (err) => {
+          toast({
+            title: "Couldn't update session",
+            description: err instanceof Error ? err.message : "Something went wrong. Please try again.",
+            variant: "destructive",
+          });
+        },
       });
     } else {
       createNote.mutate(payload as any, {
-        onSuccess: () => { onOpenChange(false); toast({ title: "Session logged!" }); }
+        onSuccess: () => { onOpenChange(false); toast({ title: "Session logged!" }); },
+        onError: (err) => {
+          toast({
+            title: "Couldn't log session",
+            description: err instanceof Error ? err.message : "Something went wrong. Please try again.",
+            variant: "destructive",
+          });
+        },
       });
     }
+  };
+
+  const onInvalid = (errors: Record<string, { message?: string } | undefined>) => {
+    const firstMessage = Object.values(errors).find(
+      (e) => e && typeof e.message === "string" && e.message,
+    )?.message;
+    toast({
+      title: "Couldn't save",
+      description: firstMessage ?? "Please check the highlighted fields and try again.",
+      variant: "destructive",
+    });
   };
 
   const [showDiscardAlert, setShowDiscardAlert] = useState(false);
@@ -468,7 +493,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
         <div ref={dialogBodyRef} className="flex-1 overflow-scroll-touch min-h-0 px-6 pb-6 text-foreground">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit, onInvalid as any)} className="space-y-6">
               <div className="space-y-4">
                 <FormField control={form.control} name="date" render={({ field }) => (
                   <FormItem className="flex-1">
@@ -526,8 +551,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           max={100}
                           placeholder="—"
                           className="rounded-xl h-11 w-20 px-3 text-sm"
-                          value={field.value ?? ""}
-                          onChange={e => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
+                          value={field.value == null || Number.isNaN(field.value) ? "" : field.value}
+                          onChange={e => {
+                            const raw = e.target.value;
+                            if (raw === "") { field.onChange(null); return; }
+                            const n = Number(raw);
+                            if (Number.isFinite(n)) field.onChange(n);
+                          }}
                         />
                         <span className="text-xs text-muted-foreground">/100</span>
                       </div>
