@@ -104,7 +104,17 @@ export function PointsToFix() {
   const [linkOpen, setLinkOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    fromSkillId: number | null;
+    fromRoutineId: number | null;
+  } | null>(null);
   const dialogContentRef = useRef<HTMLDivElement>(null);
+
+  const hasDraft =
+    draftName.trim().length > 0 ||
+    draftSkillIds.length > 0 ||
+    draftRoutineIds.length > 0;
 
   useEffect(() => {
     if (!open) {
@@ -272,10 +282,7 @@ export function PointsToFix() {
       <Dialog
         open={open}
         onOpenChange={(next) => {
-          if (
-            !next &&
-            (draftName.trim() || draftSkillIds.length > 0 || draftRoutineIds.length > 0)
-          ) {
+          if (!next && hasDraft) {
             setConfirmClose(true);
             return;
           }
@@ -437,7 +444,13 @@ export function PointsToFix() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            onClick={() => removePoint(p.id, currentSkillId, currentRoutineId)}
+                            onClick={() =>
+                              setDeleteTarget({
+                                id: p.id,
+                                fromSkillId: currentSkillId,
+                                fromRoutineId: currentRoutineId,
+                              })
+                            }
                             disabled={mutation.isPending}
                             data-testid={`button-remove-point-${p.id}`}
                             className="shrink-0 h-6 w-6 -mr-1 opacity-50 hover:opacity-100"
@@ -639,7 +652,13 @@ export function PointsToFix() {
                           <X className="h-4 w-4" />
                         </Button>
                       )}
-                      <Popover open={addOpen} onOpenChange={setAddOpen}>
+                      <Popover
+                        open={addOpen}
+                        onOpenChange={(v) => {
+                          if (!v && hasDraft) return;
+                          setAddOpen(v);
+                        }}
+                      >
                         <PopoverTrigger asChild>
                           <Button
                             type="button"
@@ -654,6 +673,12 @@ export function PointsToFix() {
                           container={dialogContentRef.current}
                           className="w-[min(360px,calc(100vw-48px))] p-3 space-y-3"
                           align="end"
+                          onInteractOutside={(e) => {
+                            if (hasDraft) e.preventDefault();
+                          }}
+                          onEscapeKeyDown={(e) => {
+                            if (hasDraft) e.preventDefault();
+                          }}
                         >
                           <div className="space-y-2">
                             <label className="text-xs font-medium text-muted-foreground">
@@ -997,6 +1022,55 @@ export function PointsToFix() {
           setOpen(false);
         }}
       />
+
+      {(() => {
+        const target = deleteTarget
+          ? points.find((p) => p.id === deleteTarget.id)
+          : null;
+        const totalLinks = target
+          ? target.skillIds.length + target.routineIds.length
+          : 0;
+        const isUnlink =
+          !!deleteTarget &&
+          !!target &&
+          totalLinks > 1 &&
+          (deleteTarget.fromSkillId !== null || deleteTarget.fromRoutineId !== null);
+        const groupName = deleteTarget?.fromSkillId
+          ? skillById(deleteTarget.fromSkillId)?.code ||
+            skillById(deleteTarget.fromSkillId)?.name ||
+            "this group"
+          : deleteTarget?.fromRoutineId
+            ? routineById(deleteTarget.fromRoutineId)?.name || "this routine"
+            : "this group";
+        return (
+          <ConfirmDialog
+            open={deleteTarget !== null}
+            onOpenChange={(o) => {
+              if (!o) setDeleteTarget(null);
+            }}
+            title={isUnlink ? "Remove from this group?" : "Delete this point?"}
+            description={
+              target
+                ? isUnlink
+                  ? `"${target.name}" will be removed from ${groupName}, but kept in its other groups.`
+                  : `"${target.name}" will be permanently deleted.`
+                : "This action cannot be undone."
+            }
+            confirmLabel={isUnlink ? "Remove" : "Delete"}
+            cancelLabel="Cancel"
+            onConfirm={() => {
+              if (deleteTarget) {
+                removePoint(
+                  deleteTarget.id,
+                  deleteTarget.fromSkillId,
+                  deleteTarget.fromRoutineId,
+                );
+              }
+              setDeleteTarget(null);
+            }}
+          />
+        );
+      })()}
     </>
   );
 }
