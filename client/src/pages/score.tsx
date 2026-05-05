@@ -16,10 +16,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
-import { Trash2, Plus, Trophy, CalendarIcon, Pencil } from "lucide-react";
+import { Trash2, Plus, Trophy, CalendarIcon, Pencil, MoreVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 const scoreDefaults = {
@@ -438,8 +439,25 @@ export default function ScorePage() {
           const routine = routines?.find(r => r.id === score.routineId);
           const routineVol = routines?.find(r => r.id === score.routineIdVol);
           return (
-            <Card key={score.id} className="rounded-2xl overflow-hidden">
-              <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <Card key={score.id} className="rounded-2xl overflow-hidden relative">
+              <div className="absolute top-2 right-2 z-10">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" data-testid={`btn-score-actions-${score.id}`}>
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-32 rounded-xl">
+                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEdit(score)} data-testid={`btn-score-edit-${score.id}`}>
+                      <Pencil className="h-3.5 w-3.5" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteScoreId(score.id)} data-testid={`btn-score-delete-${score.id}`}>
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div className="p-4 pr-12 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-lg">{format(new Date(score.date), "EEE, d MMMM yyyy")}</span>
@@ -497,22 +515,16 @@ export default function ScorePage() {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-6 sm:pl-4">
-                  {(score.category === "both" || score.category === "vol_vol") && (
+                {(score.category === "both" || score.category === "vol_vol") && (
+                  <div className="flex items-center sm:pl-4">
                     <div className="text-right">
                       <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider leading-none mb-1">Grand Total</p>
                       <p className="text-2xl font-display font-black text-primary leading-none">
                         {(score.total + (score.totalVol || 0)).toFixed(2)}
                       </p>
                     </div>
-                  )}
-                  <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground" onClick={() => startEdit(score)}>
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="text-destructive h-9 w-9" onClick={() => setDeleteScoreId(score.id)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+                  </div>
+                )}
               </div>
             </Card>
           );
