@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Calendar, MoreVertical, Pencil, Trash2, Clock } from "lucide-react";
+import { Calendar, MoreVertical, Pencil, Trash2, Clock, CloudOff } from "lucide-react";
 import { type Note } from "@shared/schema";
 import { parseNoteSkills, calculateTotalDD } from "@/lib/training-utils";
 import { StarRating } from "./star-rating";
@@ -25,9 +25,10 @@ interface NoteCardProps {
   note: Note;
   onEdit: (note: Note) => void;
   index: number;
+  isPending?: boolean;
 }
 
-export function NoteCard({ note, onEdit, index }: NoteCardProps) {
+export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardProps) {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const deleteNote = useDeleteNote();
   const { data: allItems } = useSkills();
@@ -58,22 +59,32 @@ export function NoteCard({ note, onEdit, index }: NoteCardProps) {
             </div>
             <span className="whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-400">{format(new Date(note.date), "EEE, d MMMM yyyy")}</span>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground shrink-0">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40 rounded-xl">
-              <DropdownMenuItem onClick={() => onEdit(note)} className="cursor-pointer gap-2">
-                <Pencil className="h-4 w-4" /> Edit Session
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setShowDeleteAlert(true)} className="cursor-pointer gap-2 text-destructive focus:text-destructive">
-                <Trash2 className="h-4 w-4" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {isPending ? (
+            <Badge
+              variant="outline"
+              className="gap-1 px-2 py-0.5 h-6 text-[10px] font-semibold border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 bg-amber-50/60 dark:bg-amber-900/10"
+              data-testid={`badge-pending-sync-${note.id}`}
+            >
+              <CloudOff className="w-3 h-3" /> Pending sync
+            </Badge>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground shrink-0">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                <DropdownMenuItem onClick={() => onEdit(note)} className="cursor-pointer gap-2">
+                  <Pencil className="h-4 w-4" /> Edit Session
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setShowDeleteAlert(true)} className="cursor-pointer gap-2 text-destructive focus:text-destructive">
+                  <Trash2 className="h-4 w-4" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <div className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/20 px-2.5 py-1 rounded-lg w-fit">

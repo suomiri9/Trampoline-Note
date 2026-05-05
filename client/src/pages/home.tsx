@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, BookOpen, Loader2, Activity, LayoutDashboard, ChevronDown } from "lucide-react";
 import { useNotesPage } from "@/hooks/use-notes";
+import { useQueuedNotes } from "@/hooks/use-queued-notes";
 import { NoteCard } from "@/components/note-card";
 import { NoteDialog } from "@/components/note-dialog";
 import { PointsToFix } from "@/components/points-to-fix";
@@ -21,6 +22,7 @@ export default function Home() {
   const { data, isLoading, isError, error, isFetching } = useNotesPage(limit, {
     enabled: !offlineView,
   });
+  const queuedNotes = useQueuedNotes();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
 
@@ -64,10 +66,29 @@ export default function Home() {
 
       <main>
         {offlineView ? (
-          <OfflinePlaceholder
-            testId="card-offline-notes"
-            hint="Your training log isn't available offline. New entries you add will sync when you reconnect."
-          />
+          <div className="space-y-4">
+            {queuedNotes.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="list-pending-notes">
+                {queuedNotes.map((note, index) => (
+                  <NoteCard
+                    key={note.id}
+                    note={note}
+                    index={index}
+                    onEdit={() => {}}
+                    isPending
+                  />
+                ))}
+              </div>
+            )}
+            <OfflinePlaceholder
+              testId="card-offline-notes"
+              hint={
+                queuedNotes.length > 0
+                  ? "Past sessions aren't available offline. The entries above will sync when you reconnect."
+                  : "Your training log isn't available offline. New entries you add will sync when you reconnect."
+              }
+            />
+          </div>
         ) : isLoading ? (
           <div className="py-24 flex flex-col items-center justify-center text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary/40" />
