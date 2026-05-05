@@ -82,6 +82,13 @@ export const queryClient = new QueryClient({
     },
     mutations: {
       retry: false,
+      // We handle offline behaviour ourselves via tryNetworkOrEnqueue, so we
+      // must override React Query v5's default `networkMode: 'online'` which
+      // would otherwise PAUSE mutations whenever navigator.onLine is false.
+      // Without this, tapping "Log Session" while offline would never invoke
+      // the mutationFn — the mutation would just sit in a paused state and
+      // the button would appear stuck forever.
+      networkMode: 'always',
     },
   },
 });
