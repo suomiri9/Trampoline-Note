@@ -1025,9 +1025,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         )}
                                       </div>
                                     </div>
-                                    {(item.note !== undefined && item.note !== null) && !isConnected && (
+                                    {(isConnected ? (iIdx === group.items.length - 1 && group.items[0].note !== undefined && group.items[0].note !== null) : (item.note !== undefined && item.note !== null)) && (
                                       <div className="px-3 pb-2 bg-primary/5">
-                                        <input type="text" placeholder="Type a note..." value={item.note || ""} onChange={(e) => updateSkillNote(idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 outline-none focus:bg-muted/50 placeholder:text-muted-foreground/40" data-testid={`input-skill-note-${idx}`} />
+                                        <input type="text" placeholder="Type a note..." value={(isConnected ? group.items[0].note : item.note) || ""} onChange={(e) => updateSkillNote(isConnected ? group.indices[0] : idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 outline-none focus:bg-muted/50 placeholder:text-muted-foreground/40" data-testid={`input-skill-note-${isConnected ? group.indices[0] : idx}`} />
                                       </div>
                                     )}
                                   </div>
@@ -1080,9 +1080,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         )}
                                       </div>
                                     </div>
-                                    {(item.note !== undefined && item.note !== null) && !isConnected && (
+                                    {(isConnected ? (iIdx === group.items.length - 1 && group.items[0].note !== undefined && group.items[0].note !== null) : (item.note !== undefined && item.note !== null)) && (
                                       <div className="px-3 pb-2 bg-red-50/60 dark:bg-red-900/10">
-                                        <input type="text" placeholder="Type a note..." value={item.note || ""} onChange={(e) => updateSkillNote(idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 outline-none focus:bg-muted/50 placeholder:text-muted-foreground/40" data-testid={`input-skill-note-${idx}`} />
+                                        <input type="text" placeholder="Type a note..." value={(isConnected ? group.items[0].note : item.note) || ""} onChange={(e) => updateSkillNote(isConnected ? group.indices[0] : idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 outline-none focus:bg-muted/50 placeholder:text-muted-foreground/40" data-testid={`input-skill-note-${isConnected ? group.indices[0] : idx}`} />
                                       </div>
                                     )}
                                   </div>
