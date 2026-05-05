@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { tryNetworkOrEnqueueFocusMemo } from "@/lib/offline-queue";
 import { useAuth } from "@/hooks/use-auth";
 import { useSkills } from "@/hooks/use-skills";
 import { useToast } from "@/hooks/use-toast";
 import { Wrench, Plus, X, Trash2, Loader2, Search, Pencil, Check, MoreVertical } from "lucide-react";
-import { OfflinePlaceholder } from "@/components/offline-placeholder";
-import { useOfflineMode } from "@/hooks/use-offline-mode";
-import { useOnline } from "@/hooks/use-online";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -66,14 +63,17 @@ function parsePoints(raw: string | null | undefined): PointToFix[] {
       .map((p, i) => ({
         id: typeof p.id === "string" ? p.id : `p-${i}-${Date.now()}`,
         name: p.name as string,
+        // Allow negative ids so items linked to skills/routines that were
+        // created offline (and still have a temporary id) keep their
+        // links until the queue drains and remaps them to real ids.
         skillIds: Array.isArray(p.skillIds)
           ? (p.skillIds as unknown[]).filter(
-              (x): x is number => typeof x === "number" && Number.isInteger(x) && x > 0,
+              (x): x is number => typeof x === "number" && Number.isInteger(x) && x !== 0,
             )
           : [],
         routineIds: Array.isArray(p.routineIds)
           ? (p.routineIds as unknown[]).filter(
-              (x): x is number => typeof x === "number" && Number.isInteger(x) && x > 0,
+              (x): x is number => typeof x === "number" && Number.isInteger(x) && x !== 0,
             )
           : [],
       }));
@@ -98,9 +98,6 @@ export function PointsToFix() {
   const { toast } = useToast();
   const { data: skills } = useSkills();
   const { data: routines } = useQuery<Routine[]>({ queryKey: ["/api/routines"] });
-  const [offlineModeEnabled] = useOfflineMode();
-  const isOnline = useOnline();
-  const offlineView = offlineModeEnabled && !isOnline;
 
   const points = useMemo(() => parsePoints(user?.focusMemo), [user?.focusMemo]);
 
@@ -166,13 +163,31 @@ export function PointsToFix() {
 
   const mutation = useMutation({
     mutationFn: async (next: PointToFix[]) => {
-      const res = await apiRequest("PATCH", "/api/auth/focus-memo", {
-        focusMemo: JSON.stringify(next),
-      });
-      return res.json() as Promise<SafeUser>;
+      const focusMemoStr = JSON.stringify(next);
+      return await tryNetworkOrEnqueueFocusMemo<SafeUser>(
+        focusMemoStr,
+        async (signal) => {
+          const res = await fetch("/api/auth/focus-memo", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ focusMemo: focusMemoStr }),
+            signal,
+          });
+          if (!res.ok) {
+            throw new Error(`${res.status}: ${(await res.text()) || res.statusText}`);
+          }
+          return res.json() as Promise<SafeUser>;
+        },
+      );
     },
-    onSuccess: (updatedUser) => {
-      queryClient.setQueryData(["/api/auth/user"], updatedUser);
+    onSuccess: (updatedUser: any) => {
+      // tryNetworkOrEnqueueFocusMemo already updates the user cache when
+      // it queues the change offline, but writing it again here keeps
+      // the online and offline paths uniform.
+      if (updatedUser) {
+        queryClient.setQueryData(["/api/auth/user"], updatedUser);
+      }
     },
     onError: () => {
       toast({ title: "Failed to save points to fix", variant: "destructive" });
@@ -313,12 +328,7 @@ export function PointsToFix() {
           </DialogHeader>
 
           <div className="space-y-4">
-            {offlineView ? (
-              <OfflinePlaceholder
-                testId="card-offline-points-to-fix"
-                hint="Your points to fix aren't editable offline. They'll be back when you reconnect."
-              />
-            ) : points.length === 0 ? (
+            {points.length === 0 ? (
               <p className="text-sm text-muted-foreground italic py-4 text-center">
                 No points yet. Add one below.
               </p>

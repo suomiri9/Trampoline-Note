@@ -59,6 +59,7 @@ function urlForKind(kind: QueueKind): string {
     case 'score': return '/api/scores';
     case 'skill': return '/api/skills';
     case 'routine': return '/api/routines';
+    case 'focusMemo': return '/api/auth/focus-memo';
   }
 }
 
@@ -338,7 +339,111 @@ function remapBody(kind: QueueKind, body: any, idMap: Map<number, number>): any 
     }
     return next;
   }
+  if (kind === 'focusMemo') {
+    if (typeof body.focusMemo !== 'string') return body;
+    try {
+      const arr = JSON.parse(body.focusMemo);
+      if (!Array.isArray(arr)) return body;
+      const remapped = arr.map((p: any) => ({
+        ...p,
+        ...(Array.isArray(p?.skillIds)
+          ? { skillIds: p.skillIds.map((id: number) => idMap.get(id) ?? id) }
+          : {}),
+        ...(Array.isArray(p?.routineIds)
+          ? { routineIds: p.routineIds.map((id: number) => idMap.get(id) ?? id) }
+          : {}),
+      }));
+      return { ...body, focusMemo: JSON.stringify(remapped) };
+    } catch {
+      return body;
+    }
+  }
   return body;
+}
+
+/**
+ * Apply a focus-memo change optimistically to the cached user (both
+ * IndexedDB and react-query caches) so the UI reflects it immediately
+ * and the change survives a reload while the device is offline.
+ */
+async function applyOptimisticFocusMemo(focusMemo: string): Promise<any> {
+  let updated: any = null;
+  try {
+    const cached = await cacheGet<any>('user');
+    if (cached) {
+      updated = { ...cached, focusMemo };
+      await cacheSet('user', updated);
+    }
+  } catch {
+    // ignore
+  }
+  const current = queryClient.getQueryData<any>(['/api/auth/user']);
+  if (current) {
+    updated = { ...current, focusMemo };
+    queryClient.setQueryData(['/api/auth/user'], updated);
+  }
+  return updated;
+}
+
+/**
+ * Queue a focus-memo PATCH while collapsing any prior queued focus-memo
+ * update — only the most recent state needs to reach the server.
+ */
+export async function enqueueFocusMemoUpdate(focusMemo: string): Promise<any> {
+  const existing = await queueAll();
+  for (const item of existing) {
+    if (item.kind === 'focusMemo' && item.id != null) {
+      await queueDelete(item.id);
+    }
+  }
+  await queueAdd({
+    kind: 'focusMemo',
+    url: urlForKind('focusMemo'),
+    method: 'PATCH',
+    body: { focusMemo },
+    tempId: 0,
+    createdAt: Date.now(),
+  });
+  const optimistic = await applyOptimisticFocusMemo(focusMemo);
+  notifyQueueChange();
+  return optimistic;
+}
+
+/**
+ * Try to PATCH the focus memo over the network; if offline, queue the
+ * update and return the optimistic user. Mirrors the offline-create
+ * helpers used for skills/routines.
+ */
+export async function tryNetworkOrEnqueueFocusMemo<T extends object>(
+  focusMemo: string,
+  doFetch: (signal: AbortSignal) => Promise<T>,
+  timeoutMs = 12000,
+): Promise<T | (T & { _queuedOffline: true })> {
+  const offline = getOfflineModeEnabled();
+  const onLine = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+  const enqueue = async (): Promise<T & { _queuedOffline: true }> => {
+    const u = await enqueueFocusMemoUpdate(focusMemo);
+    return { ...(u as object), _queuedOffline: true } as T & { _queuedOffline: true };
+  };
+
+  if (offline && !onLine) {
+    return enqueue();
+  }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => {
+    try { ctrl.abort(); } catch { /* ignore */ }
+  }, timeoutMs);
+  try {
+    return await doFetch(ctrl.signal);
+  } catch (err) {
+    if (offline && isNetworkOrAbortError(err)) {
+      return enqueue();
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function drainQueue(): Promise<DrainResult> {
@@ -431,6 +536,20 @@ export async function drainQueue(): Promise<DrainResult> {
             const data = await res.clone().json();
             if (data && typeof data.id === 'number') {
               idMap.set(item.tempId, data.id);
+            }
+          } catch {
+            // ignore — best effort
+          }
+        }
+        // For focus-memo, refresh the cached user so the server's
+        // canonical state (including any timestamps it sets) lands in
+        // both caches and replaces any optimistic local copy.
+        if (item.kind === 'focusMemo') {
+          try {
+            const data = await res.clone().json();
+            if (data) {
+              await cacheSet('user', data);
+              queryClient.setQueryData(['/api/auth/user'], data);
             }
           } catch {
             // ignore — best effort
