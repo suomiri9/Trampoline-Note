@@ -143,7 +143,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
           <p className="text-foreground/90 leading-relaxed whitespace-pre-wrap">{note.content}</p>
           
           {skillsData.length > 0 && (
-            <div className="space-y-2 pt-3 border-t border-border/20">
+            <div className="space-y-2 pt-3 border-t border-border/40">
               <div className="flex flex-col gap-1.5">
                 {(() => {
                   const groups: ({ id: number; reps?: number } | { id: number; reps?: number }[])[] = [];
