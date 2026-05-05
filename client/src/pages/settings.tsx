@@ -230,9 +230,11 @@ export default function SettingsPage() {
                   data-testid="toggle-offline-mode"
                 />
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Avoid using multiple devices while offline mode is on to prevent mix-ups. Anything you create offline will sync when you reconnect.
-              </p>
+              {offlineModeEnabled && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Avoid using multiple devices while offline mode is on to prevent mix-ups. Anything you create offline will sync when you reconnect.
+                </p>
+              )}
               {offlineModeEnabled && (
                 <div className="mt-3 flex items-center justify-between rounded-xl bg-secondary/40 px-3 py-2 gap-3">
                   <div className="min-w-0">
