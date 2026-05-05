@@ -1,5 +1,6 @@
 import { format } from "date-fns";
-import { Calendar, MoreVertical, Pencil, Trash2, Clock, CloudOff } from "lucide-react";
+import { Calendar, MoreVertical, Pencil, Trash2, Clock } from "lucide-react";
+import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { type Note } from "@shared/schema";
 import { parseNoteSkills, calculateTotalDD } from "@/lib/training-utils";
 import { StarRating } from "./star-rating";
@@ -71,13 +72,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
           </div>
           {isPending ? (
             <div className="flex items-center gap-1">
-              <Badge
-                variant="outline"
-                className="gap-1 px-2 py-0.5 h-6 text-[10px] font-semibold border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 bg-amber-50/60 dark:bg-amber-900/10"
-                data-testid={`badge-pending-sync-${note.id}`}
-              >
-                <CloudOff className="w-3 h-3" /> Pending sync
-              </Badge>
+              <PendingSyncBadge testId={`badge-pending-sync-${note.id}`} />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button

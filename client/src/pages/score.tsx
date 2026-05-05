@@ -9,9 +9,11 @@ import { PageLayout } from "@/components/page-layout";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
+import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { useOnline } from "@/hooks/use-online";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
-import { isQueuedOfflineResult, tryNetworkOrEnqueue, type OfflineQueuedResult } from "@/lib/offline-queue";
+import { useQueuedScores } from "@/hooks/use-queued-scores";
+import { deleteQueuedByTempId, isQueuedOfflineResult, tryNetworkOrEnqueue, type OfflineQueuedResult } from "@/lib/offline-queue";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,6 +66,7 @@ export default function ScorePage() {
     queryKey: ["/api/scores"],
     enabled: !(offlineModeEnabled && !isOnline),
   });
+  const queuedScores = useQueuedScores();
   const { data: routines } = useQuery<Routine[]>({ queryKey: ["/api/routines"] });
   const { data: allSkills } = useQuery<Skill[]>({ queryKey: ["/api/skills"] });
 
@@ -484,10 +487,113 @@ export default function ScorePage() {
       )}
 
       <div className="space-y-4">
+        {queuedScores.map((score) => {
+          const routine = routines?.find(r => r.id === score.routineId);
+          const routineVol = routines?.find(r => r.id === score.routineIdVol);
+          return (
+            <Card key={`pending-${score.id}`} className="rounded-2xl overflow-hidden relative border-amber-200 dark:border-amber-900/50" data-testid={`card-score-pending-${score.id}`}>
+              <div className="absolute top-2 right-2 z-10">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" data-testid={`btn-score-actions-${score.id}`}>
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                    <DropdownMenuItem
+                      className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive"
+                      onClick={async () => {
+                        const ok = await deleteQueuedByTempId(score.id);
+                        if (ok) toast({ title: "Pending score discarded" });
+                      }}
+                      data-testid={`btn-score-discard-${score.id}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Discard
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div className="p-4 pr-12 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-lg">{format(new Date(score.date), "EEE, d MMMM yyyy")}</span>
+                    <PendingSyncBadge testId={`badge-pending-score-${score.id}`} />
+                    <Badge variant={score.type === "competition" ? "default" : "outline"} className="rounded-lg capitalize text-[10px]">
+                      {score.type}
+                    </Badge>
+                    <Badge variant="secondary" className="rounded-lg capitalize text-[10px]">
+                      {score.category === "both" ? "Set & Vol" : score.category === "vol_vol" ? "Vol & Vol" : score.category}
+                    </Badge>
+                    {routine && (
+                      <Badge variant="secondary" className="rounded-lg text-[10px]">
+                        {score.category === "vol_vol" ? "Vol 1: " : ""}{routine.name}{score.attempt != null ? ` (attempt ${score.attempt})` : ""}
+                      </Badge>
+                    )}
+                    {routineVol && (score.category === "both" || score.category === "vol_vol") && (
+                      <Badge variant="secondary" className="rounded-lg text-[10px]">
+                        {score.category === "vol_vol" ? "Vol 2: " : "Vol: "}{routineVol.name}{score.attemptVol != null ? ` (attempt ${score.attemptVol})` : ""}
+                      </Badge>
+                    )}
+                  </div>
+                  {score.type === "competition" && (
+                    <div className="text-sm font-medium text-primary flex items-center gap-2">
+                      <span>{score.competitionName}</span>
+                      {score.rank && <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/20 hover:bg-yellow-500/20">#{score.rank}</Badge>}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                    <div className="bg-secondary/5 p-2 rounded-lg">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">
+                        {score.category === "both"
+                          ? "Set Score"
+                          : score.category === "vol_vol"
+                            ? "Vol Score 1"
+                            : "Scores"}
+                      </p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono">
+                        <span>E: {score.execution.toFixed(1)}</span>
+                        <span>D: {score.difficulty.toFixed(1)}</span>
+                        <span>H: {score.horizontal.toFixed(1)}</span>
+                        <span>T: {score.timeOfFlight.toFixed(2)}</span>
+                        <span className="font-bold text-primary">Total: {score.total.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    {(score.category === "both" || score.category === "vol_vol") && (
+                      <div className="bg-primary/5 p-2 rounded-lg">
+                        <p className="text-[10px] font-bold text-primary/60 uppercase mb-1">{score.category === "vol_vol" ? "Vol Score 2" : "Vol Score"}</p>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono">
+                          <span>E: {score.executionVol?.toFixed(1)}</span>
+                          <span>D: {score.difficultyVol?.toFixed(1)}</span>
+                          <span>H: {score.horizontalVol?.toFixed(1)}</span>
+                          <span>T: {score.timeOfFlightVol?.toFixed(2)}</span>
+                          <span className="font-bold text-primary">Total: {score.totalVol?.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {(score.category === "both" || score.category === "vol_vol") && (
+                  <div className="flex items-center sm:pl-4">
+                    <div className="text-right">
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider leading-none mb-1">Grand Total</p>
+                      <p className="text-2xl font-display font-black text-primary leading-none">
+                        {(score.total + (score.totalVol || 0)).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          );
+        })}
         {offlineModeEnabled && !isOnline ? (
           <OfflinePlaceholder
             testId="card-offline-scores"
-            hint="Previous scores aren't available offline. They'll be back when you reconnect."
+            hint={
+              queuedScores.length > 0
+                ? "Synced scores aren't available offline. They'll be back when you reconnect."
+                : "Previous scores aren't available offline. They'll be back when you reconnect."
+            }
           />
         ) : null}
         {(!offlineModeEnabled || isOnline) && scores?.map((score) => {
@@ -584,7 +690,7 @@ export default function ScorePage() {
             </Card>
           );
         })}
-        {(!offlineModeEnabled || isOnline) && scores?.length === 0 && (
+        {(!offlineModeEnabled || isOnline) && scores?.length === 0 && queuedScores.length === 0 && (
           <div className="text-center py-20 bg-secondary/5 rounded-3xl">
             <Trophy className="w-12 h-12 text-yellow-300 dark:text-yellow-600 mx-auto mb-4" />
             <p className="text-muted-foreground font-medium">No scores recorded yet.</p>

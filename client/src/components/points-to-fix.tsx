@@ -3,7 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tryNetworkOrEnqueueFocusMemo } from "@/lib/offline-queue";
 import { useAuth } from "@/hooks/use-auth";
 import { useSkills } from "@/hooks/use-skills";
+import { useHasQueuedFocusMemo } from "@/hooks/use-has-queued-focus-memo";
 import { useToast } from "@/hooks/use-toast";
+import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { Wrench, Plus, X, Trash2, Loader2, Search, Pencil, Check, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -98,6 +100,7 @@ export function PointsToFix() {
   const { toast } = useToast();
   const { data: skills } = useSkills();
   const { data: routines } = useQuery<Routine[]>({ queryKey: ["/api/routines"] });
+  const hasQueuedFocusMemo = useHasQueuedFocusMemo();
 
   const points = useMemo(() => parsePoints(user?.focusMemo), [user?.focusMemo]);
 
@@ -318,11 +321,14 @@ export function PointsToFix() {
       >
         <DialogContent ref={dialogContentRef} className="sm:max-w-[500px] md:max-w-[680px] w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] max-h-[85vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 flex-wrap">
               <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               Points to Fix
               {mutation.isPending && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+              )}
+              {hasQueuedFocusMemo && !mutation.isPending && (
+                <PendingSyncBadge testId="badge-pending-focus-memo" />
               )}
             </DialogTitle>
           </DialogHeader>

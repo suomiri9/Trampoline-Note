@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
+import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -383,7 +384,14 @@ export default function SkillsPage() {
                             onClick={() => navigate(`/skills/${skill.id}`)}
                             testId={`row-skill-${skill.id}`}
                           >
-                            <TableCell className="font-medium">{skill.name}</TableCell>
+                            <TableCell className="font-medium">
+                              <span className="inline-flex items-center gap-2 flex-wrap">
+                                <span>{skill.name}</span>
+                                {skill.id < 0 && (
+                                  <PendingSyncBadge size="xs" testId={`badge-pending-skill-${skill.id}`} />
+                                )}
+                              </span>
+                            </TableCell>
                             <TableCell>{skill.code}</TableCell>
                             <TableCell>{skill.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
@@ -501,7 +509,14 @@ export default function SkillsPage() {
                             onClick={() => navigate(`/skills/${drill.id}`)}
                             testId={`row-drill-${drill.id}`}
                           >
-                            <TableCell className="font-medium">{drill.name}</TableCell>
+                            <TableCell className="font-medium">
+                              <span className="inline-flex items-center gap-2 flex-wrap">
+                                <span>{drill.name}</span>
+                                {drill.id < 0 && (
+                                  <PendingSyncBadge size="xs" testId={`badge-pending-drill-${drill.id}`} />
+                                )}
+                              </span>
+                            </TableCell>
                             <TableCell>{drill.code}</TableCell>
                             <TableCell>{drill.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
@@ -677,7 +692,14 @@ export default function SkillsPage() {
                             className={editingSkill?.id === conn.id ? "bg-muted/50" : ""}
                             testId={`row-connection-${conn.id}`}
                           >
-                            <TableCell className="font-medium">{conn.name}</TableCell>
+                            <TableCell className="font-medium">
+                              <span className="inline-flex items-center gap-2 flex-wrap">
+                                <span>{conn.name}</span>
+                                {conn.id < 0 && (
+                                  <PendingSyncBadge size="xs" testId={`badge-pending-connection-${conn.id}`} />
+                                )}
+                              </span>
+                            </TableCell>
                             <TableCell>
                               <div className="flex flex-wrap gap-1">
                                 {conn.skillIds?.map((sid, idx) => (

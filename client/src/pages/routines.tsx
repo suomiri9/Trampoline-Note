@@ -15,6 +15,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Trash2, GripVertical, Pencil, X, Layers, Archive, ArchiveRestore, MoreVertical, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { type Routine } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
@@ -290,7 +291,12 @@ export default function RoutinesPage() {
                 <Card key={routine.id} className={cn("overflow-hidden cursor-pointer hover:shadow-md transition-shadow", editingRoutine?.id === routine.id && "ring-2 ring-primary")} onClick={() => navigate(`/routines/${routine.id}`)} data-testid={`card-routine-${routine.id}`}>
                   <div className="p-4 flex items-center justify-between bg-muted/30">
                     <div>
-                      <h3 className="font-bold text-lg">{routine.name}</h3>
+                      <h3 className="font-bold text-lg flex items-center gap-2 flex-wrap">
+                        <span>{routine.name}</span>
+                        {routine.id < 0 && (
+                          <PendingSyncBadge testId={`badge-pending-routine-${routine.id}`} />
+                        )}
+                      </h3>
                       <p className="text-sm text-muted-foreground">Total Difficulty: {calcDDFromSkillIds(routine.skillIds, allItems || []).toFixed(1)}</p>
                     </div>
                     <div onClick={(e) => e.stopPropagation()}>
