@@ -1,6 +1,14 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import { getOfflineModeEnabled } from "./lib/offline-mode";
+import { registerServiceWorker } from "./lib/offline-control";
+
+if (getOfflineModeEnabled()) {
+  window.addEventListener("load", () => {
+    void registerServiceWorker();
+  });
+}
 
 const RESIZE_OBSERVER_RE = /ResizeObserver loop (completed with undelivered notifications|limit exceeded)/;
 

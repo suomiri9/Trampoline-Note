@@ -17,6 +17,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Target, Layers, BarChart3, Trophy, Loader2, Settings } from "lucide-react";
 import { useEffect } from "react";
+import { useOfflineMode } from "@/hooks/use-offline-mode";
+import { drainQueue } from "@/lib/offline-queue";
+import { useToast } from "@/hooks/use-toast";
 
 function Navigation() {
   const [location] = useLocation();
@@ -97,6 +100,32 @@ function Router() {
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [offlineModeEnabled] = useOfflineMode();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!offlineModeEnabled || !isAuthenticated) return;
+    let cancelled = false;
+    const tryDrain = async () => {
+      if (typeof navigator !== "undefined" && !navigator.onLine) return;
+      const { synced } = await drainQueue();
+      if (cancelled) return;
+      if (synced > 0) {
+        toast({
+          title: `Synced ${synced} offline ${synced === 1 ? "entry" : "entries"}.`,
+        });
+      }
+    };
+    void tryDrain();
+    const onOnline = () => {
+      void tryDrain();
+    };
+    window.addEventListener("online", onOnline);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("online", onOnline);
+    };
+  }, [offlineModeEnabled, isAuthenticated, toast]);
 
   useEffect(() => {
     const vv = window.visualViewport;

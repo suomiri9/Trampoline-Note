@@ -1,20 +1,69 @@
 import { useState } from "react";
-import { Settings as SettingsIcon, LogOut, Loader2, Mail, User as UserIcon, Clock } from "lucide-react";
+import { Settings as SettingsIcon, LogOut, Loader2, Mail, User as UserIcon, Clock, WifiOff, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { PageLayout } from "@/components/page-layout";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Switch } from "@/components/ui/switch";
 import { useTimeFormat } from "@/hooks/use-time-format";
+import { useOfflineMode } from "@/hooks/use-offline-mode";
+import { useOnline } from "@/hooks/use-online";
+import { useQueueCount, drainQueue } from "@/lib/offline-queue";
+import { enableOfflineMode, disableOfflineMode } from "@/lib/offline-control";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 export default function SettingsPage() {
   const { user, logout, isLoggingOut } = useAuth();
+  const { toast } = useToast();
   const [showSignOutAlert, setShowSignOutAlert] = useState(false);
   const [timeFormat, setTimeFormat] = useTimeFormat();
+  const [offlineModeEnabled, setOfflineModeEnabled] = useOfflineMode();
+  const isOnline = useOnline();
+  const pendingCount = useQueueCount();
+  const [busyToggle, setBusyToggle] = useState(false);
+  const [draining, setDraining] = useState(false);
 
   const displayName =
     user?.displayName ??
     (user?.firstName ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}` : "My Account");
+
+  const handleToggleOffline = async (next: boolean) => {
+    if (busyToggle) return;
+    setBusyToggle(true);
+    try {
+      if (next) {
+        await enableOfflineMode();
+        toast({ title: "Offline mode is on" });
+      } else {
+        await disableOfflineMode();
+        toast({ title: "Offline mode is off" });
+      }
+    } catch {
+      toast({ title: "Failed to update offline mode", variant: "destructive" });
+    } finally {
+      setBusyToggle(false);
+    }
+  };
+
+  const handleSyncNow = async () => {
+    if (draining || !isOnline) return;
+    setDraining(true);
+    try {
+      const { synced } = await drainQueue();
+      if (synced > 0) toast({ title: `Synced ${synced} offline ${synced === 1 ? "entry" : "entries"}.` });
+      else toast({ title: "Nothing to sync." });
+    } finally {
+      setDraining(false);
+    }
+  };
+
+  const handleSignOutClick = () => setShowSignOutAlert(true);
+
+  const signOutDescription =
+    pendingCount > 0
+      ? `You have ${pendingCount} entr${pendingCount === 1 ? "y" : "ies"} waiting to sync — signing out will lose ${pendingCount === 1 ? "it" : "them"}.`
+      : "Are you sure you want to sign out of your account?";
 
   return (
     <PageLayout>
@@ -55,13 +104,65 @@ export default function SettingsPage() {
             <Button
               variant="outline"
               className="w-full justify-start gap-2 h-11 rounded-xl text-sm text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 mt-2"
-              onClick={() => setShowSignOutAlert(true)}
+              onClick={handleSignOutClick}
               disabled={isLoggingOut}
               data-testid="btn-sign-out"
             >
               {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
               Sign out
             </Button>
+          </div>
+        </section>
+
+        <section className="rounded-2xl card-3d p-5">
+          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Offline</h2>
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-secondary/50 mt-0.5">
+              <WifiOff className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium">Offline mode</p>
+                <Switch
+                  checked={offlineModeEnabled}
+                  onCheckedChange={handleToggleOffline}
+                  disabled={busyToggle}
+                  data-testid="toggle-offline-mode"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Avoid using multiple devices while offline mode is on to prevent mix-ups. Anything you create offline will sync when you reconnect.
+              </p>
+              {offlineModeEnabled && (
+                <div className="mt-3 flex items-center justify-between rounded-xl bg-secondary/40 px-3 py-2 gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pending sync</p>
+                    <p
+                      className="text-sm font-medium"
+                      data-testid="text-pending-sync-count"
+                    >
+                      {pendingCount} {pendingCount === 1 ? "entry" : "entries"}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-lg gap-1.5"
+                    onClick={handleSyncNow}
+                    disabled={draining || !isOnline || pendingCount === 0}
+                    data-testid="btn-sync-now"
+                  >
+                    {draining ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    )}
+                    Sync now
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
@@ -102,7 +203,7 @@ export default function SettingsPage() {
         open={showSignOutAlert}
         onOpenChange={setShowSignOutAlert}
         title="Sign out?"
-        description="Are you sure you want to sign out of your account?"
+        description={signOutDescription}
         onConfirm={() => logout()}
         confirmLabel="Sign out"
       />

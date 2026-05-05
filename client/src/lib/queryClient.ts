@@ -1,4 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { cacheGet, cacheSet, cacheDelete } from "./offline-db";
+import { getOfflineModeEnabled } from "./offline-mode";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -23,22 +25,50 @@ export async function apiRequest(
   return res;
 }
 
+// Query keys whose responses we mirror into IndexedDB so they remain
+// readable when the device is offline (only when offline mode is on).
+const OFFLINE_CACHE_KEYS: Record<string, string> = {
+  "/api/skills": "skills",
+  "/api/routines": "routines",
+};
+
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
-    });
+  async <T>({ queryKey }: { queryKey: readonly unknown[] }) => {
+    const path = String(queryKey[0]);
+    const cacheKey = OFFLINE_CACHE_KEYS[path];
+    const offlineModeOn = getOfflineModeEnabled();
+    try {
+      const res = await fetch(queryKey.join("/") as string, {
+        credentials: "include",
+      });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        return null as T;
+      }
+
+      await throwIfResNotOk(res);
+      const data = (await res.json()) as T;
+      // Only mirror reference data into IndexedDB while offline mode is on.
+      // When offline mode is off we must not repopulate the offline store —
+      // that would defeat the wipe performed by disableOfflineMode() and
+      // could leak data on a shared device.
+      if (cacheKey && offlineModeOn) {
+        await cacheSet(cacheKey, data);
+      }
+      return data;
+    } catch (err) {
+      if (cacheKey && offlineModeOn) {
+        const cached = await cacheGet<T>(cacheKey);
+        if (cached !== null && cached !== undefined) return cached;
+        // Sane offline default for list endpoints so the UI does not crash.
+        return [] as unknown as T;
+      }
+      throw err;
     }
-
-    await throwIfResNotOk(res);
-    return await res.json();
   };
 
 export const queryClient = new QueryClient({
@@ -55,3 +85,5 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+export { cacheDelete };

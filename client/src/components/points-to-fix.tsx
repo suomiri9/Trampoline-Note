@@ -5,6 +5,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { useSkills } from "@/hooks/use-skills";
 import { useToast } from "@/hooks/use-toast";
 import { Wrench, Plus, X, Trash2, Loader2, Search, Pencil, Check } from "lucide-react";
+import { OfflinePlaceholder } from "@/components/offline-placeholder";
+import { useOfflineMode } from "@/hooks/use-offline-mode";
+import { useOnline } from "@/hooks/use-online";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -89,6 +92,9 @@ export function PointsToFix() {
   const { toast } = useToast();
   const { data: skills } = useSkills();
   const { data: routines } = useQuery<Routine[]>({ queryKey: ["/api/routines"] });
+  const [offlineModeEnabled] = useOfflineMode();
+  const isOnline = useOnline();
+  const offlineView = offlineModeEnabled && !isOnline;
 
   const points = useMemo(() => parsePoints(user?.focusMemo), [user?.focusMemo]);
 
@@ -301,7 +307,12 @@ export function PointsToFix() {
           </DialogHeader>
 
           <div className="space-y-4">
-            {points.length === 0 ? (
+            {offlineView ? (
+              <OfflinePlaceholder
+                testId="card-offline-points-to-fix"
+                hint="Your points to fix aren't editable offline. They'll be back when you reconnect."
+              />
+            ) : points.length === 0 ? (
               <p className="text-sm text-muted-foreground italic py-4 text-center">
                 No points yet. Add one below.
               </p>

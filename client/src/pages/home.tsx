@@ -6,13 +6,21 @@ import { NoteDialog } from "@/components/note-dialog";
 import { PointsToFix } from "@/components/points-to-fix";
 import { PageLayout } from "@/components/page-layout";
 import { Button } from "@/components/ui/button";
+import { OfflinePlaceholder } from "@/components/offline-placeholder";
+import { useOfflineMode } from "@/hooks/use-offline-mode";
+import { useOnline } from "@/hooks/use-online";
 import { type Note } from "@shared/schema";
 
 const PAGE_SIZE = 30;
 
 export default function Home() {
   const [limit, setLimit] = useState(PAGE_SIZE);
-  const { data, isLoading, isError, error, isFetching } = useNotesPage(limit);
+  const [offlineModeEnabled] = useOfflineMode();
+  const isOnline = useOnline();
+  const offlineView = offlineModeEnabled && !isOnline;
+  const { data, isLoading, isError, error, isFetching } = useNotesPage(limit, {
+    enabled: !offlineView,
+  });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
 
@@ -55,7 +63,12 @@ export default function Home() {
       </div>
 
       <main>
-        {isLoading ? (
+        {offlineView ? (
+          <OfflinePlaceholder
+            testId="card-offline-notes"
+            hint="Your training log isn't available offline. New entries you add will sync when you reconnect."
+          />
+        ) : isLoading ? (
           <div className="py-24 flex flex-col items-center justify-center text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary/40" />
             <p className="font-medium">Loading your logs...</p>

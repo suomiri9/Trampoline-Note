@@ -1,5 +1,8 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { api, buildUrl, type NoteInput, type NoteUpdateInput } from "@shared/routes";
+import { getOfflineModeEnabled } from "@/lib/offline-mode";
+import { enqueueCreate, isQueuedOfflineResult, type OfflineQueuedResult } from "@/lib/offline-queue";
+import type { z } from "zod";
 
 // Utility to parse standard error responses if needed
 async function handleResponse(res: Response, fallbackError: string) {
@@ -28,10 +31,11 @@ export function useNotes() {
   });
 }
 
-export function useNotesPage(limit: number) {
+export function useNotesPage(limit: number, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [api.notes.list.path, { limit }],
     placeholderData: keepPreviousData,
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       const url = `${api.notes.list.path}?limit=${limit}`;
       const res = await fetch(url, { credentials: "include" });
@@ -59,11 +63,22 @@ export function useNote(id: number) {
   });
 }
 
+type CreateNoteResult =
+  | OfflineQueuedResult
+  | z.infer<typeof api.notes.create.responses[201]>;
+
 export function useCreateNote() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useMutation<CreateNoteResult, Error, NoteInput>({
     mutationFn: async (data: NoteInput) => {
       const validated = api.notes.create.input.parse(data);
+      if (
+        getOfflineModeEnabled() &&
+        typeof navigator !== "undefined" &&
+        !navigator.onLine
+      ) {
+        return await enqueueCreate("note", validated);
+      }
       const res = await fetch(api.notes.create.path, {
         method: api.notes.create.method,
         headers: { 'Content-Type': 'application/json' },
@@ -73,7 +88,8 @@ export function useCreateNote() {
       const responseData = await handleResponse(res, "Failed to create note");
       return api.notes.create.responses[201].parse(responseData);
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (isQueuedOfflineResult(result)) return;
       invalidateAllNotes(queryClient);
       invalidateAllHistory(queryClient);
     },

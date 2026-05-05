@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Loader2, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { OfflinePlaceholder } from "@/components/offline-placeholder";
+import { useOfflineMode } from "@/hooks/use-offline-mode";
+import { useOnline } from "@/hooks/use-online";
 import {
   format, parseISO, eachDayOfInterval, eachWeekOfInterval,
   startOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear,
@@ -21,10 +24,33 @@ export default function StatsPage() {
   const [range, setRange] = useState<Range>("week");
   const [offset, setOffset] = useState(0); // 0 = current period, -1 = previous, etc.
   const touchStartX = useRef<number | null>(null);
+  const [offlineModeEnabled] = useOfflineMode();
+  const isOnline = useOnline();
+  const offlineView = offlineModeEnabled && !isOnline;
 
   const { data: notes, isLoading: notesLoading } = useNotes();
   const { data: allItems, isLoading: skillsLoading } = useSkills();
   const { data: routines, isLoading: routinesLoading } = useRoutines();
+
+  if (offlineView) {
+    return (
+      <PageLayout>
+        <div className="flex items-center gap-3 mb-8">
+          <div className="p-3 bg-slate-100 dark:bg-slate-800/30 rounded-2xl icon-3d">
+            <TrendingUp className="w-6 h-6 text-slate-500" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-display font-bold">Progress Analytics</h1>
+            <p className="text-muted-foreground text-sm">Tracking your daily training intensity</p>
+          </div>
+        </div>
+        <OfflinePlaceholder
+          testId="card-offline-stats"
+          hint="Stats need your full training history. They'll be back when you reconnect."
+        />
+      </PageLayout>
+    );
+  }
 
   if (notesLoading || skillsLoading || routinesLoading) {
     return (

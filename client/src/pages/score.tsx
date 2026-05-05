@@ -2,12 +2,17 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertScoreSchema, type Score, type Routine, type Skill } from "@shared/schema";
+import { insertScoreSchema, type Score, type Routine, type Skill, type InsertScore } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { calcDDFromSkillIds } from "@/lib/training-utils";
 import { PageLayout } from "@/components/page-layout";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
+import { OfflinePlaceholder } from "@/components/offline-placeholder";
+import { useOnline } from "@/hooks/use-online";
+import { useOfflineMode } from "@/hooks/use-offline-mode";
+import { enqueueCreate, isQueuedOfflineResult, type OfflineQueuedResult } from "@/lib/offline-queue";
+import { getOfflineModeEnabled } from "@/lib/offline-mode";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,24 +58,41 @@ export default function ScorePage() {
   const [customSkillIds, setCustomSkillIds] = useState<number[] | null>(null);
   const [customSkillIdsVol, setCustomSkillIdsVol] = useState<number[] | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<"set" | "vol" | null>(null);
+  const [offlineModeEnabled] = useOfflineMode();
+  const isOnline = useOnline();
 
-
-  const { data: scores } = useQuery<Score[]>({ queryKey: ["/api/scores"] });
+  const { data: scores } = useQuery<Score[]>({
+    queryKey: ["/api/scores"],
+    enabled: !(offlineModeEnabled && !isOnline),
+  });
   const { data: routines } = useQuery<Routine[]>({ queryKey: ["/api/routines"] });
   const { data: allSkills } = useQuery<Skill[]>({ queryKey: ["/api/skills"] });
 
-  const createMutation = useMutation({
-    mutationFn: async (values: any) => {
+  type CreateScoreResult = OfflineQueuedResult | Score;
+  const createMutation = useMutation<CreateScoreResult, Error, InsertScore>({
+    mutationFn: async (values: InsertScore) => {
+      if (
+        getOfflineModeEnabled() &&
+        typeof navigator !== "undefined" &&
+        !navigator.onLine
+      ) {
+        return await enqueueCreate("score", values);
+      }
       const res = await apiRequest("POST", "/api/scores", values);
-      return res.json();
+      return (await res.json()) as Score;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
+    onSuccess: (result) => {
+      const queued = isQueuedOfflineResult(result);
+      if (!queued) {
+        queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
+      }
       setIsAdding(false);
       setCustomSkillIds(null);
       setCustomSkillIdsVol(null);
       form.reset({ ...scoreDefaults, date: new Date().toISOString().split('T')[0] });
-      toast({ title: "Score saved!" });
+      toast({
+        title: queued ? "Saved offline. Will sync when reconnected." : "Score saved!",
+      });
     }
   });
 
@@ -435,7 +457,13 @@ export default function ScorePage() {
       )}
 
       <div className="space-y-4">
-        {scores?.map((score) => {
+        {offlineModeEnabled && !isOnline ? (
+          <OfflinePlaceholder
+            testId="card-offline-scores"
+            hint="Previous scores aren't available offline. They'll be back when you reconnect."
+          />
+        ) : null}
+        {(!offlineModeEnabled || isOnline) && scores?.map((score) => {
           const routine = routines?.find(r => r.id === score.routineId);
           const routineVol = routines?.find(r => r.id === score.routineIdVol);
           return (
@@ -529,7 +557,7 @@ export default function ScorePage() {
             </Card>
           );
         })}
-        {scores?.length === 0 && (
+        {(!offlineModeEnabled || isOnline) && scores?.length === 0 && (
           <div className="text-center py-20 bg-secondary/5 rounded-3xl">
             <Trophy className="w-12 h-12 text-yellow-300 dark:text-yellow-600 mx-auto mb-4" />
             <p className="text-muted-foreground font-medium">No scores recorded yet.</p>

@@ -1,8 +1,9 @@
-import { Activity, Loader2, AlertCircle } from "lucide-react";
+import { Activity, Loader2, AlertCircle, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
+import { useOnline } from "@/hooks/use-online";
 import { useState } from "react";
 
 export default function LoginPage() {
@@ -11,12 +12,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const isOnline = useOnline();
 
   const error = mode === "login" ? loginError : registerError;
   const isPending = mode === "login" ? isLoggingIn : isRegistering;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isOnline) return;
     try {
       if (mode === "login") {
         await login({ email, password });
@@ -26,6 +29,37 @@ export default function LoginPage() {
     } catch {
     }
   };
+
+  if (!isOnline) {
+    return (
+      <div
+        className="min-h-[100svh] flex flex-col items-center justify-center bg-mesh px-6"
+        data-testid="page-login-offline"
+      >
+        <div className="w-full max-w-sm flex flex-col items-center gap-8 text-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-primary-foreground btn-3d">
+              <Activity className="w-8 h-8" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-display font-bold tracking-tight">Trampoline Note</h1>
+              <p className="text-muted-foreground mt-1.5">Track your training, skills, and scores.</p>
+            </div>
+          </div>
+
+          <div className="w-full card-3d rounded-2xl p-6 flex flex-col items-center gap-3">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-secondary text-muted-foreground">
+              <WifiOff className="w-6 h-6" />
+            </div>
+            <h2 className="text-lg font-semibold">You're offline</h2>
+            <p className="text-sm text-muted-foreground" data-testid="text-auth-offline">
+              Connect to the internet to sign in.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[100svh] flex flex-col items-center justify-center bg-mesh px-6">

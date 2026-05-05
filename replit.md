@@ -52,6 +52,30 @@ Custom email/password authentication. All API routes are protected with `isAuthe
 - Score page skill editor containers: `min-h-[280px]` so overlay has room
 - Calendar nav buttons and stats week nav: `h-9 w-9` (44px touch target)
 
+## Offline Mode (PWA + sync queue)
+
+Opt-in PWA in Settings → Offline. When ON:
+- Hand-written service worker (`client/public/sw.js`) caches the app shell (HTML/JS/CSS, manifest, icons). Network-first for navigations with cached `/` fallback; stale-while-revalidate for assets/fonts. `/api` and Vite HMR routes always bypass the cache. Registered only when offline mode is enabled.
+- IndexedDB store `tn-offline` (`client/src/lib/offline-db.ts`) holds two stores: `cache` (skills/routines/user mirror) and `queue` (pending creates).
+- `client/src/lib/queryClient.ts` mirrors `/api/skills` and `/api/routines` responses into IDB and falls back to them when offline.
+- `useAuth` mirrors the user record into IDB so the app can boot offline; otherwise login is required.
+- Note creates (`useCreateNote`) and score creates (Score page `createMutation`) detect `offlineMode && !navigator.onLine` and enqueue via `enqueueCreate(kind, body)` instead of POSTing.
+- `App.tsx` drains the queue on app start, on `online` event, and Settings exposes a "Sync now" button. Successful drains toast "Synced N offline entries." Sequential POSTs; stop on network/auth errors, drop on 4xx-non-auth.
+- Pages render `OfflinePlaceholder` ("You are not connected to the internet.") when offline+offline-mode-on for: Home (training log), Score (previous scores list), Stats, and Points to Fix dialog.
+- Sign-out warning includes pending count if non-zero.
+- Turning offline mode OFF: drains the queue (best-effort if online), clears IDB, unregisters the service worker, and deletes any caches.
+- Login page shows "Connect to the internet to sign in." and disables the submit button when offline.
+
+Files:
+- `client/public/sw.js` — service worker
+- `client/src/lib/offline-db.ts` — IDB wrapper
+- `client/src/lib/offline-mode.ts` — localStorage flag + subscribers
+- `client/src/lib/offline-queue.ts` — enqueue / drain / `useQueueCount`
+- `client/src/lib/offline-control.ts` — enable/disable, register/unregister SW
+- `client/src/hooks/use-online.ts` — `navigator.onLine` reactive hook
+- `client/src/hooks/use-offline-mode.ts` — reactive flag hook
+- `client/src/components/offline-placeholder.tsx` — reusable card
+
 ## Running
 
 Workflow "Start application" runs `npm run dev` which starts Express + Vite on port 5000.
