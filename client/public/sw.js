@@ -3,7 +3,7 @@
  * so an installed PWA can launch with zero network. API requests are NOT
  * intercepted — offline behaviour for data is handled at the React layer. */
 
-const CACHE = 'tn-shell-v2';
+const CACHE = 'tn-shell-v3';
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
@@ -47,6 +47,12 @@ function isBypassed(url) {
   if (url.origin !== self.location.origin) return false;
   if (url.pathname === '/sw.js') return true;
   if (url.pathname.startsWith('/api/') || url.pathname === '/api') return true;
+  // Dev-server paths: never cache these. In dev, contents change behind a
+  // stable URL, so stale-while-revalidate would pin users to old JS — and,
+  // worst, would serve old code while offline so a deployed fix never reaches
+  // them until they reload twice while online.
+  if (url.pathname.startsWith('/src/')) return true;
+  if (url.pathname.startsWith('/node_modules/')) return true;
   if (url.pathname.startsWith('/@vite') || url.pathname.startsWith('/@react') || url.pathname.startsWith('/@id/') || url.pathname.startsWith('/@fs/')) return true;
   if (url.pathname.startsWith('/vite-hmr') || url.pathname.startsWith('/__vite')) return true;
   return false;
