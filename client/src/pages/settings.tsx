@@ -430,6 +430,12 @@ export default function SettingsPage() {
                         Some data isn't downloaded yet. Reconnect to finish.
                       </p>
                     )}
+                    <p
+                      className="text-[11px] text-muted-foreground mt-2"
+                      data-testid="text-download-wipe-warning"
+                    >
+                      ⚠️ The download stays on this device through tab closes and restarts. It is wiped if you turn offline mode off, clear this site's browser data, or use a different browser. Your phone may also evict it if storage runs very low.
+                    </p>
                   </div>
                 );
               })()}
