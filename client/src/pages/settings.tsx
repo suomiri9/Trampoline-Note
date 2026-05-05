@@ -319,7 +319,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <main className="space-y-6 max-w-2xl">
+      <main className="space-y-6">
         <section className="rounded-2xl card-3d p-5">
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Account</h2>
           <div className="space-y-3">
