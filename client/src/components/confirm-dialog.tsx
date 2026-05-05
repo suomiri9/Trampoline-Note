@@ -32,7 +32,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="rounded-2xl">
+      <AlertDialogContent className="rounded-2xl max-w-[320px] sm:max-w-lg w-[calc(100vw-48px)] p-5 sm:p-6">
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
