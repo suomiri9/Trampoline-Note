@@ -398,6 +398,22 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     });
   };
 
+  const addNoteAndFocus = (noteIdx: number) => {
+    updateSkillNote(noteIdx, "");
+    setTimeout(() => {
+      const el = document.querySelector(`[data-testid="input-skill-note-${noteIdx}"]`) as HTMLInputElement | null;
+      if (!el) return;
+      const container = practiceListRef.current;
+      if (container) {
+        const containerRect = container.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        const target = elRect.top - containerRect.top + container.scrollTop - (container.clientHeight / 2) + (el.clientHeight / 2);
+        container.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+      }
+      el.focus();
+    }, 60);
+  };
+
   const totalDifficulty = calculateTotalDD(selectedSkills, allItems, routines);
 
   const onSubmit = (values: FormValues) => {
@@ -999,7 +1015,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="w-36 rounded-xl">
-                                              <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { updateSkillNote(idx, ""); } }}><MessageSquare className="h-3.5 w-3.5" /> {item.note !== undefined && item.note !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
+                                              <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { addNoteAndFocus(idx); } }}><MessageSquare className="h-3.5 w-3.5" /> {item.note !== undefined && item.note !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                             </DropdownMenuContent>
@@ -1054,7 +1070,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="w-36 rounded-xl">
-                                              <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { updateSkillNote(idx, ""); } }}><MessageSquare className="h-3.5 w-3.5" /> {item.note !== undefined && item.note !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
+                                              <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { addNoteAndFocus(idx); } }}><MessageSquare className="h-3.5 w-3.5" /> {item.note !== undefined && item.note !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                             </DropdownMenuContent>
@@ -1128,7 +1144,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           <DropdownMenuContent align="end" className="w-36 rounded-xl">
                                             <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => {
                                               if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); }
-                                              else { updateSkillNote(idx, ""); setTimeout(() => { const el = document.querySelector(`[data-testid="input-skill-note-${idx}"]`) as HTMLInputElement; if (el) el.focus(); }, 50); }
+                                              else { addNoteAndFocus(isConnected ? group.indices[0] : idx); }
                                             }}><MessageSquare className="h-3.5 w-3.5" /> {item.note !== undefined && item.note !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
                                             <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
                                             <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
