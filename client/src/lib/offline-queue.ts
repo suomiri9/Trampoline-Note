@@ -249,6 +249,20 @@ export async function clearOfflineDataAndQueue(): Promise<void> {
   notifyQueueChange();
 }
 
+/**
+ * Remove a not-yet-synced item from the queue by its tempId. Used when the
+ * user discards a pending offline entry from the UI before it has reached
+ * the server. Returns true if an item was removed.
+ */
+export async function deleteQueuedByTempId(tempId: number): Promise<boolean> {
+  const items = await queueAll();
+  const target = items.find((i) => i.tempId === tempId);
+  if (!target || target.id == null) return false;
+  await queueDelete(target.id);
+  notifyQueueChange();
+  return true;
+}
+
 export function useQueueCount(): number {
   const [count, setCount] = useState(0);
   useEffect(() => {

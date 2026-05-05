@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useDeleteNote } from "@/hooks/use-notes";
+import { deleteQueuedByTempId } from "@/lib/offline-queue";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { useTimeFormat, formatTime } from "@/hooks/use-time-format";
@@ -36,7 +37,16 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
   const [timeFormat] = useTimeFormat();
   const { toast } = useToast();
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
+    if (isPending) {
+      const removed = await deleteQueuedByTempId(note.id);
+      if (removed) {
+        toast({ title: "Pending session discarded." });
+      } else {
+        toast({ title: "Couldn't find that pending session.", variant: "destructive" });
+      }
+      return;
+    }
     deleteNote.mutate(note.id, {
       onSuccess: () => {
         toast({ title: "Session deleted", description: "Your training note has been removed." });
@@ -60,13 +70,36 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
             <span className="whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-400">{format(new Date(note.date), "EEE, d MMMM yyyy")}</span>
           </div>
           {isPending ? (
-            <Badge
-              variant="outline"
-              className="gap-1 px-2 py-0.5 h-6 text-[10px] font-semibold border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 bg-amber-50/60 dark:bg-amber-900/10"
-              data-testid={`badge-pending-sync-${note.id}`}
-            >
-              <CloudOff className="w-3 h-3" /> Pending sync
-            </Badge>
+            <div className="flex items-center gap-1">
+              <Badge
+                variant="outline"
+                className="gap-1 px-2 py-0.5 h-6 text-[10px] font-semibold border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 bg-amber-50/60 dark:bg-amber-900/10"
+                data-testid={`badge-pending-sync-${note.id}`}
+              >
+                <CloudOff className="w-3 h-3" /> Pending sync
+              </Badge>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground shrink-0"
+                    data-testid={`btn-pending-actions-${note.id}`}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                  <DropdownMenuItem
+                    onClick={() => setShowDeleteAlert(true)}
+                    className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                    data-testid={`btn-pending-delete-${note.id}`}
+                  >
+                    <Trash2 className="h-4 w-4" /> Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -299,10 +332,14 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
       <ConfirmDialog
         open={showDeleteAlert}
         onOpenChange={setShowDeleteAlert}
-        title="Delete Training Session?"
-        description="This action cannot be undone."
+        title={isPending ? "Discard pending session?" : "Delete Training Session?"}
+        description={
+          isPending
+            ? "It hasn't been uploaded yet, so it will be removed and won't sync."
+            : "This action cannot be undone."
+        }
         onConfirm={handleDelete}
-        confirmLabel="Delete"
+        confirmLabel={isPending ? "Discard" : "Delete"}
       />
     </>
   );
