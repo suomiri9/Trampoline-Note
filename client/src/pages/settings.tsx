@@ -56,6 +56,7 @@ export default function SettingsPage() {
   const [failedItems, setFailedItems] = useState<FailedItem[] | null>(null);
   const [confirmDiscardAll, setConfirmDiscardAll] = useState(false);
   const [storageBytes, setStorageBytes] = useState<number | null>(null);
+  const [estimateBytes, setEstimateBytes] = useState<number | null>(null);
 
   useEffect(() => {
     if (!offlineModeEnabled) {
@@ -82,6 +83,50 @@ export default function SettingsPage() {
       unsub();
     };
   }, [offlineModeEnabled, pendingCount, failedCount]);
+
+  // When offline mode is OFF, predict how much storage enabling it would use:
+  // measures the API payloads that get mirrored into IndexedDB plus the static
+  // app-shell files the service worker would precache.
+  useEffect(() => {
+    if (offlineModeEnabled) {
+      setEstimateBytes(null);
+      return;
+    }
+    let alive = true;
+    const measure = async () => {
+      try {
+        let total = 0;
+        const apiPaths = ["/api/skills", "/api/routines", "/api/auth/me"];
+        const shellPaths = [
+          "/",
+          "/manifest.webmanifest",
+          "/favicon.png",
+          "/icon-192.png",
+          "/icon-512.png",
+          "/apple-touch-icon.png",
+        ];
+        await Promise.all(
+          [...apiPaths, ...shellPaths].map(async (url) => {
+            try {
+              const res = await fetch(url, { credentials: "include" });
+              if (!res.ok) return;
+              const buf = await res.arrayBuffer();
+              total += buf.byteLength;
+            } catch {
+              // Ignore individual failures; we still surface what we measured.
+            }
+          }),
+        );
+        if (alive) setEstimateBytes(total > 0 ? total : null);
+      } catch {
+        if (alive) setEstimateBytes(null);
+      }
+    };
+    void measure();
+    return () => {
+      alive = false;
+    };
+  }, [offlineModeEnabled]);
 
   const formatBytes = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
@@ -265,12 +310,22 @@ export default function SettingsPage() {
                 />
               </div>
               {!offlineModeEnabled && (
-                <p
-                  className="text-xs text-muted-foreground mt-1"
-                  data-testid="text-offline-hint"
-                >
-                  Log sessions and scores with no internet connection — turn it on to get started.
-                </p>
+                <>
+                  <p
+                    className="text-xs text-muted-foreground mt-1"
+                    data-testid="text-offline-hint"
+                  >
+                    Log sessions and scores with no internet connection — turn it on to get started.
+                  </p>
+                  {estimateBytes !== null && (
+                    <p
+                      className="text-[11px] text-muted-foreground mt-1"
+                      data-testid="text-storage-estimate"
+                    >
+                      Estimated storage usage: ~{formatBytes(estimateBytes)}
+                    </p>
+                  )}
+                </>
               )}
               {offlineModeEnabled && (
                 <p className="text-xs text-muted-foreground mt-1">
