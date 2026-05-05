@@ -15,6 +15,7 @@ import {
   type FailedItem,
 } from './offline-db';
 import { queryClient } from './queryClient';
+import { getOfflineModeEnabled } from './offline-mode';
 
 const queueChangeListeners = new Set<() => void>();
 
@@ -66,6 +67,47 @@ export async function enqueueCreate(
   });
   notifyQueueChange();
   return { _queuedOffline: true, tempId };
+}
+
+function isNetworkOrAbortError(err: unknown): boolean {
+  if (!err) return false;
+  if (typeof DOMException !== 'undefined' && err instanceof DOMException && err.name === 'AbortError') return true;
+  if (err instanceof TypeError) return true; // fetch network errors are TypeError
+  const name = (err as { name?: string } | null | undefined)?.name;
+  return name === 'AbortError' || name === 'TypeError' || name === 'NetworkError';
+}
+
+/**
+ * Run a network create with an abort-controlled timeout. If offline mode is on
+ * AND either the browser knows it's offline OR the network attempt fails/times
+ * out, fall back to enqueueing the create so the mutation always settles
+ * quickly instead of hanging forever (e.g. when navigator.onLine lies on iOS
+ * PWAs or behind captive portals).
+ */
+export async function tryNetworkOrEnqueue<T>(
+  kind: QueueKind,
+  body: unknown,
+  doFetch: (signal: AbortSignal) => Promise<T>,
+  timeoutMs = 12000,
+): Promise<T | OfflineQueuedResult> {
+  const offline = getOfflineModeEnabled();
+  if (offline && typeof navigator !== 'undefined' && !navigator.onLine) {
+    return enqueueCreate(kind, body);
+  }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => {
+    try { ctrl.abort(); } catch { /* ignore */ }
+  }, timeoutMs);
+  try {
+    return await doFetch(ctrl.signal);
+  } catch (err) {
+    if (offline && isNetworkOrAbortError(err)) {
+      return enqueueCreate(kind, body);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function getQueueCount(): Promise<number> {

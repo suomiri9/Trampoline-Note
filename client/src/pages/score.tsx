@@ -11,8 +11,7 @@ import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { useOnline } from "@/hooks/use-online";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
-import { enqueueCreate, isQueuedOfflineResult, type OfflineQueuedResult } from "@/lib/offline-queue";
-import { getOfflineModeEnabled } from "@/lib/offline-mode";
+import { isQueuedOfflineResult, tryNetworkOrEnqueue, type OfflineQueuedResult } from "@/lib/offline-queue";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,15 +70,20 @@ export default function ScorePage() {
   type CreateScoreResult = OfflineQueuedResult | Score;
   const createMutation = useMutation<CreateScoreResult, Error, InsertScore>({
     mutationFn: async (values: InsertScore) => {
-      if (
-        getOfflineModeEnabled() &&
-        typeof navigator !== "undefined" &&
-        !navigator.onLine
-      ) {
-        return await enqueueCreate("score", values);
-      }
-      const res = await apiRequest("POST", "/api/scores", values);
-      return (await res.json()) as Score;
+      return await tryNetworkOrEnqueue("score", values, async (signal) => {
+        const res = await fetch("/api/scores", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(values),
+          credentials: "include",
+          signal,
+        });
+        if (!res.ok) {
+          const text = (await res.text()) || res.statusText;
+          throw new Error(`${res.status}: ${text}`);
+        }
+        return (await res.json()) as Score;
+      });
     },
     onSuccess: (result) => {
       const queued = isQueuedOfflineResult(result);

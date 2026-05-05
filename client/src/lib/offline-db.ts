@@ -26,8 +26,25 @@ function openDb(): Promise<IDBDatabase> {
         db.createObjectStore(STORE_FAILED, { keyPath: 'id', autoIncrement: true });
       }
     };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result;
+      // If a future tab/version asks us to upgrade, close so it isn't blocked.
+      db.onversionchange = () => {
+        try { db.close(); } catch { /* ignore */ }
+        dbPromise = null;
+      };
+      resolve(db);
+    };
+    req.onerror = () => {
+      dbPromise = null;
+      reject(req.error ?? new Error('IndexedDB open failed'));
+    };
+    req.onblocked = () => {
+      // Another tab is holding an older version open. Reject quickly so callers
+      // surface a clear error instead of hanging forever.
+      dbPromise = null;
+      reject(new Error('IndexedDB open blocked by another tab'));
+    };
   });
   return dbPromise;
 }

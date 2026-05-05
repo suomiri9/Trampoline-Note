@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { api, buildUrl, type NoteInput, type NoteUpdateInput } from "@shared/routes";
-import { getOfflineModeEnabled } from "@/lib/offline-mode";
-import { enqueueCreate, isQueuedOfflineResult, type OfflineQueuedResult } from "@/lib/offline-queue";
+import { isQueuedOfflineResult, tryNetworkOrEnqueue, type OfflineQueuedResult } from "@/lib/offline-queue";
 import type { z } from "zod";
 
 // Utility to parse standard error responses if needed
@@ -72,21 +71,17 @@ export function useCreateNote() {
   return useMutation<CreateNoteResult, Error, NoteInput>({
     mutationFn: async (data: NoteInput) => {
       const validated = api.notes.create.input.parse(data);
-      if (
-        getOfflineModeEnabled() &&
-        typeof navigator !== "undefined" &&
-        !navigator.onLine
-      ) {
-        return await enqueueCreate("note", validated);
-      }
-      const res = await fetch(api.notes.create.path, {
-        method: api.notes.create.method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(validated),
-        credentials: "include",
+      return await tryNetworkOrEnqueue("note", validated, async (signal) => {
+        const res = await fetch(api.notes.create.path, {
+          method: api.notes.create.method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(validated),
+          credentials: "include",
+          signal,
+        });
+        const responseData = await handleResponse(res, "Failed to create note");
+        return api.notes.create.responses[201].parse(responseData);
       });
-      const responseData = await handleResponse(res, "Failed to create note");
-      return api.notes.create.responses[201].parse(responseData);
     },
     onSuccess: (result) => {
       if (isQueuedOfflineResult(result)) return;
