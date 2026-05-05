@@ -10,6 +10,8 @@ import {
   failedClearAll,
   failedCount,
   cacheClearAll,
+  cacheGet,
+  cacheSet,
   type QueueKind,
   type QueuedItem,
   type FailedItem,
@@ -51,15 +53,39 @@ export function isQueuedOfflineResult(
   );
 }
 
+function urlForKind(kind: QueueKind): string {
+  switch (kind) {
+    case 'note': return '/api/notes';
+    case 'score': return '/api/scores';
+    case 'skill': return '/api/skills';
+    case 'routine': return '/api/routines';
+  }
+}
+
+function listPathForKind(kind: QueueKind): string | null {
+  switch (kind) {
+    case 'skill': return '/api/skills';
+    case 'routine': return '/api/routines';
+    default: return null;
+  }
+}
+
+function cacheKeyForKind(kind: QueueKind): string | null {
+  switch (kind) {
+    case 'skill': return 'skills';
+    case 'routine': return 'routines';
+    default: return null;
+  }
+}
+
 export async function enqueueCreate(
   kind: QueueKind,
   body: unknown,
 ): Promise<OfflineQueuedResult> {
   const tempId = -Math.floor(1 + Math.random() * 1e9);
-  const url = kind === 'note' ? '/api/notes' : '/api/scores';
   await queueAdd({
     kind,
-    url,
+    url: urlForKind(kind),
     method: 'POST',
     body,
     tempId,
@@ -67,6 +93,107 @@ export async function enqueueCreate(
   });
   notifyQueueChange();
   return { _queuedOffline: true, tempId };
+}
+
+/**
+ * Insert an optimistic record with a negative tempId into both the
+ * IndexedDB cache (so it survives reloads while offline) and the
+ * in-memory react-query cache (so the UI updates instantly).
+ */
+async function injectOptimisticRecord(
+  kind: QueueKind,
+  record: Record<string, unknown> & { id: number },
+): Promise<void> {
+  const cacheKey = cacheKeyForKind(kind);
+  const listPath = listPathForKind(kind);
+  if (cacheKey) {
+    try {
+      const existing = (await cacheGet<Record<string, unknown>[]>(cacheKey)) ?? [];
+      await cacheSet(cacheKey, [...existing, record]);
+    } catch {
+      // ignore — UI will still get the in-memory update below
+    }
+  }
+  if (listPath) {
+    const current = queryClient.getQueryData<Record<string, unknown>[]>([listPath]) ?? [];
+    queryClient.setQueryData([listPath], [...current, record]);
+  }
+}
+
+/**
+ * Remove an optimistic temp record from caches once we know the queued
+ * create won't be retried (e.g. it was rejected by the server).
+ */
+async function removeOptimisticRecord(kind: QueueKind, tempId: number): Promise<void> {
+  const cacheKey = cacheKeyForKind(kind);
+  const listPath = listPathForKind(kind);
+  if (cacheKey) {
+    try {
+      const existing = (await cacheGet<Array<{ id?: number }>>(cacheKey)) ?? [];
+      await cacheSet(cacheKey, existing.filter((r) => r.id !== tempId));
+    } catch {
+      // ignore
+    }
+  }
+  if (listPath) {
+    const current = queryClient.getQueryData<Array<{ id?: number }>>([listPath]);
+    if (current) {
+      queryClient.setQueryData([listPath], current.filter((r) => r.id !== tempId));
+    }
+  }
+}
+
+/**
+ * Like tryNetworkOrEnqueue, but also seeds an optimistic record (with the
+ * generated tempId) into the offline cache and react-query cache when the
+ * write has to be queued. Returns the optimistic record so callers can
+ * continue working with it (e.g. immediately referencing the new skill in
+ * a note). Used by skills and routines, which are referenced by id from
+ * other entities.
+ */
+export async function tryNetworkOrEnqueueWithOptimistic<T extends Record<string, unknown>>(
+  kind: 'skill' | 'routine',
+  body: unknown,
+  buildOptimistic: (tempId: number) => T & { id: number },
+  doFetch: (signal: AbortSignal) => Promise<T>,
+  timeoutMs = 12000,
+): Promise<T & { _queuedOffline?: true }> {
+  const offline = getOfflineModeEnabled();
+  const onLine = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+  const enqueue = async (): Promise<T & { _queuedOffline: true }> => {
+    const tempId = -Math.floor(1 + Math.random() * 1e9);
+    await queueAdd({
+      kind,
+      url: urlForKind(kind),
+      method: 'POST',
+      body,
+      tempId,
+      createdAt: Date.now(),
+    });
+    const optimistic = buildOptimistic(tempId);
+    await injectOptimisticRecord(kind, optimistic);
+    notifyQueueChange();
+    return { ...optimistic, _queuedOffline: true } as T & { _queuedOffline: true };
+  };
+
+  if (offline && !onLine) {
+    return enqueue();
+  }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => {
+    try { ctrl.abort(); } catch { /* ignore */ }
+  }, timeoutMs);
+  try {
+    return await doFetch(ctrl.signal);
+  } catch (err) {
+    if (offline && isNetworkOrAbortError(err)) {
+      return enqueue();
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function isNetworkOrAbortError(err: unknown): boolean {
@@ -144,21 +271,97 @@ export interface DrainResult {
   rejected: number;
 }
 
+/**
+ * Rewrite skill-reference items inside a note's `skills` JSON string using
+ * a tempId → realId mapping. Handles plain skills, routine refs (id=-2),
+ * connection refs (id=-3) including their `customSkillIds` arrays, and
+ * leaves separators (id=-1) untouched.
+ */
+function remapSkillItem(item: any, idMap: Map<number, number>): any {
+  if (!item || typeof item !== 'object') return item;
+  if (item.id === -1) return item;
+  if (item.id === -2) {
+    const next = { ...item };
+    if (typeof next.routineId === 'number' && idMap.has(next.routineId)) {
+      next.routineId = idMap.get(next.routineId);
+    }
+    if (Array.isArray(next.customSkillIds)) {
+      next.customSkillIds = next.customSkillIds.map((id: number) => idMap.get(id) ?? id);
+    }
+    return next;
+  }
+  if (item.id === -3) {
+    const next = { ...item };
+    if (typeof next.fcId === 'number' && idMap.has(next.fcId)) {
+      next.fcId = idMap.get(next.fcId);
+    }
+    if (Array.isArray(next.customSkillIds)) {
+      next.customSkillIds = next.customSkillIds.map((id: number) => idMap.get(id) ?? id);
+    }
+    return next;
+  }
+  if (typeof item.id === 'number' && idMap.has(item.id)) {
+    return { ...item, id: idMap.get(item.id) };
+  }
+  return item;
+}
+
+function remapNoteSkillsString(s: unknown, idMap: Map<number, number>): unknown {
+  if (typeof s !== 'string' || !s) return s;
+  try {
+    const arr = JSON.parse(s);
+    if (!Array.isArray(arr)) return s;
+    return JSON.stringify(arr.map((it) => remapSkillItem(it, idMap)));
+  } catch {
+    return s;
+  }
+}
+
+function remapBody(kind: QueueKind, body: any, idMap: Map<number, number>): any {
+  if (idMap.size === 0 || !body || typeof body !== 'object') return body;
+  if (kind === 'note') {
+    return { ...body, skills: remapNoteSkillsString(body.skills, idMap) };
+  }
+  if (kind === 'routine' || kind === 'skill') {
+    if (Array.isArray(body.skillIds)) {
+      return { ...body, skillIds: body.skillIds.map((id: number) => idMap.get(id) ?? id) };
+    }
+    return body;
+  }
+  if (kind === 'score') {
+    const next = { ...body };
+    if (typeof next.routineId === 'number' && idMap.has(next.routineId)) {
+      next.routineId = idMap.get(next.routineId);
+    }
+    if (typeof next.routineIdVol === 'number' && idMap.has(next.routineIdVol)) {
+      next.routineIdVol = idMap.get(next.routineIdVol);
+    }
+    return next;
+  }
+  return body;
+}
+
 export async function drainQueue(): Promise<DrainResult> {
   if (draining) return { synced: 0, failed: 0, rejected: 0 };
   draining = true;
   let synced = 0;
   let failed = 0;
   let rejected = 0;
+  // Maps tempId of an offline-created skill/routine to the real id the
+  // server assigned once it synced. Subsequent items in this drain that
+  // referenced the temp id (notes, routines, connections, scores) get
+  // their bodies rewritten so the server sees real ids.
+  const idMap = new Map<number, number>();
   try {
     const items: QueuedItem[] = await queueAll();
     items.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
     for (const item of items) {
+      const remappedBody = remapBody(item.kind, item.body, idMap);
       try {
         const res = await fetch(item.url, {
           method: item.method,
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(item.body),
+          body: JSON.stringify(remappedBody),
           credentials: 'include',
         });
         if (!res.ok) {
@@ -194,7 +397,7 @@ export async function drainQueue(): Promise<DrainResult> {
                 kind: item.kind,
                 url: item.url,
                 method: item.method,
-                body: item.body,
+                body: remappedBody,
                 tempId: item.tempId,
                 createdAt: item.createdAt,
                 failedAt: Date.now(),
@@ -202,6 +405,12 @@ export async function drainQueue(): Promise<DrainResult> {
                 errorMessage,
               });
               rejected += 1;
+              // The temp record is now orphaned — drop it from caches so
+              // it stops appearing in pickers/lists. (The user can still
+              // see the rejection in the failed-items panel.)
+              if (item.kind === 'skill' || item.kind === 'routine') {
+                await removeOptimisticRecord(item.kind, item.tempId);
+              }
             } catch (err) {
               // Couldn't persist to the failed store — leave the item
               // in the queue so the next drain (or a manual retry) can
@@ -214,6 +423,18 @@ export async function drainQueue(): Promise<DrainResult> {
             }
           }
           continue;
+        }
+        // For skills/routines, capture the server-assigned id so later
+        // queued items in this drain can be remapped from the tempId.
+        if (item.kind === 'skill' || item.kind === 'routine') {
+          try {
+            const data = await res.clone().json();
+            if (data && typeof data.id === 'number') {
+              idMap.set(item.tempId, data.id);
+            }
+          } catch {
+            // ignore — best effort
+          }
         }
         if (item.id != null) await queueDelete(item.id);
         synced += 1;
@@ -234,6 +455,8 @@ export async function drainQueue(): Promise<DrainResult> {
           typeof k === 'string' &&
           (k === '/api/notes' ||
             k === '/api/scores' ||
+            k === '/api/skills' ||
+            k === '/api/routines' ||
             k.startsWith('/api/skills/') ||
             k.startsWith('/api/routines/'))
         );

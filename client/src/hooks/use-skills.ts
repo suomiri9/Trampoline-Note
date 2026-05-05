@@ -4,6 +4,7 @@ import { queryClient } from "@/lib/queryClient";
 import { type Skill, type InsertSkill } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { tryNetworkOrEnqueueWithOptimistic } from "@/lib/offline-queue";
 
 export function useSkills() {
   const { toast } = useToast();
@@ -14,12 +15,46 @@ export function useSkills() {
 
   const createMutation = useMutation({
     mutationFn: async (skill: InsertSkill) => {
-      const res = await apiRequest("POST", api.skills.create.path, skill);
-      return res.json();
+      return await tryNetworkOrEnqueueWithOptimistic<Skill>(
+        "skill",
+        skill,
+        (tempId) => ({
+          id: tempId,
+          userId: skill.userId ?? null,
+          name: skill.name,
+          code: skill.code,
+          difficulty: skill.difficulty,
+          isDrill: skill.isDrill ?? 0,
+          skillIds: skill.skillIds ?? null,
+          sortOrder: skill.sortOrder ?? null,
+          archived: 0,
+        }) as Skill & { id: number },
+        async (signal) => {
+          const res = await fetch(api.skills.create.path, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(skill),
+            credentials: "include",
+            signal,
+          });
+          if (!res.ok) throw new Error(`${res.status}: ${(await res.text()) || res.statusText}`);
+          return res.json();
+        },
+      );
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
-      toast({ title: "Skill added successfully" });
+    onSuccess: (result: any) => {
+      const queued = result && (result as any)._queuedOffline === true;
+      if (!queued) {
+        queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
+      }
+      const label =
+        result?.isDrill === 2 ? "Connection" : result?.isDrill === 1 ? "Drill" : "Skill";
+      toast({
+        title: queued ? `${label} saved offline` : `${label} added successfully`,
+        ...(queued
+          ? { description: "It'll sync when you reconnect." }
+          : {}),
+      });
     },
     onError: (error: Error) => {
       toast({

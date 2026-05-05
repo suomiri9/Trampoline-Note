@@ -101,7 +101,7 @@ export async function cacheClearAll(): Promise<void> {
   }
 }
 
-export type QueueKind = 'note' | 'score';
+export type QueueKind = 'note' | 'score' | 'skill' | 'routine';
 
 export interface QueuedItem {
   id?: number;
