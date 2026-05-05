@@ -9,7 +9,10 @@ import {
   WifiOff,
   RefreshCw,
   AlertTriangle,
+  CheckCircle2,
+  CircleDashed,
 } from "lucide-react";
+import { cacheGet } from "@/lib/offline-db";
 import { useAuth } from "@/hooks/use-auth";
 import { PageLayout } from "@/components/page-layout";
 import { Button } from "@/components/ui/button";
@@ -57,6 +60,51 @@ export default function SettingsPage() {
   const [confirmDiscardAll, setConfirmDiscardAll] = useState(false);
   const [storageBytes, setStorageBytes] = useState<number | null>(null);
   const [estimateBytes, setEstimateBytes] = useState<number | null>(null);
+  const [downloadStatus, setDownloadStatus] = useState<{
+    sw: boolean;
+    skillsCount: number | null;
+    routinesCount: number | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!offlineModeEnabled) {
+      setDownloadStatus(null);
+      return;
+    }
+    let alive = true;
+    const check = async () => {
+      let sw = false;
+      try {
+        if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+          const reg = await navigator.serviceWorker.getRegistration();
+          sw = !!(reg && (reg.active || reg.installing || reg.waiting));
+        }
+      } catch {
+        // ignore
+      }
+      let skillsCount: number | null = null;
+      let routinesCount: number | null = null;
+      try {
+        const skills = await cacheGet<unknown[]>("skills");
+        skillsCount = Array.isArray(skills) ? skills.length : null;
+      } catch {
+        // ignore
+      }
+      try {
+        const routines = await cacheGet<unknown[]>("routines");
+        routinesCount = Array.isArray(routines) ? routines.length : null;
+      } catch {
+        // ignore
+      }
+      if (alive) setDownloadStatus({ sw, skillsCount, routinesCount });
+    };
+    void check();
+    const interval = setInterval(check, 3000);
+    return () => {
+      alive = false;
+      clearInterval(interval);
+    };
+  }, [offlineModeEnabled, isOnline]);
 
   useEffect(() => {
     if (!offlineModeEnabled) {
@@ -335,6 +383,56 @@ export default function SettingsPage() {
                   )}
                 </p>
               )}
+              {offlineModeEnabled && downloadStatus && (() => {
+                const { sw, skillsCount, routinesCount } = downloadStatus;
+                const skillsReady = skillsCount !== null && skillsCount > 0;
+                const routinesReady = routinesCount !== null;
+                const allReady = sw && skillsReady && routinesReady;
+                const StatusIcon = ({ ready }: { ready: boolean }) =>
+                  ready ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  ) : (
+                    <CircleDashed className="w-3.5 h-3.5 text-muted-foreground animate-spin shrink-0" />
+                  );
+                return (
+                  <div
+                    className="mt-3 rounded-xl bg-secondary/40 px-3 py-2"
+                    data-testid="block-download-status"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                      Downloaded for offline
+                    </p>
+                    <ul className="space-y-1.5 text-sm">
+                      <li className="flex items-center gap-2" data-testid="status-app-shell">
+                        <StatusIcon ready={sw} />
+                        <span className="flex-1">App ready to launch offline</span>
+                      </li>
+                      <li className="flex items-center gap-2" data-testid="status-skills">
+                        <StatusIcon ready={skillsReady} />
+                        <span className="flex-1">
+                          Skills{skillsReady ? ` (${skillsCount})` : ""}
+                        </span>
+                      </li>
+                      <li className="flex items-center gap-2" data-testid="status-routines">
+                        <StatusIcon ready={routinesReady} />
+                        <span className="flex-1">
+                          Routines{routinesReady ? ` (${routinesCount})` : ""}
+                        </span>
+                      </li>
+                    </ul>
+                    {!allReady && isOnline && (
+                      <p className="text-[11px] text-muted-foreground mt-2">
+                        Still downloading — keep the app open for a moment.
+                      </p>
+                    )}
+                    {!allReady && !isOnline && (
+                      <p className="text-[11px] text-muted-foreground mt-2">
+                        Some data isn't downloaded yet. Reconnect to finish.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
               {offlineModeEnabled && (
                 <div className="mt-3 flex items-center justify-between rounded-xl bg-secondary/40 px-3 py-2 gap-3">
                   <div className="min-w-0">
