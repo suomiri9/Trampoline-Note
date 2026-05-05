@@ -6,6 +6,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     --font-display: 'Outfit', sans-serif;
     --font-body: 'Plus Jakarta Sans', sans-serif;
 
@@ -33,6 +34,7 @@
   }
 
   .dark {
+    color-scheme: dark;
     --background: 222 47% 8%;
     --foreground: 210 40% 98%;
     --card: 222 47% 10%;
@@ -66,6 +68,21 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  /* Match Safari's autofill behavior: don't let Chrome paint the input yellow,
+     which makes inputs look like a different color than the rest of the form. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: hsl(var(--foreground));
+    -webkit-box-shadow: 0 0 0 1000px hsl(var(--background)) inset;
+    transition: background-color 9999s ease-in-out 0s;
+    caret-color: hsl(var(--foreground));
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
