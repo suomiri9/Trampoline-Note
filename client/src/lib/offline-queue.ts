@@ -91,19 +91,43 @@ export async function tryNetworkOrEnqueue<T>(
   timeoutMs = 12000,
 ): Promise<T | OfflineQueuedResult> {
   const offline = getOfflineModeEnabled();
-  if (offline && typeof navigator !== 'undefined' && !navigator.onLine) {
-    return enqueueCreate(kind, body);
+  const onLine = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  // eslint-disable-next-line no-console
+  console.log('[tryNetworkOrEnqueue] start', { kind, offlineMode: offline, navigatorOnLine: onLine });
+  if (offline && !onLine) {
+    // eslint-disable-next-line no-console
+    console.log('[tryNetworkOrEnqueue] fast path -> enqueue (offline mode + navigator.onLine=false)');
+    const r = await enqueueCreate(kind, body);
+    // eslint-disable-next-line no-console
+    console.log('[tryNetworkOrEnqueue] enqueue resolved', r);
+    return r;
   }
   const ctrl = new AbortController();
   const timer = setTimeout(() => {
+    // eslint-disable-next-line no-console
+    console.warn('[tryNetworkOrEnqueue] aborting fetch after timeout', timeoutMs, 'ms');
     try { ctrl.abort(); } catch { /* ignore */ }
   }, timeoutMs);
   try {
-    return await doFetch(ctrl.signal);
+    // eslint-disable-next-line no-console
+    console.log('[tryNetworkOrEnqueue] attempting network fetch...');
+    const result = await doFetch(ctrl.signal);
+    // eslint-disable-next-line no-console
+    console.log('[tryNetworkOrEnqueue] fetch ok');
+    return result;
   } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[tryNetworkOrEnqueue] fetch threw', err, 'isNetwork=', isNetworkOrAbortError(err), 'offlineMode=', offline);
     if (offline && isNetworkOrAbortError(err)) {
-      return enqueueCreate(kind, body);
+      // eslint-disable-next-line no-console
+      console.log('[tryNetworkOrEnqueue] fallback -> enqueue');
+      const r = await enqueueCreate(kind, body);
+      // eslint-disable-next-line no-console
+      console.log('[tryNetworkOrEnqueue] fallback enqueue resolved', r);
+      return r;
     }
+    // eslint-disable-next-line no-console
+    console.warn('[tryNetworkOrEnqueue] re-throwing (no fallback eligible)');
     throw err;
   } finally {
     clearTimeout(timer);
