@@ -417,8 +417,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const totalDifficulty = calculateTotalDD(selectedSkills, allItems, routines);
 
   const onSubmit = (values: FormValues) => {
-    // eslint-disable-next-line no-console
-    console.log('[note-dialog] onSubmit fired', { isEditing, valuesDate: values.date, dateType: typeof values.date, isDate: values.date instanceof Date });
     let payload: any;
     try {
       payload = {
@@ -430,11 +428,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         rating: values.rating || null,
         sleepScore: values.sleepScore || null,
       };
-      // eslint-disable-next-line no-console
-      console.log('[note-dialog] payload built', payload);
     } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error('[note-dialog] payload build threw', e);
       toast({
         title: "Couldn't save",
         description: e instanceof Error ? e.message : "Bad form data.",
@@ -458,32 +452,16 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         },
       });
     } else {
-      // eslint-disable-next-line no-console
-      console.log('[note-dialog] about to call createNote.mutate', { mutateType: typeof createNote.mutate, isPending: createNote.isPending });
-      try {
-        createNote.mutate(payload as any, {
-          onSuccess: (r) => {
-            // eslint-disable-next-line no-console
-            console.log('[note-dialog] createNote onSuccess', r);
-            onOpenChange(false);
-            toast({ title: "Session logged!" });
-          },
-          onError: (err) => {
-            // eslint-disable-next-line no-console
-            console.error('[note-dialog] createNote onError', err);
-            toast({
-              title: "Couldn't log session",
-              description: err instanceof Error ? err.message : "Something went wrong. Please try again.",
-              variant: "destructive",
-            });
-          },
-        });
-        // eslint-disable-next-line no-console
-        console.log('[note-dialog] createNote.mutate returned (sync)');
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error('[note-dialog] createNote.mutate threw synchronously', e);
-      }
+      createNote.mutate(payload as any, {
+        onSuccess: () => { onOpenChange(false); toast({ title: "Session logged!" }); },
+        onError: (err) => {
+          toast({
+            title: "Couldn't log session",
+            description: err instanceof Error ? err.message : "Something went wrong. Please try again.",
+            variant: "destructive",
+          });
+        },
+      });
     }
   };
 

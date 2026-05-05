@@ -57,7 +57,7 @@ Custom email/password authentication. All API routes are protected with `isAuthe
 Opt-in PWA in Settings → Offline. When ON:
 - Hand-written service worker (`client/public/sw.js`) caches the app shell (HTML/JS/CSS, manifest, icons). Network-first for navigations with cached `/` fallback; stale-while-revalidate for assets/fonts. `/api` and Vite HMR routes always bypass the cache. Registered only when offline mode is enabled.
 - IndexedDB store `tn-offline` (`client/src/lib/offline-db.ts`) holds two stores: `cache` (skills/routines/user mirror) and `queue` (pending creates).
-- `client/src/lib/queryClient.ts` mirrors `/api/skills` and `/api/routines` responses into IDB and falls back to them when offline.
+- `client/src/lib/queryClient.ts` mirrors `/api/skills` and `/api/routines` responses into IDB and falls back to them when offline. Mutations are configured with `networkMode: 'always'` to override React Query v5's default that would otherwise pause every mutation when `navigator.onLine` is false (which previously made buttons appear stuck forever); offline behaviour is handled explicitly inside `tryNetworkOrEnqueue` instead.
 - `useAuth` mirrors the user record into IDB so the app can boot offline; otherwise login is required.
 - Note creates (`useCreateNote`) and score creates (Score page `createMutation`) detect `offlineMode && !navigator.onLine` and enqueue via `enqueueCreate(kind, body)` instead of POSTing.
 - `App.tsx` drains the queue on app start, on `online` event, and Settings exposes a "Sync now" button. Successful drains toast "Synced N offline entries." Sequential POSTs; stop on network/auth errors, drop on 4xx-non-auth.
