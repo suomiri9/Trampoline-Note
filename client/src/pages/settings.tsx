@@ -55,6 +55,40 @@ export default function SettingsPage() {
   const [showFailedDialog, setShowFailedDialog] = useState(false);
   const [failedItems, setFailedItems] = useState<FailedItem[] | null>(null);
   const [confirmDiscardAll, setConfirmDiscardAll] = useState(false);
+  const [storageBytes, setStorageBytes] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!offlineModeEnabled) {
+      setStorageBytes(null);
+      return;
+    }
+    let alive = true;
+    const refresh = async () => {
+      try {
+        if (typeof navigator === "undefined" || !navigator.storage?.estimate) {
+          if (alive) setStorageBytes(null);
+          return;
+        }
+        const est = await navigator.storage.estimate();
+        if (alive) setStorageBytes(typeof est.usage === "number" ? est.usage : null);
+      } catch {
+        if (alive) setStorageBytes(null);
+      }
+    };
+    void refresh();
+    const unsub = subscribeQueueChange(() => { void refresh(); });
+    return () => {
+      alive = false;
+      unsub();
+    };
+  }, [offlineModeEnabled, pendingCount, failedCount]);
+
+  const formatBytes = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  };
 
   useEffect(() => {
     if (!showFailedDialog) return;
@@ -230,6 +264,14 @@ export default function SettingsPage() {
                   data-testid="toggle-offline-mode"
                 />
               </div>
+              {!offlineModeEnabled && (
+                <p
+                  className="text-xs text-muted-foreground mt-1"
+                  data-testid="text-offline-hint"
+                >
+                  Log sessions and scores with no internet connection — turn it on to get started.
+                </p>
+              )}
               {offlineModeEnabled && (
                 <p className="text-xs text-muted-foreground mt-1">
                   Avoid using multiple devices while offline mode is on to prevent mix-ups. Anything you create offline will sync when you reconnect.
@@ -245,6 +287,14 @@ export default function SettingsPage() {
                     >
                       {pendingCount} {pendingCount === 1 ? "entry" : "entries"}
                     </p>
+                    {storageBytes !== null && (
+                      <p
+                        className="text-[11px] text-muted-foreground mt-0.5"
+                        data-testid="text-storage-usage"
+                      >
+                        Storage usage: {formatBytes(storageBytes)}
+                      </p>
+                    )}
                   </div>
                   <Button
                     type="button"
