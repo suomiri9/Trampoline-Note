@@ -263,6 +263,33 @@ export async function deleteQueuedByTempId(tempId: number): Promise<boolean> {
   return true;
 }
 
+/**
+ * Update the body payload of a queued (not-yet-synced) item by its tempId.
+ * Used when the user edits a pending offline entry before it has reached the
+ * server: the queued create is rewritten with the new body so that when the
+ * queue drains, the server receives the latest version. Returns true on
+ * success.
+ */
+export async function updateQueuedByTempId(
+  tempId: number,
+  body: unknown,
+): Promise<boolean> {
+  const items = await queueAll();
+  const target = items.find((i) => i.tempId === tempId);
+  if (!target || target.id == null) return false;
+  await queueAdd({
+    kind: target.kind,
+    url: target.url,
+    method: target.method,
+    body,
+    tempId: target.tempId,
+    createdAt: target.createdAt,
+  });
+  await queueDelete(target.id);
+  notifyQueueChange();
+  return true;
+}
+
 export function useQueueCount(): number {
   const [count, setCount] = useState(0);
   useEffect(() => {

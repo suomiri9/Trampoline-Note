@@ -91,6 +91,14 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-40 rounded-xl">
                   <DropdownMenuItem
+                    onClick={() => onEdit(note)}
+                    className="cursor-pointer gap-2"
+                    data-testid={`btn-pending-edit-${note.id}`}
+                  >
+                    <Pencil className="h-4 w-4" /> Edit Session
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
                     onClick={() => setShowDeleteAlert(true)}
                     className="cursor-pointer gap-2 text-destructive focus:text-destructive"
                     data-testid={`btn-pending-delete-${note.id}`}

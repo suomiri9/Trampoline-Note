@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
 
 import { useCreateNote, useUpdateNote } from "@/hooks/use-notes";
+import { updateQueuedByTempId } from "@/lib/offline-queue";
 import { useSkills } from "@/hooks/use-skills";
 import { useRecentSkills, addRecentSkill } from "@/hooks/use-recent-skills";
 import { useRoutines } from "@/hooks/use-routines";
@@ -438,6 +439,24 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     }
 
     if (isEditing && noteToEdit) {
+      // Pending offline entries have negative ids (queue tempIds) and live
+      // only in IndexedDB until the queue drains. Editing one rewrites the
+      // queued payload instead of hitting the server.
+      if (noteToEdit.id < 0) {
+        void updateQueuedByTempId(noteToEdit.id, payload).then((ok) => {
+          if (ok) {
+            onOpenChange(false);
+            toast({ title: "Pending session updated" });
+          } else {
+            toast({
+              title: "Couldn't update session",
+              description: "This pending entry could not be found locally.",
+              variant: "destructive",
+            });
+          }
+        });
+        return;
+      }
       updateNote.mutate({ id: noteToEdit.id, ...payload }, {
         onSuccess: () => {
           onOpenChange(false);

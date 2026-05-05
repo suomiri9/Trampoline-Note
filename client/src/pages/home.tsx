@@ -74,7 +74,7 @@ export default function Home() {
                     key={note.id}
                     note={note}
                     index={index}
-                    onEdit={() => {}}
+                    onEdit={handleEdit}
                     isPending
                   />
                 ))}
