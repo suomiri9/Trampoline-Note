@@ -17,6 +17,9 @@ import {
 import { queryClient } from './queryClient';
 import { getOfflineModeEnabled } from './offline-mode';
 
+// eslint-disable-next-line no-console
+console.log('[offline-queue] module loaded BUILD-MARKER-v5');
+
 const queueChangeListeners = new Set<() => void>();
 
 function notifyQueueChange() {

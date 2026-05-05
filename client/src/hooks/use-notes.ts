@@ -70,7 +70,11 @@ export function useCreateNote() {
   const queryClient = useQueryClient();
   return useMutation<CreateNoteResult, Error, NoteInput>({
     mutationFn: async (data: NoteInput) => {
+      // eslint-disable-next-line no-console
+      console.log('[useCreateNote] mutationFn start', data);
       const validated = api.notes.create.input.parse(data);
+      // eslint-disable-next-line no-console
+      console.log('[useCreateNote] validated, calling tryNetworkOrEnqueue');
       return await tryNetworkOrEnqueue("note", validated, async (signal) => {
         const res = await fetch(api.notes.create.path, {
           method: api.notes.create.method,

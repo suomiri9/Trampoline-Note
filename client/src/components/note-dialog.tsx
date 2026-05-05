@@ -417,6 +417,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const totalDifficulty = calculateTotalDD(selectedSkills, allItems, routines);
 
   const onSubmit = (values: FormValues) => {
+    // eslint-disable-next-line no-console
+    console.log('[note-dialog] onSubmit fired', { isEditing });
     const payload = {
       ...values,
       date: format(values.date, "yyyy-MM-dd"),
