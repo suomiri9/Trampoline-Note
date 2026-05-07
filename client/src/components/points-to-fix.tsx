@@ -292,7 +292,7 @@ export function PointsToFix() {
       name,
       skillIds: draftSkillIds,
       routineIds: draftRoutineIds,
-      category: draftCategory,
+      ...(isUnlinkedDraft ? { category: draftCategory } : {}),
     };
     mutation.mutate({ next: [...points, newPoint], pendingIds: [newPoint.id] });
     setDraftName("");
@@ -1024,29 +1024,31 @@ export function PointsToFix() {
                                 }
                               }}
                             />
-                            <div className="space-y-1.5 pt-1">
-                              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                                Category
-                              </label>
-                              <div className="flex flex-wrap gap-1">
-                                {POINT_CATEGORIES.map((c) => {
-                                  const active = draftCategory === c;
-                                  return (
-                                    <Button
-                                      key={c}
-                                      type="button"
-                                      size="sm"
-                                      variant={active ? "default" : "outline"}
-                                      onClick={() => setDraftCategory(c)}
-                                      className="h-7 px-2.5 rounded-lg text-[11px] font-medium"
-                                      data-testid={`button-draft-category-${c.toLowerCase()}`}
-                                    >
-                                      {c}
-                                    </Button>
-                                  );
-                                })}
+                            {draftSkillIds.length === 0 && draftRoutineIds.length === 0 && (
+                              <div className="space-y-1.5 pt-1">
+                                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                                  Category
+                                </label>
+                                <div className="flex flex-wrap gap-1">
+                                  {POINT_CATEGORIES.map((c) => {
+                                    const active = draftCategory === c;
+                                    return (
+                                      <Button
+                                        key={c}
+                                        type="button"
+                                        size="sm"
+                                        variant={active ? "default" : "outline"}
+                                        onClick={() => setDraftCategory(c)}
+                                        className="h-7 px-2.5 rounded-lg text-[11px] font-medium"
+                                        data-testid={`button-draft-category-${c.toLowerCase()}`}
+                                      >
+                                        {c}
+                                      </Button>
+                                    );
+                                  })}
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </div>
                           <Button
                             type="button"
