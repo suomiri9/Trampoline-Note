@@ -1085,20 +1085,41 @@ export function PointsToFix() {
                           if (orderedCats.length === 0) return null;
                           return (
                             <div className="grid gap-3 items-start [grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr))]">
-                              {orderedCats.map((cat) =>
-                                renderCard(
-                                  `card-cat-${cat}`,
-                                  `group-category-${cat.toLowerCase()}`,
+                              <div
+                                data-testid="group-category-general"
+                                className="card-3d p-3 sm:p-5 rounded-2xl"
+                                style={{ gridColumn: "span 2" }}
+                              >
+                                <div className="flex justify-between items-center mb-3">
                                   <div className="flex items-center gap-2 min-w-0">
                                     <span className="text-sm font-semibold text-foreground truncate">
-                                      {cat}
+                                      General
                                     </span>
-                                  </div>,
-                                  byCategory.get(cat) || [],
-                                  null,
-                                  null,
-                                ),
-                              )}
+                                  </div>
+                                </div>
+                                <div className="flex flex-col gap-3 pt-3 border-t border-border/40">
+                                  {orderedCats.map((cat) => {
+                                    const pts = byCategory.get(cat) || [];
+                                    if (pts.length === 0) return null;
+                                    return (
+                                      <div
+                                        key={cat}
+                                        className="flex flex-col gap-1.5"
+                                        data-testid={`section-category-${cat.toLowerCase()}`}
+                                      >
+                                        {orderedCats.length > 1 && (
+                                          <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                                            {cat}
+                                          </div>
+                                        )}
+                                        {pts.map((p) =>
+                                          renderPointRow(p, null, null),
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
                             </div>
                           );
                         })()}
