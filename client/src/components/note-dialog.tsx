@@ -596,21 +596,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
               </div>
 
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <FormLabel className="text-foreground/80 font-medium">Skills & Drills Practiced</FormLabel>
-                  <Button 
-                    type="button" 
-                    variant={isConnectMode ? "default" : "outline"}
-                    size="sm" 
-                    className={cn(
-                      "h-7 px-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all",
-                      isConnectMode ? "bg-red-500 text-white shadow-md hover:bg-red-600" : "border-red-300 text-red-500 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
-                    )}
-                    onClick={() => setIsConnectMode(!isConnectMode)}
-                  >
-                    {isConnectMode ? "Connecting Next..." : "Connect Next"}
-                  </Button>
-                </div>
+                <FormLabel className="text-foreground/80 font-medium">Skills & Drills Practiced</FormLabel>
 
                 <div className="flex gap-2">
                   <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
@@ -619,11 +605,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         type="button"
                         variant="outline"
                         role="combobox"
-                        className="rounded-xl h-11 flex-1 min-w-0 justify-start font-normal text-muted-foreground"
+                        className="rounded-xl h-11 flex-1 min-w-0 basis-0 justify-start font-normal text-muted-foreground px-3"
                         data-testid="btn-open-picker"
                       >
                         <Search className="h-4 w-4 mr-2 opacity-60 shrink-0" />
-                        <span className="truncate">Search skills, drills...</span>
+                        <span className="truncate text-xs">Search...</span>
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width]" align="start">
@@ -730,6 +716,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       </Command>
                     </PopoverContent>
                   </Popover>
+                  <Button
+                    type="button"
+                    variant={isConnectMode ? "default" : "outline"}
+                    size="sm"
+                    className={cn(
+                      "h-11 shrink-0 px-3 text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all",
+                      isConnectMode ? "bg-red-500 text-white shadow-md hover:bg-red-600" : "border-red-300 text-red-500 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
+                    )}
+                    onClick={() => setIsConnectMode(!isConnectMode)}
+                    data-testid="btn-connect-next"
+                  >
+                    {isConnectMode ? "Connecting..." : "Connect Next"}
+                  </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl px-3" data-testid="btn-new-item"><Plus className="h-4 w-4" /></Button>
