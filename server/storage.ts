@@ -116,7 +116,7 @@ export class DatabaseStorage implements IStorage {
           and(
             eq(notes.userId, userId),
             gte(notes.date, from),
-            lte(notes.date, to + "T23:59:59.999Z"),
+            lte(notes.date, to),
           ),
         ),
       db.select().from(skills).where(eq(skills.userId, userId)),
@@ -125,7 +125,11 @@ export class DatabaseStorage implements IStorage {
 
     const byDay = new Map<string, { difficulty: number; sessions: number }>();
     for (const row of rows) {
-      const key = (row.date ?? "").substring(0, 10);
+      const raw = row.date as unknown;
+      const key = (raw instanceof Date
+        ? raw.toISOString()
+        : String(raw ?? "")
+      ).substring(0, 10);
       if (!key) continue;
       const items = parseNoteSkills(row.skills);
       const dd = calculateTotalDD(items, allSkills, allRoutines);
