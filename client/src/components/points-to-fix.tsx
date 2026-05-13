@@ -811,7 +811,7 @@ export function PointsToFix() {
                         >
                           <div className="space-y-2">
                             <label className="text-xs font-medium text-muted-foreground">
-                              Linked skills & routines (optional)
+                              Link to skills or routines
                             </label>
                             {(() => {
                               const linkSkillsList = sortedActiveSkills.filter(
@@ -1027,7 +1027,7 @@ export function PointsToFix() {
                             {draftSkillIds.length === 0 && draftRoutineIds.length === 0 && (
                               <div className="space-y-1.5 pt-1">
                                 <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                                  Category
+                                  Or add to a category
                                 </label>
                                 <div className="flex flex-wrap gap-1">
                                   {POINT_CATEGORIES.map((c) => {
