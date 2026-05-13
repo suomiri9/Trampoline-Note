@@ -46,7 +46,6 @@ export function useSkills() {
       const queued = result && (result as any)._queuedOffline === true;
       if (!queued) {
         queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
-        queryClient.invalidateQueries({ queryKey: ["/api/stats/weekly"] });
       }
       const label =
         result?.isDrill === 2 ? "Connection" : result?.isDrill === 1 ? "Drill" : "Skill";
@@ -72,7 +71,6 @@ export function useSkills() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
-        queryClient.invalidateQueries({ queryKey: ["/api/stats/weekly"] });
       toast({ title: "Skill deleted successfully" });
     },
   });
@@ -84,7 +82,6 @@ export function useSkills() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
-        queryClient.invalidateQueries({ queryKey: ["/api/stats/weekly"] });
       toast({ title: "Skill updated successfully" });
     },
     onError: (error: Error) => {
@@ -119,7 +116,6 @@ export function useSkills() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
-        queryClient.invalidateQueries({ queryKey: ["/api/stats/weekly"] });
     },
   });
 

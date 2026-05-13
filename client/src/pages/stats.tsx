@@ -1,59 +1,36 @@
 import { useState, useRef, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useNotes } from "@/hooks/use-notes";
+import { useSkills } from "@/hooks/use-skills";
+import { useRoutines } from "@/hooks/use-routines";
+import { parseNoteSkills, calculateTotalDD } from "@/lib/training-utils";
 import { PageLayout } from "@/components/page-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Loader2, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { useOnline } from "@/hooks/use-online";
-import { format, parseISO, addDays } from "date-fns";
+import {
+  format, parseISO, eachDayOfInterval, eachWeekOfInterval,
+  startOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear,
+  addWeeks, addMonths, addYears, isWithinInterval,
+} from "date-fns";
 
-interface WeeklyStats {
-  thisWeekStart: string;
-  lastWeekStart: string;
-  days: { date: string; difficulty: number; sessions: number }[];
-}
+type Range = "week" | "month" | "year" | "all";
 
 export default function StatsPage() {
-  const [showLastWeek, setShowLastWeek] = useState(false);
+  const [range, setRange] = useState<Range>("week");
+  const [offset, setOffset] = useState(0); // 0 = current period, -1 = previous, etc.
   const touchStartX = useRef<number | null>(null);
   const [offlineModeEnabled] = useOfflineMode();
   const isOnline = useOnline();
   const offlineView = offlineModeEnabled && !isOnline;
 
-  const { data, isLoading } = useQuery<WeeklyStats>({
-    queryKey: ["/api/stats/weekly"],
-    enabled: !offlineView,
-    staleTime: 60_000,
-  });
-
-  const { chartData, periodLabel, totalDD, totalSessions, trainingDays } = useMemo(() => {
-    if (!data) {
-      return { chartData: [] as { date: string; difficulty: number | null; sessions: number; isFuture: boolean }[], periodLabel: "", totalDD: 0, totalSessions: 0, trainingDays: 0 };
-    }
-    const weekStartStr = showLastWeek ? data.lastWeekStart : data.thisWeekStart;
-    const weekStart = parseISO(weekStartStr);
-    const todayStr = format(new Date(), "yyyy-MM-dd");
-    const slice = data.days
-      .filter(d => d.date >= weekStartStr && d.date < format(addDays(weekStart, 7), "yyyy-MM-dd"))
-      .map(d => ({
-        date: format(parseISO(d.date), "EEE d"),
-        difficulty: d.difficulty > 0 ? d.difficulty : null,
-        sessions: d.sessions,
-        isFuture: d.date > todayStr,
-      }));
-    const startLabel = format(weekStart, "d MMM");
-    const endLabel = format(addDays(weekStart, 6), "d MMM yyyy");
-    return {
-      chartData: slice,
-      periodLabel: `${startLabel} – ${endLabel}`,
-      totalDD: slice.reduce((s, d) => s + (d.difficulty ?? 0), 0),
-      totalSessions: slice.reduce((s, d) => s + d.sessions, 0),
-      trainingDays: slice.filter(d => d.difficulty !== null).length,
-    };
-  }, [data, showLastWeek]);
+  const { data: notes, isLoading: notesLoading } = useNotes();
+  const { data: allItems, isLoading: skillsLoading } = useSkills();
+  const { data: routines, isLoading: routinesLoading } = useRoutines();
 
   if (offlineView) {
     return (
@@ -64,18 +41,18 @@ export default function StatsPage() {
           </div>
           <div>
             <h1 className="text-3xl font-display font-bold">Progress Analytics</h1>
-            <p className="text-muted-foreground text-sm">This week and last week</p>
+            <p className="text-muted-foreground text-sm">Tracking your daily training intensity</p>
           </div>
         </div>
         <OfflinePlaceholder
           testId="card-offline-stats"
-          hint="Stats need a fresh sync. They'll be back when you reconnect."
+          hint="Stats need your full training history. They'll be back when you reconnect."
         />
       </PageLayout>
     );
   }
 
-  if (isLoading || !data) {
+  if (notesLoading || skillsLoading || routinesLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
@@ -83,16 +60,140 @@ export default function StatsPage() {
     );
   }
 
+  // Compute DD per note keyed by raw date string (YYYY-MM-DD).
+  // Only recomputes when notes / skills / routines change — not on every
+  // hover, resize, or unrelated state update.
+  const ddByDate = useMemo(() => {
+    const acc: Record<string, { difficulty: number; sessions: number }> = {};
+    notes?.forEach(note => {
+      const skillsData = parseNoteSkills(note.skills);
+      const noteDD = calculateTotalDD(skillsData, allItems, routines);
+      const key = note.date.substring(0, 10);
+      if (!acc[key]) acc[key] = { difficulty: 0, sessions: 0 };
+      acc[key].difficulty += noteDD;
+      acc[key].sessions += 1;
+    });
+    return acc;
+  }, [notes, allItems, routines]);
+
+  // Build chart data based on selected range. Memoized so identity is
+  // stable across re-renders, which lets Recharts skip redrawing.
+  type ChartPoint = { date: string; difficulty: number | null; sessions: number; isFuture?: boolean };
+  const chartBuild = useMemo(() => {
+    const today = startOfDay(new Date());
+    let chartData: ChartPoint[] = [];
+    let xTickInterval: number | "preserveStartEnd" = 0;
+    let xTicks: string[] | undefined;
+    let xTickFormatter: ((v: string) => string) | undefined;
+    let periodLabel = "";
+
+    if (range === "week") {
+    const baseMonday = startOfWeek(today, { weekStartsOn: 1 });
+    const weekStart = addWeeks(baseMonday, offset);
+    const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+    const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+    const startLabel = format(weekStart, "d MMM");
+    const endLabel = format(weekEnd, "d MMM yyyy");
+    periodLabel = `${startLabel} – ${endLabel}`;
+
+    chartData = days.map(day => {
+      const key = format(day, "yyyy-MM-dd");
+      const found = ddByDate[key];
+      const isFuture = day > today;
+      return {
+        date: format(day, "EEE d"),
+        difficulty: found?.difficulty ?? null,
+        sessions: found?.sessions ?? 0,
+        isFuture,
+      };
+    });
+  } else if (range === "month") {
+    const refDay = addMonths(today, offset);
+    const monthStart = startOfMonth(refDay);
+    const monthEnd = endOfMonth(refDay);
+    const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+    xTickInterval = 4;
+    periodLabel = `${format(monthStart, "d MMM")} – ${format(monthEnd, "d MMM yyyy")}`;
+    chartData = days.map(day => {
+      const key = format(day, "yyyy-MM-dd");
+      const found = ddByDate[key];
+      const isFuture = day > today;
+      return { date: format(day, "d MMM"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, isFuture };
+    });
+  } else if (range === "year") {
+    const refDay = addYears(today, offset);
+    const yearStart = startOfYear(refDay);
+    const yearEnd = endOfYear(refDay);
+    const days = eachDayOfInterval({ start: yearStart, end: yearEnd });
+    periodLabel = `${format(yearStart, "d MMM yyyy")} – ${format(yearEnd, "d MMM yyyy")}`;
+    chartData = days.map(day => {
+      const key = format(day, "yyyy-MM-dd");
+      const found = ddByDate[key];
+      const isFuture = day > today;
+      return { date: key, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, isFuture };
+    });
+    // Force a tick on the first of every month so all 12 month labels render.
+    xTicks = days
+      .filter((d) => d.getDate() === 1)
+      .map((d) => format(d, "yyyy-MM-dd"));
+    xTickInterval = 0;
+    xTickFormatter = (v: string) => {
+      try { return format(parseISO(v), "MMM"); } catch { return v; }
+    };
+  } else {
+    const allKeys = Object.keys(ddByDate).sort();
+    if (allKeys.length > 0) {
+      const earliest = parseISO(allKeys[0]);
+      const days = eachDayOfInterval({ start: earliest, end: today });
+      periodLabel = `${format(earliest, "d MMM yyyy")} – ${format(today, "d MMM yyyy")}`;
+      let lastMonth = -1;
+      let lastYear = -1;
+      chartData = days.map(day => {
+        const key = format(day, "yyyy-MM-dd");
+        const found = ddByDate[key];
+        const m = day.getMonth();
+        const y = day.getFullYear();
+        let label = "";
+        if (y !== lastYear) {
+          label = format(day, "MMM yyyy");
+        } else if (m !== lastMonth) {
+          label = format(day, "MMM");
+        }
+        lastMonth = m;
+        lastYear = y;
+        return { date: label, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0 };
+      });
+      xTickInterval = Math.max(1, Math.floor(days.length / 12));
+    } else {
+      periodLabel = "No data yet";
+    }
+  }
+
+    return { chartData, xTickInterval, xTicks, xTickFormatter, periodLabel };
+  }, [ddByDate, range, offset]);
+
+  const { chartData, xTickInterval, xTicks, xTickFormatter, periodLabel } = chartBuild;
+
+  const { trainingDaysInRange, totalDDInRange, totalSessionsInRange } = useMemo(() => ({
+    trainingDaysInRange: chartData.filter(d => d.difficulty !== null).length,
+    totalDDInRange: chartData.reduce((sum, d) => sum + (d.difficulty ?? 0), 0),
+    totalSessionsInRange: chartData.reduce((sum, d) => sum + d.sessions, 0),
+  }), [chartData]);
+
+  const isCurrentPeriod = offset === 0;
+  const navigable = range !== "all";
+
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
+    if (touchStartX.current === null || !navigable) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     if (Math.abs(dx) > 50) {
-      if (dx > 0) setShowLastWeek(true);
-      else if (dx < 0) setShowLastWeek(false);
+      if (dx > 0) setOffset(w => w - 1);        // swipe right = go back
+      else if (dx < 0 && !isCurrentPeriod) setOffset(w => w + 1); // swipe left = go forward
     }
     touchStartX.current = null;
   };
@@ -105,45 +206,59 @@ export default function StatsPage() {
         </div>
         <div>
           <h1 className="text-3xl font-display font-bold">Progress Analytics</h1>
-          <p className="text-muted-foreground text-sm">This week and last week</p>
+          <p className="text-muted-foreground text-sm">Tracking your daily training intensity</p>
         </div>
       </div>
 
       <div className="grid gap-6">
         <Card className="overflow-hidden">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-semibold">
-              Daily Total Difficulty
+            <CardTitle className="text-lg font-semibold flex items-center justify-between gap-3">
+              <span>{"Daily"} Total Difficulty</span>
+              <Select value={range} onValueChange={(v) => { setRange(v as Range); setOffset(0); }}>
+                <SelectTrigger className="w-36 h-8 rounded-xl text-xs border-border/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="week">A Week</SelectItem>
+                  <SelectItem value="month">A Month</SelectItem>
+                  <SelectItem value="year">A Year</SelectItem>
+                  <SelectItem value="all">All Time</SelectItem>
+                </SelectContent>
+              </Select>
             </CardTitle>
 
             <div className="flex items-center justify-between mt-2">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-lg"
-                  disabled={!showLastWeek}
-                  onClick={() => setShowLastWeek(true)}
-                  data-testid="button-prev-period"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-xs font-medium text-foreground/80 min-w-[180px] text-center" data-testid="text-period-label">
-                  {showLastWeek ? "Last week" : "This week"} · {periodLabel}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-lg"
-                  disabled={!showLastWeek}
-                  onClick={() => setShowLastWeek(false)}
-                  data-testid="button-next-period"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+              {navigable ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 rounded-lg"
+                    onClick={() => setOffset(w => w - 1)}
+                    data-testid="button-prev-period"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xs font-medium text-foreground/80 min-w-[180px] text-center" data-testid="text-period-label">
+                    {periodLabel}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 rounded-lg"
+                    disabled={isCurrentPeriod}
+                    onClick={() => setOffset(w => w + 1)}
+                    data-testid="button-next-period"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <span className="text-xs text-muted-foreground">{periodLabel}</span>
+              )}
               <span className="text-xs text-muted-foreground">
-                {trainingDays} training days
+                {trainingDaysInRange} training {"days"}
               </span>
             </div>
           </CardHeader>
@@ -162,7 +277,9 @@ export default function StatsPage() {
                     tickLine={false}
                     tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                     dy={10}
-                    interval={0}
+                    interval={xTickInterval}
+                    ticks={xTicks}
+                    tickFormatter={xTickFormatter}
                   />
                   <YAxis
                     axisLine={false}
@@ -177,6 +294,9 @@ export default function StatsPage() {
                       fontSize: '12px'
                     }}
                     formatter={(value: any) => value !== null ? [Number(value).toFixed(1), "DD"] : ["Rest day", ""]}
+                    labelFormatter={range === "year" ? (v: string) => {
+                      try { return format(parseISO(v), "d MMM"); } catch { return v; }
+                    } : undefined}
                     cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '4 4' }}
                   />
                   <Line
@@ -199,7 +319,7 @@ export default function StatsPage() {
             <CardContent className="pt-6">
               <div className="text-sm font-medium text-muted-foreground mb-1">Total DD</div>
               <div className="text-3xl font-display font-bold text-blue-600 dark:text-blue-400">
-                {totalDD.toFixed(1)}
+                {totalDDInRange.toFixed(1)}
               </div>
               <div className="text-xs text-muted-foreground mt-1">{periodLabel}</div>
             </CardContent>
@@ -208,7 +328,7 @@ export default function StatsPage() {
             <CardContent className="pt-6">
               <div className="text-sm font-medium text-muted-foreground mb-1">Sessions</div>
               <div className="text-3xl font-display font-bold text-slate-600 dark:text-slate-400">
-                {totalSessions}
+                {totalSessionsInRange}
               </div>
               <div className="text-xs text-muted-foreground mt-1">{periodLabel}</div>
             </CardContent>

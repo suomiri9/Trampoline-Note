@@ -135,7 +135,6 @@ function invalidateAllNotes(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({
     predicate: (query) => query.queryKey[0] === api.notes.list.path,
   });
-  queryClient.invalidateQueries({ queryKey: ["/api/stats/weekly"] });
 }
 
 function invalidateAllHistory(queryClient: ReturnType<typeof useQueryClient>) {
