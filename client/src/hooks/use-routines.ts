@@ -43,6 +43,7 @@ export function useRoutines() {
       const queued = result && (result as any)._queuedOffline === true;
       if (!queued) {
         queryClient.invalidateQueries({ queryKey: [api.routines.list.path] });
+        queryClient.invalidateQueries({ queryKey: ["/api/stats/weekly"] });
       }
       toast({
         title: queued ? "Routine saved offline" : "Routine created successfully",
@@ -66,6 +67,7 @@ export function useRoutines() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.routines.list.path] });
+        queryClient.invalidateQueries({ queryKey: ["/api/stats/weekly"] });
       toast({ title: "Routine deleted successfully" });
     },
   });
@@ -77,6 +79,7 @@ export function useRoutines() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.routines.list.path] });
+        queryClient.invalidateQueries({ queryKey: ["/api/stats/weekly"] });
       toast({ title: "Routine updated successfully" });
     },
     onError: (error: Error) => {

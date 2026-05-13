@@ -7,6 +7,7 @@ import { isAuthenticated, getUserId } from "./auth";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
+import { parseNoteSkills, calculateTotalDD } from "@shared/training-utils";
 
 interface SkillEntry { id: number; reps?: number }
 
@@ -415,6 +416,58 @@ export async function registerRoutes(
         return res.status(400).json({ message: err.errors[0].message });
       }
       res.status(500).json({ message: "Failed to update focus memo" });
+    }
+  });
+
+  // Pre-aggregated daily DD totals for the last 14 days. Keeps the
+  // expensive parsing/aggregation off the client (helps battery on mobile).
+  app.get("/api/stats/weekly", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const [notesList, skillsList, routinesList] = await Promise.all([
+        storage.getNotes(userId),
+        storage.getSkills(userId),
+        storage.getRoutines(userId),
+      ]);
+
+      const today = new Date();
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const dayMs = 24 * 60 * 60 * 1000;
+      const dow = (startOfToday.getDay() + 6) % 7; // Mon=0..Sun=6
+      const thisMonday = new Date(startOfToday.getTime() - dow * dayMs);
+      const lastMonday = new Date(thisMonday.getTime() - 7 * dayMs);
+      const cutoffMs = lastMonday.getTime();
+
+      const totals = new Map<string, { difficulty: number; sessions: number }>();
+      for (const n of notesList) {
+        const key = n.date.substring(0, 10);
+        const dt = new Date(`${key}T00:00:00`);
+        if (dt.getTime() < cutoffMs) continue;
+        const items = parseNoteSkills(n.skills);
+        const dd = calculateTotalDD(items, skillsList, routinesList);
+        const cur = totals.get(key) || { difficulty: 0, sessions: 0 };
+        cur.difficulty += dd;
+        cur.sessions += 1;
+        totals.set(key, cur);
+      }
+
+      const fmt = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const days: { date: string; difficulty: number; sessions: number }[] = [];
+      for (let i = 0; i < 14; i++) {
+        const d = new Date(lastMonday.getTime() + i * dayMs);
+        const key = fmt(d);
+        const found = totals.get(key);
+        days.push({ date: key, difficulty: found?.difficulty ?? 0, sessions: found?.sessions ?? 0 });
+      }
+
+      res.json({
+        thisWeekStart: fmt(thisMonday),
+        lastWeekStart: fmt(lastMonday),
+        days,
+      });
+    } catch {
+      res.status(500).json({ message: "Failed to compute stats" });
     }
   });
 
