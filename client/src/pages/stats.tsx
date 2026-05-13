@@ -116,34 +116,6 @@ export default function StatsPage() {
     });
   }, [range, offset, today, offlineView, queryClient]);
 
-  if (offlineView) {
-    return (
-      <PageLayout>
-        <div className="flex items-center gap-3 mb-8">
-          <div className="p-3 bg-slate-100 dark:bg-slate-800/30 rounded-2xl icon-3d">
-            <TrendingUp className="w-6 h-6 text-slate-500" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-display font-bold">Progress Analytics</h1>
-            <p className="text-muted-foreground text-sm">Tracking your daily training intensity</p>
-          </div>
-        </div>
-        <OfflinePlaceholder
-          testId="card-offline-stats"
-          hint="Stats need your full training history. They'll be back when you reconnect."
-        />
-      </PageLayout>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
-      </div>
-    );
-  }
-
   type ChartPoint = { date: string; difficulty: number | null; sessions: number; isFuture?: boolean };
   const chartBuild = useMemo(() => {
     let chartData: ChartPoint[] = [];
@@ -235,6 +207,34 @@ export default function StatsPage() {
     totalDDInRange: chartData.reduce((sum, d) => sum + (d.difficulty ?? 0), 0),
     totalSessionsInRange: chartData.reduce((sum, d) => sum + d.sessions, 0),
   }), [chartData]);
+
+  if (offlineView) {
+    return (
+      <PageLayout>
+        <div className="flex items-center gap-3 mb-8">
+          <div className="p-3 bg-slate-100 dark:bg-slate-800/30 rounded-2xl icon-3d">
+            <TrendingUp className="w-6 h-6 text-slate-500" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-display font-bold">Progress Analytics</h1>
+            <p className="text-muted-foreground text-sm">Tracking your daily training intensity</p>
+          </div>
+        </div>
+        <OfflinePlaceholder
+          testId="card-offline-stats"
+          hint="Stats need your full training history. They'll be back when you reconnect."
+        />
+      </PageLayout>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
+      </div>
+    );
+  }
 
   const isCurrentPeriod = offset === 0;
   const navigable = range !== "all";
