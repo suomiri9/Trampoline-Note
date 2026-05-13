@@ -29,6 +29,18 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
+  // Stats — server-side daily DD aggregation. Returns only days in range
+  // that actually have data so the payload stays tiny.
+  app.get("/api/stats/daily-dd", isAuthenticated, async (req, res) => {
+    const from = typeof req.query.from === "string" ? req.query.from : "";
+    const to = typeof req.query.to === "string" ? req.query.to : "";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+      return res.status(400).json({ message: "from and to must be YYYY-MM-DD" });
+    }
+    const data = await storage.getDailyDD(getUserId(req), from, to);
+    res.json(data);
+  });
+
   // Notes
   app.get(api.notes.list.path, isAuthenticated, async (req, res) => {
     const limitRaw = req.query.limit;

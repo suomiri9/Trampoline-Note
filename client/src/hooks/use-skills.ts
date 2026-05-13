@@ -71,6 +71,9 @@ export function useSkills() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
+      queryClient.invalidateQueries({
+        predicate: (q) => q.queryKey[0] === "/api/stats/daily-dd",
+      });
       toast({ title: "Skill deleted successfully" });
     },
   });
@@ -82,6 +85,9 @@ export function useSkills() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
+      queryClient.invalidateQueries({
+        predicate: (q) => q.queryKey[0] === "/api/stats/daily-dd",
+      });
       toast({ title: "Skill updated successfully" });
     },
     onError: (error: Error) => {

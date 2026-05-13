@@ -133,7 +133,9 @@ export function useDeleteNote() {
 
 function invalidateAllNotes(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({
-    predicate: (query) => query.queryKey[0] === api.notes.list.path,
+    predicate: (query) =>
+      query.queryKey[0] === api.notes.list.path ||
+      query.queryKey[0] === "/api/stats/daily-dd",
   });
 }
 
