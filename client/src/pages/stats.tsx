@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useNotes } from "@/hooks/use-notes";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
@@ -60,31 +60,34 @@ export default function StatsPage() {
     );
   }
 
-  // Compute DD per note keyed by raw date string (YYYY-MM-DD)
-  const ddByDate: Record<string, { difficulty: number; sessions: number }> = {};
+  // Compute DD per note keyed by raw date string (YYYY-MM-DD).
+  // Only recomputes when notes / skills / routines change — not on every
+  // hover, resize, or unrelated state update.
+  const ddByDate = useMemo(() => {
+    const acc: Record<string, { difficulty: number; sessions: number }> = {};
+    notes?.forEach(note => {
+      const skillsData = parseNoteSkills(note.skills);
+      const noteDD = calculateTotalDD(skillsData, allItems, routines);
+      const key = note.date.substring(0, 10);
+      if (!acc[key]) acc[key] = { difficulty: 0, sessions: 0 };
+      acc[key].difficulty += noteDD;
+      acc[key].sessions += 1;
+    });
+    return acc;
+  }, [notes, allItems, routines]);
 
-  notes?.forEach(note => {
-    const skillsData = parseNoteSkills(note.skills);
-    const noteDD = calculateTotalDD(skillsData, allItems, routines);
+  // Build chart data based on selected range. Memoized so identity is
+  // stable across re-renders, which lets Recharts skip redrawing.
+  type ChartPoint = { date: string; difficulty: number | null; sessions: number; isFuture?: boolean };
+  const chartBuild = useMemo(() => {
+    const today = startOfDay(new Date());
+    let chartData: ChartPoint[] = [];
+    let xTickInterval: number | "preserveStartEnd" = 0;
+    let xTicks: string[] | undefined;
+    let xTickFormatter: ((v: string) => string) | undefined;
+    let periodLabel = "";
 
-    const key = note.date.substring(0, 10);
-    if (!ddByDate[key]) ddByDate[key] = { difficulty: 0, sessions: 0 };
-    ddByDate[key].difficulty += noteDD;
-    ddByDate[key].sessions += 1;
-  });
-
-  const today = startOfDay(new Date());
-
-  // Build chart data based on selected range
-  type ChartPoint = { date: string; difficulty: number | null; sessions: number };
-  let chartData: ChartPoint[] = [];
-  let xTickInterval: number | "preserveStartEnd" = 0;
-  let xTicks: string[] | undefined;
-  let xTickFormatter: ((v: string) => string) | undefined;
-  let useWeekly = false;
-  let periodLabel = "";
-
-  if (range === "week") {
+    if (range === "week") {
     const baseMonday = startOfWeek(today, { weekStartsOn: 1 });
     const weekStart = addWeeks(baseMonday, offset);
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
@@ -167,9 +170,16 @@ export default function StatsPage() {
     }
   }
 
-  const trainingDaysInRange = chartData.filter(d => d.difficulty !== null).length;
-  const totalDDInRange = chartData.reduce((sum, d) => sum + (d.difficulty ?? 0), 0);
-  const totalSessionsInRange = chartData.reduce((sum, d) => sum + d.sessions, 0);
+    return { chartData, xTickInterval, xTicks, xTickFormatter, periodLabel };
+  }, [ddByDate, range, offset]);
+
+  const { chartData, xTickInterval, xTicks, xTickFormatter, periodLabel } = chartBuild;
+
+  const { trainingDaysInRange, totalDDInRange, totalSessionsInRange } = useMemo(() => ({
+    trainingDaysInRange: chartData.filter(d => d.difficulty !== null).length,
+    totalDDInRange: chartData.reduce((sum, d) => sum + (d.difficulty ?? 0), 0),
+    totalSessionsInRange: chartData.reduce((sum, d) => sum + d.sessions, 0),
+  }), [chartData]);
 
   const isCurrentPeriod = offset === 0;
   const navigable = range !== "all";
@@ -204,7 +214,7 @@ export default function StatsPage() {
         <Card className="overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold flex items-center justify-between gap-3">
-              <span>{useWeekly ? "Weekly" : "Daily"} Total Difficulty</span>
+              <span>{"Daily"} Total Difficulty</span>
               <Select value={range} onValueChange={(v) => { setRange(v as Range); setOffset(0); }}>
                 <SelectTrigger className="w-36 h-8 rounded-xl text-xs border-border/50">
                   <SelectValue />
@@ -248,7 +258,7 @@ export default function StatsPage() {
                 <span className="text-xs text-muted-foreground">{periodLabel}</span>
               )}
               <span className="text-xs text-muted-foreground">
-                {trainingDaysInRange} training {useWeekly ? "weeks" : "days"}
+                {trainingDaysInRange} training {"days"}
               </span>
             </div>
           </CardHeader>
@@ -283,7 +293,7 @@ export default function StatsPage() {
                       boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
                       fontSize: '12px'
                     }}
-                    formatter={(value: any) => value !== null ? [Number(value).toFixed(1), useWeekly ? "Week DD" : "DD"] : [useWeekly ? "No training" : "Rest day", ""]}
+                    formatter={(value: any) => value !== null ? [Number(value).toFixed(1), "DD"] : ["Rest day", ""]}
                     labelFormatter={range === "year" ? (v: string) => {
                       try { return format(parseISO(v), "d MMM"); } catch { return v; }
                     } : undefined}
