@@ -32,7 +32,7 @@ export function suggestRoutinePartName(routineName: string, start: number, end: 
   const len = end - start + 1;
   if (start <= 1) return `First ${len} of ${routineName}`;
   if (end >= total) return `Last ${len} of ${routineName}`;
-  return `Skills ${start}-${end} of ${routineName}`;
+  return `Middle ${len} of ${routineName}`;
 }
 
 export function calcDDFromSkillIds(skillIds: number[], skills: Skill[]): number {
