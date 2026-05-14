@@ -1335,7 +1335,20 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           <span className="text-[11px] font-mono text-muted-foreground shrink-0">{displaySkillIds.length} skills</span>
                                         )}
                                       </div>
-                                      <div className="flex items-center gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+                                      <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                                        {!isConnected && (() => {
+                                          const dd = displaySkillIds.reduce((a, sId) => a + (allItems?.find(s => s.id === sId)?.difficulty || 0), 0);
+                                          const reps = item.reps || 1;
+                                          return (
+                                            <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
+                                              <span className="text-muted-foreground">{dd.toFixed(1)}</span>
+                                              <span className="text-muted-foreground/40">×</span>
+                                              <span className="text-foreground">{reps}</span>
+                                              <span className="text-muted-foreground/40">=</span>
+                                              <span className="text-foreground">{(dd * reps).toFixed(1)}</span>
+                                            </div>
+                                          );
+                                        })()}
                                         {!isConnected && (
                                         <div className="flex items-center border rounded-md">
                                           <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) - 1)}>-</button>
@@ -1390,7 +1403,20 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           <span className="text-[11px] font-mono text-muted-foreground shrink-0">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
                                         )}
                                       </div>
-                                      <div className="flex items-center gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+                                      <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                                        {!isConnected && (() => {
+                                          const dd = displaySkillIds.reduce((a, sId) => a + (allItems?.find(s => s.id === sId)?.difficulty || 0), 0);
+                                          const reps = item.reps || 1;
+                                          return (
+                                            <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
+                                              <span className="text-muted-foreground">{dd.toFixed(1)}</span>
+                                              <span className="text-muted-foreground/40">×</span>
+                                              <span className="text-foreground">{reps}</span>
+                                              <span className="text-muted-foreground/40">=</span>
+                                              <span className="text-foreground">{(dd * reps).toFixed(1)}</span>
+                                            </div>
+                                          );
+                                        })()}
                                         {!isConnected && (
                                         <div className="flex items-center border rounded-md">
                                           <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) - 1)}>-</button>
@@ -1445,6 +1471,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                       <span className="text-sm truncate">{skill?.name}</span>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
+                                      {showReps && (() => {
+                                        const dd = skill?.difficulty || 0;
+                                        const reps = item.reps || 1;
+                                        return (
+                                          <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
+                                            <span className="text-muted-foreground">{dd.toFixed(1)}</span>
+                                            <span className="text-muted-foreground/40">×</span>
+                                            <span className="text-foreground">{reps}</span>
+                                            <span className="text-muted-foreground/40">=</span>
+                                            <span className="text-foreground">{(dd * reps).toFixed(1)}</span>
+                                          </div>
+                                        );
+                                      })()}
                                       {showReps && (
                                         <div className="flex items-center border rounded-md">
                                           <button type="button" className="px-2" onClick={() => updateReps(group.indices, (item.reps || 1) - 1)}>-</button>
