@@ -899,7 +899,7 @@ export default function SkillsPage() {
                                 const s = allItems?.find(sk => sk.id === sid);
                                 return (
                                   <Badge key={`pp-${i}`} variant="outline" className="font-mono text-[10px]">
-                                    {partStart + i}. {s?.code || "?"}
+                                    {(partStart || 1) + i}. {s?.code || "?"}
                                   </Badge>
                                 );
                               })

@@ -1090,7 +1090,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               const s = allItems?.find(sk => sk.id === sid);
                               return (
                                 <Badge key={`np-${i}`} variant="outline" className="font-mono text-[10px]">
-                                  {newPartStart + i}. {s?.code || "?"}
+                                  {(newPartStart || 1) + i}. {s?.code || "?"}
                                 </Badge>
                               );
                             })}
