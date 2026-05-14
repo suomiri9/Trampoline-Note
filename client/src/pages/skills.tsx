@@ -118,9 +118,11 @@ export default function SkillsPage() {
 
   const selectedPartRoutine = activeRoutines.find(r => r.id === partRoutineId) || null;
   const selectedRoutineSkillIds = selectedPartRoutine?.skillIds || [];
-  const partSliceIds = selectedRoutineSkillIds.slice(partStart - 1, partEnd);
+  const effectivePartStart = Math.max(1, partStart || 1);
+  const effectivePartEnd = Math.max(effectivePartStart, partEnd || effectivePartStart);
+  const partSliceIds = selectedRoutineSkillIds.slice(effectivePartStart - 1, effectivePartEnd);
   const partAutoName = selectedPartRoutine
-    ? suggestRoutinePartName(selectedPartRoutine.name, partStart, partEnd, selectedRoutineSkillIds.length || 10)
+    ? suggestRoutinePartName(selectedPartRoutine.name, effectivePartStart, effectivePartEnd, selectedRoutineSkillIds.length || 10)
     : "";
   const partFinalName = (partNameOverride ?? "").trim() || partAutoName;
 
@@ -899,7 +901,7 @@ export default function SkillsPage() {
                                 const s = allItems?.find(sk => sk.id === sid);
                                 return (
                                   <Badge key={`pp-${i}`} variant="outline" className="font-mono text-[10px]">
-                                    {(partStart || 1) + i}. {s?.code || "?"}
+                                    {effectivePartStart + i}. {s?.code || "?"}
                                   </Badge>
                                 );
                               })

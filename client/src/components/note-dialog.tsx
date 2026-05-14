@@ -1003,8 +1003,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   const sel = partRoutines.find(r => r.id === newPartRoutineId) || null;
                   const ids = sel?.skillIds || [];
                   const total = ids.length;
-                  const slice = ids.slice(newPartStart - 1, newPartEnd);
-                  const auto = sel ? suggestRoutinePartName(sel.name, newPartStart, newPartEnd, total || 10) : "";
+                  const effStart = Math.max(1, newPartStart || 1);
+                  const effEnd = Math.max(effStart, newPartEnd || effStart);
+                  const slice = ids.slice(effStart - 1, effEnd);
+                  const auto = sel ? suggestRoutinePartName(sel.name, effStart, effEnd, total || 10) : "";
                   const finalName = (newPartNameOverride ?? "").trim() || auto;
                   const dd = slice.reduce((a, sid) => a + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0);
                   return (
@@ -1090,7 +1092,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               const s = allItems?.find(sk => sk.id === sid);
                               return (
                                 <Badge key={`np-${i}`} variant="outline" className="font-mono text-[10px]">
-                                  {(newPartStart || 1) + i}. {s?.code || "?"}
+                                  {effStart + i}. {s?.code || "?"}
                                 </Badge>
                               );
                             })}
