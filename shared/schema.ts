@@ -20,8 +20,8 @@ export const skills = pgTable("skills", {
   name: text("name").notNull(),
   code: text("code").notNull(),
   difficulty: real("difficulty").notNull(),
-  isDrill: integer("is_drill").notNull().default(0), // 0 for skill, 1 for drill, 2 for frequent connection
-  skillIds: integer("skill_ids").array(), // For frequent connections (type 2)
+  isDrill: integer("is_drill").notNull().default(0), // 0 for skill, 1 for drill, 2 for frequent connection, 3 for part of routine
+  skillIds: integer("skill_ids").array(), // For frequent connections (type 2) and routine parts (type 3)
   sortOrder: integer("sort_order"),
   archived: integer("archived").notNull().default(0), // 0 = active, 1 = archived
 });

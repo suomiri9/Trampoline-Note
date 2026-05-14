@@ -7,8 +7,8 @@ import { CalendarIcon, Clock, Trash2, GripVertical, MessageSquare, Copy, MoreVer
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { type Note } from "@shared/schema";
-import { parseNoteSkills, calculateTotalDD, type SkillItem } from "@/lib/training-utils";
+import { type Note, type Skill } from "@shared/schema";
+import { parseNoteSkills, calculateTotalDD, suggestRoutinePartName, type SkillItem } from "@/lib/training-utils";
 import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { SortableChip } from "@/components/sortable-chip";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -139,6 +139,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [newSkillCode, setNewSkillCode] = useState("");
   const [newSkillDD, setNewSkillDD] = useState("");
   const [newSkillIsDrill, setNewSkillIsDrill] = useState(false);
+  const [showNewPart, setShowNewPart] = useState(false);
+  const [newPartRoutineId, setNewPartRoutineId] = useState<number | null>(null);
+  const [newPartStart, setNewPartStart] = useState(1);
+  const [newPartEnd, setNewPartEnd] = useState(10);
+  const [newPartNameOverride, setNewPartNameOverride] = useState<string | null>(null);
 
   const recentSkillIds = (() => {
     if (!allItems) return [];
@@ -272,7 +277,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   const addSkill = (idStr: string) => {
     const id = parseInt(idStr);
-    const fcItem = allItems?.find(s => s.id === id && s.isDrill === 2);
+    const fcItem = allItems?.find(s => s.id === id && (s.isDrill === 2 || s.isDrill === 3));
     if (fcItem && fcItem.skillIds) {
       setSelectedSkills(prev => {
         let newSkills = [...prev];
@@ -643,6 +648,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             const connList = (allItems || [])
                               .filter(s => s.isDrill === 2 && s.skillIds && s.archived !== 1)
                               .slice();
+                            const partList = (allItems || [])
+                              .filter(s => s.isDrill === 3 && s.skillIds && s.archived !== 1)
+                              .slice();
                             const routineList = (routines || [])
                               .filter(r => r.archived !== 1)
                               .slice();
@@ -694,6 +702,21 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     ))}
                                   </CommandGroup>
                                 )}
+                                {partList.length > 0 && (
+                                  <CommandGroup heading="Routine Parts">
+                                    {partList.map(item => (
+                                      <CommandItem
+                                        key={`p-${item.id}`}
+                                        value={`${item.name} routine part`}
+                                        onSelect={() => { addSkill(item.id.toString()); setPickerOpen(false); }}
+                                        data-testid={`pick-part-${item.id}`}
+                                      >
+                                        <span className="font-mono text-xs font-semibold text-foreground mr-2">{item.name}</span>
+                                        <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-purple-600 dark:text-purple-400">Part</span>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                )}
                                 {routineList.length > 0 && (
                                   <CommandGroup heading="Routines">
                                     {routineList.map(r => (
@@ -734,10 +757,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl px-3" data-testid="btn-new-item"><Plus className="h-4 w-4" /></Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-40 rounded-xl">
-                      <DropdownMenuItem className="cursor-pointer text-xs" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); }} data-testid="menu-new-skill">New Skill</DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-xs text-yellow-600 dark:text-yellow-400" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(true); }} data-testid="menu-new-drill">New Drill</DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-xs text-red-500 dark:text-red-400" onClick={() => { setShowNewConn(true); setShowNewSkill(false); setShowNewRoutine(false); setNewConnName(""); setNewConnSkillIds([]); }} data-testid="menu-new-connection">New Connection</DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-xs text-blue-600 dark:text-blue-400" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setNewRoutineName(""); setNewRoutineSkillIds([]); }} data-testid="menu-new-routine">New Routine</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setShowNewPart(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); }} data-testid="menu-new-skill">New Skill</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-yellow-600 dark:text-yellow-400" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setShowNewPart(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(true); }} data-testid="menu-new-drill">New Drill</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-red-500 dark:text-red-400" onClick={() => { setShowNewConn(true); setShowNewSkill(false); setShowNewRoutine(false); setShowNewPart(false); setNewConnName(""); setNewConnSkillIds([]); }} data-testid="menu-new-connection">New Connection</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-blue-600 dark:text-blue-400" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setShowNewPart(false); setNewRoutineName(""); setNewRoutineSkillIds([]); }} data-testid="menu-new-routine">New Routine</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-purple-600 dark:text-purple-400" onClick={() => { setShowNewPart(true); setShowNewConn(false); setShowNewSkill(false); setShowNewRoutine(false); setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); }} data-testid="menu-new-part">New Routine Part</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -974,6 +998,113 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </div>
                 )}
 
+                {showNewPart && (() => {
+                  const partRoutines = (routines || []).filter(r => r.archived !== 1);
+                  const sel = partRoutines.find(r => r.id === newPartRoutineId) || null;
+                  const ids = sel?.skillIds || [];
+                  const total = ids.length;
+                  const slice = ids.slice(newPartStart - 1, newPartEnd);
+                  const auto = sel ? suggestRoutinePartName(sel.name, newPartStart, newPartEnd, total || 10) : "";
+                  const finalName = (newPartNameOverride ?? "").trim() || auto;
+                  const dd = slice.reduce((a, sid) => a + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0);
+                  return (
+                    <div className="p-3 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/10 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-purple-600 dark:text-purple-400">New Routine Part</span>
+                        <button type="button" onClick={() => { setShowNewPart(false); setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); }}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
+                      </div>
+                      <Select value={newPartRoutineId !== null ? String(newPartRoutineId) : ""} onValueChange={(v) => {
+                        const id = parseInt(v);
+                        setNewPartRoutineId(Number.isFinite(id) ? id : null);
+                        setNewPartStart(1);
+                        const r = partRoutines.find(rr => rr.id === id);
+                        setNewPartEnd(r?.skillIds.length || 10);
+                        setNewPartNameOverride(null);
+                      }}>
+                        <SelectTrigger className="rounded-lg h-9 text-xs" data-testid="select-new-part-routine"><SelectValue placeholder="Pick a routine..." /></SelectTrigger>
+                        <SelectContent>
+                          {partRoutines.map(r => (
+                            <SelectItem key={r.id} value={String(r.id)}><span className="text-xs">{r.name}</span></SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {sel && (
+                        <>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-medium text-muted-foreground">Start (1–{total})</label>
+                              <Input
+                                type="number" min={1} max={total}
+                                value={newPartStart}
+                                onChange={(e) => {
+                                  const v = Math.max(1, Math.min(total, parseInt(e.target.value) || 1));
+                                  setNewPartStart(v);
+                                  if (v > newPartEnd) setNewPartEnd(v);
+                                  setNewPartNameOverride(null);
+                                }}
+                                className="rounded-lg h-8 text-xs"
+                                data-testid="input-new-part-start"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-medium text-muted-foreground">End ({newPartStart}–{total})</label>
+                              <Input
+                                type="number" min={newPartStart} max={total}
+                                value={newPartEnd}
+                                onChange={(e) => {
+                                  const v = Math.max(newPartStart, Math.min(total, parseInt(e.target.value) || newPartStart));
+                                  setNewPartEnd(v);
+                                  setNewPartNameOverride(null);
+                                }}
+                                className="rounded-lg h-8 text-xs"
+                                data-testid="input-new-part-end"
+                              />
+                            </div>
+                          </div>
+                          <Input
+                            placeholder={auto}
+                            value={finalName}
+                            onChange={(e) => setNewPartNameOverride(e.target.value)}
+                            className="rounded-lg h-9 text-xs"
+                            data-testid="input-new-part-name"
+                          />
+                          <div className="flex flex-wrap gap-1 pt-1 border-t border-purple-500/10">
+                            {slice.length === 0 ? (
+                              <span className="text-[10px] text-muted-foreground p-1">Empty range</span>
+                            ) : slice.map((sid, i) => {
+                              const s = allItems?.find(sk => sk.id === sid);
+                              return (
+                                <Badge key={`np-${i}`} variant="outline" className="font-mono text-[10px]">
+                                  {newPartStart + i}. {s?.code || "?"}
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                          <div className="flex justify-between items-center text-[11px]">
+                            <span className="text-muted-foreground">Total DD</span>
+                            <span className="font-semibold text-foreground">{dd.toFixed(1)}</span>
+                          </div>
+                        </>
+                      )}
+                      <Button
+                        type="button" size="sm"
+                        className="w-full h-8 rounded-lg text-xs bg-purple-500 hover:bg-purple-600 text-white"
+                        disabled={!sel || slice.length === 0 || !finalName || isCreatingSkill}
+                        onClick={async () => {
+                          try {
+                            const created = await createSkill({ name: finalName, code: finalName, difficulty: dd, isDrill: 3, skillIds: slice });
+                            if (created && (created as Skill).id !== undefined) {
+                              addSkill(String((created as Skill).id));
+                            }
+                            setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); setShowNewPart(false);
+                          } catch {}
+                        }}
+                        data-testid="btn-save-new-part"
+                      >Save Routine Part</Button>
+                    </div>
+                  );
+                })()}
+
                 {recentSkillIds.length > 0 && (
                   <div className="space-y-1">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
@@ -985,6 +1116,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           <button key={sid} type="button" onClick={() => addSkill(sid.toString())} className={cn(
                             "px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors active:scale-95",
                             skill.isDrill === 1 ? "border-yellow-300 text-yellow-600 bg-yellow-50 dark:border-yellow-700 dark:text-yellow-400 dark:bg-yellow-900/10"
+                              : skill.isDrill === 3 ? "border-purple-300 text-purple-600 bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:bg-purple-900/10"
                               : skill.isDrill === 2 ? "border-red-300 text-red-500 bg-red-50 dark:border-red-700 dark:text-red-400 dark:bg-red-900/10"
                               : "border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50"
                           )} data-testid={`btn-recent-skill-${sid}`}>{skill.code}</button>
@@ -1164,7 +1296,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
                                         skill?.isDrill === 1
                                           ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400"
-                                          : isConnected || skill?.isDrill === 2
+                                          : isConnected || skill?.isDrill === 2 || skill?.isDrill === 3
                                           ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
                                           : "border-border/60 text-muted-foreground"
                                       )}>{skill?.code}</Badge>

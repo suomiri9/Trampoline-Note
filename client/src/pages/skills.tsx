@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
+import { useRoutines } from "@/hooks/use-routines";
 import { useRecentSkills, addRecentSkill } from "@/hooks/use-recent-skills";
-import { calcDDFromSkillIds } from "@/lib/training-utils";
+import { calcDDFromSkillIds, suggestRoutinePartName } from "@/lib/training-utils";
 import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { SortableChip } from "@/components/sortable-chip";
 import { PageLayout } from "@/components/page-layout";
@@ -74,6 +75,7 @@ function sortByOrder(items: Skill[]): Skill[] {
 export default function SkillsPage() {
   const [, navigate] = useLocation();
   const { data: allItems, createSkill, deleteSkill, updateSkill, reorderSkills, isCreating, isUpdating } = useSkills();
+  const { data: routines } = useRoutines();
   const recentSkillIds = useRecentSkills();
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   const [reorderMode, setReorderMode] = useState(false);
@@ -82,6 +84,11 @@ export default function SkillsPage() {
   const [connName, setConnName] = useState("");
   const [connSkillIds, setConnSkillIds] = useState<number[]>([]);
   const [connSkillPickerOpen, setConnSkillPickerOpen] = useState(false);
+
+  const [partRoutineId, setPartRoutineId] = useState<number | null>(null);
+  const [partStart, setPartStart] = useState(1);
+  const [partEnd, setPartEnd] = useState(10);
+  const [partNameOverride, setPartNameOverride] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<{ id: number; name: string; kind: string } | null>(null);
 
@@ -101,17 +108,27 @@ export default function SkillsPage() {
   const skills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 0 && archivedFilter(item))) : undefined;
   const drills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 1 && archivedFilter(item))) : undefined;
   const frequentConnections = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 2 && archivedFilter(item))) : undefined;
+  const routineParts = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 3 && archivedFilter(item))) : undefined;
   const archivedCount = allItems ? allItems.filter(i => i.archived === 1).length : 0;
 
   const activeSkills = allItems ? sortByOrder(allItems.filter(i => i.isDrill === 0 && i.archived !== 1)) : [];
   const activeDrills = allItems ? sortByOrder(allItems.filter(i => i.isDrill === 1 && i.archived !== 1)) : [];
   const activeConnections = allItems ? sortByOrder(allItems.filter(i => i.isDrill === 2 && i.archived !== 1)) : [];
+  const activeRoutines = (routines || []).filter(r => r.archived !== 1);
+
+  const selectedPartRoutine = activeRoutines.find(r => r.id === partRoutineId) || null;
+  const selectedRoutineSkillIds = selectedPartRoutine?.skillIds || [];
+  const partSliceIds = selectedRoutineSkillIds.slice(partStart - 1, partEnd);
+  const partAutoName = selectedPartRoutine
+    ? suggestRoutinePartName(selectedPartRoutine.name, partStart, partEnd, selectedRoutineSkillIds.length || 10)
+    : "";
+  const partFinalName = (partNameOverride ?? "").trim() || partAutoName;
 
   const toggleArchive = async (skill: Skill) => {
     if (skill.archived === 1) {
       await updateSkill({ id: skill.id, archived: 0 });
     } else {
-      const kind = skill.isDrill === 1 ? "drill" : skill.isDrill === 2 ? "connection" : "skill";
+      const kind = skill.isDrill === 1 ? "drill" : skill.isDrill === 2 ? "connection" : skill.isDrill === 3 ? "routine part" : "skill";
       setArchiveTarget({ id: skill.id, name: skill.name, kind });
     }
   };
@@ -182,6 +199,29 @@ export default function SkillsPage() {
     drillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 1 });
   };
 
+  const onRoutinePartSubmit = async () => {
+    if (!selectedPartRoutine || partSliceIds.length === 0) return;
+    const totalDifficulty = calcDDFromSkillIds(partSliceIds, allItems || []);
+    const finalName = partFinalName || partAutoName;
+    const payload = {
+      name: finalName,
+      code: finalName,
+      difficulty: totalDifficulty,
+      isDrill: 3,
+      skillIds: partSliceIds,
+    };
+    if (editingSkill) {
+      await updateSkill({ id: editingSkill.id, ...payload });
+      setEditingSkill(null);
+    } else {
+      await createSkill(payload);
+    }
+    setPartRoutineId(null);
+    setPartStart(1);
+    setPartEnd(10);
+    setPartNameOverride(null);
+  };
+
   const onConnectionSubmit = async () => {
     if (!connName || connSkillIds.length === 0) return;
     
@@ -208,7 +248,17 @@ export default function SkillsPage() {
 
   const startEditing = (skill: Skill) => {
     setEditingSkill(skill);
-    if (skill.isDrill === 2) {
+    if (skill.isDrill === 3) {
+      // Routine parts: editing the slice itself isn't reversible; let user adjust name only by re-saving with the existing skill ids.
+      const matchedRoutine = (routines || []).find(r => {
+        const ids = r.skillIds.slice(0, 10);
+        return skill.skillIds && skill.skillIds.length > 0 && skill.skillIds.every((sid, i) => ids.indexOf(sid) !== -1);
+      }) || null;
+      setPartRoutineId(matchedRoutine?.id ?? null);
+      setPartStart(1);
+      setPartEnd(skill.skillIds?.length || 1);
+      setPartNameOverride(skill.name);
+    } else if (skill.isDrill === 2) {
       setConnName(skill.name);
       setConnSkillIds(skill.skillIds || []);
     } else if (skill.isDrill === 1) {
@@ -232,7 +282,12 @@ export default function SkillsPage() {
     const isDrill = editingSkill?.isDrill;
     setEditingSkill(null);
     setConnSkillPickerOpen(false);
-    if (isDrill === 2) {
+    if (isDrill === 3) {
+      setPartRoutineId(null);
+      setPartStart(1);
+      setPartEnd(10);
+      setPartNameOverride(null);
+    } else if (isDrill === 2) {
       setConnName("");
       setConnSkillIds([]);
     } else if (isDrill === 1) {
@@ -285,12 +340,13 @@ export default function SkillsPage() {
         </Button>
       </div>
       <Tabs defaultValue="skills" className="space-y-8" onValueChange={() => { cancelEditing(); setReorderMode(false); }}>
-        <TabsList className="grid w-full max-w-lg grid-cols-3">
+        <TabsList className="grid w-full max-w-2xl grid-cols-4">
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="drills">Drills</TabsTrigger>
-          <TabsTrigger value="connections">
-            <span className="hidden sm:inline">Connections</span>
-            <span className="sm:hidden">Connections</span>
+          <TabsTrigger value="connections">Connections</TabsTrigger>
+          <TabsTrigger value="parts">
+            <span className="hidden sm:inline">Routine Parts</span>
+            <span className="sm:hidden">Parts</span>
           </TabsTrigger>
         </TabsList>
 
@@ -724,6 +780,196 @@ export default function SkillsPage() {
                             )}
                           </SortableRow>
                         ))}
+                      </TableBody>
+                    </SortableContext>
+                  </Table>
+                </DndContext>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="parts" className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {!reorderMode && (
+              <Card className="md:col-span-1 h-fit">
+                <CardHeader className="p-4 pb-2">
+                  <CardTitle className="flex justify-between items-center text-lg">
+                    {editingSkill ? "Edit Routine Part" : "Add New Routine Part"}
+                    {editingSkill && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Routine</label>
+                      <Select
+                        value={partRoutineId !== null ? String(partRoutineId) : ""}
+                        onValueChange={(v) => {
+                          const id = parseInt(v);
+                          setPartRoutineId(Number.isFinite(id) ? id : null);
+                          setPartStart(1);
+                          const r = activeRoutines.find(rr => rr.id === id);
+                          setPartEnd(r?.skillIds.length || 10);
+                          setPartNameOverride(null);
+                        }}
+                      >
+                        <SelectTrigger data-testid="select-part-routine"><SelectValue placeholder="Pick a routine..." /></SelectTrigger>
+                        <SelectContent>
+                          {activeRoutines.map(r => (
+                            <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {selectedPartRoutine && (
+                      <>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-muted-foreground">Start (1–{selectedRoutineSkillIds.length})</label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={selectedRoutineSkillIds.length}
+                              value={partStart}
+                              onChange={(e) => {
+                                const v = Math.max(1, Math.min(selectedRoutineSkillIds.length, parseInt(e.target.value) || 1));
+                                setPartStart(v);
+                                if (v > partEnd) setPartEnd(v);
+                                setPartNameOverride(null);
+                              }}
+                              data-testid="input-part-start"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-muted-foreground">End ({partStart}–{selectedRoutineSkillIds.length})</label>
+                            <Input
+                              type="number"
+                              min={partStart}
+                              max={selectedRoutineSkillIds.length}
+                              value={partEnd}
+                              onChange={(e) => {
+                                const v = Math.max(partStart, Math.min(selectedRoutineSkillIds.length, parseInt(e.target.value) || partStart));
+                                setPartEnd(v);
+                                setPartNameOverride(null);
+                              }}
+                              data-testid="input-part-end"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-muted-foreground">Name</label>
+                          <Input
+                            value={partFinalName}
+                            onChange={(e) => setPartNameOverride(e.target.value)}
+                            placeholder={partAutoName}
+                            data-testid="input-part-name"
+                          />
+                          {partNameOverride !== null && partAutoName && partNameOverride.trim() !== partAutoName && (
+                            <button type="button" className="text-[10px] text-muted-foreground underline" onClick={() => setPartNameOverride(null)}>
+                              Reset to "{partAutoName}"
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-muted-foreground">Skills in this part</label>
+                          <div className="min-h-[60px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-1.5 items-start">
+                            {partSliceIds.length === 0 ? (
+                              <span className="text-xs text-muted-foreground p-1">Empty range</span>
+                            ) : (
+                              partSliceIds.map((sid, i) => {
+                                const s = allItems?.find(sk => sk.id === sid);
+                                return (
+                                  <Badge key={`pp-${i}`} variant="outline" className="font-mono text-[10px]">
+                                    {partStart + i}. {s?.code || "?"}
+                                  </Badge>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="pt-1 flex justify-between items-center">
+                          <span className="text-sm font-medium">Total DD:</span>
+                          <span className="font-bold text-primary">
+                            {calcDDFromSkillIds(partSliceIds, allItems || []).toFixed(1)}
+                          </span>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="flex gap-2">
+                      <Button
+                        className="flex-1"
+                        onClick={onRoutinePartSubmit}
+                        disabled={isCreating || isUpdating || !selectedPartRoutine || partSliceIds.length === 0 || !partFinalName}
+                        data-testid="button-save-part"
+                      >
+                        {editingSkill ? "Update Part" : "Save Part"}
+                      </Button>
+                      {editingSkill && <Button type="button" variant="outline" onClick={cancelEditing}>Cancel</Button>}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            <Card className={reorderMode ? "md:col-span-3" : "md:col-span-2"}>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Routine Parts Library</CardTitle>
+                {renderReorderButton()}
+              </CardHeader>
+              <CardContent className="max-h-[60vh] overflow-y-auto overflow-x-auto">
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(routineParts)}>
+                  <Table>
+                    <TableHeader><TableRow>{reorderMode && <TableHead className="w-8" />}<TableHead>Name</TableHead><TableHead>Sequence</TableHead><TableHead>DD</TableHead>{!reorderMode && <TableHead />}</TableRow></TableHeader>
+                    <SortableContext items={(routineParts || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
+                      <TableBody>
+                        {routineParts?.map((part) => (
+                          <SortableRow
+                            key={part.id}
+                            id={`skill-${part.id}`}
+                            reorderMode={reorderMode}
+                            className={editingSkill?.id === part.id ? "bg-muted/50" : ""}
+                            testId={`row-part-${part.id}`}
+                          >
+                            <TableCell className="font-medium">
+                              <span className="inline-flex items-center gap-2 flex-wrap">
+                                <span>{part.name}</span>
+                                {part.id < 0 && (
+                                  <PendingSyncBadge size="xs" testId={`badge-pending-part-${part.id}`} />
+                                )}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {part.skillIds?.map((sid, idx) => (
+                                  <Badge key={idx} variant="outline" className="text-[10px] px-1">{allItems?.find(s => s.id === sid)?.code || "?"}</Badge>
+                                ))}
+                              </div>
+                            </TableCell>
+                            <TableCell>{part.difficulty.toFixed(1)}</TableCell>
+                            {!reorderMode && (
+                              <TableCell className="text-right">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" data-testid={`button-actions-skill-${part.id}`}><MoreVertical className="h-4 w-4" /></Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEditing(part)}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => toggleArchive(part)} data-testid={`button-archive-skill-${part.id}`}>{part.archived === 1 ? <><ArchiveRestore className="h-3.5 w-3.5" /> Unarchive</> : <><Archive className="h-3.5 w-3.5" /> Archive</>}</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget({ id: part.id, name: part.name })}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            )}
+                          </SortableRow>
+                        ))}
+                        {routineParts && routineParts.length === 0 && (
+                          <TableRow><TableCell colSpan={reorderMode ? 4 : 5} className="text-center text-xs text-muted-foreground py-6">No routine parts yet. Pick a routine and a range above to create one.</TableCell></TableRow>
+                        )}
                       </TableBody>
                     </SortableContext>
                   </Table>

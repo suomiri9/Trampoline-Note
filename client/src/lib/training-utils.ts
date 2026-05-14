@@ -27,6 +27,14 @@ export function parseNoteSkills(skillsString: string | null | undefined): SkillI
   }
 }
 
+export function suggestRoutinePartName(routineName: string, start: number, end: number, total: number): string {
+  if (start <= 1 && end >= total) return routineName;
+  const len = end - start + 1;
+  if (start <= 1) return `First ${len} of ${routineName}`;
+  if (end >= total) return `Last ${len} of ${routineName}`;
+  return `Skills ${start}-${end} of ${routineName}`;
+}
+
 export function calcDDFromSkillIds(skillIds: number[], skills: Skill[]): number {
   return skillIds.reduce((acc, sId) => {
     const sk = skills.find(s => s.id === sId);

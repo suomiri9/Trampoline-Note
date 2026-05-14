@@ -136,7 +136,7 @@ export async function registerRoutes(
 
       if (skill.isDrill === 0 && input.difficulty != null) {
         const allSkills = await storage.getSkills(userId);
-        const connections = allSkills.filter(s => s.isDrill === 2 && s.skillIds?.includes(skillId));
+        const connections = allSkills.filter(s => (s.isDrill === 2 || s.isDrill === 3) && s.skillIds?.includes(skillId));
         for (const conn of connections) {
           const newDD = (conn.skillIds || []).reduce((acc, sId) => {
             const sk = allSkills.find(s => s.id === sId);
@@ -274,7 +274,7 @@ export async function registerRoutes(
 
       const fcMap = new Map<number, number[]>();
       for (const sk of userSkills) {
-        if (sk.isDrill === 2 && sk.skillIds) {
+        if ((sk.isDrill === 2 || sk.isDrill === 3) && sk.skillIds) {
           fcMap.set(sk.id, sk.skillIds);
         }
       }

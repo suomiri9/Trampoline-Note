@@ -295,7 +295,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                                   "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
                                   skill.isDrill === 1
                                     ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400"
-                                    : (!isSingle || skill.isDrill === 2)
+                                    : (!isSingle || skill.isDrill === 2 || skill.isDrill === 3)
                                     ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
                                     : "border-border/60 text-muted-foreground"
                                 )}>
