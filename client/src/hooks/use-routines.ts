@@ -66,9 +66,6 @@ export function useRoutines() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.routines.list.path] });
-      queryClient.invalidateQueries({
-        predicate: (q) => q.queryKey[0] === "/api/stats/daily-dd",
-      });
       toast({ title: "Routine deleted successfully" });
     },
   });
@@ -80,9 +77,6 @@ export function useRoutines() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.routines.list.path] });
-      queryClient.invalidateQueries({
-        predicate: (q) => q.queryKey[0] === "/api/stats/daily-dd",
-      });
       toast({ title: "Routine updated successfully" });
     },
     onError: (error: Error) => {

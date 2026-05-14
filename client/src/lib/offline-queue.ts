@@ -610,7 +610,6 @@ export async function drainQueue(): Promise<DrainResult> {
             k === '/api/scores' ||
             k === '/api/skills' ||
             k === '/api/routines' ||
-            k === '/api/stats/daily-dd' ||
             k.startsWith('/api/skills/') ||
             k.startsWith('/api/routines/'))
         );

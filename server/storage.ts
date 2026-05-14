@@ -14,20 +14,12 @@ import {
   type Score,
   type InsertScore
 } from "@shared/schema";
-import { eq, desc, and, isNull, sql, gte, lte } from "drizzle-orm";
-import { parseNoteSkills, calculateTotalDD } from "@shared/training-utils";
-
-export interface DailyDDPoint {
-  date: string;
-  difficulty: number;
-  sessions: number;
-}
+import { eq, desc, and, isNull, sql, gte } from "drizzle-orm";
 
 export interface IStorage {
   // Notes
   getNotes(userId: string, opts?: { limit?: number; offset?: number }): Promise<NoteResponse[]>;
   getNotesCount(userId: string): Promise<number>;
-  getDailyDD(userId: string, from: string, to: string): Promise<DailyDDPoint[]>;
   getNote(id: number): Promise<NoteResponse | undefined>;
   createNote(userId: string, note: CreateNoteRequest): Promise<NoteResponse>;
   updateNote(id: number, userId: string, updates: UpdateNoteRequest): Promise<NoteResponse>;
@@ -102,45 +94,6 @@ export class DatabaseStorage implements IStorage {
 
   async deleteNote(id: number, userId: string): Promise<void> {
     await db.delete(notes).where(and(eq(notes.id, id), eq(notes.userId, userId)));
-  }
-
-  async getDailyDD(userId: string, from: string, to: string): Promise<DailyDDPoint[]> {
-    // Fetch only the notes inside the requested date window. We need full
-    // skills + routines to resolve DD because notes store skill ids and
-    // routine references that need lookups.
-    const [rows, allSkills, allRoutines] = await Promise.all([
-      db
-        .select({ date: notes.date, skills: notes.skills })
-        .from(notes)
-        .where(
-          and(
-            eq(notes.userId, userId),
-            gte(notes.date, from),
-            lte(notes.date, to),
-          ),
-        ),
-      db.select().from(skills).where(eq(skills.userId, userId)),
-      db.select().from(routines).where(eq(routines.userId, userId)),
-    ]);
-
-    const byDay = new Map<string, { difficulty: number; sessions: number }>();
-    for (const row of rows) {
-      const raw = row.date as unknown;
-      const key = (raw instanceof Date
-        ? raw.toISOString()
-        : String(raw ?? "")
-      ).substring(0, 10);
-      if (!key) continue;
-      const items = parseNoteSkills(row.skills);
-      const dd = calculateTotalDD(items, allSkills, allRoutines);
-      const cur = byDay.get(key) || { difficulty: 0, sessions: 0 };
-      cur.difficulty += dd;
-      cur.sessions += 1;
-      byDay.set(key, cur);
-    }
-    return Array.from(byDay.entries())
-      .map(([date, v]) => ({ date, difficulty: v.difficulty, sessions: v.sessions }))
-      .sort((a, b) => (a.date < b.date ? -1 : 1));
   }
 
   async getSkills(userId: string): Promise<Skill[]> {
