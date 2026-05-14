@@ -1250,24 +1250,30 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         );
                                       })}
                                     </div>
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      <div className="flex items-center border rounded-md">
-                                        <button type="button" className="px-2" onClick={() => updateReps(group.indices, (grpReps || 1) - 1)}>-</button>
-                                        <input
-                                          type="text"
-                                          inputMode="numeric"
-                                          pattern="[0-9]*"
-                                          value={grpReps ?? ""}
-                                          onChange={(e) => {
-                                            const raw = e.target.value;
-                                            if (raw === "") { updateReps(group.indices, 0); return; }
-                                            const v = parseInt(raw);
-                                            if (!isNaN(v)) updateReps(group.indices, v);
-                                          }}
-                                          onBlur={() => { if (!grpReps || grpReps < 1) updateReps(group.indices, 1); }}
-                                          className="w-8 text-center text-xs font-bold bg-transparent outline-none"
-                                        />
-                                        <button type="button" className="px-2" onClick={() => updateReps(group.indices, (grpReps || 1) + 1)}>+</button>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <div className="flex items-center gap-1 text-[11px] font-mono font-bold">
+                                        <span className="text-muted-foreground">{lineDD.toFixed(1)}</span>
+                                        <span className="text-red-400/70">×</span>
+                                        <div className="flex items-center border rounded-md">
+                                          <button type="button" className="px-1.5 text-muted-foreground" onClick={() => updateReps(group.indices, (grpReps || 1) - 1)}>-</button>
+                                          <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            pattern="[0-9]*"
+                                            value={grpReps ?? ""}
+                                            onChange={(e) => {
+                                              const raw = e.target.value;
+                                              if (raw === "") { updateReps(group.indices, 0); return; }
+                                              const v = parseInt(raw);
+                                              if (!isNaN(v)) updateReps(group.indices, v);
+                                            }}
+                                            onBlur={() => { if (!grpReps || grpReps < 1) updateReps(group.indices, 1); }}
+                                            className="w-6 text-center text-xs font-bold bg-transparent outline-none"
+                                          />
+                                          <button type="button" className="px-1.5 text-muted-foreground" onClick={() => updateReps(group.indices, (grpReps || 1) + 1)}>+</button>
+                                        </div>
+                                        <span className="text-red-400/70">=</span>
+                                        <span className="text-red-600 dark:text-red-400">{(lineDD * (grpReps || 1)).toFixed(1)}</span>
                                       </div>
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
@@ -1277,13 +1283,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeGroup(group.indices)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                         </DropdownMenuContent>
                                       </DropdownMenu>
-                                    </div>
-                                    <div className="flex items-center gap-1 text-[10px] font-mono font-bold shrink-0">
-                                      <span className="text-muted-foreground">{lineDD.toFixed(1)}</span>
-                                      <span className="text-red-400/70">×</span>
-                                      <span className="text-red-600 dark:text-red-400">{grpReps}</span>
-                                      <span className="text-red-400/70">=</span>
-                                      <span className="text-red-600 dark:text-red-400">{(lineDD * (grpReps || 1)).toFixed(1)}</span>
                                     </div>
                                   </div>
                                   {grpNote !== undefined && grpNote !== null && (
@@ -1340,22 +1339,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           const dd = displaySkillIds.reduce((a, sId) => a + (allItems?.find(s => s.id === sId)?.difficulty || 0), 0);
                                           const reps = item.reps || 1;
                                           return (
-                                            <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
+                                            <div className="flex items-center gap-1 text-[11px] font-mono font-bold">
                                               <span className="text-muted-foreground">{dd.toFixed(1)}</span>
                                               <span className="text-muted-foreground/40">×</span>
-                                              <span className="text-foreground">{reps}</span>
+                                              <div className="flex items-center border rounded-md">
+                                                <button type="button" className="px-1.5 text-muted-foreground" onClick={() => updateReps([idx], (item.reps || 1) - 1)}>-</button>
+                                                <input type="text" inputMode="numeric" pattern="[0-9]*" value={item.reps ?? 1} onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateReps([idx], v); else if (e.target.value === "") updateReps([idx], 0); }} onBlur={() => { if (!item.reps || item.reps < 1) updateReps([idx], 1); }} className="w-6 text-center text-xs font-bold bg-transparent outline-none" />
+                                                <button type="button" className="px-1.5 text-muted-foreground" onClick={() => updateReps([idx], (item.reps || 1) + 1)}>+</button>
+                                              </div>
                                               <span className="text-muted-foreground/40">=</span>
                                               <span className="text-foreground">{(dd * reps).toFixed(1)}</span>
                                             </div>
                                           );
                                         })()}
-                                        {!isConnected && (
-                                        <div className="flex items-center border rounded-md">
-                                          <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) - 1)}>-</button>
-                                          <input type="text" inputMode="numeric" pattern="[0-9]*" value={item.reps ?? 1} onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateReps([idx], v); else if (e.target.value === "") updateReps([idx], 0); }} onBlur={() => { if (!item.reps || item.reps < 1) updateReps([idx], 1); }} className="w-8 text-center text-xs font-bold bg-transparent outline-none" />
-                                          <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) + 1)}>+</button>
-                                        </div>
-                                        )}
                                         {(!isConnected || iIdx === 0) ? (
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
@@ -1408,22 +1404,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           const dd = displaySkillIds.reduce((a, sId) => a + (allItems?.find(s => s.id === sId)?.difficulty || 0), 0);
                                           const reps = item.reps || 1;
                                           return (
-                                            <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
+                                            <div className="flex items-center gap-1 text-[11px] font-mono font-bold">
                                               <span className="text-muted-foreground">{dd.toFixed(1)}</span>
                                               <span className="text-muted-foreground/40">×</span>
-                                              <span className="text-foreground">{reps}</span>
+                                              <div className="flex items-center border rounded-md">
+                                                <button type="button" className="px-1.5 text-muted-foreground" onClick={() => updateReps([idx], (item.reps || 1) - 1)}>-</button>
+                                                <input type="text" inputMode="numeric" pattern="[0-9]*" value={item.reps ?? 1} onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateReps([idx], v); else if (e.target.value === "") updateReps([idx], 0); }} onBlur={() => { if (!item.reps || item.reps < 1) updateReps([idx], 1); }} className="w-6 text-center text-xs font-bold bg-transparent outline-none" />
+                                                <button type="button" className="px-1.5 text-muted-foreground" onClick={() => updateReps([idx], (item.reps || 1) + 1)}>+</button>
+                                              </div>
                                               <span className="text-muted-foreground/40">=</span>
                                               <span className="text-foreground">{(dd * reps).toFixed(1)}</span>
                                             </div>
                                           );
                                         })()}
-                                        {!isConnected && (
-                                        <div className="flex items-center border rounded-md">
-                                          <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) - 1)}>-</button>
-                                          <input type="text" inputMode="numeric" pattern="[0-9]*" value={item.reps ?? 1} onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateReps([idx], v); else if (e.target.value === "") updateReps([idx], 0); }} onBlur={() => { if (!item.reps || item.reps < 1) updateReps([idx], 1); }} className="w-8 text-center text-xs font-bold bg-transparent outline-none" />
-                                          <button type="button" className="px-2" onClick={() => updateReps([idx], (item.reps || 1) + 1)}>+</button>
-                                        </div>
-                                        )}
                                         {(!isConnected || iIdx === 0) ? (
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
@@ -1475,40 +1468,32 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         const dd = skill?.difficulty || 0;
                                         const reps = item.reps || 1;
                                         return (
-                                          <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
+                                          <div className="flex items-center gap-1 text-[11px] font-mono font-bold">
                                             <span className="text-muted-foreground">{dd.toFixed(1)}</span>
                                             <span className="text-muted-foreground/40">×</span>
-                                            <span className="text-foreground">{reps}</span>
+                                            <div className="flex items-center border rounded-md">
+                                              <button type="button" className="px-1.5 text-muted-foreground" onClick={() => updateReps(group.indices, (item.reps || 1) - 1)}>-</button>
+                                              <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                pattern="[0-9]*"
+                                                value={item.reps ?? ""}
+                                                onChange={(e) => {
+                                                  const raw = e.target.value;
+                                                  if (raw === "") { updateReps(group.indices, 0); return; }
+                                                  const val = parseInt(raw);
+                                                  if (!isNaN(val)) updateReps(group.indices, val);
+                                                }}
+                                                onBlur={() => { if (!item.reps || item.reps < 1) updateReps(group.indices, 1); }}
+                                                className="w-6 text-center text-xs font-bold bg-transparent outline-none"
+                                              />
+                                              <button type="button" className="px-1.5 text-muted-foreground" onClick={() => updateReps(group.indices, (item.reps || 1) + 1)}>+</button>
+                                            </div>
                                             <span className="text-muted-foreground/40">=</span>
                                             <span className="text-foreground">{(dd * reps).toFixed(1)}</span>
                                           </div>
                                         );
                                       })()}
-                                      {showReps && (
-                                        <div className="flex items-center border rounded-md">
-                                          <button type="button" className="px-2" onClick={() => updateReps(group.indices, (item.reps || 1) - 1)}>-</button>
-                                          <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            pattern="[0-9]*"
-                                            value={item.reps ?? ""}
-                                            onChange={(e) => {
-                                              const raw = e.target.value;
-                                              if (raw === "") {
-                                                updateReps(group.indices, 0);
-                                                return;
-                                              }
-                                              const val = parseInt(raw);
-                                              if (!isNaN(val)) updateReps(group.indices, val);
-                                            }}
-                                            onBlur={() => {
-                                              if (!item.reps || item.reps < 1) updateReps(group.indices, 1);
-                                            }}
-                                            className="w-8 text-center text-xs font-bold bg-transparent outline-none"
-                                          />
-                                          <button type="button" className="px-2" onClick={() => updateReps(group.indices, (item.reps || 1) + 1)}>+</button>
-                                        </div>
-                                      )}
                                       {(!isConnected || iIdx === 0) ? (
                                         <DropdownMenu>
                                           <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
