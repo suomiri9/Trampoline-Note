@@ -353,6 +353,22 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     });
   };
 
+  const removeGroup = (indices: number[]) => {
+    if (!indices.length) return;
+    setSelectedSkills(prev => {
+      const newSkills = [...prev];
+      const first = indices[0];
+      const last = indices[indices.length - 1];
+      let from = first;
+      let to = last;
+      if (from > 0 && newSkills[from - 1]?.id === -1) from = from - 1;
+      else if (to < newSkills.length - 1 && newSkills[to + 1]?.id === -1) to = to + 1;
+      newSkills.splice(from, to - from + 1);
+      form.setValue('skills', JSON.stringify(newSkills));
+      return newSkills;
+    });
+  };
+
   const duplicateGroup = (groupIndices: number[]) => {
     setSelectedSkills(prev => {
       const newSkills = [...prev];
@@ -1175,7 +1191,116 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             const isConnected = group.items.length > 1;
                             return (
                               <SortablePracticeGroup key={`group-${gIdx}`} gId={`group-${gIdx}`} isConnected={isConnected}>
-                            {group.items.map((item, iIdx) => {
+                            {isConnected ? (() => {
+                              const grpReps = group.items[0]?.reps ?? 1;
+                              const grpNote = group.items[0]?.note;
+                              const grpNoteIdx = group.indices[0];
+                              const lineDD = group.items.reduce((acc, it) => {
+                                if (it.id === -2) {
+                                  const r = routines?.find(rt => rt.id === it.routineId);
+                                  const sIds = it.customSkillIds ?? r?.skillIds ?? [];
+                                  const cnt = it.attempt ?? sIds.length;
+                                  return acc + sIds.slice(0, cnt).reduce((a, sId) => a + (allItems?.find(s => s.id === sId)?.difficulty || 0), 0);
+                                }
+                                if (it.id === -3) {
+                                  const fc = allItems?.find(s => s.id === it.fcId);
+                                  const sIds = it.customSkillIds ?? fc?.skillIds ?? [];
+                                  return acc + sIds.reduce((a, sId) => a + (allItems?.find(s => s.id === sId)?.difficulty || 0), 0);
+                                }
+                                return acc + (allItems?.find(s => s.id === it.id)?.difficulty || 0);
+                              }, 0);
+                              return (
+                                <div className="px-3 py-2">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+                                      {group.items.map((it, iIdx) => {
+                                        const idx = group.indices[iIdx];
+                                        const sep = iIdx < group.items.length - 1 ? <span className="text-red-400/70 font-bold text-xs">+</span> : null;
+                                        if (it.id === -2) {
+                                          const r = routines?.find(rt => rt.id === it.routineId);
+                                          return (
+                                            <div key={idx} className="flex items-center gap-1.5 cursor-pointer" onClick={() => setEditingRoutineIdx(idx)}>
+                                              <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none shrink-0">ROUTINE</Badge>
+                                              <span className="text-[11px] font-bold text-primary truncate max-w-[120px]">{r?.name || it.routineName}</span>
+                                              {sep}
+                                            </div>
+                                          );
+                                        }
+                                        if (it.id === -3) {
+                                          const fc = allItems?.find(s => s.id === it.fcId);
+                                          return (
+                                            <div key={idx} className="flex items-center gap-1.5 cursor-pointer" onClick={() => setEditingRoutineIdx(idx)}>
+                                              <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-red-500 text-white border-none shrink-0">CONN</Badge>
+                                              <span className="text-[11px] font-bold text-red-600 dark:text-red-400 truncate max-w-[120px]">{fc?.name || it.fcName}</span>
+                                              {sep}
+                                            </div>
+                                          );
+                                        }
+                                        const sk = allItems?.find(s => s.id === it.id);
+                                        return (
+                                          <div key={idx} className="flex items-center gap-1.5">
+                                            <Badge variant="outline" className={cn(
+                                              "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
+                                              sk?.isDrill === 1
+                                                ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400"
+                                                : "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
+                                            )}>{sk?.code}</Badge>
+                                            {sep}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <div className="flex items-center border rounded-md">
+                                        <button type="button" className="px-2" onClick={() => updateReps(group.indices, (grpReps || 1) - 1)}>-</button>
+                                        <input
+                                          type="text"
+                                          inputMode="numeric"
+                                          pattern="[0-9]*"
+                                          value={grpReps ?? ""}
+                                          onChange={(e) => {
+                                            const raw = e.target.value;
+                                            if (raw === "") { updateReps(group.indices, 0); return; }
+                                            const v = parseInt(raw);
+                                            if (!isNaN(v)) updateReps(group.indices, v);
+                                          }}
+                                          onBlur={() => { if (!grpReps || grpReps < 1) updateReps(group.indices, 1); }}
+                                          className="w-8 text-center text-xs font-bold bg-transparent outline-none"
+                                        />
+                                        <button type="button" className="px-2" onClick={() => updateReps(group.indices, (grpReps || 1) + 1)}>+</button>
+                                      </div>
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                                          <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (grpNote !== undefined && grpNote !== null) { updateSkillNote(grpNoteIdx, undefined); } else { addNoteAndFocus(grpNoteIdx); } }}><MessageSquare className="h-3.5 w-3.5" /> {grpNote !== undefined && grpNote !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
+                                          <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                                          <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeGroup(group.indices)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[10px] font-mono font-bold shrink-0">
+                                      <span className="text-muted-foreground">{lineDD.toFixed(1)}</span>
+                                      <span className="text-red-400/70">×</span>
+                                      <span className="text-red-600 dark:text-red-400">{grpReps}</span>
+                                      <span className="text-red-400/70">=</span>
+                                      <span className="text-red-600 dark:text-red-400">{(lineDD * (grpReps || 1)).toFixed(1)}</span>
+                                    </div>
+                                  </div>
+                                  {grpNote !== undefined && grpNote !== null && (
+                                    <div className="mt-1.5">
+                                      <input
+                                        type="text"
+                                        placeholder="Type a note..."
+                                        value={grpNote || ""}
+                                        onChange={(e) => updateSkillNote(grpNoteIdx, e.target.value)}
+                                        className="w-full text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 outline-none focus:bg-muted/50 placeholder:text-muted-foreground/40"
+                                        data-testid={`input-skill-note-${grpNoteIdx}`}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })() : group.items.map((item, iIdx) => {
                               const idx = group.indices[iIdx];
                               if (item.id === -2) {
                                 const routine = routines?.find(r => r.id === item.routineId);
