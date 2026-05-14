@@ -712,7 +712,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         data-testid={`pick-part-${item.id}`}
                                       >
                                         <span className="font-mono text-xs font-semibold text-foreground mr-2">{item.name}</span>
-                                        <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-purple-600 dark:text-purple-400">Part</span>
+                                        <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-gray-600 dark:text-gray-300">Part</span>
                                       </CommandItem>
                                     ))}
                                   </CommandGroup>
@@ -761,7 +761,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       <DropdownMenuItem className="cursor-pointer text-xs text-yellow-600 dark:text-yellow-400" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setShowNewPart(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(true); }} data-testid="menu-new-drill">New Drill</DropdownMenuItem>
                       <DropdownMenuItem className="cursor-pointer text-xs text-red-500 dark:text-red-400" onClick={() => { setShowNewConn(true); setShowNewSkill(false); setShowNewRoutine(false); setShowNewPart(false); setNewConnName(""); setNewConnSkillIds([]); }} data-testid="menu-new-connection">New Connection</DropdownMenuItem>
                       <DropdownMenuItem className="cursor-pointer text-xs text-blue-600 dark:text-blue-400" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setShowNewPart(false); setNewRoutineName(""); setNewRoutineSkillIds([]); }} data-testid="menu-new-routine">New Routine</DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-xs text-purple-600 dark:text-purple-400" onClick={() => { setShowNewPart(true); setShowNewConn(false); setShowNewSkill(false); setShowNewRoutine(false); setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); }} data-testid="menu-new-part">New Routine Part</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-gray-600 dark:text-gray-300" onClick={() => { setShowNewPart(true); setShowNewConn(false); setShowNewSkill(false); setShowNewRoutine(false); setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); }} data-testid="menu-new-part">New Routine Part</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -1008,9 +1008,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   const finalName = (newPartNameOverride ?? "").trim() || auto;
                   const dd = slice.reduce((a, sid) => a + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0);
                   return (
-                    <div className="p-3 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/10 space-y-2">
+                    <div className="p-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-100/50 dark:bg-gray-900/10 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-purple-600 dark:text-purple-400">New Routine Part</span>
+                        <span className="text-xs font-bold text-gray-600 dark:text-gray-300">New Routine Part</span>
                         <button type="button" onClick={() => { setShowNewPart(false); setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); }}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
                       </div>
                       <Select value={newPartRoutineId !== null ? String(newPartRoutineId) : ""} onValueChange={(v) => {
@@ -1035,12 +1035,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               <label className="text-[10px] font-medium text-muted-foreground">Start (1–{total})</label>
                               <Input
                                 type="number" min={1} max={total}
-                                value={newPartStart}
+                                value={newPartStart || ""}
                                 onChange={(e) => {
-                                  const v = Math.max(1, Math.min(total, parseInt(e.target.value) || 1));
+                                  const raw = e.target.value;
+                                  if (raw === "") { setNewPartStart(0); setNewPartNameOverride(null); return; }
+                                  const n = parseInt(raw);
+                                  if (!Number.isFinite(n)) return;
+                                  setNewPartStart(Math.max(0, Math.min(total, n)));
+                                  setNewPartNameOverride(null);
+                                }}
+                                onBlur={() => {
+                                  const v = Math.max(1, Math.min(total, newPartStart || 1));
                                   setNewPartStart(v);
                                   if (v > newPartEnd) setNewPartEnd(v);
-                                  setNewPartNameOverride(null);
                                 }}
                                 className="rounded-lg h-8 text-xs"
                                 data-testid="input-new-part-start"
@@ -1049,12 +1056,20 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             <div className="space-y-1">
                               <label className="text-[10px] font-medium text-muted-foreground">End ({newPartStart}–{total})</label>
                               <Input
-                                type="number" min={newPartStart} max={total}
-                                value={newPartEnd}
+                                type="number" min={newPartStart || 1} max={total}
+                                value={newPartEnd || ""}
                                 onChange={(e) => {
-                                  const v = Math.max(newPartStart, Math.min(total, parseInt(e.target.value) || newPartStart));
-                                  setNewPartEnd(v);
+                                  const raw = e.target.value;
+                                  if (raw === "") { setNewPartEnd(0); setNewPartNameOverride(null); return; }
+                                  const n = parseInt(raw);
+                                  if (!Number.isFinite(n)) return;
+                                  setNewPartEnd(Math.max(0, Math.min(total, n)));
                                   setNewPartNameOverride(null);
+                                }}
+                                onBlur={() => {
+                                  const start = newPartStart || 1;
+                                  const v = Math.max(start, Math.min(total, newPartEnd || start));
+                                  setNewPartEnd(v);
                                 }}
                                 className="rounded-lg h-8 text-xs"
                                 data-testid="input-new-part-end"
@@ -1068,7 +1083,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             className="rounded-lg h-9 text-xs"
                             data-testid="input-new-part-name"
                           />
-                          <div className="flex flex-wrap gap-1 pt-1 border-t border-purple-500/10">
+                          <div className="flex flex-wrap gap-1 pt-1 border-t border-gray-500/20">
                             {slice.length === 0 ? (
                               <span className="text-[10px] text-muted-foreground p-1">Empty range</span>
                             ) : slice.map((sid, i) => {
@@ -1088,7 +1103,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       )}
                       <Button
                         type="button" size="sm"
-                        className="w-full h-8 rounded-lg text-xs bg-purple-500 hover:bg-purple-600 text-white"
+                        className="w-full h-8 rounded-lg text-xs bg-gray-500 hover:bg-gray-600 text-white"
                         disabled={!sel || slice.length === 0 || !finalName || isCreatingSkill}
                         onClick={async () => {
                           try {
@@ -1116,7 +1131,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           <button key={sid} type="button" onClick={() => addSkill(sid.toString())} className={cn(
                             "px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors active:scale-95",
                             skill.isDrill === 1 ? "border-yellow-300 text-yellow-600 bg-yellow-50 dark:border-yellow-700 dark:text-yellow-400 dark:bg-yellow-900/10"
-                              : skill.isDrill === 3 ? "border-purple-300 text-purple-600 bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:bg-purple-900/10"
+                              : skill.isDrill === 3 ? "border-gray-400 text-gray-600 bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:bg-gray-900/10"
                               : skill.isDrill === 2 ? "border-red-300 text-red-500 bg-red-50 dark:border-red-700 dark:text-red-400 dark:bg-red-900/10"
                               : "border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50"
                           )} data-testid={`btn-recent-skill-${sid}`}>{skill.code}</button>

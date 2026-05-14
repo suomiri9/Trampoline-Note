@@ -832,12 +832,19 @@ export default function SkillsPage() {
                               type="number"
                               min={1}
                               max={selectedRoutineSkillIds.length}
-                              value={partStart}
+                              value={partStart || ""}
                               onChange={(e) => {
-                                const v = Math.max(1, Math.min(selectedRoutineSkillIds.length, parseInt(e.target.value) || 1));
+                                const raw = e.target.value;
+                                if (raw === "") { setPartStart(0); setPartNameOverride(null); return; }
+                                const n = parseInt(raw);
+                                if (!Number.isFinite(n)) return;
+                                setPartStart(Math.max(0, Math.min(selectedRoutineSkillIds.length, n)));
+                                setPartNameOverride(null);
+                              }}
+                              onBlur={() => {
+                                const v = Math.max(1, Math.min(selectedRoutineSkillIds.length, partStart || 1));
                                 setPartStart(v);
                                 if (v > partEnd) setPartEnd(v);
-                                setPartNameOverride(null);
                               }}
                               data-testid="input-part-start"
                             />
@@ -846,13 +853,21 @@ export default function SkillsPage() {
                             <label className="text-xs font-medium text-muted-foreground">End ({partStart}–{selectedRoutineSkillIds.length})</label>
                             <Input
                               type="number"
-                              min={partStart}
+                              min={partStart || 1}
                               max={selectedRoutineSkillIds.length}
-                              value={partEnd}
+                              value={partEnd || ""}
                               onChange={(e) => {
-                                const v = Math.max(partStart, Math.min(selectedRoutineSkillIds.length, parseInt(e.target.value) || partStart));
-                                setPartEnd(v);
+                                const raw = e.target.value;
+                                if (raw === "") { setPartEnd(0); setPartNameOverride(null); return; }
+                                const n = parseInt(raw);
+                                if (!Number.isFinite(n)) return;
+                                setPartEnd(Math.max(0, Math.min(selectedRoutineSkillIds.length, n)));
                                 setPartNameOverride(null);
+                              }}
+                              onBlur={() => {
+                                const start = partStart || 1;
+                                const v = Math.max(start, Math.min(selectedRoutineSkillIds.length, partEnd || start));
+                                setPartEnd(v);
                               }}
                               data-testid="input-part-end"
                             />

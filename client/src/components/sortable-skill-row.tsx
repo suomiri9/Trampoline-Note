@@ -27,7 +27,7 @@ export function SortableSkillRow({ uid, code, name, isDrill, onRemove }: Sortabl
         <Badge variant="outline" className={cn(
           "font-mono text-[10px] shrink-0",
           isDrill === 1 ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400" :
-          isDrill === 3 ? "border-purple-300 text-purple-600 dark:border-purple-700 dark:text-purple-400" :
+          isDrill === 3 ? "border-gray-400 text-gray-600 dark:border-gray-600 dark:text-gray-300" :
           isDrill === 2 ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400" :
           "border-primary/30 text-primary"
         )}>{code}</Badge>

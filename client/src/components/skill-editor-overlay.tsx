@@ -101,12 +101,12 @@ export function SkillEditorOverlay({
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className={cn(
                     "font-mono text-[10px]",
-                    s.isDrill === 3 ? "border-purple-300 text-purple-600" :
+                    s.isDrill === 3 ? "border-gray-400 text-gray-600" :
                     s.isDrill === 2 ? "border-red-300 text-red-500" : ""
                   )}>{s.code}</Badge>
                   <span className="text-xs">{s.name}</span>
                   {s.isDrill === 2 && <span className="text-[10px] text-red-500 font-medium">(Connection)</span>}
-                  {s.isDrill === 3 && <span className="text-[10px] text-purple-600 font-medium">(Routine Part)</span>}
+                  {s.isDrill === 3 && <span className="text-[10px] text-gray-600 font-medium">(Routine Part)</span>}
                 </div>
               </SelectItem>
             ))}
