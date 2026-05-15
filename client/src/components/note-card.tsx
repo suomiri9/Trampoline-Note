@@ -214,8 +214,12 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                         <div key={`fc-${groupIdx}`} className="rounded-xl bg-red-50/60 dark:bg-red-900/10">
                           <div className="flex items-center justify-between py-2 px-3">
                             <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-red-500 text-white border-none">CONN</Badge>
-                              <span className="text-sm font-bold text-red-600 dark:text-red-400">{fc?.name || item.fcName || "Connection"}</span>
+                              {fc?.isDrill === 3 ? (
+                                <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-gray-500 text-white border-none">PART</Badge>
+                              ) : (
+                                <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-red-500 text-white border-none">CONN</Badge>
+                              )}
+                              <span className={cn("text-sm font-bold", fc?.isDrill === 3 ? "text-gray-700 dark:text-gray-300" : "text-red-600 dark:text-red-400")}>{fc?.name || item.fcName || "Connection"}</span>
                               {displaySkillIds.length < baseSkillIds.length && (
                                 <span className="text-[11px] font-mono text-muted-foreground">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
                               )}
@@ -279,10 +283,11 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                             }
                             if (gItem.id === -3) {
                               const fc = allItems?.find(s => s.id === gItem.fcId);
+                              const isPart = fc?.isDrill === 3;
                               return (
                                 <div key={skillIdx} className="flex items-center gap-1.5">
-                                  <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-red-500 text-white border-none shrink-0">CONN</Badge>
-                                  <span className="text-[11px] font-bold text-red-600 dark:text-red-400 truncate max-w-[120px]">{fc?.name || gItem.fcName}</span>
+                                  <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] text-white border-none shrink-0", isPart ? "bg-gray-500" : "bg-red-500")}>{isPart ? "PART" : "CONN"}</Badge>
+                                  <span className={cn("text-[11px] font-bold truncate max-w-[120px]", isPart ? "text-gray-700 dark:text-gray-300" : "text-red-600 dark:text-red-400")}>{fc?.name || gItem.fcName}</span>
                                   {sep}
                                 </div>
                               );
