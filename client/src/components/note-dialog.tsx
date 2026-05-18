@@ -125,6 +125,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [selectedSkills, setSelectedSkills] = useState<SkillItem[]>([]);
   const [isConnectMode, setIsConnectMode] = useState(false);
   const [editingRoutineIdx, setEditingRoutineIdx] = useState<number | null>(null);
+  const [editingConnIndices, setEditingConnIndices] = useState<number[] | null>(null);
   const [showNewConn, setShowNewConn] = useState(false);
   const [showNewRoutine, setShowNewRoutine] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -1212,7 +1213,14 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               return (
                                 <div className="px-3 py-2">
                                   <div className="flex flex-wrap items-center gap-2">
-                                    <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+                                    <div
+                                      className={cn("flex flex-wrap items-center gap-1.5 flex-1 min-w-0", group.items.every(it => it.id !== -2 && it.id !== -3) && "cursor-pointer")}
+                                      onClick={() => {
+                                        if (group.items.every(it => it.id !== -2 && it.id !== -3)) {
+                                          setEditingConnIndices(group.indices);
+                                        }
+                                      }}
+                                    >
                                       {group.items.map((it, iIdx) => {
                                         const idx = group.indices[iIdx];
                                         const sep = iIdx < group.items.length - 1 ? <span className="text-red-400/70 font-bold text-xs">+</span> : null;
@@ -1553,6 +1561,54 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
             </form>
           </Form>
         </div>
+
+        {editingConnIndices !== null && (() => {
+          const indices = editingConnIndices;
+          const skillIds = indices.map(i => selectedSkills[i]?.id).filter((v): v is number => typeof v === 'number' && v > 0);
+          return (
+            <div className="absolute inset-0 bg-background z-30 flex flex-col rounded-[24px] overflow-hidden p-4">
+              <SkillEditorOverlay
+                title="Edit Connection"
+                skillIds={skillIds}
+                allSkills={allItems || []}
+                onSkillIdsChange={(newIds) => {
+                  setSelectedSkills(prev => {
+                    const first = prev[indices[0]];
+                    const reps = first?.reps;
+                    const note = first?.note;
+                    const newItems: SkillItem[] = newIds.map((id, i) => {
+                      const base: SkillItem = { id };
+                      if (i === 0) {
+                        if (reps !== undefined) base.reps = reps;
+                        if (note !== undefined) base.note = note;
+                      }
+                      return base;
+                    });
+                    const sortedIdx = [...indices].sort((a, b) => a - b);
+                    const minIdx = sortedIdx[0];
+                    const set = new Set(sortedIdx);
+                    const ns: SkillItem[] = [];
+                    for (let i = 0; i < prev.length; i++) {
+                      if (i === minIdx) ns.push(...newItems);
+                      if (!set.has(i)) ns.push(prev[i]);
+                    }
+                    form.setValue('skills', JSON.stringify(ns));
+                    return ns;
+                  });
+                  if (newIds.length === 0) {
+                    setEditingConnIndices(null);
+                  } else {
+                    const minIdx = Math.min(...indices);
+                    setEditingConnIndices(Array.from({ length: newIds.length }, (_, k) => minIdx + k));
+                  }
+                }}
+                onClose={() => setEditingConnIndices(null)}
+                filterSkills={(s) => s.isDrill === 0}
+                className="flex-1 min-h-0"
+              />
+            </div>
+          );
+        })()}
 
         {editingRoutineIdx !== null && (selectedSkills[editingRoutineIdx]?.id === -2 || selectedSkills[editingRoutineIdx]?.id === -3) && (() => {
           const rItem = selectedSkills[editingRoutineIdx];
