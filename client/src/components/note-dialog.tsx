@@ -146,14 +146,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [newPartEnd, setNewPartEnd] = useState(10);
   const [newPartNameOverride, setNewPartNameOverride] = useState<string | null>(null);
 
-  const recentSkillIds = (() => {
-    if (!allItems) return [];
-    const seen: number[] = [];
+  const recentEntries = (() => {
+    if (!allItems) return [] as Array<{ kind: 'skill'; id: number } | { kind: 'routine'; id: number } | { kind: 'fc'; id: number }>;
+    const seenKeys = new Set<string>();
+    const out: Array<{ kind: 'skill'; id: number } | { kind: 'routine'; id: number } | { kind: 'fc'; id: number }> = [];
     for (let i = selectedSkills.length - 1; i >= 0; i--) {
       const item = selectedSkills[i];
-      if (item.id > 0 && !seen.includes(item.id)) seen.push(item.id);
+      if (item.id > 0) {
+        const k = `s-${item.id}`;
+        if (!seenKeys.has(k) && allItems.some(s => s.id === item.id)) { seenKeys.add(k); out.push({ kind: 'skill', id: item.id }); }
+      } else if (item.id === -2 && item.routineId) {
+        const k = `r-${item.routineId}`;
+        if (!seenKeys.has(k) && (routines?.some(r => r.id === item.routineId))) { seenKeys.add(k); out.push({ kind: 'routine', id: item.routineId }); }
+      } else if (item.id === -3 && item.fcId) {
+        const k = `f-${item.fcId}`;
+        if (!seenKeys.has(k) && allItems.some(s => s.id === item.fcId)) { seenKeys.add(k); out.push({ kind: 'fc', id: item.fcId }); }
+      }
+      if (out.length >= 8) break;
     }
-    return seen.slice(0, 8).filter(id => allItems.some(s => s.id === id));
+    return out;
   })();
 
   const sensors = useDndSensors();
@@ -1139,21 +1150,37 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   );
                 })()}
 
-                {recentSkillIds.length > 0 && (
+                {recentEntries.length > 0 && (
                   <div className="space-y-1">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
                     <div className="flex flex-wrap gap-1.5">
-                      {recentSkillIds.map(sid => {
-                        const skill = allItems?.find(s => s.id === sid);
+                      {recentEntries.map(ent => {
+                        if (ent.kind === 'routine') {
+                          const r = routines?.find(rt => rt.id === ent.id);
+                          if (!r) return null;
+                          return (
+                            <button key={`r-${ent.id}`} type="button" onClick={() => addRoutine(ent.id.toString())} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors active:scale-95 border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 max-w-[140px] truncate" data-testid={`btn-recent-routine-${ent.id}`}>{r.name}</button>
+                          );
+                        }
+                        if (ent.kind === 'fc') {
+                          const fc = allItems?.find(s => s.id === ent.id);
+                          if (!fc) return null;
+                          const isPart = fc.isDrill === 3;
+                          return (
+                            <button key={`f-${ent.id}`} type="button" onClick={() => addSkill(ent.id.toString())} className={cn(
+                              "px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors active:scale-95 max-w-[140px] truncate",
+                              isPart ? "border-gray-400 text-gray-600 bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:bg-gray-900/10" : "border-red-300 text-red-500 bg-red-50 dark:border-red-700 dark:text-red-400 dark:bg-red-900/10"
+                            )} data-testid={`btn-recent-fc-${ent.id}`}>{fc.name}</button>
+                          );
+                        }
+                        const skill = allItems?.find(s => s.id === ent.id);
                         if (!skill) return null;
                         return (
-                          <button key={sid} type="button" onClick={() => addSkill(sid.toString())} className={cn(
+                          <button key={`s-${ent.id}`} type="button" onClick={() => addSkill(ent.id.toString())} className={cn(
                             "px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors active:scale-95",
                             skill.isDrill === 1 ? "border-yellow-300 text-yellow-600 bg-yellow-50 dark:border-yellow-700 dark:text-yellow-400 dark:bg-yellow-900/10"
-                              : skill.isDrill === 3 ? "border-gray-400 text-gray-600 bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:bg-gray-900/10"
-                              : skill.isDrill === 2 ? "border-red-300 text-red-500 bg-red-50 dark:border-red-700 dark:text-red-400 dark:bg-red-900/10"
                               : "border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50"
-                          )} data-testid={`btn-recent-skill-${sid}`}>{skill.code}</button>
+                          )} data-testid={`btn-recent-skill-${ent.id}`}>{skill.code}</button>
                         );
                       })}
                     </div>
