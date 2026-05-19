@@ -4,6 +4,7 @@ import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { calcDDFromSkillIds } from "@/lib/training-utils";
 import { useDndSensors } from "@/hooks/use-dnd-sensors";
+import { useTypeToSearch } from "@/hooks/use-type-to-search";
 import { PageLayout } from "@/components/page-layout";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,8 @@ export default function RoutinesPage() {
   const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [topPickerOpen, setTopPickerOpen] = useState(false);
+  const [topPickerSearch, setTopPickerSearch] = useState("");
+  useTypeToSearch(true, topPickerOpen, setTopPickerOpen, setTopPickerSearch);
 
   const routines = allRoutines?.filter(r => showArchived ? r.archived === 1 : r.archived !== 1);
   const archivedCount = allRoutines ? allRoutines.filter(r => r.archived === 1).length : 0;
@@ -200,7 +203,7 @@ export default function RoutinesPage() {
                 </PopoverTrigger>
                 <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
                   <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
-                    <CommandInput placeholder="Search by name or code..." className="h-10" />
+                    <CommandInput placeholder="Search by name or code..." className="h-10" value={topPickerSearch} onValueChange={setTopPickerSearch} />
                     <CommandList className="max-h-[280px]">
                       <CommandEmpty>No matches.</CommandEmpty>
                       <CommandGroup heading="Skills">

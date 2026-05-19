@@ -18,6 +18,7 @@ import { useCreateNote, useUpdateNote } from "@/hooks/use-notes";
 import { updateQueuedByTempId } from "@/lib/offline-queue";
 import { useSkills } from "@/hooks/use-skills";
 import { useRecentSkills, addRecentSkill } from "@/hooks/use-recent-skills";
+import { useTypeToSearch } from "@/hooks/use-type-to-search";
 import { useRoutines } from "@/hooks/use-routines";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -129,6 +130,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [showNewConn, setShowNewConn] = useState(false);
   const [showNewRoutine, setShowNewRoutine] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState("");
+  const [connSkillSearch, setConnSkillSearch] = useState("");
+  const [routineSkillSearch, setRoutineSkillSearch] = useState("");
   const [connSkillPickerOpen, setConnSkillPickerOpen] = useState(false);
   const [routineSkillPickerOpen, setRoutineSkillPickerOpen] = useState(false);
   const [newConnName, setNewConnName] = useState("");
@@ -145,6 +149,15 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [newPartStart, setNewPartStart] = useState(1);
   const [newPartEnd, setNewPartEnd] = useState(10);
   const [newPartNameOverride, setNewPartNameOverride] = useState<string | null>(null);
+
+  useTypeToSearch(
+    open && !showNewConn && !showNewRoutine && !showNewSkill && !showNewPart && editingRoutineIdx === null && editingConnIndices === null,
+    pickerOpen,
+    setPickerOpen,
+    setPickerSearch,
+  );
+  useTypeToSearch(open && showNewConn, connSkillPickerOpen, setConnSkillPickerOpen, setConnSkillSearch);
+  useTypeToSearch(open && showNewRoutine, routineSkillPickerOpen, setRoutineSkillPickerOpen, setRoutineSkillSearch);
 
   const recentEntries = (() => {
     if (!allItems) return [] as Array<{ kind: 'skill'; id: number } | { kind: 'routine'; id: number } | { kind: 'fc'; id: number }>;
@@ -653,7 +666,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           return v.includes(s) ? 1 : 0;
                         }}
                       >
-                        <CommandInput placeholder="Search by name or code..." className="h-10" />
+                        <CommandInput placeholder="Search by name or code..." className="h-10" value={pickerSearch} onValueChange={setPickerSearch} />
                         <CommandList className="max-h-[320px]">
                           <CommandEmpty>No matches.</CommandEmpty>
                           {(() => {
@@ -876,7 +889,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       </PopoverTrigger>
                       <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width]" align="start">
                         <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
-                          <CommandInput placeholder="Search by name or code..." className="h-10" />
+                          <CommandInput placeholder="Search by name or code..." className="h-10" value={connSkillSearch} onValueChange={setConnSkillSearch} />
                           <CommandList className="max-h-[280px]">
                             <CommandEmpty>No matches.</CommandEmpty>
                             <CommandGroup heading="Skills">
@@ -979,7 +992,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         </PopoverTrigger>
                         <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width]" align="start">
                           <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
-                            <CommandInput placeholder="Search by name or code..." className="h-10" />
+                            <CommandInput placeholder="Search by name or code..." className="h-10" value={routineSkillSearch} onValueChange={setRoutineSkillSearch} />
                             <CommandList className="max-h-[280px]">
                               <CommandEmpty>No matches.</CommandEmpty>
                               <CommandGroup heading="Skills">

@@ -5,6 +5,7 @@ import { useRoutines } from "@/hooks/use-routines";
 import { useRecentSkills, addRecentSkill } from "@/hooks/use-recent-skills";
 import { calcDDFromSkillIds, suggestRoutinePartName } from "@/lib/training-utils";
 import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
+import { useTypeToSearch } from "@/hooks/use-type-to-search";
 import { SortableChip } from "@/components/sortable-chip";
 import { PageLayout } from "@/components/page-layout";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -84,6 +85,9 @@ export default function SkillsPage() {
   const [connName, setConnName] = useState("");
   const [connSkillIds, setConnSkillIds] = useState<number[]>([]);
   const [connSkillPickerOpen, setConnSkillPickerOpen] = useState(false);
+  const [connSkillSearch, setConnSkillSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("skills");
+  useTypeToSearch(activeTab === "connections" && !reorderMode, connSkillPickerOpen, setConnSkillPickerOpen, setConnSkillSearch);
 
   const [partRoutineId, setPartRoutineId] = useState<number | null>(null);
   const [partStart, setPartStart] = useState(1);
@@ -341,7 +345,7 @@ export default function SkillsPage() {
           {showArchived ? <><ArchiveRestore className="h-4 w-4" /> Active</> : <><Archive className="h-4 w-4" /> Archived{archivedCount > 0 ? ` (${archivedCount})` : ""}</>}
         </Button>
       </div>
-      <Tabs defaultValue="skills" className="space-y-8" onValueChange={() => { cancelEditing(); setReorderMode(false); }}>
+      <Tabs value={activeTab} className="space-y-8" onValueChange={(v) => { setActiveTab(v); cancelEditing(); setReorderMode(false); }}>
         <TabsList className="grid w-full max-w-2xl grid-cols-4">
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="drills">Drills</TabsTrigger>
@@ -651,7 +655,7 @@ export default function SkillsPage() {
                         </PopoverTrigger>
                         <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
                           <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
-                            <CommandInput placeholder="Search by name or code..." className="h-10" />
+                            <CommandInput placeholder="Search by name or code..." className="h-10" value={connSkillSearch} onValueChange={setConnSkillSearch} />
                             <CommandList className="max-h-[320px]">
                               <CommandEmpty>No matches.</CommandEmpty>
                               <CommandGroup heading="Skills">
