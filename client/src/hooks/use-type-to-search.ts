@@ -18,8 +18,18 @@ export function useTypeToSearch(
         if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable) return;
       }
       e.preventDefault();
-      setSearch(e.key);
+      const key = e.key;
+      setSearch(key);
       setOpen(true);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const input = document.querySelector<HTMLInputElement>('[cmdk-input]:not([data-hidden])');
+          if (input && document.activeElement === input) {
+            const len = input.value.length;
+            try { input.setSelectionRange(len, len); } catch {}
+          }
+        });
+      });
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
