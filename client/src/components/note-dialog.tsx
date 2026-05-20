@@ -1432,13 +1432,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                 return (
                                   <div key={idx} className={cn(
                                     iIdx > 0 && isConnected ? "border-t border-border/20" : "",
-                                    isConnected ? (isPart ? "bg-gray-100/60 dark:bg-gray-900/10" : "bg-red-50/60 dark:bg-red-900/10") : ""
+                                    isPart ? "bg-gray-100/60 dark:bg-gray-900/10" : "bg-red-50/60 dark:bg-red-900/10"
                                   )}>
                                     <div
                                       className={cn("w-full px-3 py-2 text-sm flex justify-between items-center transition-colors cursor-pointer",
-                                        !isConnected
-                                          ? "hover:bg-secondary/20 active:bg-secondary/40"
-                                          : isPart
+                                        isPart
                                           ? "hover:bg-gray-200/40 active:bg-gray-200/60 dark:hover:bg-gray-900/20 dark:active:bg-gray-900/30"
                                           : "hover:bg-red-100/40 active:bg-red-100/60 dark:hover:bg-red-900/20 dark:active:bg-red-900/30")}
                                       onClick={() => setEditingRoutineIdx(idx)}
