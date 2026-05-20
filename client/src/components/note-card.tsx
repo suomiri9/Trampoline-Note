@@ -294,14 +294,21 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                             }
                             const skill = allItems?.find(s => s.id === gItem.id);
                             if (!skill) return null;
+                            if (skill.isDrill === 3) {
+                              return (
+                                <div key={skillIdx} className="flex items-center gap-1.5">
+                                  <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-gray-500 text-white border-none shrink-0">PART</Badge>
+                                  <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 truncate max-w-[140px]">{skill.name}</span>
+                                  {sep}
+                                </div>
+                              );
+                            }
                             return (
                               <div key={skillIdx} className="flex items-center gap-1.5">
                                 <Badge variant="outline" className={cn(
                                   "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
                                   skill.isDrill === 1
                                     ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400"
-                                    : skill.isDrill === 3
-                                    ? "border-gray-400 text-gray-600 dark:border-gray-600 dark:text-gray-300"
                                     : (!isSingle || skill.isDrill === 2)
                                     ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
                                     : "border-border/60 text-muted-foreground"
