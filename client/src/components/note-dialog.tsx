@@ -645,18 +645,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 <FormLabel className="text-foreground/80 font-medium">Skills & Drills Practiced</FormLabel>
 
                 <div className="flex gap-2">
+                  <div className="flex flex-1 min-w-0 basis-0 h-11 rounded-xl border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
                   <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
                     <PopoverTrigger asChild>
-                      <Button
+                      <button
                         type="button"
-                        variant="outline"
                         role="combobox"
-                        className="rounded-xl h-11 flex-1 min-w-0 basis-0 justify-start font-normal text-muted-foreground px-3"
+                        className="flex-1 min-w-0 flex items-center justify-start font-normal text-muted-foreground px-3 hover-elevate active-elevate-2"
                         data-testid="btn-open-picker"
                       >
                         <Search className="h-4 w-4 mr-2 opacity-60 shrink-0" />
-                        <span className="truncate text-xs">Search...</span>
-                      </Button>
+                        <span className="truncate text-xs">Search skills or add new...</span>
+                      </button>
                     </PopoverTrigger>
                     <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width]" align="start">
                       <Command
@@ -780,6 +780,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       </Command>
                     </PopoverContent>
                   </Popover>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button type="button" className="shrink-0 px-3 flex items-center justify-center border-l border-input text-muted-foreground hover-elevate active-elevate-2" data-testid="btn-new-item" aria-label="Add new"><Plus className="h-4 w-4" /></button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                      <DropdownMenuItem className="cursor-pointer text-xs" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setShowNewPart(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); }} data-testid="menu-new-skill">New Skill</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-yellow-600 dark:text-yellow-400" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setShowNewPart(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(true); }} data-testid="menu-new-drill">New Drill</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-red-500 dark:text-red-400" onClick={() => { setShowNewConn(true); setShowNewSkill(false); setShowNewRoutine(false); setShowNewPart(false); setNewConnName(""); setNewConnSkillIds([]); }} data-testid="menu-new-connection">New Connection</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-blue-600 dark:text-blue-400" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setShowNewPart(false); setNewRoutineName(""); setNewRoutineSkillIds([]); }} data-testid="menu-new-routine">New Routine</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-gray-600 dark:text-gray-300" onClick={() => { setShowNewPart(true); setShowNewConn(false); setShowNewSkill(false); setShowNewRoutine(false); setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); }} data-testid="menu-new-part">New Routine Part</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  </div>
                   <Button
                     type="button"
                     variant={isConnectMode ? "default" : "outline"}
@@ -793,18 +806,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   >
                     {isConnectMode ? "Connecting..." : "Connect Next"}
                   </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-xl px-3" data-testid="btn-new-item"><Plus className="h-4 w-4" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40 rounded-xl">
-                      <DropdownMenuItem className="cursor-pointer text-xs" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setShowNewPart(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); }} data-testid="menu-new-skill">New Skill</DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-xs text-yellow-600 dark:text-yellow-400" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setShowNewPart(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(true); }} data-testid="menu-new-drill">New Drill</DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-xs text-red-500 dark:text-red-400" onClick={() => { setShowNewConn(true); setShowNewSkill(false); setShowNewRoutine(false); setShowNewPart(false); setNewConnName(""); setNewConnSkillIds([]); }} data-testid="menu-new-connection">New Connection</DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-xs text-blue-600 dark:text-blue-400" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setShowNewPart(false); setNewRoutineName(""); setNewRoutineSkillIds([]); }} data-testid="menu-new-routine">New Routine</DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-xs text-gray-600 dark:text-gray-300" onClick={() => { setShowNewPart(true); setShowNewConn(false); setShowNewSkill(false); setShowNewRoutine(false); setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); }} data-testid="menu-new-part">New Routine Part</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </div>
 
                 {showNewSkill && (
