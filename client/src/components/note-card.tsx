@@ -211,7 +211,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                       const reps = item.reps || 1;
 
                       return (
-                        <div key={`fc-${groupIdx}`} className="rounded-xl">
+                        <div key={`fc-${groupIdx}`} className={cn("rounded-xl", fc?.isDrill === 3 ? "bg-gray-100/60 dark:bg-gray-900/10" : "bg-red-50/60 dark:bg-red-900/10")}>
                           <div className="flex items-center justify-between py-2 px-3">
                             <div className="flex items-center gap-2">
                               {fc?.isDrill === 3 ? (
