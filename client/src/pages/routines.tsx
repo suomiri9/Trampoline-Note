@@ -187,7 +187,7 @@ export default function RoutinesPage() {
               onChange={e => setName(e.target.value)} 
             />
             <div className="flex items-center gap-2">
-              <Popover open={topPickerOpen} onOpenChange={(v) => { if (selectedSkillIds.length >= 10) return; setTopPickerOpen(v); }}>
+              <Popover open={topPickerOpen} onOpenChange={(v) => { if (selectedSkillIds.length >= 10) return; setTopPickerOpen(v); if (!v) setTopPickerSearch(""); }}>
                 <PopoverTrigger asChild>
                   <Button
                     type="button"

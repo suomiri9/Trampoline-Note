@@ -646,7 +646,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
                 <div className="flex gap-2">
                   <div className="flex flex-1 min-w-0 basis-0 h-11 rounded-xl border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
-                  <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+                  <Popover open={pickerOpen} onOpenChange={(v) => { setPickerOpen(v); if (!v) setPickerSearch(""); }}>
                     <PopoverTrigger asChild>
                       <button
                         type="button"
@@ -881,7 +881,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     })()}
                     <Input placeholder="Name (e.g. Ba+BT)" value={newConnName} onChange={e => setNewConnName(e.target.value)} className="rounded-lg h-9 text-xs" />
                     <div className="flex items-center gap-2">
-                    <Popover open={connSkillPickerOpen} onOpenChange={setConnSkillPickerOpen}>
+                    <Popover open={connSkillPickerOpen} onOpenChange={(v) => { setConnSkillPickerOpen(v); if (!v) setConnSkillSearch(""); }}>
                       <PopoverTrigger asChild>
                         <Button type="button" variant="outline" role="combobox" className="rounded-lg h-8 flex-1 min-w-0 justify-start font-normal text-xs text-muted-foreground" data-testid="btn-open-conn-skill-picker">
                           <Search className="h-3.5 w-3.5 mr-2 opacity-60 shrink-0" />
@@ -984,7 +984,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     })()}
                     <Input placeholder="Name" value={newRoutineName} onChange={e => setNewRoutineName(e.target.value)} className="rounded-lg h-9 text-xs" />
                     <div className="flex items-center gap-2">
-                      <Popover open={routineSkillPickerOpen} onOpenChange={(v) => { if (!v) { setRoutineSkillPickerOpen(false); return; } if (newRoutineSkillIds.length < 10) setRoutineSkillPickerOpen(true); }}>
+                      <Popover open={routineSkillPickerOpen} onOpenChange={(v) => { if (!v) { setRoutineSkillPickerOpen(false); setRoutineSkillSearch(""); return; } if (newRoutineSkillIds.length < 10) setRoutineSkillPickerOpen(true); }}>
                         <PopoverTrigger asChild>
                           <Button type="button" variant="outline" role="combobox" disabled={newRoutineSkillIds.length >= 10} className="rounded-lg h-8 flex-1 min-w-0 justify-start font-normal text-xs text-muted-foreground" data-testid="btn-open-routine-skill-picker">
                             <Search className="h-3.5 w-3.5 mr-2 opacity-60 shrink-0" />

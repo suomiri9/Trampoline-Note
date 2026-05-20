@@ -646,7 +646,7 @@ export default function SkillsPage() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Build Sequence</label>
                       <div className="flex items-center gap-2">
-                      <Popover open={connSkillPickerOpen} onOpenChange={setConnSkillPickerOpen}>
+                      <Popover open={connSkillPickerOpen} onOpenChange={(v) => { setConnSkillPickerOpen(v); if (!v) setConnSkillSearch(""); }}>
                         <PopoverTrigger asChild>
                           <Button type="button" variant="outline" role="combobox" className="h-9 flex-1 min-w-0 justify-start font-normal text-sm text-muted-foreground" data-testid="btn-open-conn-skill-picker">
                             <Search className="h-3.5 w-3.5 mr-2 opacity-60 shrink-0" />
