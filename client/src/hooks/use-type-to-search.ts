@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export function useTypeToSearch(
   enabled: boolean,
@@ -6,6 +6,13 @@ export function useTypeToSearch(
   setOpen: (b: boolean) => void,
   setSearch: (s: string) => void
 ) {
+  const prevOpenRef = useRef(open);
+  useEffect(() => {
+    if (prevOpenRef.current && !open) {
+      setSearch("");
+    }
+    prevOpenRef.current = open;
+  }, [open, setSearch]);
   useEffect(() => {
     if (!enabled || open) return;
     const handler = (e: KeyboardEvent) => {
