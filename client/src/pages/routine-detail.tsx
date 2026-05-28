@@ -252,7 +252,7 @@ export default function RoutineDetailPage() {
                         fontSize: "12px",
                       }}
                     />
-                    <Bar dataKey="partial" stackId="runs" name="Attempts" fill="hsl(var(--muted-foreground))" radius={[0, 0, 4, 4]} />
+                    <Bar dataKey="partial" stackId="runs" name="Attempts" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="full" stackId="runs" name="Full runs" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
