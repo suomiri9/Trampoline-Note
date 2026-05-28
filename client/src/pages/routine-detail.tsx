@@ -214,7 +214,19 @@ export default function RoutineDetailPage() {
         {weeklyData.length > 0 && (
           <Card className="mb-6">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Practice Frequency</CardTitle>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <CardTitle className="text-base">Practice Frequency</CardTitle>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1" data-testid="legend-full">
+                    <span className="inline-block w-3 h-3 rounded-sm" style={{ background: "hsl(var(--primary))" }} />
+                    Full runs
+                  </span>
+                  <span className="flex items-center gap-1" data-testid="legend-partial">
+                    <span className="inline-block w-3 h-3 rounded-sm" style={{ background: "hsl(var(--muted-foreground))" }} />
+                    Attempts
+                  </span>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-48 w-full">
@@ -240,7 +252,8 @@ export default function RoutineDetailPage() {
                         fontSize: "12px",
                       }}
                     />
-                    <Bar dataKey="runs" name="Runs" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="partial" stackId="runs" name="Attempts" fill="hsl(var(--muted-foreground))" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="full" stackId="runs" name="Full runs" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -287,12 +300,6 @@ export default function RoutineDetailPage() {
                             ? `${entry.skillCount} skills`
                             : `${routine.skillIds.length}/${routine.skillIds.length} Full run`}
                       </Badge>
-                      {entry.rating != null && (
-                        <div className="flex items-center gap-1" data-testid={`text-rating-${entry.noteId}`}>
-                          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                          <span className="text-xs font-medium">{entry.rating}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                   );
@@ -350,9 +357,9 @@ function buildWeeklyData(entries: RoutineHistoryEntry[]) {
 
   const weeks = eachWeekOfInterval({ start: minDate, end: maxDate }, { weekStartsOn: 1 });
 
-  const weekMap = new Map<string, number>();
+  const weekMap = new Map<string, { full: number; partial: number }>();
   for (const weekStart of weeks) {
-    weekMap.set(weekStart.toISOString(), 0);
+    weekMap.set(weekStart.toISOString(), { full: 0, partial: 0 });
   }
 
   for (const entry of entries) {
@@ -360,11 +367,15 @@ function buildWeeklyData(entries: RoutineHistoryEntry[]) {
     const ws = startOfWeek(d, { weekStartsOn: 1 });
     const key = ws.toISOString();
     const reps = entry.reps && entry.reps > 0 ? entry.reps : 1;
-    weekMap.set(key, (weekMap.get(key) || 0) + reps);
+    const cur = weekMap.get(key) || { full: 0, partial: 0 };
+    if (entry.attempt == null) cur.full += reps;
+    else cur.partial += reps;
+    weekMap.set(key, cur);
   }
 
-  return Array.from(weekMap.entries()).map(([key, runs]) => ({
+  return Array.from(weekMap.entries()).map(([key, v]) => ({
     label: format(new Date(key), "MMM d"),
-    runs,
+    full: v.full,
+    partial: v.partial,
   }));
 }
