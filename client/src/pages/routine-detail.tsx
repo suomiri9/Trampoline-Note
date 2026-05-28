@@ -252,7 +252,7 @@ export default function RoutineDetailPage() {
                         fontSize: "12px",
                       }}
                     />
-                    <Bar dataKey="partial" stackId="runs" name="Attempts" fill="hsl(var(--muted-foreground))" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="partial" stackId="runs" name="Attempts" fill="hsl(var(--muted-foreground))" shape={<PartialBar />} />
                     <Bar dataKey="full" stackId="runs" name="Full runs" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -346,6 +346,18 @@ function StatCard({ icon, label, value, testId }: { icon: React.ReactNode; label
       </CardContent>
     </Card>
   );
+}
+
+function PartialBar(props: any) {
+  const { x, y, width, height, payload, fill } = props;
+  if (!height || height <= 0) return null;
+  const rounded = payload?.full === 0;
+  const r = rounded ? Math.min(4, width / 2, height) : 0;
+  if (r === 0) {
+    return <rect x={x} y={y} width={width} height={height} fill={fill} />;
+  }
+  const d = `M${x},${y + height} L${x},${y + r} Q${x},${y} ${x + r},${y} L${x + width - r},${y} Q${x + width},${y} ${x + width},${y + r} L${x + width},${y + height} Z`;
+  return <path d={d} fill={fill} />;
 }
 
 function buildWeeklyData(entries: RoutineHistoryEntry[]) {
