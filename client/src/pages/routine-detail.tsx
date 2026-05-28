@@ -18,6 +18,7 @@ interface RoutineHistoryEntry {
   rating: number | null;
   attempt: number | null;
   skillCount: number;
+  reps?: number;
 }
 
 export default function RoutineDetailPage() {
@@ -89,11 +90,12 @@ export default function RoutineDetailPage() {
   }
 
   const entries = history || [];
-  const totalSessions = entries.length;
+  const repsOf = (e: RoutineHistoryEntry) => (e.reps && e.reps > 0 ? e.reps : 1);
+  const totalSessions = entries.reduce((s, e) => s + repsOf(e), 0);
   const firstPracticed = entries.length > 0 ? entries[0].date : null;
   const lastPracticed = entries.length > 0 ? entries[entries.length - 1].date : null;
-  const fullRunCount = entries.filter(e => e.attempt == null).length;
-  const partialCount = entries.filter(e => e.attempt != null).length;
+  const fullRunCount = entries.filter(e => e.attempt == null).reduce((s, e) => s + repsOf(e), 0);
+  const partialCount = entries.filter(e => e.attempt != null).reduce((s, e) => s + repsOf(e), 0);
   const totalDD = calcDDFromSkillIds(routine.skillIds, allSkills || []);
 
   const weeklyData = buildWeeklyData(entries);
@@ -257,7 +259,9 @@ export default function RoutineDetailPage() {
               </p>
             ) : (
               <div className="space-y-2 max-h-[50vh] overflow-y-auto" data-testid="list-session-history">
-                {[...entries].reverse().map((entry) => (
+                {[...entries].reverse().map((entry) => {
+                  const reps = entry.reps && entry.reps > 0 ? entry.reps : 1;
+                  return (
                   <div
                     key={`${entry.noteId}-${entry.date}`}
                     className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
@@ -269,6 +273,9 @@ export default function RoutineDetailPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
+                      {reps > 1 && (
+                        <span className="text-xs font-mono text-muted-foreground" data-testid={`text-reps-${entry.noteId}`}>×{reps}</span>
+                      )}
                       <Badge
                         variant={entry.attempt != null ? "secondary" : "outline"}
                         className="font-mono text-xs"
@@ -288,7 +295,8 @@ export default function RoutineDetailPage() {
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -351,7 +359,8 @@ function buildWeeklyData(entries: RoutineHistoryEntry[]) {
     const d = parseISO(entry.date);
     const ws = startOfWeek(d, { weekStartsOn: 1 });
     const key = ws.toISOString();
-    weekMap.set(key, (weekMap.get(key) || 0) + 1);
+    const reps = entry.reps && entry.reps > 0 ? entry.reps : 1;
+    weekMap.set(key, (weekMap.get(key) || 0) + reps);
   }
 
   return Array.from(weekMap.entries()).map(([key, runs]) => ({

@@ -358,6 +358,7 @@ export async function registerRoutes(
         rating: number | null;
         attempt: number | null;
         skillCount: number;
+        reps: number;
       }> = [];
 
       for (const note of allNotes) {
@@ -369,6 +370,7 @@ export async function registerRoutes(
           if (item.id === -2 && raw.routineId === routineId) {
             const customIds: number[] | undefined = raw.customSkillIds;
             const explicitAttempt: number | undefined = raw.attempt;
+            const reps: number = Number.isFinite(raw.reps) && raw.reps > 0 ? raw.reps : 1;
             let skillCount: number;
             if (explicitAttempt != null) {
               skillCount = explicitAttempt;
@@ -383,6 +385,7 @@ export async function registerRoutes(
               rating: note.rating ?? null,
               attempt: skillCount !== expectedCount ? skillCount : null,
               skillCount,
+              reps,
             });
           }
         }
