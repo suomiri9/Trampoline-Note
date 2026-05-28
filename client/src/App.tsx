@@ -127,6 +127,16 @@ function AppContent() {
     void tryDrain();
     const onOnline = () => {
       void tryDrain();
+      try {
+        document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href*="fonts.googleapis.com"]').forEach((link) => {
+          const href = link.href;
+          const fresh = link.cloneNode(true) as HTMLLinkElement;
+          fresh.href = href.includes("?") ? `${href}&_r=${Date.now()}` : `${href}?_r=${Date.now()}`;
+          link.parentNode?.insertBefore(fresh, link.nextSibling);
+          fresh.addEventListener("load", () => link.remove(), { once: true });
+          fresh.addEventListener("error", () => fresh.remove(), { once: true });
+        });
+      } catch {}
     };
     window.addEventListener("online", onOnline);
     return () => {
