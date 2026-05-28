@@ -188,7 +188,7 @@ export default function RoutineDetailPage() {
           <StatCard
             icon={<TrendingUp className="w-4 h-4" />}
             label={`Full Runs (${routine.skillIds.length}/${routine.skillIds.length})`}
-            value={fullRunCount.toString()}
+            value={totalSessions > 0 ? `${fullRunCount} (${Math.round((fullRunCount / totalSessions) * 100)}%)` : fullRunCount.toString()}
             testId="stat-full-runs"
           />
           <StatCard
