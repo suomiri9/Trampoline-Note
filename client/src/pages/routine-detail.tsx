@@ -2,14 +2,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
+import { useAuth } from "@/hooks/use-auth";
 import { calcDDFromSkillIds } from "@/lib/training-utils";
 import { PageLayout } from "@/components/page-layout";
+import { PointsToFix, parsePoints } from "@/components/points-to-fix";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, Star, TrendingUp, Loader2, Layers, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Calendar, Star, TrendingUp, Loader2, Layers, ChevronLeft, ChevronRight, Wrench } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useMemo, useState } from "react";
 import { CompletionChart, buildDailyCompletion } from "@/lib/history-chart";
 
 interface RoutineHistoryEntry {
@@ -29,7 +31,14 @@ export default function RoutineDetailPage() {
   const { data: allSkills, isLoading: skillsLoading } = useSkills();
   const skills = allSkills?.filter(s => s.isDrill === 0);
   const { data: routines, isLoading: routinesLoading } = useRoutines();
+  const { user } = useAuth();
   const routine = routines?.find(r => r.id === routineId);
+
+  const [pointsOpen, setPointsOpen] = useState(false);
+  const routinePoints = useMemo(
+    () => parsePoints(user?.focusMemo).filter(p => p.routineIds.includes(routineId)),
+    [user?.focusMemo, routineId],
+  );
 
   const orderedIds = routines ? routines.filter(r => r.archived !== 1 || r.id === routineId).map(r => r.id) : [];
   const currentIndex = orderedIds.indexOf(routineId);
@@ -211,6 +220,32 @@ export default function RoutineDetailPage() {
           />
         </div>
 
+        {routinePoints.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Wrench className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                Points to Fix
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-1.5" data-testid="list-routine-points">
+                {routinePoints.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setPointsOpen(true)}
+                    data-testid={`button-routine-point-${p.id}`}
+                    className="text-left text-sm py-2 px-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors break-words"
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <CompletionChart title="Practice Frequency" data={weeklyData} />
 
         <Card>
@@ -281,6 +316,13 @@ export default function RoutineDetailPage() {
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
+
+        <PointsToFix
+          hideTrigger
+          open={pointsOpen}
+          onOpenChange={setPointsOpen}
+          initialFilter={{ kind: "routine", id: routineId }}
+        />
       </div>
     </PageLayout>
   );
