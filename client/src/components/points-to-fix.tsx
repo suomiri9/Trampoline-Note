@@ -76,7 +76,7 @@ const TYPE_ORDER: Record<LinkType, number> = {
   routine: 3,
 };
 
-function parsePoints(raw: string | null | undefined): PointToFix[] {
+export function parsePoints(raw: string | null | undefined): PointToFix[] {
   if (!raw) return [];
   const trimmed = raw.trim();
   if (!trimmed) return [];
@@ -118,7 +118,22 @@ function parsePoints(raw: string | null | undefined): PointToFix[] {
   }
 }
 
-export function PointsToFix() {
+interface PointsToFixProps {
+  /** Hide the default trigger button (for externally controlled usage). */
+  hideTrigger?: boolean;
+  /** Controlled open state. When provided, the dialog is controlled. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Pre-select a filter (skill/routine) whenever the dialog opens. */
+  initialFilter?: { kind: "skill" | "routine"; id: number } | null;
+}
+
+export function PointsToFix({
+  hideTrigger = false,
+  open: openProp,
+  onOpenChange,
+  initialFilter = null,
+}: PointsToFixProps = {}) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -128,7 +143,13 @@ export function PointsToFix() {
 
   const points = useMemo(() => parsePoints(user?.focusMemo), [user?.focusMemo]);
 
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : internalOpen;
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
   const [draftName, setDraftName] = useState("");
   const [draftSkillIds, setDraftSkillIds] = useState<number[]>([]);
   const [draftRoutineIds, setDraftRoutineIds] = useState<number[]>([]);
@@ -168,6 +189,13 @@ export function PointsToFix() {
       setEditingName("");
     }
   }, [open]);
+
+  useEffect(() => {
+    if (open && initialFilter) {
+      setFilterKind(initialFilter.kind);
+      setFilterId(initialFilter.id);
+    }
+  }, [open, initialFilter]);
 
   const startEdit = (p: PointToFix) => {
     setEditingId(p.id);
@@ -349,16 +377,18 @@ export function PointsToFix() {
 
   return (
     <>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => setOpen(true)}
-        data-testid="button-points-to-fix"
-        className="rounded-2xl h-12 px-4 font-semibold flex items-center gap-2 relative"
-      >
-        <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-        Points to Fix
-      </Button>
+      {!hideTrigger && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setOpen(true)}
+          data-testid="button-points-to-fix"
+          className="rounded-2xl h-12 px-4 font-semibold flex items-center gap-2 relative"
+        >
+          <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          Points to Fix
+        </Button>
+      )}
 
       <Dialog
         open={open}

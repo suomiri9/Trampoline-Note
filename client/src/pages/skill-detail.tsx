@@ -1,13 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
+import { useAuth } from "@/hooks/use-auth";
 import { PageLayout } from "@/components/page-layout";
+import { PointsToFix, parsePoints } from "@/components/points-to-fix";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, Hash, Star, TrendingUp, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Calendar, Hash, Star, TrendingUp, Loader2, ChevronLeft, ChevronRight, Wrench } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useMemo, useState } from "react";
 import {
   CompletionChart,
   RepsChart,
@@ -23,9 +25,16 @@ export default function SkillDetailPage() {
   const skillId = Number(params?.id);
 
   const { data: allSkills, isLoading: skillsLoading } = useSkills();
+  const { user } = useAuth();
   const skill = allSkills?.find(s => s.id === skillId);
 
   const isConnection = skill?.isDrill === 2 || skill?.isDrill === 3;
+
+  const [pointsOpen, setPointsOpen] = useState(false);
+  const skillPoints = useMemo(
+    () => parsePoints(user?.focusMemo).filter(p => p.skillIds.includes(skillId)),
+    [user?.focusMemo, skillId],
+  );
 
   const currentType = skill?.isDrill ?? 0;
   const orderedIds = allSkills
@@ -228,6 +237,32 @@ export default function SkillDetailPage() {
             />
           </div>
 
+          {skillPoints.length > 0 && (
+            <Card className="mb-6">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Wrench className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  Points to Fix
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col gap-1.5" data-testid="list-skill-points">
+                  {skillPoints.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setPointsOpen(true)}
+                      data-testid={`button-skill-point-${p.id}`}
+                      className="text-left text-sm py-2 px-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors break-words"
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <CompletionChart title="Practice Frequency" data={chartData} />
 
           <Card>
@@ -279,6 +314,13 @@ export default function SkillDetailPage() {
           </Card>
 
           {bottomNav}
+
+          <PointsToFix
+            hideTrigger
+            open={pointsOpen}
+            onOpenChange={setPointsOpen}
+            initialFilter={{ kind: "skill", id: skillId }}
+          />
         </div>
       </PageLayout>
     );
@@ -312,6 +354,32 @@ export default function SkillDetailPage() {
             testId="stat-last-practiced"
           />
         </div>
+
+        {skillPoints.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Wrench className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                Points to Fix
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-1.5" data-testid="list-skill-points">
+                {skillPoints.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setPointsOpen(true)}
+                    data-testid={`button-skill-point-${p.id}`}
+                    className="text-left text-sm py-2 px-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors break-words"
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <RepsChart title="Reps per Day" data={chartData} />
 
@@ -350,6 +418,13 @@ export default function SkillDetailPage() {
         </Card>
 
         {bottomNav}
+
+        <PointsToFix
+          hideTrigger
+          open={pointsOpen}
+          onOpenChange={setPointsOpen}
+          initialFilter={{ kind: "skill", id: skillId }}
+        />
       </div>
     </PageLayout>
   );
