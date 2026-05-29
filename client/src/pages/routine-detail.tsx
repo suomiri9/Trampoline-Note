@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Calendar, Star, TrendingUp, Loader2, Layers, ChevronLeft, ChevronRight } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { format, parseISO, startOfWeek, eachWeekOfInterval } from "date-fns";
+import { format, parseISO, eachDayOfInterval } from "date-fns";
 import { useRef, useCallback } from "react";
 
 interface RoutineHistoryEntry {
@@ -231,12 +231,14 @@ export default function RoutineDetailPage() {
             <CardContent>
               <div className="h-48 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                  <BarChart data={weeklyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barCategoryGap={1}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis
                       dataKey="label"
                       tick={{ fontSize: 11 }}
                       className="fill-muted-foreground"
+                      interval="preserveStartEnd"
+                      minTickGap={40}
                     />
                     <YAxis
                       allowDecimals={false}
@@ -367,26 +369,24 @@ function buildWeeklyData(entries: RoutineHistoryEntry[]) {
   const minDate = dates[0];
   const maxDate = dates[dates.length - 1];
 
-  const weeks = eachWeekOfInterval({ start: minDate, end: maxDate }, { weekStartsOn: 1 });
+  const days = eachDayOfInterval({ start: minDate, end: maxDate });
 
-  const weekMap = new Map<string, { full: number; partial: number }>();
-  for (const weekStart of weeks) {
-    weekMap.set(weekStart.toISOString(), { full: 0, partial: 0 });
+  const dayMap = new Map<string, { full: number; partial: number }>();
+  for (const day of days) {
+    dayMap.set(format(day, "yyyy-MM-dd"), { full: 0, partial: 0 });
   }
 
   for (const entry of entries) {
-    const d = parseISO(entry.date);
-    const ws = startOfWeek(d, { weekStartsOn: 1 });
-    const key = ws.toISOString();
+    const key = entry.date;
     const reps = entry.reps && entry.reps > 0 ? entry.reps : 1;
-    const cur = weekMap.get(key) || { full: 0, partial: 0 };
+    const cur = dayMap.get(key) || { full: 0, partial: 0 };
     if (entry.attempt == null) cur.full += reps;
     else cur.partial += reps;
-    weekMap.set(key, cur);
+    dayMap.set(key, cur);
   }
 
-  return Array.from(weekMap.entries()).map(([key, v]) => ({
-    label: format(new Date(key), "MMM d"),
+  return Array.from(dayMap.entries()).map(([key, v]) => ({
+    label: format(parseISO(key), "MMM d"),
     full: v.full,
     partial: v.partial,
   }));
