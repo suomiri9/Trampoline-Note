@@ -231,7 +231,7 @@ export default function RoutineDetailPage() {
             <CardContent>
               <div className="h-48 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barCategoryGap={1}>
+                  <BarChart data={weeklyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barCategoryGap="20%" maxBarSize={28}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis
                       dataKey="label"
@@ -385,9 +385,11 @@ function buildWeeklyData(entries: RoutineHistoryEntry[]) {
     dayMap.set(key, cur);
   }
 
-  return Array.from(dayMap.entries()).map(([key, v]) => ({
-    label: format(parseISO(key), "MMM d"),
-    full: v.full,
-    partial: v.partial,
-  }));
+  return Array.from(dayMap.entries())
+    .filter(([, v]) => v.full > 0 || v.partial > 0)
+    .map(([key, v]) => ({
+      label: format(parseISO(key), "MMM d"),
+      full: v.full,
+      partial: v.partial,
+    }));
 }
