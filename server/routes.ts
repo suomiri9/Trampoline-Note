@@ -398,6 +398,59 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/connections/:id/history", isAuthenticated, async (req, res) => {
+    try {
+      const connId = Number(req.params.id);
+      if (!Number.isFinite(connId) || connId <= 0) {
+        return res.status(400).json({ message: "Invalid connection ID" });
+      }
+      const userId = getUserId(req);
+      const [allNotes, userSkills] = await Promise.all([
+        storage.getNotes(userId),
+        storage.getSkills(userId),
+      ]);
+      const conn = userSkills.find(s => s.id === connId);
+      const expectedCount = conn?.skillIds?.length ?? 0;
+
+      const entries: Array<{
+        noteId: number;
+        date: string;
+        rating: number | null;
+        attempt: number | null;
+        skillCount: number;
+        reps: number;
+      }> = [];
+
+      for (const note of allNotes) {
+        if (!note.skills) continue;
+        const items = parseSkillsField(note.skills);
+
+        for (const item of items) {
+          const raw = item as any;
+          const isConnRef = (item.id === -3 && raw.fcId === connId) || item.id === connId;
+          if (isConnRef) {
+            const customIds: number[] | undefined = raw.customSkillIds;
+            const reps: number = Number.isFinite(raw.reps) && raw.reps > 0 ? raw.reps : 1;
+            const skillCount = customIds ? customIds.length : expectedCount;
+            entries.push({
+              noteId: note.id,
+              date: note.date,
+              rating: note.rating ?? null,
+              attempt: expectedCount > 0 && skillCount !== expectedCount ? skillCount : null,
+              skillCount,
+              reps,
+            });
+          }
+        }
+      }
+
+      entries.sort((a, b) => a.date.localeCompare(b.date));
+      res.json(entries);
+    } catch {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.patch("/api/auth/focus-memo", isAuthenticated, async (req, res) => {
     try {
       const schema = z.object({ focusMemo: z.string().max(20000) });

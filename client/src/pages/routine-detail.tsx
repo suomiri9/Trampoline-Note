@@ -8,9 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Calendar, Star, TrendingUp, Loader2, Layers, ChevronLeft, ChevronRight } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { format, parseISO, eachDayOfInterval } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useRef, useCallback } from "react";
+import { CompletionChart, buildDailyCompletion } from "@/lib/history-chart";
 
 interface RoutineHistoryEntry {
   noteId: number;
@@ -98,7 +98,7 @@ export default function RoutineDetailPage() {
   const partialCount = entries.filter(e => e.attempt != null).reduce((s, e) => s + repsOf(e), 0);
   const totalDD = calcDDFromSkillIds(routine.skillIds, allSkills || []);
 
-  const weeklyData = buildWeeklyData(entries);
+  const weeklyData = buildDailyCompletion(entries);
 
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < orderedIds.length - 1;
@@ -211,57 +211,7 @@ export default function RoutineDetailPage() {
           />
         </div>
 
-        {weeklyData.length > 0 && (
-          <Card className="mb-6">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <CardTitle className="text-base">Practice Frequency</CardTitle>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1" data-testid="legend-full">
-                    <span className="inline-block w-3 h-3 rounded-sm" style={{ background: "hsl(var(--primary))" }} />
-                    Full runs
-                  </span>
-                  <span className="flex items-center gap-1" data-testid="legend-partial">
-                    <span className="inline-block w-3 h-3 rounded-sm" style={{ background: "hsl(var(--muted-foreground))" }} />
-                    Attempts
-                  </span>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-48 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barCategoryGap="20%" maxBarSize={28}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fontSize: 11 }}
-                      className="fill-muted-foreground"
-                      interval="preserveStartEnd"
-                      minTickGap={40}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      tick={{ fontSize: 11 }}
-                      className="fill-muted-foreground"
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        borderRadius: "8px",
-                        border: "1px solid hsl(var(--border))",
-                        background: "hsl(var(--popover))",
-                        color: "hsl(var(--popover-foreground))",
-                        fontSize: "12px",
-                      }}
-                    />
-                    <Bar dataKey="partial" stackId="runs" name="Attempts" fill="hsl(var(--muted-foreground))" shape={<PartialBar />} />
-                    <Bar dataKey="full" stackId="runs" name="Full runs" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <CompletionChart title="Practice Frequency" data={weeklyData} />
 
         <Card>
           <CardHeader className="pb-2">
@@ -348,48 +298,4 @@ function StatCard({ icon, label, value, testId }: { icon: React.ReactNode; label
       </CardContent>
     </Card>
   );
-}
-
-function PartialBar(props: any) {
-  const { x, y, width, height, payload, fill } = props;
-  if (!height || height <= 0) return null;
-  const rounded = payload?.full === 0;
-  const r = rounded ? Math.min(4, width / 2, height) : 0;
-  if (r === 0) {
-    return <rect x={x} y={y} width={width} height={height} fill={fill} />;
-  }
-  const d = `M${x},${y + height} L${x},${y + r} Q${x},${y} ${x + r},${y} L${x + width - r},${y} Q${x + width},${y} ${x + width},${y + r} L${x + width},${y + height} Z`;
-  return <path d={d} fill={fill} />;
-}
-
-function buildWeeklyData(entries: RoutineHistoryEntry[]) {
-  if (entries.length === 0) return [];
-
-  const dates = entries.map(e => parseISO(e.date));
-  const minDate = dates[0];
-  const maxDate = dates[dates.length - 1];
-
-  const days = eachDayOfInterval({ start: minDate, end: maxDate });
-
-  const dayMap = new Map<string, { full: number; partial: number }>();
-  for (const day of days) {
-    dayMap.set(format(day, "yyyy-MM-dd"), { full: 0, partial: 0 });
-  }
-
-  for (const entry of entries) {
-    const key = entry.date;
-    const reps = entry.reps && entry.reps > 0 ? entry.reps : 1;
-    const cur = dayMap.get(key) || { full: 0, partial: 0 };
-    if (entry.attempt == null) cur.full += reps;
-    else cur.partial += reps;
-    dayMap.set(key, cur);
-  }
-
-  return Array.from(dayMap.entries())
-    .filter(([, v]) => v.full > 0 || v.partial > 0)
-    .map(([key, v]) => ({
-      label: format(parseISO(key), "MMM d"),
-      full: v.full,
-      partial: v.partial,
-    }));
 }
