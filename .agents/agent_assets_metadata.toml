@@ -6,3 +6,9 @@ id = "4e5vrQxiYSeBmS14OtnT6"
 uri = "file://screenshots/rejected-entries-preview.jpg"
 type = "image"
 title = "Rejected offline entries — preview"
+
+[[outputs]]
+id = "UoXbz2ne-3ZgosoKQ4Gsa"
+uri = "file://dist/trampoline-training-log.tar.gz"
+type = "unspecified"
+title = "Trampoline Training Log — full source code"
