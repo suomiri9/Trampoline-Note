@@ -12,3 +12,15 @@ id = "UoXbz2ne-3ZgosoKQ4Gsa"
 uri = "file://dist/trampoline-training-log.tar.gz"
 type = "unspecified"
 title = "Trampoline Training Log — full source code"
+
+[[outputs]]
+id = "XkrNhULSJ8YSm38ota5DL"
+uri = "file://dist/published-app-data.json"
+type = "unspecified"
+title = "Published (production) app data"
+
+[[outputs]]
+id = "3kHYfEdbSK41rQAfdTJyY"
+uri = "file://dist/preview-app-data.json"
+type = "unspecified"
+title = "Preview (development) app data"
