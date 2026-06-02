@@ -1,22 +1,6 @@
-# OS
+node_modules
+dist
 .DS_Store
-Thumbs.db
-
-# Editors
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Dependencies
-node_modules/
-__pycache__/
-*.pyc
-
-# Build output
-dist/
-build/
-
-# Env files
-.env
-.env.local
+server/public
+vite.config.ts.*
+*.tar.gz

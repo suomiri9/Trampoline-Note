@@ -1,0 +1,256 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --font-display: 'Outfit', sans-serif;
+    --font-body: 'Plus Jakarta Sans', sans-serif;
+
+    /* Vibrant Blue Accent Palette */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 214 32% 91%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 214 32% 91%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --background: 222 47% 8%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 10%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 10%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 65%;
+    --primary-foreground: 222 47% 8%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 55%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  /* Match Safari's autofill behavior: don't let Chrome paint the input yellow,
+     which makes inputs look like a different color than the rest of the form. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: hsl(var(--foreground));
+    -webkit-box-shadow: 0 0 0 1000px hsl(var(--background)) inset;
+    transition: background-color 9999s ease-in-out 0s;
+    caret-color: hsl(var(--foreground));
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply font-semibold tracking-tight;
+  }
+}
+
+/* Safari / iOS fixes */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+.overflow-scroll-touch {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-x: contain;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Custom subtle animations for clean minimal feel */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out forwards;
+}
+
+/* 3D depth system */
+.card-3d {
+  background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.92) 100%);
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.08) inset,
+    0 0 0 1px hsl(var(--border) / 0.5),
+    0 2px 4px -1px hsl(222 47% 11% / 0.06),
+    0 4px 8px -2px hsl(222 47% 11% / 0.05),
+    0 8px 16px -4px hsl(222 47% 11% / 0.04);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.dark .card-3d {
+  background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.85) 100%);
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.04) inset,
+    0 0 0 1px hsl(var(--border) / 0.4),
+    0 2px 4px -1px hsl(222 47% 5% / 0.3),
+    0 4px 8px -2px hsl(222 47% 5% / 0.25),
+    0 8px 16px -4px hsl(222 47% 5% / 0.2);
+}
+
+.card-3d-hover:active {
+  transform: scale(0.985) translateY(1px);
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.05) inset,
+    0 0 0 1px hsl(var(--border) / 0.5),
+    0 1px 2px 0 hsl(222 47% 11% / 0.06);
+}
+
+.dark .card-3d-hover:active {
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.02) inset,
+    0 0 0 1px hsl(var(--border) / 0.4),
+    0 1px 2px 0 hsl(222 47% 5% / 0.3);
+}
+
+.glass-surface {
+  background: hsl(var(--background) / 0.65);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.1) inset,
+    0 0 0 1px hsl(var(--border) / 0.3),
+    0 8px 32px -8px hsl(222 47% 11% / 0.12),
+    0 16px 48px -12px hsl(222 47% 11% / 0.08);
+}
+
+.dark .glass-surface {
+  background: hsl(var(--background) / 0.55);
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.05) inset,
+    0 0 0 1px hsl(var(--border) / 0.25),
+    0 8px 32px -8px hsl(222 47% 5% / 0.5),
+    0 16px 48px -12px hsl(222 47% 5% / 0.35);
+}
+
+.btn-3d {
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.15) inset,
+    0 -1px 0 0 hsl(0 0% 0% / 0.15) inset,
+    0 2px 6px -1px hsl(221 83% 40% / 0.35),
+    0 4px 12px -2px hsl(221 83% 40% / 0.2);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.btn-3d:active {
+  transform: translateY(1px);
+  box-shadow:
+    0 0 0 0 hsl(0 0% 100% / 0.15) inset,
+    0 -1px 0 0 hsl(0 0% 0% / 0.15) inset,
+    0 1px 3px 0 hsl(221 83% 40% / 0.2);
+}
+
+.icon-3d {
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.12) inset,
+    0 2px 4px -1px hsl(222 47% 11% / 0.08),
+    0 4px 8px -2px hsl(222 47% 11% / 0.06);
+}
+
+.dark .icon-3d {
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.06) inset,
+    0 2px 4px -1px hsl(222 47% 5% / 0.3),
+    0 4px 8px -2px hsl(222 47% 5% / 0.2);
+}
+
+.bg-mesh {
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 0%, hsl(221 83% 53% / 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 10%, hsl(280 70% 60% / 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 50% at 50% 100%, hsl(221 83% 53% / 0.03) 0%, transparent 60%),
+    hsl(var(--background));
+}
+
+.dark .bg-mesh {
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 0%, hsl(221 83% 53% / 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 10%, hsl(280 70% 60% / 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 50% at 50% 100%, hsl(221 83% 53% / 0.04) 0%, transparent 60%),
+    hsl(var(--background));
+}
+
+/* Lock html/body so iOS cannot scroll the viewport — all scroll happens inside #root */
+html, body {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Staggered animation delays for lists */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
