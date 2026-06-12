@@ -161,6 +161,7 @@ export function PointsToFix({
   const [filterOpen, setFilterOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     fromSkillId: number | null;
@@ -168,6 +169,11 @@ export function PointsToFix({
   } | null>(null);
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const addDialogContentRef = useRef<HTMLDivElement>(null);
+
+  const hasDraft =
+    draftName.trim().length > 0 ||
+    draftSkillIds.length > 0 ||
+    draftRoutineIds.length > 0;
 
   useEffect(() => {
     if (!open) {
@@ -385,7 +391,16 @@ export function PointsToFix({
         </Button>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next && hasDraft) {
+            setConfirmClose(true);
+            return;
+          }
+          setOpen(next);
+        }}
+      >
         <DialogContent ref={dialogContentRef} className="sm:max-w-[500px] md:max-w-[680px] w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] max-h-[85vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1207,6 +1222,19 @@ export function PointsToFix({
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmClose}
+        onOpenChange={setConfirmClose}
+        title="Discard unsaved point?"
+        description="You have a point you haven't added yet. Closing will discard it."
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        onConfirm={() => {
+          setConfirmClose(false);
+          setOpen(false);
+        }}
+      />
 
       {(() => {
         const target = deleteTarget
