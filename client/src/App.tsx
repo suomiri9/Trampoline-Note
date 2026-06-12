@@ -52,7 +52,7 @@ function Navigation() {
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground",
               )}
             >
-              <item.icon className={cn("w-4 h-4", item.iconColor)} />
+              <item.icon className={cn("w-4 h-4", active && item.iconColor)} />
               <span className="hidden sm:inline">{item.label}</span>
             </div>
           </Link>
