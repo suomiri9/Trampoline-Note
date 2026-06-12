@@ -174,7 +174,7 @@ function ScoreCard({
           </div>
           <div className="shrink-0 flex items-start gap-1">
             <div className="text-right">
-              <div className={cn("font-display font-normal text-4xl sm:text-5xl leading-none", totalColor)} data-testid={`text-score-total-${score.id}`}>
+              <div className={cn("font-display font-normal text-5xl sm:text-6xl leading-none", totalColor)} data-testid={`text-score-total-${score.id}`}>
                 {grandTotal.toFixed(1)}
               </div>
               <span className={cn("inline-block mt-2 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold uppercase tracking-wider", pillClass)}>
@@ -239,7 +239,7 @@ function RoundBlock({
         </div>
         <div className="shrink-0 flex items-start gap-1">
           <div className="text-right">
-            <div className="font-display font-normal text-3xl leading-none text-amber-400" data-testid={`text-round-total-${score.id}`}>
+            <div className="font-display font-normal text-4xl sm:text-5xl leading-none text-amber-400" data-testid={`text-round-total-${score.id}`}>
               {grandTotal.toFixed(1)}
             </div>
             <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">Total</div>
@@ -287,6 +287,7 @@ function CompetitionCard({
 }) {
   const finalRound = rounds.find((r) => r.round === "final");
   const prelimsRound = rounds.find((r) => r.round !== "final") ?? rounds[0];
+  const bigRankRound = finalRound ?? prelimsRound;
   const first = rounds[0];
   const compName = first.competitionName || "Competition";
   const displayDate = [...rounds].map((r) => r.date).sort()[0];
@@ -307,11 +308,11 @@ function CompetitionCard({
             </span>
           </div>
           <div className="shrink-0 flex items-start gap-1">
-            {finalRound?.rank != null && (
+            {bigRankRound?.rank != null && (
               <div className="text-right">
-                <div className="eyebrow !text-[10px] text-amber-400/70">Final Rank</div>
-                <div className="font-display font-normal text-5xl sm:text-6xl leading-none text-amber-400" data-testid={`text-final-rank-${finalRound.id}`}>
-                  #{finalRound.rank}
+                <div className="eyebrow !text-[10px] text-amber-400/70">{finalRound ? "Final Rank" : "Rank"}</div>
+                <div className="font-display font-normal text-5xl sm:text-6xl leading-none text-amber-400" data-testid={`text-final-rank-${bigRankRound.id}`}>
+                  #{bigRankRound.rank}
                 </div>
               </div>
             )}
@@ -341,24 +342,13 @@ function CompetitionCard({
               key={r.id}
               score={r}
               routines={routines}
-              hideRank={r.round === "final"}
+              hideRank={r.id === bigRankRound?.id}
               onEdit={onEditRound}
               onDelete={onDeleteRound}
             />
           ))}
         </div>
 
-        {!finalRound && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onAddFinal(prelimsRound)}
-            className="w-full mt-4 h-10 rounded-xl border-amber-500/30 text-amber-400 hover:text-amber-300 gap-1.5"
-            data-testid={`btn-add-final-${first.id}`}
-          >
-            <Plus className="w-4 h-4" /> Add Final
-          </Button>
-        )}
       </div>
     </div>
   );
