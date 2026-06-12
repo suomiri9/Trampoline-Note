@@ -24,3 +24,9 @@ id = "3kHYfEdbSK41rQAfdTJyY"
 uri = "file://dist/preview-app-data.json"
 type = "unspecified"
 title = "Preview (development) app data"
+
+[[outputs]]
+id = "HPGvnXlRNcFO5bxBAJs3Y"
+uri = "file://replit.md"
+type = "text"
+title = "replit.md — project overview & preferences"
