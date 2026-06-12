@@ -84,7 +84,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
             {isPending && <PendingSyncBadge testId={`badge-pending-sync-${note.id}`} />}
             {skillsData.length > 0 && (
               <div className="text-right leading-none self-center">
-                <div className="text-[22px] font-display font-normal text-primary tracking-tight leading-none">{totalDifficulty.toFixed(1)}</div>
+                <div className="text-[28px] font-display font-normal text-primary tracking-tight leading-none">{totalDifficulty.toFixed(1)}</div>
                 <div className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60 mt-1.5">Total DD</div>
               </div>
             )}
