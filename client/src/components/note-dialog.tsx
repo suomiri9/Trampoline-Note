@@ -17,7 +17,7 @@ import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
 import { useCreateNote, useUpdateNote } from "@/hooks/use-notes";
 import { updateQueuedByTempId } from "@/lib/offline-queue";
 import { useSkills } from "@/hooks/use-skills";
-import { useRecentSkills, addRecentSkill } from "@/hooks/use-recent-skills";
+import { useRecentSkills, addRecentSkill, useRecentEntries, addRecentEntry } from "@/hooks/use-recent-skills";
 import { useTypeToSearch } from "@/hooks/use-type-to-search";
 import { useRoutines } from "@/hooks/use-routines";
 import { useToast } from "@/hooks/use-toast";
@@ -120,6 +120,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const updateNote = useUpdateNote();
   const { data: allItems, createSkill, isCreating: isCreatingSkill } = useSkills();
   const globalRecentSkillIds = useRecentSkills();
+  const persistedRecentEntries = useRecentEntries();
   const { data: routines, createRoutine, isCreating: isCreatingRoutine } = useRoutines();
   
   const [selectedSkills, setSelectedSkills] = useState<SkillItem[]>([]);
@@ -162,18 +163,23 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     if (!allItems) return [] as Array<{ kind: 'skill'; id: number } | { kind: 'routine'; id: number } | { kind: 'fc'; id: number }>;
     const seenKeys = new Set<string>();
     const out: Array<{ kind: 'skill'; id: number } | { kind: 'routine'; id: number } | { kind: 'fc'; id: number }> = [];
+    const keyOf = (kind: 'skill' | 'routine' | 'fc', id: number) => kind === 'routine' ? `r-${id}` : kind === 'fc' ? `f-${id}` : `s-${id}`;
+    const existsFor = (kind: 'skill' | 'routine' | 'fc', id: number) => kind === 'routine' ? !!routines?.some(r => r.id === id) : allItems.some(s => s.id === id);
+    const pushEntry = (kind: 'skill' | 'routine' | 'fc', id: number) => {
+      const k = keyOf(kind, id);
+      if (!seenKeys.has(k) && existsFor(kind, id)) { seenKeys.add(k); out.push({ kind, id }); }
+    };
+    // Persisted recents survive deletion from the practice list
+    for (const ent of persistedRecentEntries) {
+      pushEntry(ent.kind, ent.id);
+      if (out.length >= 8) return out;
+    }
+    // Plus anything currently in the practice list (covers notes opened for editing)
     for (let i = selectedSkills.length - 1; i >= 0; i--) {
       const item = selectedSkills[i];
-      if (item.id > 0) {
-        const k = `s-${item.id}`;
-        if (!seenKeys.has(k) && allItems.some(s => s.id === item.id)) { seenKeys.add(k); out.push({ kind: 'skill', id: item.id }); }
-      } else if (item.id === -2 && item.routineId) {
-        const k = `r-${item.routineId}`;
-        if (!seenKeys.has(k) && (routines?.some(r => r.id === item.routineId))) { seenKeys.add(k); out.push({ kind: 'routine', id: item.routineId }); }
-      } else if (item.id === -3 && item.fcId) {
-        const k = `f-${item.fcId}`;
-        if (!seenKeys.has(k) && allItems.some(s => s.id === item.fcId)) { seenKeys.add(k); out.push({ kind: 'fc', id: item.fcId }); }
-      }
+      if (item.id > 0) pushEntry('skill', item.id);
+      else if (item.id === -2 && item.routineId) pushEntry('routine', item.routineId);
+      else if (item.id === -3 && item.fcId) pushEntry('fc', item.fcId);
       if (out.length >= 8) break;
     }
     return out;
@@ -299,6 +305,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const addSkill = (idStr: string) => {
     const id = parseInt(idStr);
     const fcItem = allItems?.find(s => s.id === id && (s.isDrill === 2 || s.isDrill === 3));
+    addRecentEntry({ kind: fcItem ? 'fc' : 'skill', id });
     if (fcItem && fcItem.skillIds) {
       setSelectedSkills(prev => {
         let newSkills = [...prev];
@@ -344,6 +351,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     const routineId = parseInt(idStr);
     const routine = routines?.find(r => r.id === routineId);
     if (!routine) return;
+    addRecentEntry({ kind: 'routine', id: routineId });
 
     setSelectedSkills(prev => {
       let newSkills = [...prev];
