@@ -556,7 +556,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       <DialogContent className="sm:max-w-[500px] md:max-w-[680px] w-[calc(100vw-32px)] p-0 rounded-[24px] border-border/50 max-h-[90vh] max-h-[90dvh] sm:max-h-[82vh] sm:max-h-[82dvh] flex flex-col overflow-clip">
         <div className="p-6 pb-4 flex-none">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-semibold">{isEditing ? "Edit Session" : "Log Training Session"}</DialogTitle>
+            <DialogTitle className="text-3xl">{isEditing ? "Edit Session" : "Log Training Session"}</DialogTitle>
             <DialogDescription>Record your notes and skills practiced.</DialogDescription>
           </DialogHeader>
         </div>
