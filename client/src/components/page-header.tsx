@@ -52,7 +52,8 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8",
+        "sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 md:-mt-8 px-4 sm:px-6 lg:px-8 pt-6 md:pt-8 pb-5 mb-6 bg-background/90 backdrop-blur-md border-b border-border/60",
+        "flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4",
         className,
       )}
     >
