@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /** Glowing solid-blue primary action (e.g. "Start Training"). */
@@ -29,6 +29,22 @@ export function PageHeader({
   actions,
   className,
 }: PageHeaderProps) {
+  const headerRef = useRef<HTMLDivElement>(null);
+
+  // Publish the rendered header height so sticky sub-bars (e.g. the Skills tab
+  // bar) can pin themselves directly beneath it via top: var(--page-header-h).
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const update = () => {
+      document.documentElement.style.setProperty("--page-header-h", `${el.offsetHeight}px`);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const trimmed = title.trim();
   let lead = trimmed;
   let accentPart = accent;
@@ -51,6 +67,7 @@ export function PageHeader({
 
   return (
     <div
+      ref={headerRef}
       className={cn(
         "sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 md:-mt-8 px-4 sm:px-6 lg:px-8 pt-6 md:pt-8 pb-5 mb-6 bg-background/90 backdrop-blur-md border-b border-border/60",
         "flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4",
