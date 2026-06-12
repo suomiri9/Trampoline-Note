@@ -299,8 +299,8 @@ export default function StatsPage() {
                   </div>
                 )}
                 <Select value={range} onValueChange={(v) => { setRange(v as Range); setOffset(0); }}>
-                  <SelectTrigger className="w-[88px] h-8 rounded-xl text-xs border-border/50" data-testid="select-range"><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectTrigger className="w-[88px] h-8 rounded-xl text-xs border-border/50 font-mono" data-testid="select-range"><SelectValue /></SelectTrigger>
+                  <SelectContent className="font-mono">
                     <SelectItem value="week">Week</SelectItem>
                     <SelectItem value="month">Month</SelectItem>
                     <SelectItem value="year">Year</SelectItem>
