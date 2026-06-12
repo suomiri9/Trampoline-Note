@@ -53,26 +53,22 @@ const scoreDefaults = {
 };
 
 function ScoreBreakdown({ e, d, h, t, label, total, totalColor, totalTestId }: { e: number; d: number; h: number; t: number; label?: string; total?: number; totalColor?: string; totalTestId?: string }) {
-  const cols = [
+  const cols: { k: string; v: string; accent?: boolean }[] = [
     { k: "E", v: e.toFixed(1) },
     { k: "DD", v: d.toFixed(1) },
     { k: "H", v: h.toFixed(1) },
     { k: "TOF", v: t.toFixed(2) },
+    ...(total != null ? [{ k: "TOTAL", v: total.toFixed(1), accent: true }] : []),
   ];
   return (
     <div>
       {label && (
-        <div className="flex items-baseline justify-between gap-2 mb-2">
-          <span className="eyebrow text-[0.6rem] tracking-[0.2em] text-muted-foreground/80">{label}</span>
-          {total != null && (
-            <span className={cn("font-mono text-base font-bold tabular-nums leading-none", totalColor)} data-testid={totalTestId}>{total.toFixed(1)}</span>
-          )}
-        </div>
+        <div className="eyebrow text-[0.6rem] tracking-[0.2em] mb-2 text-muted-foreground/80">{label}</div>
       )}
-      <div className="grid grid-cols-4 gap-2 text-center">
+      <div className={cn("grid gap-2 text-center", total != null ? "grid-cols-5" : "grid-cols-4")}>
         {cols.map((c) => (
           <div key={c.k}>
-            <div className="font-mono text-[14px] font-semibold tabular-nums tracking-tight">{c.v}</div>
+            <div className={cn("font-mono text-[14px] font-semibold tabular-nums tracking-tight", c.accent && totalColor)} data-testid={c.accent ? totalTestId : undefined}>{c.v}</div>
             <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">{c.k}</div>
           </div>
         ))}
@@ -164,7 +160,7 @@ function ScoreCard({
             h={score.horizontal}
             t={score.timeOfFlight}
             label={isMulti ? `${group1Label}${score.attempt != null ? ` · attempt ${score.attempt}` : ""}` : undefined}
-            total={isMulti ? score.total : undefined}
+            total={score.total}
             totalColor={totalColor}
             totalTestId={`text-group1-total-${score.id}`}
           />
