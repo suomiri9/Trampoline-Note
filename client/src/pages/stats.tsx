@@ -205,7 +205,7 @@ export default function StatsPage() {
   const activeDays = chartData.reduce((n, d) => n + (d.sessions > 0 ? 1 : 0), 0);
   const periodTotalDD = totalDDInRange;
   const periodAvgDD = sessionsInPeriod > 0 ? periodTotalDD / sessionsInPeriod : 0;
-  const periodBest = notesInPeriod.reduce((m, n) => Math.max(m, n.rating ?? 0), 0);
+  const periodBest = notesInPeriod.reduce((m, n) => Math.max(m, calculateTotalDD(parseNoteSkills(n.skills), allItems, routines)), 0);
 
   // ---- Period delta (current vs previous comparable period) ----
   const periodTotalFor = (off: number): number => {
@@ -279,9 +279,9 @@ export default function StatsPage() {
             </div>
             <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
               <span className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500 rounded-full" aria-hidden="true" />
-              <div className="eyebrow mb-2">Best ★</div>
+              <div className="eyebrow mb-2">Best DD</div>
               <div className="text-4xl sm:text-5xl font-display font-normal text-rose-400 tracking-tight" data-testid="stat-best">{periodBest.toFixed(1)}</div>
-              <div className="text-[11px] leading-tight text-muted-foreground/70 mt-1.5">highest star rating</div>
+              <div className="text-[11px] leading-tight text-muted-foreground/70 mt-1.5">highest single session</div>
             </div>
           </div>
         </div>
@@ -347,7 +347,8 @@ export default function StatsPage() {
                     formatter={(value: any, _n: any, item: any) => {
                       if (value === null || value === undefined) return ["Rest day", ""];
                       const s = item?.payload?.sessions ?? 0;
-                      return [`${Number(value).toFixed(1)} DD · ${s} session${s === 1 ? "" : "s"}`, ""];
+                      const sessionPart = s > 1 ? ` · ${s} sessions` : "";
+                      return [`${Number(value).toFixed(1)} DD${sessionPart}`, ""];
                     }}
                     labelFormatter={range === "year" ? (v: string) => { try { return format(parseISO(v), "d MMM"); } catch { return v; } } : undefined}
                     cursor={{ stroke: 'hsl(var(--primary) / 0.3)', strokeWidth: 1 }}
