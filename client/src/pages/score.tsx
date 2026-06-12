@@ -206,6 +206,23 @@ function ScoreCard({
 const roundOrder = (round?: string | null) => (round === "final" ? 1 : round === "prelims" ? 0 : 2);
 const roundLabel = (round?: string | null) => (round === "final" ? "Final" : round === "prelims" ? "Prelims" : "Round");
 
+const COMP_THEME = {
+  competition: {
+    bar: "bg-amber-500",
+    accent: "text-amber-400",
+    accentSoft: "text-amber-400/70",
+    accentEyebrow: "text-amber-400/80",
+    badge: "border-amber-500/40 text-amber-400",
+  },
+  trial: {
+    bar: "bg-red-500",
+    accent: "text-red-400",
+    accentSoft: "text-red-400/70",
+    accentEyebrow: "text-red-400/80",
+    badge: "border-red-500/40 text-red-400",
+  },
+} as const;
+
 function newCompetitionId(): string {
   try {
     if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -219,12 +236,22 @@ function RoundBlock({
   score,
   routines,
   hideRank,
+  hideName,
+  hideRoundLabel,
+  hideActions,
+  accent = "text-amber-400",
+  accentEyebrow = "text-amber-400/80",
   onEdit,
   onDelete,
 }: {
   score: Score;
   routines?: Routine[];
   hideRank?: boolean;
+  hideName?: boolean;
+  hideRoundLabel?: boolean;
+  hideActions?: boolean;
+  accent?: string;
+  accentEyebrow?: string;
   onEdit: (score: Score) => void;
   onDelete: (id: number) => void;
 }) {
@@ -238,9 +265,13 @@ function RoundBlock({
     <div className="pt-4 border-t border-border/60 first:border-t-0 first:pt-0" data-testid={`round-${score.id}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="eyebrow !text-[10px] text-amber-400/80">{roundLabel(score.round)}</div>
-          <div className="font-semibold text-sm mt-0.5 truncate" data-testid={`text-round-name-${score.id}`}>{title}</div>
-          {isMulti && routineVol && (
+          {!hideRoundLabel && (
+            <div className={cn("eyebrow !text-[10px]", accentEyebrow)}>{roundLabel(score.round)}</div>
+          )}
+          {!hideName && (
+            <div className="font-semibold text-sm mt-0.5 truncate" data-testid={`text-round-name-${score.id}`}>{title}</div>
+          )}
+          {!hideName && isMulti && routineVol && (
             <div className="font-mono text-[11px] text-muted-foreground mt-0.5 truncate">+ {routineVol.name}</div>
           )}
           {!hideRank && score.rank != null && (
@@ -249,30 +280,32 @@ function RoundBlock({
         </div>
         <div className="shrink-0 flex items-start gap-1">
           <div className="text-right">
-            <div className="font-display font-normal text-4xl sm:text-5xl leading-none text-amber-400" data-testid={`text-round-total-${score.id}`}>
+            <div className={cn("font-display font-normal text-4xl sm:text-5xl leading-none", accent)} data-testid={`text-round-total-${score.id}`}>
               {grandTotal.toFixed(1)}
             </div>
             <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">Total</div>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 -mr-1 text-muted-foreground/50 hover:text-foreground" data-testid={`btn-round-actions-${score.id}`}>
-                <MoreVertical className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-36 rounded-xl">
-              <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => onEdit(score)} data-testid={`btn-round-edit-${score.id}`}>
-                <Pencil className="h-3.5 w-3.5" /> Edit round
-              </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => onDelete(score.id)} data-testid={`btn-round-delete-${score.id}`}>
-                <Trash2 className="h-3.5 w-3.5" /> Delete round
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {!hideActions && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 -mr-1 text-muted-foreground/50 hover:text-foreground" data-testid={`btn-round-actions-${score.id}`}>
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => onEdit(score)} data-testid={`btn-round-edit-${score.id}`}>
+                  <Pencil className="h-3.5 w-3.5" /> Edit round
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => onDelete(score.id)} data-testid={`btn-round-delete-${score.id}`}>
+                  <Trash2 className="h-3.5 w-3.5" /> Delete round
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
       <div className="mt-3">
-        <ScoreGroups score={score} totalColor="text-amber-400" />
+        <ScoreGroups score={score} totalColor={accent} />
       </div>
     </div>
   );
@@ -281,6 +314,7 @@ function RoundBlock({
 function CompetitionCard({
   rounds,
   routines,
+  variant = "competition",
   onEditRound,
   onDeleteRound,
   onDeleteComp,
@@ -289,22 +323,30 @@ function CompetitionCard({
 }: {
   rounds: Score[];
   routines?: Routine[];
+  variant?: "competition" | "trial";
   onEditRound: (score: Score) => void;
   onDeleteRound: (id: number) => void;
   onDeleteComp: (ids: number[]) => void;
   onAddFinal: (prelims: Score) => void;
   testId?: string;
 }) {
+  const isTrial = variant === "trial";
+  const theme = COMP_THEME[variant];
   const finalRound = rounds.find((r) => r.round === "final");
   const prelimsRound = rounds.find((r) => r.round !== "final") ?? rounds[0];
   const bigRankRound = finalRound ?? prelimsRound;
   const first = rounds[0];
-  const compName = first.competitionName || "Competition";
+  const firstRoutine = routines?.find((r) => r.id === first.routineId);
+  const firstMulti = first.category === "both" || first.category === "vol_vol";
+  const fallbackName =
+    firstRoutine?.name ?? (firstMulti ? (first.category === "vol_vol" ? "Vol & Vol" : "Set & Vol") : "Trial");
+  const hasName = !!first.competitionName;
+  const compName = hasName ? first.competitionName! : isTrial ? fallbackName : "Competition";
   const displayDate = [...rounds].map((r) => r.date).sort()[0];
 
   return (
     <div className="relative card-3d rounded-2xl overflow-hidden" data-testid={testId}>
-      <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" aria-hidden="true" />
+      <span className={cn("absolute left-0 top-0 bottom-0 w-1", theme.bar)} aria-hidden="true" />
       <div className="p-5 pl-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -313,15 +355,15 @@ function CompetitionCard({
               <span>{format(new Date(displayDate), "EEE, d MMM yyyy")}</span>
             </div>
             <h3 className="font-bold text-lg mt-1.5 truncate" data-testid={`text-comp-name-${first.id}`}>{compName}</h3>
-            <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold uppercase tracking-wider border-amber-500/40 text-amber-400">
-              competition
+            <span className={cn("inline-block mt-1.5 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold uppercase tracking-wider", theme.badge)}>
+              {variant}
             </span>
           </div>
           <div className="shrink-0 flex items-start gap-1">
             {bigRankRound?.rank != null && (
               <div className="text-right">
-                <div className="eyebrow !text-[10px] text-amber-400/70">{finalRound ? "Final Rank" : "Rank"}</div>
-                <div className="font-display font-normal text-[2rem] sm:text-[2.5rem] leading-none text-amber-400" data-testid={`text-final-rank-${bigRankRound.id}`}>
+                <div className={cn("eyebrow !text-[10px]", theme.accentSoft)}>{finalRound ? "Final Rank" : "Rank"}</div>
+                <div className={cn("font-display font-normal text-[2rem] sm:text-[2.5rem] leading-none", theme.accent)} data-testid={`text-final-rank-${bigRankRound.id}`}>
                   #{bigRankRound.rank}
                 </div>
               </div>
@@ -333,13 +375,19 @@ function CompetitionCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44 rounded-xl">
-                {!finalRound && (
-                  <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => onAddFinal(prelimsRound)} data-testid={`btn-comp-add-final-${first.id}`}>
-                    <Plus className="h-3.5 w-3.5" /> Add final round
+                {isTrial ? (
+                  <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => onEditRound(first)} data-testid={`btn-comp-edit-${first.id}`}>
+                    <Pencil className="h-3.5 w-3.5" /> Edit
                   </DropdownMenuItem>
+                ) : (
+                  !finalRound && (
+                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => onAddFinal(prelimsRound)} data-testid={`btn-comp-add-final-${first.id}`}>
+                      <Plus className="h-3.5 w-3.5" /> Add final round
+                    </DropdownMenuItem>
+                  )
                 )}
-                <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => onDeleteComp(rounds.map((r) => r.id))} data-testid={`btn-comp-delete-${first.id}`}>
-                  <Trash2 className="h-3.5 w-3.5" /> Delete competition
+                <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => (isTrial ? onDeleteRound(first.id) : onDeleteComp(rounds.map((r) => r.id)))} data-testid={`btn-comp-delete-${first.id}`}>
+                  <Trash2 className="h-3.5 w-3.5" /> {isTrial ? "Delete trial" : "Delete competition"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -353,6 +401,11 @@ function CompetitionCard({
               score={r}
               routines={routines}
               hideRank={r.id === bigRankRound?.id}
+              hideName={isTrial && !hasName}
+              hideRoundLabel={isTrial}
+              hideActions={isTrial}
+              accent={theme.accent}
+              accentEyebrow={theme.accentEyebrow}
               onEdit={onEditRound}
               onDelete={onDeleteRound}
             />
@@ -678,7 +731,9 @@ export default function ScorePage() {
                 const values =
                   data.type === "competition"
                     ? { ...data, round: data.round || "prelims", competitionId: data.competitionId || newCompetitionId() }
-                    : { ...data, round: null, competitionId: null };
+                    : data.type === "trial"
+                    ? { ...data, round: null, competitionId: null }
+                    : { ...data, round: null, competitionId: null, competitionName: "", rank: null };
                 if (editingScore) {
                   updateMutation.mutate({ id: editingScore.id, values });
                 } else {
@@ -781,6 +836,17 @@ export default function ScorePage() {
                         <FormItem><FormLabel>{form.watch("round") === "final" ? "Final Rank" : "Prelims Rank"}</FormLabel><FormControl><Input type="number" {...field} value={field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(undefined); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} placeholder="e.g. 1" className="rounded-xl h-11 font-mono" /></FormControl></FormItem>
                       )} />
                     </div>
+                  </div>
+                )}
+
+                {form.watch("type") === "trial" && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="competitionName" render={({ field }) => (
+                      <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} value={field.value ?? ""} placeholder="e.g. Squad Trial" className="rounded-xl h-11" /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="rank" render={({ field }) => (
+                      <FormItem><FormLabel>Rank</FormLabel><FormControl><Input type="number" {...field} value={field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(undefined); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} placeholder="e.g. 1" className="rounded-xl h-11 font-mono" /></FormControl></FormItem>
+                    )} />
                   </div>
                 )}
 
@@ -963,6 +1029,18 @@ export default function ScorePage() {
               rounds={item.rounds}
               routines={routines}
               testId={`card-competition-${item.rounds[0].id}`}
+              onEditRound={startEdit}
+              onDeleteRound={setDeleteScoreId}
+              onDeleteComp={setDeleteCompIds}
+              onAddFinal={startAddFinal}
+            />
+          ) : item.score.type === "trial" ? (
+            <CompetitionCard
+              key={item.key}
+              variant="trial"
+              rounds={[item.score]}
+              routines={routines}
+              testId={`card-trial-${item.score.id}`}
               onEditRound={startEdit}
               onDeleteRound={setDeleteScoreId}
               onDeleteComp={setDeleteCompIds}
