@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Plus, BookOpen, Loader2, Activity, LayoutDashboard, ChevronDown } from "lucide-react";
+import { Plus, BookOpen, Loader2, ChevronDown } from "lucide-react";
 import { useNotesPage } from "@/hooks/use-notes";
 import { useQueuedNotes } from "@/hooks/use-queued-notes";
 import { NoteCard } from "@/components/note-card";
 import { NoteDialog } from "@/components/note-dialog";
 import { PointsToFix } from "@/components/points-to-fix";
 import { PageLayout } from "@/components/page-layout";
+import { PageHeader, primaryActionClass } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
@@ -42,27 +43,21 @@ export default function Home() {
 
   return (
     <PageLayout>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-2xl shrink-0 icon-3d">
-            <LayoutDashboard className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-display font-bold">Training Log</h1>
-            <p className="text-muted-foreground text-sm">Track your trampoline sessions, skills, and progress.</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <PointsToFix />
-          <Button
-            onClick={handleCreateNew}
-            className="rounded-2xl h-12 px-6 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition-all btn-3d flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Start Training
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Training Log"
+        title="Training Log"
+        accent="Log"
+        subtitle="Track your trampoline sessions, skills, and progress."
+        actions={
+          <>
+            <PointsToFix />
+            <Button onClick={handleCreateNew} className={primaryActionClass}>
+              <Plus className="w-5 h-5" />
+              Start Training
+            </Button>
+          </>
+        }
+      />
 
       <main>
         {offlineView ? (
@@ -91,28 +86,26 @@ export default function Home() {
           </div>
         ) : isLoading ? (
           <div className="py-24 flex flex-col items-center justify-center text-muted-foreground">
-            <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary/40" />
-            <p className="font-medium">Loading your logs...</p>
+            <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary/60" />
+            <p className="font-mono text-xs uppercase tracking-widest">Loading your logs...</p>
           </div>
         ) : isError ? (
-          <div className="p-6 bg-destructive/5 border border-destructive/20 rounded-2xl text-destructive">
+          <div className="p-6 bg-destructive/10 border border-destructive/30 rounded-2xl text-destructive">
             <h3 className="font-semibold mb-1">Failed to load notes</h3>
             <p className="text-sm opacity-90">{(error as Error).message}</p>
           </div>
         ) : visibleNotes.length === 0 ? (
-          <div className="py-24 px-6 flex flex-col items-center justify-center text-center rounded-[2rem] card-3d">
-            <div className="w-16 h-16 mb-6 rounded-full bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
-              <BookOpen className="w-8 h-8 text-blue-500" />
+          <div className="py-24 px-6 flex flex-col items-center justify-center text-center rounded-2xl card-3d">
+            <div className="w-16 h-16 mb-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <BookOpen className="w-8 h-8 text-primary" />
             </div>
-            <h3 className="text-2xl font-display font-semibold mb-2">No sessions logged yet</h3>
+            <div className="eyebrow mb-3">// No Entries</div>
+            <h3 className="text-3xl font-display font-normal mb-2">No sessions logged yet</h3>
             <p className="text-muted-foreground max-w-md mb-8">
               Start building your training history. Record your skills, write down reflections, and rate your performance.
             </p>
-            <Button
-              onClick={handleCreateNew}
-              variant="outline"
-              className="rounded-xl border-border hover:bg-secondary transition-colors h-11 px-6 font-medium"
-            >
+            <Button onClick={handleCreateNew} className={primaryActionClass}>
+              <Plus className="w-5 h-5" />
               Start Training
             </Button>
           </div>

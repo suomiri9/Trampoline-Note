@@ -154,16 +154,12 @@ export default function RoutineDetailPage() {
               </Button>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-zinc-100 dark:bg-zinc-800/30 rounded-xl shrink-0">
-              <Layers className="w-5 h-5 text-zinc-600" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-display font-bold" data-testid="text-routine-name">{routine.name}</h1>
-              <p className="text-muted-foreground text-sm mt-1">
-                Total DD: <span className="font-medium" data-testid="text-routine-dd">{totalDD.toFixed(1)}</span>
-              </p>
-            </div>
+          <div>
+            <div className="eyebrow mb-2">// Routine</div>
+            <h1 className="text-3xl sm:text-4xl font-display font-normal tracking-tight" data-testid="text-routine-name">{routine.name}</h1>
+            <p className="text-muted-foreground text-sm mt-2 font-mono">
+              Total DD <span className="text-primary font-semibold" data-testid="text-routine-dd">{totalDD.toFixed(1)}</span>
+            </p>
           </div>
         </div>
 
@@ -177,7 +173,7 @@ export default function RoutineDetailPage() {
                     <Badge variant="outline" className="px-2 py-1 font-mono" data-testid={`badge-routine-skill-${idx}`}>
                       {skill?.code || "???"}
                     </Badge>
-                    <span className="text-[10px] text-muted-foreground font-semibold">
+                    <span className="text-[10px] text-muted-foreground font-semibold font-mono">
                       {skill?.difficulty.toFixed(1) || "0.0"}
                     </span>
                   </div>
@@ -268,7 +264,7 @@ export default function RoutineDetailPage() {
                     data-testid={`row-session-${entry.noteId}`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium" data-testid={`text-date-${entry.noteId}`}>
+                      <span className="text-sm font-medium font-mono" data-testid={`text-date-${entry.noteId}`}>
                         {format(parseISO(entry.date), "MMM d, yyyy")}
                       </span>
                     </div>
@@ -336,7 +332,7 @@ function StatCard({ icon, label, value, testId }: { icon: React.ReactNode; label
           {icon}
           <span className="text-xs">{label}</span>
         </div>
-        <p className="text-lg font-bold truncate" data-testid={testId}>{value}</p>
+        <p className="text-lg font-bold truncate font-mono" data-testid={testId}>{value}</p>
       </CardContent>
     </Card>
   );

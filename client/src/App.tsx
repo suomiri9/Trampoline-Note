@@ -26,53 +26,51 @@ function Navigation() {
   const [location] = useLocation();
   const { user } = useAuth();
   const navItems = [
-    { href: "/", label: "Training", icon: LayoutDashboard,
-      activeClass: "bg-blue-50 dark:bg-blue-950/40 shadow-sm",
-      colorClass: "text-blue-600 dark:text-blue-400" },
-    { href: "/score", label: "Score", icon: Trophy,
-      activeClass: "bg-yellow-50 dark:bg-yellow-950/40 shadow-sm",
-      colorClass: "text-yellow-500 dark:text-yellow-400" },
-    { href: "/stats", label: "Progress", icon: BarChart3,
-      activeClass: "bg-slate-100 dark:bg-slate-800/40 shadow-sm",
-      colorClass: "text-slate-500 dark:text-slate-400" },
-    { href: "/skills", label: "Skills", icon: Target,
-      activeClass: "bg-red-50 dark:bg-red-950/40 shadow-sm",
-      colorClass: "text-red-500 dark:text-red-400" },
-    { href: "/routines", label: "Routines", icon: Layers,
-      activeClass: "bg-zinc-100 dark:bg-zinc-800/40 shadow-sm",
-      colorClass: "text-zinc-600 dark:text-zinc-400" },
+    { href: "/", label: "Training", icon: LayoutDashboard, iconColor: "text-blue-400", activeColor: "bg-blue-500/15 text-blue-400" },
+    { href: "/score", label: "Score", icon: Trophy, iconColor: "text-yellow-400", activeColor: "bg-yellow-500/15 text-yellow-400" },
+    { href: "/stats", label: "Progress", icon: BarChart3, iconColor: "text-green-400", activeColor: "bg-green-500/15 text-green-400" },
+    { href: "/skills", label: "Skills", icon: Target, iconColor: "text-red-400", activeColor: "bg-red-500/15 text-red-400" },
+    { href: "/routines", label: "Routines", icon: Layers, iconColor: "text-purple-400", activeColor: "bg-purple-500/15 text-purple-400" },
   ];
 
+  const baseItem =
+    "flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-mono uppercase tracking-wider transition-all cursor-pointer";
+
   return (
-    <nav className="fixed bottom-4 left-0 right-0 mx-auto w-fit glass-surface px-3 pt-2 pb-2 mb-safe rounded-2xl flex items-center gap-1 z-40">
-      {navItems.map((item) => (
-        <Link key={item.href} href={item.href}>
-          <div className={cn(
-            "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer",
-            (location === item.href || (item.href !== "/" && location.startsWith(item.href + "/")))
-              ? `${item.activeClass} ${item.colorClass} font-semibold`
-              : "hover:bg-secondary"
-          )}>
-            <item.icon className={cn("w-4 h-4", item.colorClass)} />
-            <span className={cn(
-              "hidden sm:inline",
-              (location === item.href || (item.href !== "/" && location.startsWith(item.href + "/"))) ? "" : "text-muted-foreground"
-            )}>{item.label}</span>
-          </div>
-        </Link>
-      ))}
+    <nav className="fixed bottom-4 left-0 right-0 mx-auto w-fit glass-surface px-2 pt-2 pb-2 mb-safe rounded-2xl flex items-center gap-1 z-40">
+      {navItems.map((item) => {
+        const active =
+          location === item.href ||
+          (item.href !== "/" && location.startsWith(item.href + "/"));
+        return (
+          <Link key={item.href} href={item.href}>
+            <div
+              className={cn(
+                baseItem,
+                active
+                  ? `${item.activeColor} font-semibold`
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+              )}
+            >
+              <item.icon className={cn("w-4 h-4", item.iconColor)} />
+              <span className="hidden sm:inline">{item.label}</span>
+            </div>
+          </Link>
+        );
+      })}
 
       {user && (
         <Link href="/settings">
-          <div className={cn(
-            "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer",
-            location === "/settings"
-              ? "bg-zinc-100 dark:bg-zinc-800/40 shadow-sm text-zinc-600 dark:text-zinc-400 font-semibold"
-              : "text-muted-foreground hover:bg-secondary"
-          )}
-          data-testid="link-settings"
+          <div
+            className={cn(
+              baseItem,
+              location === "/settings"
+                ? "bg-secondary text-foreground font-semibold"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+            )}
+            data-testid="link-settings"
           >
-            <Settings className={cn("w-4 h-4", location === "/settings" && "text-zinc-600 dark:text-zinc-400")} />
+            <Settings className="w-4 h-4" />
             <span className="hidden sm:inline">Settings</span>
           </div>
         </Link>

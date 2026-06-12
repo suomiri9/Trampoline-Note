@@ -29,7 +29,6 @@ export function useQueuedNotes(): PendingNote[] {
               content: body.content ?? "",
               skills: body.skills ?? null,
               rating: body.rating ?? null,
-              sleepScore: body.sleepScore ?? null,
               _pending: true,
             } as PendingNote;
           })

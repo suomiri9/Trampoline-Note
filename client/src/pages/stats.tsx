@@ -4,12 +4,14 @@ import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { parseNoteSkills, calculateTotalDD } from "@/lib/training-utils";
 import { PageLayout } from "@/components/page-layout";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Loader2, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Loader2, TrendingUp, ChevronLeft, ChevronRight, ArrowUp, ArrowDown } from "lucide-react";
+import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
+import { cn } from "@/lib/utils";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { useOnline } from "@/hooks/use-online";
 import {
@@ -40,7 +42,7 @@ export default function StatsPage() {
             <TrendingUp className="w-6 h-6 text-slate-500" />
           </div>
           <div>
-            <h1 className="text-3xl font-display font-bold">Progress Analytics</h1>
+            <h1 className="text-3xl font-display font-normal">Progress Analytics</h1>
             <p className="text-muted-foreground text-sm">Tracking your daily training intensity</p>
           </div>
         </div>
@@ -81,7 +83,6 @@ export default function StatsPage() {
   let xTickInterval: number | "preserveStartEnd" = 0;
   let xTicks: string[] | undefined;
   let xTickFormatter: ((v: string) => string) | undefined;
-  let useWeekly = false;
   let periodLabel = "";
 
   if (range === "week") {
@@ -99,7 +100,7 @@ export default function StatsPage() {
       const found = ddByDate[key];
       const isFuture = day > today;
       return {
-        date: format(day, "EEE d"),
+        date: format(day, "EEEEE"),
         difficulty: found?.difficulty ?? null,
         sessions: found?.sessions ?? 0,
         isFuture,
@@ -167,9 +168,7 @@ export default function StatsPage() {
     }
   }
 
-  const trainingDaysInRange = chartData.filter(d => d.difficulty !== null).length;
   const totalDDInRange = chartData.reduce((sum, d) => sum + (d.difficulty ?? 0), 0);
-  const totalSessionsInRange = chartData.reduce((sum, d) => sum + d.sessions, 0);
 
   const isCurrentPeriod = offset === 0;
   const navigable = range !== "all";
@@ -188,141 +187,166 @@ export default function StatsPage() {
     touchStartX.current = null;
   };
 
+  // ---- All-time aggregates (independent of selected range) ----
+  const allTimeTotalDD = Object.values(ddByDate).reduce((s, d) => s + d.difficulty, 0);
+  const sessionsLogged = notes?.length ?? 0;
+  const avgDD = sessionsLogged > 0 ? allTimeTotalDD / sessionsLogged : 0;
+  const bestRating = notes?.reduce((m, n) => Math.max(m, n.rating ?? 0), 0) ?? 0;
+  const skillsCount = allItems?.length ?? 0;
+  const allDateKeys = Object.keys(ddByDate).sort();
+  const activeSince = allDateKeys.length ? format(parseISO(allDateKeys[0]), "MMM yyyy") : "—";
+
+  // ---- Period delta (current vs previous comparable period) ----
+  const periodTotalFor = (off: number): number => {
+    let start: Date, end: Date;
+    if (range === "week") {
+      const ws = addWeeks(startOfWeek(today, { weekStartsOn: 1 }), off);
+      start = ws; end = endOfWeek(ws, { weekStartsOn: 1 });
+    } else if (range === "month") {
+      const ref = addMonths(today, off); start = startOfMonth(ref); end = endOfMonth(ref);
+    } else if (range === "year") {
+      const ref = addYears(today, off); start = startOfYear(ref); end = endOfYear(ref);
+    } else {
+      return allTimeTotalDD;
+    }
+    let sum = 0;
+    for (const [k, v] of Object.entries(ddByDate)) {
+      if (isWithinInterval(parseISO(k), { start, end })) sum += v.difficulty;
+    }
+    return sum;
+  };
+  const prevPeriodTotal = navigable ? periodTotalFor(offset - 1) : 0;
+  const deltaPct = prevPeriodTotal > 0
+    ? ((totalDDInRange - prevPeriodTotal) / prevPeriodTotal) * 100
+    : (totalDDInRange > 0 ? 100 : 0);
+  const showDelta = navigable && (prevPeriodTotal > 0 || totalDDInRange > 0);
+  const periodTitle = range === "week" ? "This Week" : range === "month" ? "This Month" : range === "year" ? "This Year" : "All Time";
+  const prevLabel = range === "week" ? "vs last week" : range === "month" ? "vs last month" : range === "year" ? "vs last year" : "";
+  const stars = Math.round(bestRating);
+
   return (
     <PageLayout>
-      <div className="flex items-center gap-3 mb-8">
-        <div className="p-3 bg-slate-100 dark:bg-slate-800/30 rounded-2xl icon-3d">
-          <TrendingUp className="w-6 h-6 text-slate-500" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-display font-bold">Progress Analytics</h1>
-          <p className="text-muted-foreground text-sm">Tracking your daily training intensity</p>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Analytics"
+        title="Your Progress"
+        accent="Progress"
+        subtitle="Difficulty and session trends over time."
+      />
 
       <div className="grid gap-6">
-        <Card className="overflow-hidden">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-semibold flex items-center justify-between gap-3">
-              <span>{useWeekly ? "Weekly" : "Daily"} Total Difficulty</span>
-              <Select value={range} onValueChange={(v) => { setRange(v as Range); setOffset(0); }}>
-                <SelectTrigger className="w-36 h-8 rounded-xl text-xs border-border/50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="week">A Week</SelectItem>
-                  <SelectItem value="month">A Month</SelectItem>
-                  <SelectItem value="year">A Year</SelectItem>
-                  <SelectItem value="all">All Time</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardTitle>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
+            <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-full" aria-hidden="true" />
+            <div className="eyebrow mb-2">Sessions</div>
+            <div className="text-4xl sm:text-5xl font-display font-normal text-primary tracking-tight" data-testid="stat-sessions">{sessionsLogged}</div>
+          </div>
+          <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
+            <span className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-full" aria-hidden="true" />
+            <div className="eyebrow mb-2">Total DD</div>
+            <div className="text-4xl sm:text-5xl font-display font-normal text-emerald-400 tracking-tight" data-testid="stat-total-dd">{allTimeTotalDD.toFixed(1)}</div>
+          </div>
+          <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
+            <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 rounded-full" aria-hidden="true" />
+            <div className="eyebrow mb-2">Avg DD</div>
+            <div className="text-4xl sm:text-5xl font-display font-normal text-amber-400 tracking-tight" data-testid="stat-avg-dd">{avgDD.toFixed(1)}</div>
+          </div>
+          <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
+            <span className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500 rounded-full" aria-hidden="true" />
+            <div className="eyebrow mb-2">Best ★</div>
+            <div className="text-4xl sm:text-5xl font-display font-normal text-rose-400 tracking-tight" data-testid="stat-best">{bestRating.toFixed(1)}</div>
+          </div>
+        </div>
 
-            <div className="flex items-center justify-between mt-2">
-              {navigable ? (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 rounded-lg"
-                    onClick={() => setOffset(w => w - 1)}
-                    data-testid="button-prev-period"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-xs font-medium text-foreground/80 min-w-[180px] text-center" data-testid="text-period-label">
-                    {periodLabel}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 rounded-lg"
-                    disabled={isCurrentPeriod}
-                    onClick={() => setOffset(w => w + 1)}
-                    data-testid="button-next-period"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <span className="text-xs text-muted-foreground">{periodLabel}</span>
-              )}
-              <span className="text-xs text-muted-foreground">
-                {trainingDaysInRange} training {useWeekly ? "weeks" : "days"}
-              </span>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div className="card-3d rounded-2xl p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="eyebrow mb-2">{periodTitle} <span className="text-emerald-400">/ DD</span></div>
+                <div className="text-4xl font-display font-normal tracking-tight" data-testid="text-period-total">{totalDDInRange.toFixed(1)}</div>
+              </div>
+              <div className="flex items-start gap-2 shrink-0">
+                {showDelta && (
+                  <div className="text-right">
+                    <div className={cn("flex items-center justify-end gap-0.5 text-sm font-semibold", deltaPct >= 0 ? "text-emerald-400" : "text-rose-400")} data-testid="text-delta">
+                      {deltaPct >= 0 ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+                      {deltaPct >= 0 ? "+" : ""}{Math.round(deltaPct)}%
+                    </div>
+                    {prevLabel && <div className="text-[11px] text-muted-foreground mt-0.5">{prevLabel}</div>}
+                  </div>
+                )}
+                <Select value={range} onValueChange={(v) => { setRange(v as Range); setOffset(0); }}>
+                  <SelectTrigger className="w-[88px] h-8 rounded-xl text-xs border-border/50" data-testid="select-range"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="week">Week</SelectItem>
+                    <SelectItem value="month">Month</SelectItem>
+                    <SelectItem value="year">Year</SelectItem>
+                    <SelectItem value="all">All Time</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </CardHeader>
-          <CardContent>
+
             <div
-              className="h-[300px] w-full mt-4"
+              className="h-[200px] w-full mt-4"
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
+                <LineChart data={chartData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
                   <XAxis
                     dataKey="date"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                    dy={10}
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-mono)' }}
+                    dy={6}
                     interval={xTickInterval}
                     ticks={xTicks}
                     tickFormatter={xTickFormatter}
                   />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                  />
                   <Tooltip
                     contentStyle={{
-                      borderRadius: '16px',
-                      border: 'none',
-                      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                      borderRadius: '12px',
+                      border: '1px solid hsl(var(--border))',
+                      background: 'hsl(var(--card))',
+                      color: 'hsl(var(--foreground))',
+                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
+                      fontFamily: 'var(--font-mono)',
                       fontSize: '12px'
                     }}
-                    formatter={(value: any) => value !== null ? [Number(value).toFixed(1), useWeekly ? "Week DD" : "DD"] : [useWeekly ? "No training" : "Rest day", ""]}
-                    labelFormatter={range === "year" ? (v: string) => {
-                      try { return format(parseISO(v), "d MMM"); } catch { return v; }
-                    } : undefined}
-                    cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '4 4' }}
+                    itemStyle={{ color: 'hsl(var(--foreground))' }}
+                    labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                    formatter={(value: any) => value !== null ? [Number(value).toFixed(1), "DD"] : ["Rest day", ""]}
+                    labelFormatter={range === "year" ? (v: string) => { try { return format(parseISO(v), "d MMM"); } catch { return v; } } : undefined}
+                    cursor={{ stroke: 'hsl(var(--primary) / 0.3)', strokeWidth: 1 }}
                   />
                   <Line
                     type="linear"
                     dataKey="difficulty"
                     stroke="hsl(var(--primary))"
-                    strokeWidth={2.5}
-                    connectNulls={true}
-                    dot={{ fill: 'hsl(var(--primary))', r: 4, strokeWidth: 0 }}
-                    activeDot={{ r: 6, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
+                    strokeWidth={2}
+                    connectNulls
+                    dot={chartData.length > 60 ? false : { r: 3, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
+                    activeDot={{ r: 5, fill: 'hsl(var(--primary))', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Card className="bg-gradient-to-br from-blue-50/60 to-background dark:from-blue-950/20">
-            <CardContent className="pt-6">
-              <div className="text-sm font-medium text-muted-foreground mb-1">Total DD</div>
-              <div className="text-3xl font-display font-bold text-blue-600 dark:text-blue-400">
-                {totalDDInRange.toFixed(1)}
+            {navigable ? (
+              <div className="flex items-center justify-between mt-1">
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => setOffset(w => w - 1)} data-testid="button-prev-period">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs font-mono text-muted-foreground text-center" data-testid="text-period-label">{periodLabel}</span>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" disabled={isCurrentPeriod} onClick={() => setOffset(w => w + 1)} data-testid="button-next-period">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
-              <div className="text-xs text-muted-foreground mt-1">{periodLabel}</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-slate-100/60 to-background dark:from-slate-800/20">
-            <CardContent className="pt-6">
-              <div className="text-sm font-medium text-muted-foreground mb-1">Sessions</div>
-              <div className="text-3xl font-display font-bold text-slate-600 dark:text-slate-400">
-                {totalSessionsInRange}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">{periodLabel}</div>
-            </CardContent>
-          </Card>
+            ) : (
+              <div className="text-center mt-2 text-xs font-mono text-muted-foreground" data-testid="text-period-label">{periodLabel}</div>
+            )}
+          </div>
+
         </div>
       </div>
     </PageLayout>

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, date, real, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, date, real, varchar, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -33,6 +33,7 @@ export const routines = pgTable("routines", {
   code: text("code"),
   skillIds: integer("skill_ids").array().notNull(), // Array of 10 skill IDs
   archived: integer("archived").notNull().default(0), // 0 = active, 1 = archived
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const scores = pgTable("scores", {
@@ -63,7 +64,7 @@ export const scores = pgTable("scores", {
 
 export const insertNoteSchema = createInsertSchema(notes).omit({ id: true });
 export const insertSkillSchema = createInsertSchema(skills).omit({ id: true });
-export const insertRoutineSchema = createInsertSchema(routines).omit({ id: true });
+export const insertRoutineSchema = createInsertSchema(routines).omit({ id: true, createdAt: true });
 export const insertScoreSchema = createInsertSchema(scores).omit({ id: true });
 
 export type InsertNote = z.infer<typeof insertNoteSchema>;

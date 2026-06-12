@@ -1,20 +1,17 @@
 import { useEffect, useState } from "react";
 import {
-  Settings as SettingsIcon,
   LogOut,
   Loader2,
-  Mail,
-  User as UserIcon,
-  Clock,
-  WifiOff,
   RefreshCw,
   AlertTriangle,
   CheckCircle2,
   CircleDashed,
 } from "lucide-react";
+import { version as appVersion } from "../../../package.json";
 import { cacheGet } from "@/lib/offline-db";
 import { useAuth } from "@/hooks/use-auth";
 import { PageLayout } from "@/components/page-layout";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Switch } from "@/components/ui/switch";
@@ -318,70 +315,57 @@ export default function SettingsPage() {
 
   return (
     <PageLayout>
-      <div className="flex items-center gap-3 mb-8">
-        <div className="p-3 bg-zinc-100 dark:bg-zinc-800/40 rounded-2xl shrink-0 icon-3d">
-          <SettingsIcon className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-display font-bold">Settings</h1>
-          <p className="text-muted-foreground text-sm">Manage your account.</p>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Account"
+        title="App Settings"
+        accent="Settings"
+        subtitle="Manage your preferences and account."
+      />
 
-      <main className="space-y-6">
-        <section className="rounded-2xl card-3d p-5">
-          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Account</h2>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-secondary/50">
-                <UserIcon className="w-4 h-4 text-muted-foreground" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Name</p>
-                <p className="text-sm font-medium truncate" data-testid="text-settings-name">{displayName}</p>
+      <main>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div className="space-y-6">
+            <div className="rounded-2xl card-3d p-5">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-2xl font-display font-normal text-white shrink-0" data-testid="avatar-profile">
+                    {(displayName?.[0] ?? "A").toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-lg leading-tight truncate" data-testid="text-settings-name">{displayName}</p>
+                    {user?.email && <p className="text-sm text-muted-foreground truncate" data-testid="text-settings-email">{user.email}</p>}
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 h-9 rounded-lg text-sm text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 shrink-0"
+                  onClick={handleSignOutClick}
+                  disabled={isLoggingOut}
+                  data-testid="btn-sign-out"
+                >
+                  {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+                  Sign out
+                </Button>
               </div>
             </div>
-            {user?.email && (
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-secondary/50">
-                  <Mail className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Email</p>
-                  <p className="text-sm font-medium truncate" data-testid="text-settings-email">{user.email}</p>
-                </div>
-              </div>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 h-9 rounded-lg text-sm text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 mt-2 w-fit"
-              onClick={handleSignOutClick}
-              disabled={isLoggingOut}
-              data-testid="btn-sign-out"
-            >
-              {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
-              Sign out
-            </Button>
-          </div>
-        </section>
 
-        <section id="offline" className="rounded-2xl card-3d p-5 scroll-mt-4">
-          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Offline</h2>
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-secondary/50 mt-0.5">
-              <WifiOff className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium">Offline mode</p>
-                <Switch
-                  checked={offlineModeEnabled}
-                  onCheckedChange={handleToggleOffline}
-                  disabled={busyToggle}
-                  data-testid="toggle-offline-mode"
-                />
-              </div>
+            <div>
+              <div className="eyebrow mb-3">Preferences</div>
+              <div className="rounded-2xl card-3d divide-y divide-border/60 overflow-hidden">
+                <div id="offline" className="p-5 scroll-mt-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Offline Mode</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{offlineModeEnabled ? "On — entries sync when you reconnect." : "Save sessions and scores with no connection."}</p>
+                    </div>
+                    <Switch
+                      checked={offlineModeEnabled}
+                      onCheckedChange={handleToggleOffline}
+                      disabled={busyToggle}
+                      data-testid="toggle-offline-mode"
+                    />
+                  </div>
               {!offlineModeEnabled && (
                 <>
                   <p
@@ -540,41 +524,42 @@ export default function SettingsPage() {
                   </Button>
                 </div>
               )}
-            </div>
-          </div>
-        </section>
+                </div>
 
-        <section className="rounded-2xl card-3d p-5">
-          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Preferences</h2>
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-secondary/50 mt-0.5">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">Time format</p>
-              <p className="text-xs text-muted-foreground mb-3">Used in the training log and when adding entries.</p>
-              <div className="inline-flex p-1 rounded-xl bg-secondary/50 border border-border/50">
-                {(["12h", "24h"] as const).map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => setTimeFormat(opt)}
-                    className={cn(
-                      "px-4 h-8 rounded-lg text-xs font-semibold transition-all",
-                      timeFormat === opt
-                        ? "bg-background shadow-sm text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                    data-testid={`btn-time-format-${opt}`}
-                  >
-                    {opt === "12h" ? "12-hour" : "24-hour"}
-                  </button>
-                ))}
+                <div className="p-5 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Time Format</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">How times are displayed.</p>
+                  </div>
+                  <div className="inline-flex p-1 rounded-xl bg-secondary/50 border border-border/50 shrink-0">
+                    {(["12h", "24h"] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setTimeFormat(opt)}
+                        className={cn(
+                          "px-4 h-8 rounded-lg text-xs font-semibold transition-all",
+                          timeFormat === opt
+                            ? "bg-background shadow-sm text-foreground"
+                            : "text-muted-foreground hover:text-foreground",
+                        )}
+                        data-testid={`btn-time-format-${opt}`}
+                      >
+                        {opt === "12h" ? "12h" : "24h"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </section>
 
+          <div className="space-y-6">
+            <div className="rounded-2xl card-3d p-4 text-center">
+              <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60">Trampoline Note · v{appVersion}</span>
+            </div>
+          </div>
+        </div>
       </main>
 
       <ConfirmDialog

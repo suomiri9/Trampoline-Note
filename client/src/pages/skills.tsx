@@ -8,7 +8,9 @@ import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { useTypeToSearch } from "@/hooks/use-type-to-search";
 import { SortableChip } from "@/components/sortable-chip";
 import { PageLayout } from "@/components/page-layout";
+import { PageHeader, primaryActionClass } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,6 +83,7 @@ export default function SkillsPage() {
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   const [reorderMode, setReorderMode] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   
   const [connName, setConnName] = useState("");
   const [connSkillIds, setConnSkillIds] = useState<number[]>([]);
@@ -193,6 +196,7 @@ export default function SkillsPage() {
       await createSkill({ ...values, isDrill: 0 });
     }
     skillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 0 });
+    setShowForm(false);
   };
 
   const onDrillSubmit = async (values: any) => {
@@ -203,6 +207,7 @@ export default function SkillsPage() {
       await createSkill({ ...values, isDrill: 1 });
     }
     drillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 1 });
+    setShowForm(false);
   };
 
   const onRoutinePartSubmit = async () => {
@@ -226,6 +231,7 @@ export default function SkillsPage() {
     setPartStart(1);
     setPartEnd(10);
     setPartNameOverride(null);
+    setShowForm(false);
   };
 
   const onConnectionSubmit = async () => {
@@ -250,9 +256,11 @@ export default function SkillsPage() {
     
     setConnName("");
     setConnSkillIds([]);
+    setShowForm(false);
   };
 
   const startEditing = (skill: Skill) => {
+    setShowForm(true);
     setEditingSkill(skill);
     if (skill.isDrill === 3) {
       // Routine parts: editing the slice itself isn't reversible; let user adjust name only by re-saving with the existing skill ids.
@@ -285,22 +293,25 @@ export default function SkillsPage() {
   };
 
   const cancelEditing = () => {
-    const isDrill = editingSkill?.isDrill;
+    if (editingSkill) {
+      const isDrill = editingSkill.isDrill;
+      if (isDrill === 3) {
+        setPartRoutineId(null);
+        setPartStart(1);
+        setPartEnd(10);
+        setPartNameOverride(null);
+      } else if (isDrill === 2) {
+        setConnName("");
+        setConnSkillIds([]);
+      } else if (isDrill === 1) {
+        drillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 1 });
+      } else {
+        skillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 0 });
+      }
+    }
+    setShowForm(false);
     setEditingSkill(null);
     setConnSkillPickerOpen(false);
-    if (isDrill === 3) {
-      setPartRoutineId(null);
-      setPartStart(1);
-      setPartEnd(10);
-      setPartNameOverride(null);
-    } else if (isDrill === 2) {
-      setConnName("");
-      setConnSkillIds([]);
-    } else if (isDrill === 1) {
-      drillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 1 });
-    } else {
-      skillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 0 });
-    }
   };
 
   const addSkillToConn = (idStr: string) => {
@@ -325,28 +336,38 @@ export default function SkillsPage() {
     </Button>
   );
 
+  const addLabel = activeTab === "drills" ? "Add Drill" : activeTab === "connections" ? "Add Connection" : activeTab === "parts" ? "Add Part" : "Add Skill";
+
   return (
     <PageLayout>
-      <div className="flex items-center gap-3 mb-8">
-        <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-2xl shrink-0 icon-3d">
-          <Target className="w-6 h-6 text-red-500" />
-        </div>
-        <div className="flex-1">
-          <h1 className="text-3xl font-display font-bold">Skills</h1>
-          <p className="text-muted-foreground text-sm">Manage your skills, drills, and frequent connections.</p>
-        </div>
-        <Button
-          variant={showArchived ? "default" : "outline"}
-          size="sm"
-          onClick={() => { setShowArchived(v => !v); cancelEditing(); setReorderMode(false); }}
-          className="gap-1.5 shrink-0"
-          data-testid="button-toggle-archived"
-        >
-          {showArchived ? <><ArchiveRestore className="h-4 w-4" /> Active</> : <><Archive className="h-4 w-4" /> Archived{archivedCount > 0 ? ` (${archivedCount})` : ""}</>}
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Skill Library"
+        title="My Skills"
+        accent="Skills"
+        subtitle="Manage your trampoline element library."
+        actions={
+          <>
+            <Button
+              variant={showArchived ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setShowArchived(v => !v); cancelEditing(); setReorderMode(false); }}
+              className="gap-1.5 shrink-0 h-12 rounded-xl"
+              data-testid="button-toggle-archived"
+            >
+              {showArchived ? <><ArchiveRestore className="h-4 w-4" /> Active</> : <><Archive className="h-4 w-4" /> Archived{archivedCount > 0 ? ` (${archivedCount})` : ""}</>}
+            </Button>
+            <Button
+              className={cn(primaryActionClass, "shrink-0")}
+              onClick={() => { if (showForm || editingSkill) { cancelEditing(); setShowForm(false); } else { cancelEditing(); setReorderMode(false); setShowForm(true); } }}
+              data-testid="button-add-skill"
+            >
+              <Plus className="w-5 h-5" /> {addLabel}
+            </Button>
+          </>
+        }
+      />
       <Tabs value={activeTab} className="space-y-8" onValueChange={(v) => { setActiveTab(v); cancelEditing(); setReorderMode(false); }}>
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
+        <TabsList className="inline-flex h-auto flex-wrap justify-start gap-1 rounded-xl bg-secondary/40 p-1">
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="drills">Drills</TabsTrigger>
           <TabsTrigger value="connections">Connections</TabsTrigger>
@@ -358,15 +379,11 @@ export default function SkillsPage() {
 
         <TabsContent value="skills" className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {!reorderMode && (
-              <Card className="md:col-span-1 h-fit">
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="flex justify-between items-center text-lg">
-                    {editingSkill ? "Edit Skill" : "Add New Skill"}
-                    {editingSkill && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
+            <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
+              <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{editingSkill ? "Edit Skill" : "Add New Skill"}</DialogTitle>
+                </DialogHeader>
                   {!editingSkill && activeSkills.length > 0 && (
                     <div className="mb-3">
                       <label className="text-xs font-medium text-muted-foreground mb-1 block">Duplicate from existing</label>
@@ -420,10 +437,9 @@ export default function SkillsPage() {
                       </div>
                     </form>
                   </Form>
-                </CardContent>
-              </Card>
-            )}
-            <Card className={reorderMode ? "md:col-span-3" : "md:col-span-2"}>
+              </DialogContent>
+            </Dialog>
+            <Card className="md:col-span-3">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Skills Library</CardTitle>
                 {renderReorderButton()}
@@ -431,7 +447,7 @@ export default function SkillsPage() {
               <CardContent className="max-h-[60vh] overflow-y-auto overflow-x-auto">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(skills)}>
                   <Table>
-                    <TableHeader><TableRow>{reorderMode && <TableHead className="w-8" />}<TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Difficulty</TableHead>{!reorderMode && <TableHead />}</TableRow></TableHeader>
+                    <TableHeader><TableRow className="border-border/60 hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow w-24">Code</TableHead><TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
                     <SortableContext items={(skills || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
                       <TableBody>
                         {skills?.map((skill) => (
@@ -446,7 +462,8 @@ export default function SkillsPage() {
                             onClick={() => navigate(`/skills/${skill.id}`)}
                             testId={`row-skill-${skill.id}`}
                           >
-                            <TableCell className="font-medium">
+                            <TableCell className="font-mono text-sm text-muted-foreground w-24">{skill.code}</TableCell>
+                            <TableCell className="font-medium text-foreground">
                               <span className="inline-flex items-center gap-2 flex-wrap">
                                 <span>{skill.name}</span>
                                 {skill.id < 0 && (
@@ -454,8 +471,7 @@ export default function SkillsPage() {
                                 )}
                               </span>
                             </TableCell>
-                            <TableCell>{skill.code}</TableCell>
-                            <TableCell>{skill.difficulty.toFixed(1)}</TableCell>
+                            <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{skill.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
                               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>
@@ -483,15 +499,11 @@ export default function SkillsPage() {
 
         <TabsContent value="drills" className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {!reorderMode && (
-              <Card className="md:col-span-1 h-fit">
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="flex justify-between items-center text-lg">
-                    {editingSkill ? "Edit Drill" : "Add New Drill"}
-                    {editingSkill && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
+            <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
+              <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{editingSkill ? "Edit Drill" : "Add New Drill"}</DialogTitle>
+                </DialogHeader>
                   {!editingSkill && activeDrills.length > 0 && (
                     <div className="mb-3">
                       <label className="text-xs font-medium text-muted-foreground mb-1 block">Duplicate from existing</label>
@@ -545,10 +557,9 @@ export default function SkillsPage() {
                       </div>
                     </form>
                   </Form>
-                </CardContent>
-              </Card>
-            )}
-            <Card className={reorderMode ? "md:col-span-3" : "md:col-span-2"}>
+              </DialogContent>
+            </Dialog>
+            <Card className="md:col-span-3">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Drills Library</CardTitle>
                 {renderReorderButton()}
@@ -556,7 +567,7 @@ export default function SkillsPage() {
               <CardContent className="max-h-[60vh] overflow-y-auto overflow-x-auto">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(drills)}>
                   <Table>
-                    <TableHeader><TableRow>{reorderMode && <TableHead className="w-8" />}<TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Difficulty</TableHead>{!reorderMode && <TableHead />}</TableRow></TableHeader>
+                    <TableHeader><TableRow className="border-border/60 hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow w-24">Code</TableHead><TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
                     <SortableContext items={(drills || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
                       <TableBody>
                         {drills?.map((drill) => (
@@ -571,7 +582,8 @@ export default function SkillsPage() {
                             onClick={() => navigate(`/skills/${drill.id}`)}
                             testId={`row-drill-${drill.id}`}
                           >
-                            <TableCell className="font-medium">
+                            <TableCell className="font-mono text-sm text-muted-foreground w-24">{drill.code}</TableCell>
+                            <TableCell className="font-medium text-foreground">
                               <span className="inline-flex items-center gap-2 flex-wrap">
                                 <span>{drill.name}</span>
                                 {drill.id < 0 && (
@@ -579,8 +591,7 @@ export default function SkillsPage() {
                                 )}
                               </span>
                             </TableCell>
-                            <TableCell>{drill.code}</TableCell>
-                            <TableCell>{drill.difficulty.toFixed(1)}</TableCell>
+                            <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{drill.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
                               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>
@@ -608,15 +619,11 @@ export default function SkillsPage() {
 
         <TabsContent value="connections" className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {!reorderMode && (
-              <Card className="md:col-span-1 h-fit">
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="flex justify-between items-center text-lg">
-                    {editingSkill ? "Edit Connection" : "Add New Connection"}
-                    {editingSkill && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
+            <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
+              <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{editingSkill ? "Edit Connection" : "Add New Connection"}</DialogTitle>
+                </DialogHeader>
                   <div className="space-y-3">
                     {!editingSkill && activeConnections.length > 0 && (
                       <div>
@@ -720,7 +727,7 @@ export default function SkillsPage() {
 
                     <div className="pt-2 flex justify-between items-center">
                       <span className="text-sm font-medium">Total DD:</span>
-                      <span className="font-bold text-primary">
+                      <span className="font-mono font-bold text-primary">
                         {calcDDFromSkillIds(connSkillIds, skills || []).toFixed(1)}
                       </span>
                     </div>
@@ -732,10 +739,9 @@ export default function SkillsPage() {
                       {editingSkill && <Button variant="outline" onClick={cancelEditing}>Cancel</Button>}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-            <Card className={reorderMode ? "md:col-span-3" : "md:col-span-2"}>
+              </DialogContent>
+            </Dialog>
+            <Card className="md:col-span-3">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Connections Library</CardTitle>
                 {renderReorderButton()}
@@ -743,7 +749,7 @@ export default function SkillsPage() {
               <CardContent className="max-h-[60vh] overflow-y-auto overflow-x-auto">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(frequentConnections)}>
                   <Table>
-                    <TableHeader><TableRow>{reorderMode && <TableHead className="w-8" />}<TableHead>Name</TableHead><TableHead>Sequence</TableHead><TableHead>DD</TableHead>{!reorderMode && <TableHead />}</TableRow></TableHeader>
+                    <TableHeader><TableRow className="border-border/60 hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow">Sequence</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
                     <SortableContext items={(frequentConnections || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
                       <TableBody>
                         {frequentConnections?.map((conn) => (
@@ -769,7 +775,7 @@ export default function SkillsPage() {
                                 ))}
                               </div>
                             </TableCell>
-                            <TableCell>{conn.difficulty.toFixed(1)}</TableCell>
+                            <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{conn.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
                               <TableCell className="text-right">
                                 <DropdownMenu>
@@ -797,15 +803,11 @@ export default function SkillsPage() {
 
         <TabsContent value="parts" className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {!reorderMode && (
-              <Card className="md:col-span-1 h-fit">
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="flex justify-between items-center text-lg">
-                    {editingSkill ? "Edit Routine Part" : "Add New Routine Part"}
-                    {editingSkill && <Button variant="ghost" size="icon" onClick={cancelEditing}><X className="h-4 w-4" /></Button>}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
+            <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
+              <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{editingSkill ? "Edit Routine Part" : "Add New Routine Part"}</DialogTitle>
+                </DialogHeader>
                   <div className="space-y-3">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Routine</label>
@@ -915,7 +917,7 @@ export default function SkillsPage() {
 
                         <div className="pt-1 flex justify-between items-center">
                           <span className="text-sm font-medium">Total DD:</span>
-                          <span className="font-bold text-primary">
+                          <span className="font-mono font-bold text-primary">
                             {calcDDFromSkillIds(partSliceIds, allItems || []).toFixed(1)}
                           </span>
                         </div>
@@ -934,10 +936,9 @@ export default function SkillsPage() {
                       {editingSkill && <Button type="button" variant="outline" onClick={cancelEditing}>Cancel</Button>}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-            <Card className={reorderMode ? "md:col-span-3" : "md:col-span-2"}>
+              </DialogContent>
+            </Dialog>
+            <Card className="md:col-span-3">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Routine Parts Library</CardTitle>
                 {renderReorderButton()}
@@ -945,7 +946,7 @@ export default function SkillsPage() {
               <CardContent className="max-h-[60vh] overflow-y-auto overflow-x-auto">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(routineParts)}>
                   <Table>
-                    <TableHeader><TableRow>{reorderMode && <TableHead className="w-8" />}<TableHead>Name</TableHead><TableHead>Sequence</TableHead><TableHead>DD</TableHead>{!reorderMode && <TableHead />}</TableRow></TableHeader>
+                    <TableHeader><TableRow className="border-border/60 hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow">Sequence</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
                     <SortableContext items={(routineParts || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
                       <TableBody>
                         {routineParts?.map((part) => (
@@ -971,7 +972,7 @@ export default function SkillsPage() {
                                 ))}
                               </div>
                             </TableCell>
-                            <TableCell>{part.difficulty.toFixed(1)}</TableCell>
+                            <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{part.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
                               <TableCell className="text-right">
                                 <DropdownMenu>

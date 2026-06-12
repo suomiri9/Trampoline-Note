@@ -383,9 +383,9 @@ export function PointsToFix({
           variant="outline"
           onClick={() => setOpen(true)}
           data-testid="button-points-to-fix"
-          className="rounded-2xl h-12 px-4 font-semibold flex items-center gap-2 relative"
+          className="rounded-xl h-12 px-4 font-semibold flex items-center gap-2 relative btn-gold border"
         >
-          <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          <Wrench className="w-5 h-5" />
           Points to Fix
         </Button>
       )}

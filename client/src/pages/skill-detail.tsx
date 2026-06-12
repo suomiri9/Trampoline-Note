@@ -137,18 +137,17 @@ export default function SkillDetailPage() {
           </Button>
         </div>
       </div>
-      <div className="flex items-center gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-display font-bold" data-testid="text-skill-name">{skill.name}</h1>
-            <Badge variant="secondary" data-testid="badge-skill-type">{typeLabel}</Badge>
-          </div>
-          <p className="text-muted-foreground text-sm mt-1">
-            Code: <span className="font-mono font-medium" data-testid="text-skill-code">{skill.code}</span>
-            {" · "}
-            Difficulty: <span className="font-medium" data-testid="text-skill-difficulty">{skill.difficulty.toFixed(1)}</span>
-          </p>
+      <div>
+        <div className="eyebrow mb-2">// {typeLabel}</div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-3xl sm:text-4xl font-display font-normal tracking-tight" data-testid="text-skill-name">{skill.name}</h1>
+          <Badge variant="secondary" data-testid="badge-skill-type">{typeLabel}</Badge>
         </div>
+        <p className="text-muted-foreground text-sm mt-2 font-mono">
+          Code <span className="text-foreground/80" data-testid="text-skill-code">{skill.code}</span>
+          {"  ·  "}
+          DD <span className="text-primary font-semibold" data-testid="text-skill-difficulty">{skill.difficulty.toFixed(1)}</span>
+        </p>
       </div>
     </div>
   );
@@ -203,7 +202,7 @@ export default function SkillDetailPage() {
                         <Badge variant="outline" className="px-2 py-1 font-mono" data-testid={`badge-conn-skill-${idx}`}>
                           {sub?.code || "???"}
                         </Badge>
-                        <span className="text-[10px] text-muted-foreground font-semibold">
+                        <span className="text-[10px] text-muted-foreground font-semibold font-mono">
                           {sub?.difficulty.toFixed(1) || "0.0"}
                         </span>
                       </div>
@@ -285,7 +284,7 @@ export default function SkillDetailPage() {
                         data-testid={`row-session-${entry.noteId}`}
                       >
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium" data-testid={`text-date-${entry.noteId}`}>
+                          <span className="text-sm font-medium font-mono" data-testid={`text-date-${entry.noteId}`}>
                             {format(parseISO(entry.date), "MMM d, yyyy")}
                           </span>
                         </div>
@@ -401,7 +400,7 @@ export default function SkillDetailPage() {
                     data-testid={`row-session-${entry.noteId}`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium" data-testid={`text-date-${entry.noteId}`}>
+                      <span className="text-sm font-medium font-mono" data-testid={`text-date-${entry.noteId}`}>
                         {format(parseISO(entry.date), "MMM d, yyyy")}
                       </span>
                     </div>
@@ -438,7 +437,7 @@ function StatCard({ icon, label, value, testId }: { icon: React.ReactNode; label
           {icon}
           <span className="text-xs">{label}</span>
         </div>
-        <p className="text-lg font-bold truncate" data-testid={testId}>{value}</p>
+        <p className="text-lg font-bold truncate font-mono" data-testid={testId}>{value}</p>
       </CardContent>
     </Card>
   );

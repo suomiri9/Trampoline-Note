@@ -80,7 +80,6 @@ const formSchema = z.object({
   content: z.string().optional().default(""),
   skills: z.string().optional().nullable(), // Store as comma-separated IDs
   rating: z.number().min(1).max(5).optional().nullable(),
-  sleepScore: z.number().min(0).max(100).optional().nullable(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -240,7 +239,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       content: "",
       skills: "",
       rating: null,
-      sleepScore: null,
     },
   });
 
@@ -271,7 +269,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
           content: noteToEdit.content,
           skills: noteToEdit.skills || "",
           rating: noteToEdit.rating || null,
-          sleepScore: noteToEdit.sleepScore || null,
         });
       } else {
         setSelectedSkills([]);
@@ -294,7 +291,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
           content: "",
           skills: "",
           rating: null,
-          sleepScore: null,
         });
       }
     }
@@ -473,7 +469,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         endTime: values.endTime || null,
         skills: JSON.stringify(selectedSkills) || null,
         rating: values.rating || null,
-        sleepScore: values.sleepScore || null,
       };
     } catch (e) {
       toast({
@@ -546,7 +541,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       const v = form.getValues();
-      const hasContent = !!(v.content || selectedSkills.length > 0 || v.startTime || v.endTime || v.rating || v.sleepScore);
+      const hasContent = !!(v.content || selectedSkills.length > 0 || v.startTime || v.endTime || v.rating);
       if (hasContent || form.formState.isDirty) {
         setShowDiscardAlert(true);
         return;
@@ -561,7 +556,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       <DialogContent className="sm:max-w-[500px] md:max-w-[680px] w-[calc(100vw-32px)] p-0 rounded-[24px] border-border/50 max-h-[90vh] max-h-[90dvh] sm:max-h-[82vh] sm:max-h-[82dvh] flex flex-col overflow-clip">
         <div className="p-6 pb-4 flex-none">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-display">{isEditing ? "Edit Session" : "Log Training Session"}</DialogTitle>
+            <DialogTitle className="text-2xl font-semibold">{isEditing ? "Edit Session" : "Log Training Session"}</DialogTitle>
             <DialogDescription>Record your notes and skills practiced.</DialogDescription>
           </DialogHeader>
         </div>
@@ -576,7 +571,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
-                          <Button variant="outline" className="w-full text-left font-normal rounded-xl h-11">
+                          <Button variant="outline" className="w-full text-left font-normal rounded-xl h-11 font-mono">
                             {field.value ? format(field.value, "EEE, d MMMM yyyy") : "Pick a date"}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
@@ -601,44 +596,16 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       <FormControl><TimeField ariaLabel="End time" value={field.value || ""} onChange={field.onChange} testId="input-end-time" /></FormControl>
                     </FormItem>
                   )} />
+                  <FormField control={form.control} name="rating" render={({ field }) => (
+                    <FormItem className="space-y-0 shrink-0">
+                      <FormControl>
+                        <div className="h-9 flex items-center bg-secondary/20 rounded-xl px-1.5 border border-border/50">
+                          <StarRating value={field.value} onChange={field.onChange} />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )} />
                 </div>
-              </div>
-
-              <div className="flex flex-wrap gap-4">
-                <FormField control={form.control} name="rating" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Session</FormLabel>
-                    <FormControl>
-                      <div className="h-11 flex items-center bg-secondary/20 rounded-xl px-3 border border-border/50 w-fit">
-                        <StarRating value={field.value} onChange={field.onChange} />
-                      </div>
-                    </FormControl>
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="sleepScore" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sleep</FormLabel>
-                    <FormControl>
-                      <div className="flex items-center gap-1.5">
-                        <Input
-                          type="number"
-                          min={0}
-                          max={100}
-                          placeholder="—"
-                          className="rounded-xl h-11 w-20 px-3 text-sm"
-                          value={field.value == null || Number.isNaN(field.value) ? "" : field.value}
-                          onChange={e => {
-                            const raw = e.target.value;
-                            if (raw === "") { field.onChange(null); return; }
-                            const n = Number(raw);
-                            if (Number.isFinite(n)) field.onChange(n);
-                          }}
-                        />
-                        <span className="text-xs text-muted-foreground">/100</span>
-                      </div>
-                    </FormControl>
-                  </FormItem>
-                )} />
               </div>
 
               <div className="space-y-3">
@@ -1141,7 +1108,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           </div>
                           <div className="flex justify-between items-center text-[11px]">
                             <span className="text-muted-foreground">Total DD</span>
-                            <span className="font-semibold text-foreground">{dd.toFixed(1)}</span>
+                            <span className="font-mono font-semibold text-foreground">{dd.toFixed(1)}</span>
                           </div>
                         </>
                       )}
@@ -1599,7 +1566,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
               <FormField control={form.control} name="content" render={({ field }) => (
                 <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea placeholder="How did the session go?" className="min-h-[100px] rounded-xl" {...field} /></FormControl></FormItem>
               )} />
-              <Button type="submit" className="w-full h-12 rounded-xl text-lg font-display" disabled={createNote.isPending || updateNote.isPending}>
+              <Button type="submit" className="w-full h-12 rounded-xl text-lg font-semibold" disabled={createNote.isPending || updateNote.isPending}>
                 {isEditing ? "Update Session" : "Log Session"}
               </Button>
             </form>

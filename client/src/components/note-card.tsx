@@ -62,23 +62,41 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
 
   return (
     <>
-      <div className={`group relative card-3d card-3d-hover p-4 sm:p-5 rounded-2xl transition-all animate-fade-in-up opacity-0 ${staggerClass}`}>
-        <div className="flex justify-between items-center mb-2">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800/30 shrink-0">
-              <Calendar className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+      <div className={`group relative card-3d card-3d-hover p-4 sm:p-5 pl-5 sm:pl-6 rounded-2xl overflow-hidden transition-all animate-fade-in-up opacity-0 ${staggerClass}`}>
+        <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-full" aria-hidden="true" />
+        <div className="flex justify-between items-stretch gap-3 mb-3">
+          <div className="min-w-0 flex flex-col gap-2 pt-0.5">
+            <div className="flex items-center flex-wrap gap-x-4 gap-y-1 font-mono text-[12px] sm:text-[13px] text-muted-foreground">
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
+                <Calendar className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
+                {format(new Date(note.date), "EEE, d MMM yyyy")}
+              </span>
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
+                <Clock className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
+                {formatTime(note.startTime, timeFormat)} - {formatTime(note.endTime, timeFormat)}
+              </span>
             </div>
-            <span className="whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-400">{format(new Date(note.date), "EEE, d MMMM yyyy")}</span>
+            {note.rating ? (
+              <div className="-ml-1 scale-90 origin-left">
+                <StarRating value={note.rating} onChange={() => {}} readonly />
+              </div>
+            ) : null}
           </div>
-          {isPending ? (
-            <div className="flex items-center gap-1">
-              <PendingSyncBadge testId={`badge-pending-sync-${note.id}`} />
+          <div className="flex items-start gap-2 shrink-0">
+            {isPending && <PendingSyncBadge testId={`badge-pending-sync-${note.id}`} />}
+            {skillsData.length > 0 && (
+              <div className="text-right leading-none self-center">
+                <div className="text-3xl sm:text-4xl font-display font-normal text-primary tracking-tight leading-none">{totalDifficulty.toFixed(1)}</div>
+                <div className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60 mt-1.5">Total DD</div>
+              </div>
+            )}
+            {isPending ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-muted-foreground shrink-0"
+                    className="h-7 w-7 -mr-1 text-muted-foreground shrink-0"
                     data-testid={`btn-pending-actions-${note.id}`}
                   >
                     <MoreVertical className="h-4 w-4" />
@@ -102,45 +120,29 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
-          ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground shrink-0">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 rounded-xl">
-                <DropdownMenuItem onClick={() => onEdit(note)} className="cursor-pointer gap-2">
-                  <Pencil className="h-4 w-4" /> Edit Session
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setShowDeleteAlert(true)} className="cursor-pointer gap-2 text-destructive focus:text-destructive">
-                  <Trash2 className="h-4 w-4" /> Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <div className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/20 px-2.5 py-1 rounded-lg w-fit">
-            <Clock className="w-3 h-3 shrink-0" />
-            <span className="whitespace-nowrap">{formatTime(note.startTime, timeFormat)} - {formatTime(note.endTime, timeFormat)}</span>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 -mr-1 text-muted-foreground shrink-0">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                  <DropdownMenuItem onClick={() => onEdit(note)} className="cursor-pointer gap-2">
+                    <Pencil className="h-4 w-4" /> Edit Session
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setShowDeleteAlert(true)} className="cursor-pointer gap-2 text-destructive focus:text-destructive">
+                    <Trash2 className="h-4 w-4" /> Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
-          {note.sleepScore != null ? (
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/20 px-2.5 py-1 rounded-lg w-fit">
-              <span className="text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400">Sleep score: {note.sleepScore}</span>
-            </div>
-          ) : null}
-          {note.rating ? (
-            <div className="shrink-0 scale-90 sm:scale-100 origin-right">
-              <StarRating value={note.rating} onChange={() => {}} readonly />
-            </div>
-          ) : null}
         </div>
 
         <div className="space-y-4">
-          <p className="text-foreground/90 leading-relaxed whitespace-pre-wrap">{note.content}</p>
+          <p className="text-[15px] font-semibold text-foreground leading-snug whitespace-pre-wrap">{note.content}</p>
           
           {skillsData.length > 0 && (
             <div className="space-y-2 pt-3 border-t border-border/40">
@@ -336,10 +338,6 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                     );
                   });
                 })()}
-              </div>
-              <div className="flex justify-between items-center pt-1 mt-1 border-t border-dashed border-border/20">
-                <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest">Total DD</span>
-                <span className="text-[11px] font-mono font-bold text-primary">{totalDifficulty.toFixed(1)}</span>
               </div>
             </div>
           )}

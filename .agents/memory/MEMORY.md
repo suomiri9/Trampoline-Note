@@ -1,0 +1,2 @@
+- [Trampoline repl verification quirks](trampoline-verification.md) — auth gate makes app_preview screenshots show the login page; some pre-existing TS errors are esbuild-safe, don't chase them.
+- [Follow-up task cancellation is irreversible](followup-task-irreversible.md) — markFollowUpTaskObsolete is terminal; verify a follow-up's real title/content before retracting it.

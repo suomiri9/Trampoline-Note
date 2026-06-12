@@ -1,12 +1,14 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertScoreSchema, type Score, type Routine, type Skill, type InsertScore } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { calcDDFromSkillIds } from "@/lib/training-utils";
 import { PageLayout } from "@/components/page-layout";
+import { PageHeader, primaryActionClass } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
@@ -16,7 +18,6 @@ import { useQueuedScores } from "@/hooks/use-queued-scores";
 import { deleteQueuedByTempId, isQueuedOfflineResult, tryNetworkOrEnqueue, type OfflineQueuedResult } from "@/lib/offline-queue";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -50,6 +51,129 @@ const scoreDefaults = {
   timeOfFlightVol: 0,
   totalVol: 0,
 };
+
+function ScoreBreakdown({ e, d, h, t, label }: { e: number; d: number; h: number; t: number; label?: string }) {
+  const cols = [
+    { k: "E", v: e.toFixed(1) },
+    { k: "DD", v: d.toFixed(1) },
+    { k: "H", v: h.toFixed(1) },
+    { k: "TOF", v: t.toFixed(2) },
+  ];
+  return (
+    <div>
+      {label && (
+        <div className="eyebrow text-[0.6rem] tracking-[0.2em] mb-2 text-muted-foreground/80">{label}</div>
+      )}
+      <div className="grid grid-cols-4 gap-2 text-center">
+        {cols.map((c) => (
+          <div key={c.k}>
+            <div className="font-mono text-xl sm:text-2xl font-semibold tabular-nums tracking-tight">{c.v}</div>
+            <div className="eyebrow text-[0.6rem] mt-1 text-muted-foreground/70">{c.k}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ScoreCard({
+  score,
+  routines,
+  actions,
+  pendingBadge,
+  testId,
+  pending,
+}: {
+  score: Score;
+  routines?: Routine[];
+  actions?: ReactNode;
+  pendingBadge?: ReactNode;
+  testId?: string;
+  pending?: boolean;
+}) {
+  const routine = routines?.find((r) => r.id === score.routineId);
+  const routineVol = routines?.find((r) => r.id === score.routineIdVol);
+  const isComp = score.type === "competition";
+  const isMulti = score.category === "both" || score.category === "vol_vol";
+  const grandTotal = isMulti ? score.total + (score.totalVol || 0) : score.total;
+
+  const totalColor = isComp ? "text-amber-400" : "text-primary";
+  const accentBar = isComp ? "bg-amber-500" : "bg-primary";
+  const pillClass = isComp
+    ? "border-amber-500/40 text-amber-400"
+    : "border-primary/40 text-primary";
+
+  const title = routine?.name ?? (isMulti ? "Set & Vol" : "Score");
+  const group1Label = score.category === "vol_vol" ? "VOL 1" : "SET";
+  const group2Label = score.category === "vol_vol" ? "VOL 2" : "VOL";
+
+  return (
+    <div
+      className={cn("relative card-3d rounded-2xl overflow-hidden", pending && "border-amber-500/40")}
+      data-testid={testId}
+    >
+      <span className={cn("absolute left-0 top-0 bottom-0 w-1", accentBar)} aria-hidden="true" />
+      <div className="p-5 pl-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="font-mono text-xs text-muted-foreground flex items-center gap-1.5">
+              <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+              <span>{format(new Date(score.date), "EEE, d MMM yyyy")}</span>
+              {pendingBadge}
+            </div>
+            <h3 className="font-bold text-lg mt-1.5 truncate" data-testid={`text-score-name-${score.id}`}>{title}</h3>
+            {isComp && (score.competitionName || score.rank != null) && (
+              <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                {score.competitionName}
+                {score.rank != null ? ` · #${score.rank}` : ""}
+              </p>
+            )}
+            {isMulti && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                <Badge variant="outline" className="rounded-md text-[10px] font-mono">
+                  {score.category === "both" ? "Set & Vol" : "Vol & Vol"}
+                </Badge>
+                {routineVol && (
+                  <Badge variant="outline" className="rounded-md text-[10px] font-mono">{routineVol.name}</Badge>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="shrink-0 flex items-start gap-1">
+            <div className="text-right">
+              <div className={cn("font-display font-normal text-4xl sm:text-5xl leading-none", totalColor)} data-testid={`text-score-total-${score.id}`}>
+                {grandTotal.toFixed(1)}
+              </div>
+              <span className={cn("inline-block mt-2 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold uppercase tracking-wider", pillClass)}>
+                {score.type}
+              </span>
+            </div>
+            {actions}
+          </div>
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-border/60 space-y-4">
+          <ScoreBreakdown
+            e={score.execution}
+            d={score.difficulty}
+            h={score.horizontal}
+            t={score.timeOfFlight}
+            label={isMulti ? `${group1Label}${score.attempt != null ? ` · attempt ${score.attempt}` : ""}` : undefined}
+          />
+          {isMulti && (
+            <ScoreBreakdown
+              e={score.executionVol ?? 0}
+              d={score.difficultyVol ?? 0}
+              h={score.horizontalVol ?? 0}
+              t={score.timeOfFlightVol ?? 0}
+              label={`${group2Label}${score.attemptVol != null ? ` · attempt ${score.attemptVol}` : ""}`}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ScorePage() {
   const { toast } = useToast();
@@ -252,27 +376,49 @@ export default function ScorePage() {
     form.setValue("difficultyVol", Number(calcDDFromSkillIds(customSkillIdsVol, allSkills).toFixed(1)));
   }, [customSkillIdsVol, allSkills]);
 
+  const personalBest = (scores ?? []).reduce((max, s) => {
+    const t = (s.category === "both" || s.category === "vol_vol") ? s.total + (s.totalVol || 0) : s.total;
+    return t > max ? t : max;
+  }, 0);
+
   return (
     <PageLayout>
-      <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-2xl shrink-0 icon-3d">
-            <Trophy className="w-6 h-6 text-yellow-500" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-display font-bold">Scoring</h1>
-            <p className="text-muted-foreground text-sm">Track your routine scores and competition results.</p>
+      <PageHeader
+        eyebrow="Competition & Practice"
+        title="Score Board"
+        accent="Board"
+        subtitle="Track execution, DD, and competition results."
+        actions={
+          <Button
+            onClick={() => { setIsAdding(true); setEditingScore(null); setCustomSkillIds(null); setCustomSkillIdsVol(null); form.reset({ ...scoreDefaults, date: new Date().toISOString().split('T')[0] }); }}
+            className={primaryActionClass}
+          >
+            <Plus className="w-5 h-5" /> Add Score
+          </Button>
+        }
+      />
+
+      {personalBest > 0 && (
+        <div className="relative card-3d rounded-2xl overflow-hidden mb-6">
+          <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" aria-hidden="true" />
+          <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-amber-500/10 blur-3xl" aria-hidden="true" />
+          <div className="p-6 pl-7">
+            <div className="eyebrow text-amber-400/70">Personal Best</div>
+            <div className="mt-1 flex items-baseline gap-3">
+              <span className="font-display font-normal text-6xl sm:text-7xl text-amber-400 leading-none tracking-tight" data-testid="text-personal-best">
+                {personalBest.toFixed(1)}
+              </span>
+              <span className="text-sm text-muted-foreground">total score</span>
+            </div>
           </div>
         </div>
-        <Button onClick={() => { setIsAdding(v => !v); setEditingScore(null); setCustomSkillIds(null); setCustomSkillIdsVol(null); form.reset({ ...scoreDefaults, date: new Date().toISOString().split('T')[0] }); }} className="rounded-xl">
-          {isAdding ? "Cancel" : <><Plus className="w-4 h-4 mr-2" /> New Score</>}
-        </Button>
-      </div>
+      )}
 
-      {isAdding && (
-        <Card className="mb-8 rounded-2xl bg-primary/5">
-          <CardHeader><CardTitle>{editingScore ? "Edit Score" : "Add New Score"}</CardTitle></CardHeader>
-          <CardContent>
+      <Dialog open={isAdding} onOpenChange={(o) => { if (!o) { setIsAdding(false); setEditingScore(null); } }}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingScore ? "Edit Score" : "Add New Score"}</DialogTitle>
+          </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit((data) => {
                 if (editingScore) {
@@ -297,7 +443,7 @@ export default function ScorePage() {
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
-                            <Button variant="outline" className={cn("w-full text-left font-normal rounded-xl h-11", !field.value && "text-muted-foreground")}>
+                            <Button variant="outline" className={cn("w-full text-left font-normal rounded-xl h-11 font-mono", !field.value && "text-muted-foreground")}>
                               {field.value ? format(parseISO(field.value), "EEE, d MMMM yyyy") : "Pick a date"}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
@@ -352,7 +498,7 @@ export default function ScorePage() {
                       <FormItem><FormLabel>Competition Name</FormLabel><FormControl><Input {...field} placeholder="e.g. State Championships" className="rounded-xl h-11" /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="rank" render={({ field }) => (
-                      <FormItem><FormLabel>Rank</FormLabel><FormControl><Input type="number" {...field} value={field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(undefined); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} placeholder="e.g. 1" className="rounded-xl h-11" /></FormControl></FormItem>
+                      <FormItem><FormLabel>Rank</FormLabel><FormControl><Input type="number" {...field} value={field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(undefined); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} placeholder="e.g. 1" className="rounded-xl h-11 font-mono" /></FormControl></FormItem>
                     )} />
                   </div>
                 )}
@@ -401,19 +547,19 @@ export default function ScorePage() {
                   )}
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-4">
                     <FormField control={form.control} name="execution" render={({ field }) => (
-                      <FormItem><FormLabel className="text-[10px] sm:text-xs">E</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm" /></FormControl></FormItem>
+                      <FormItem><FormLabel className="text-[10px] sm:text-xs">E</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="difficulty" render={({ field }) => (
-                      <FormItem><FormLabel className="text-[10px] sm:text-xs">D</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm" /></FormControl></FormItem>
+                      <FormItem><FormLabel className="text-[10px] sm:text-xs">D</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="horizontal" render={({ field }) => (
-                      <FormItem><FormLabel className="text-[10px] sm:text-xs">H</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm" /></FormControl></FormItem>
+                      <FormItem><FormLabel className="text-[10px] sm:text-xs">H</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="timeOfFlight" render={({ field }) => (
-                      <FormItem><FormLabel className="text-[10px] sm:text-xs">T</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm" /></FormControl></FormItem>
+                      <FormItem><FormLabel className="text-[10px] sm:text-xs">T</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="total" render={({ field }) => (
-                      <FormItem><FormLabel className="text-[10px] sm:text-xs">Total</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm bg-background font-bold text-primary" /></FormControl></FormItem>
+                      <FormItem><FormLabel className="text-[10px] sm:text-xs">Total</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono bg-background font-bold text-primary" /></FormControl></FormItem>
                     )} />
                   </div>
                 </div>
@@ -459,19 +605,19 @@ export default function ScorePage() {
                     )}
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-4">
                       <FormField control={form.control} name="executionVol" render={({ field }) => (
-                        <FormItem><FormLabel className="text-[10px] sm:text-xs">E</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm" /></FormControl></FormItem>
+                        <FormItem><FormLabel className="text-[10px] sm:text-xs">E</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
                       )} />
                       <FormField control={form.control} name="difficultyVol" render={({ field }) => (
-                        <FormItem><FormLabel className="text-[10px] sm:text-xs">D</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm" /></FormControl></FormItem>
+                        <FormItem><FormLabel className="text-[10px] sm:text-xs">D</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
                       )} />
                       <FormField control={form.control} name="horizontalVol" render={({ field }) => (
-                        <FormItem><FormLabel className="text-[10px] sm:text-xs">H</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm" /></FormControl></FormItem>
+                        <FormItem><FormLabel className="text-[10px] sm:text-xs">H</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
                       )} />
                       <FormField control={form.control} name="timeOfFlightVol" render={({ field }) => (
-                        <FormItem><FormLabel className="text-[10px] sm:text-xs">T</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm" /></FormControl></FormItem>
+                        <FormItem><FormLabel className="text-[10px] sm:text-xs">T</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
                       )} />
                       <FormField control={form.control} name="totalVol" render={({ field }) => (
-                        <FormItem><FormLabel className="text-[10px] sm:text-xs">Total</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm bg-background font-bold text-primary" /></FormControl></FormItem>
+                        <FormItem><FormLabel className="text-[10px] sm:text-xs">Total</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono bg-background font-bold text-primary" /></FormControl></FormItem>
                       )} />
                     </div>
                   </div>
@@ -482,217 +628,81 @@ export default function ScorePage() {
                 </Button>
               </form>
             </Form>
-          </CardContent>
-        </Card>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      <div className="space-y-4">
-        {queuedScores.map((score) => {
-          const routine = routines?.find(r => r.id === score.routineId);
-          const routineVol = routines?.find(r => r.id === score.routineIdVol);
-          return (
-            <Card key={`pending-${score.id}`} className="rounded-2xl overflow-hidden relative border-amber-200 dark:border-amber-900/50" data-testid={`card-score-pending-${score.id}`}>
-              <div className="absolute top-2 right-2 z-10">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" data-testid={`btn-score-actions-${score.id}`}>
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40 rounded-xl">
-                    <DropdownMenuItem
-                      className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive"
-                      onClick={async () => {
-                        const ok = await deleteQueuedByTempId(score.id);
-                        if (ok) toast({ title: "Pending score discarded" });
-                      }}
-                      data-testid={`btn-score-discard-${score.id}`}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" /> Discard
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <div className="p-4 pr-12 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-lg">{format(new Date(score.date), "EEE, d MMMM yyyy")}</span>
-                    <PendingSyncBadge testId={`badge-pending-score-${score.id}`} />
-                    <Badge variant={score.type === "competition" ? "default" : "outline"} className="rounded-lg capitalize text-[10px]">
-                      {score.type}
-                    </Badge>
-                    <Badge variant="secondary" className="rounded-lg capitalize text-[10px]">
-                      {score.category === "both" ? "Set & Vol" : score.category === "vol_vol" ? "Vol & Vol" : score.category}
-                    </Badge>
-                    {routine && (
-                      <Badge variant="secondary" className="rounded-lg text-[10px]">
-                        {score.category === "vol_vol" ? "Vol 1: " : ""}{routine.name}{score.attempt != null ? ` (attempt ${score.attempt})` : ""}
-                      </Badge>
-                    )}
-                    {routineVol && (score.category === "both" || score.category === "vol_vol") && (
-                      <Badge variant="secondary" className="rounded-lg text-[10px]">
-                        {score.category === "vol_vol" ? "Vol 2: " : "Vol: "}{routineVol.name}{score.attemptVol != null ? ` (attempt ${score.attemptVol})` : ""}
-                      </Badge>
-                    )}
-                  </div>
-                  {score.type === "competition" && (
-                    <div className="text-sm font-medium text-primary flex items-center gap-2">
-                      <span>{score.competitionName}</span>
-                      {score.rank && <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/20 hover:bg-yellow-500/20">#{score.rank}</Badge>}
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                    <div className="bg-secondary/5 p-2 rounded-lg">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">
-                        {score.category === "both"
-                          ? "Set Score"
-                          : score.category === "vol_vol"
-                            ? "Vol Score 1"
-                            : "Scores"}
-                      </p>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono">
-                        <span>E: {score.execution.toFixed(1)}</span>
-                        <span>D: {score.difficulty.toFixed(1)}</span>
-                        <span>H: {score.horizontal.toFixed(1)}</span>
-                        <span>T: {score.timeOfFlight.toFixed(2)}</span>
-                        <span className="font-bold text-primary">Total: {score.total.toFixed(2)}</span>
-                      </div>
-                    </div>
-                    {(score.category === "both" || score.category === "vol_vol") && (
-                      <div className="bg-primary/5 p-2 rounded-lg">
-                        <p className="text-[10px] font-bold text-primary/60 uppercase mb-1">{score.category === "vol_vol" ? "Vol Score 2" : "Vol Score"}</p>
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono">
-                          <span>E: {score.executionVol?.toFixed(1)}</span>
-                          <span>D: {score.difficultyVol?.toFixed(1)}</span>
-                          <span>H: {score.horizontalVol?.toFixed(1)}</span>
-                          <span>T: {score.timeOfFlightVol?.toFixed(2)}</span>
-                          <span className="font-bold text-primary">Total: {score.totalVol?.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {(score.category === "both" || score.category === "vol_vol") && (
-                  <div className="flex items-center sm:pl-4">
-                    <div className="text-right">
-                      <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider leading-none mb-1">Grand Total</p>
-                      <p className="text-2xl font-display font-black text-primary leading-none">
-                        {(score.total + (score.totalVol || 0)).toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Card>
-          );
-        })}
-        {offlineModeEnabled && !isOnline ? (
-          <OfflinePlaceholder
-            testId="card-offline-scores"
-            hint={
-              queuedScores.length > 0
-                ? "Synced scores aren't available offline. They'll be back when you reconnect."
-                : "Previous scores aren't available offline. They'll be back when you reconnect."
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {queuedScores.map((score) => (
+          <ScoreCard
+            key={`pending-${score.id}`}
+            score={score}
+            routines={routines}
+            testId={`card-score-pending-${score.id}`}
+            pending
+            pendingBadge={<PendingSyncBadge testId={`badge-pending-score-${score.id}`} />}
+            actions={
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 -mr-1 text-muted-foreground/50 hover:text-foreground" data-testid={`btn-score-actions-${score.id}`}>
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                  <DropdownMenuItem
+                    className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive"
+                    onClick={async () => {
+                      const ok = await deleteQueuedByTempId(score.id);
+                      if (ok) toast({ title: "Pending score discarded" });
+                    }}
+                    data-testid={`btn-score-discard-${score.id}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Discard
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             }
           />
+        ))}
+        {offlineModeEnabled && !isOnline ? (
+          <div className="md:col-span-2">
+            <OfflinePlaceholder
+              testId="card-offline-scores"
+              hint={
+                queuedScores.length > 0
+                  ? "Synced scores aren't available offline. They'll be back when you reconnect."
+                  : "Previous scores aren't available offline. They'll be back when you reconnect."
+              }
+            />
+          </div>
         ) : null}
-        {(!offlineModeEnabled || isOnline) && scores?.map((score) => {
-          const routine = routines?.find(r => r.id === score.routineId);
-          const routineVol = routines?.find(r => r.id === score.routineIdVol);
-          return (
-            <Card key={score.id} className="rounded-2xl overflow-hidden relative">
-              <div className="absolute top-2 right-2 z-10">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" data-testid={`btn-score-actions-${score.id}`}>
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-32 rounded-xl">
-                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEdit(score)} data-testid={`btn-score-edit-${score.id}`}>
-                      <Pencil className="h-3.5 w-3.5" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteScoreId(score.id)} data-testid={`btn-score-delete-${score.id}`}>
-                      <Trash2 className="h-3.5 w-3.5" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <div className="p-4 pr-12 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-lg">{format(new Date(score.date), "EEE, d MMMM yyyy")}</span>
-                    <Badge variant={score.type === "competition" ? "default" : "outline"} className="rounded-lg capitalize text-[10px]">
-                      {score.type}
-                    </Badge>
-                    <Badge variant="secondary" className="rounded-lg capitalize text-[10px]">
-                      {score.category === "both" ? "Set & Vol" : score.category === "vol_vol" ? "Vol & Vol" : score.category}
-                    </Badge>
-                    {routine && (
-                      <Badge variant="secondary" className="rounded-lg text-[10px]">
-                        {score.category === "vol_vol" ? "Vol 1: " : ""}{routine.name}{score.attempt != null ? ` (attempt ${score.attempt})` : ""}
-                      </Badge>
-                    )}
-                    {routineVol && (score.category === "both" || score.category === "vol_vol") && (
-                      <Badge variant="secondary" className="rounded-lg text-[10px]">
-                        {score.category === "vol_vol" ? "Vol 2: " : "Vol: "}{routineVol.name}{score.attemptVol != null ? ` (attempt ${score.attemptVol})` : ""}
-                      </Badge>
-                    )}
-                  </div>
-                  {score.type === "competition" && (
-                    <div className="text-sm font-medium text-primary flex items-center gap-2">
-                      <span>{score.competitionName}</span>
-                      {score.rank && <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/20 hover:bg-yellow-500/20">#{score.rank}</Badge>}
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                    <div className="bg-secondary/5 p-2 rounded-lg">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">
-                        {score.category === "both"
-                          ? "Set Score"
-                          : score.category === "vol_vol"
-                            ? "Vol Score 1"
-                            : "Scores"}
-                      </p>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono">
-                        <span>E: {score.execution.toFixed(1)}</span>
-                        <span>D: {score.difficulty.toFixed(1)}</span>
-                        <span>H: {score.horizontal.toFixed(1)}</span>
-                        <span>T: {score.timeOfFlight.toFixed(2)}</span>
-                        <span className="font-bold text-primary">Total: {score.total.toFixed(2)}</span>
-                      </div>
-                    </div>
-                    {(score.category === "both" || score.category === "vol_vol") && (
-                      <div className="bg-primary/5 p-2 rounded-lg">
-                        <p className="text-[10px] font-bold text-primary/60 uppercase mb-1">{score.category === "vol_vol" ? "Vol Score 2" : "Vol Score"}</p>
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono">
-                          <span>E: {score.executionVol?.toFixed(1)}</span>
-                          <span>D: {score.difficultyVol?.toFixed(1)}</span>
-                          <span>H: {score.horizontalVol?.toFixed(1)}</span>
-                          <span>T: {score.timeOfFlightVol?.toFixed(2)}</span>
-                          <span className="font-bold text-primary">Total: {score.totalVol?.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {(score.category === "both" || score.category === "vol_vol") && (
-                  <div className="flex items-center sm:pl-4">
-                    <div className="text-right">
-                      <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider leading-none mb-1">Grand Total</p>
-                      <p className="text-2xl font-display font-black text-primary leading-none">
-                        {(score.total + (score.totalVol || 0)).toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Card>
-          );
-        })}
+        {(!offlineModeEnabled || isOnline) && scores?.map((score) => (
+          <ScoreCard
+            key={score.id}
+            score={score}
+            routines={routines}
+            testId={`card-score-${score.id}`}
+            actions={
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 -mr-1 text-muted-foreground/50 hover:text-foreground" data-testid={`btn-score-actions-${score.id}`}>
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-32 rounded-xl">
+                  <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEdit(score)} data-testid={`btn-score-edit-${score.id}`}>
+                    <Pencil className="h-3.5 w-3.5" /> Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteScoreId(score.id)} data-testid={`btn-score-delete-${score.id}`}>
+                    <Trash2 className="h-3.5 w-3.5" /> Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            }
+          />
+        ))}
         {(!offlineModeEnabled || isOnline) && scores?.length === 0 && queuedScores.length === 0 && (
-          <div className="text-center py-20 bg-secondary/5 rounded-3xl">
-            <Trophy className="w-12 h-12 text-yellow-300 dark:text-yellow-600 mx-auto mb-4" />
+          <div className="text-center py-20 card-3d rounded-2xl md:col-span-2">
+            <Trophy className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
             <p className="text-muted-foreground font-medium">No scores recorded yet.</p>
           </div>
         )}

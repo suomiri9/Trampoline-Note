@@ -317,7 +317,7 @@ export function TimeField({ value, onChange, ariaLabel, className, testId }: Tim
           type="button"
           aria-label={ariaLabel}
           className={cn(
-            "rounded-xl h-9 px-3 text-sm flex-1 min-w-0 border border-input bg-transparent text-left truncate",
+            "rounded-xl h-9 px-3 text-sm flex-1 min-w-0 border border-input bg-transparent text-left truncate font-mono",
             !display && "text-muted-foreground",
             className
           )}
