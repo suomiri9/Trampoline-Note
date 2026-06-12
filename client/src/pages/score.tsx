@@ -311,7 +311,7 @@ function CompetitionCard({
             {bigRankRound?.rank != null && (
               <div className="text-right">
                 <div className="eyebrow !text-[10px] text-amber-400/70">{finalRound ? "Final Rank" : "Rank"}</div>
-                <div className="font-mono text-sm leading-none text-amber-400 mt-0.5" data-testid={`text-final-rank-${bigRankRound.id}`}>
+                <div className="font-display font-normal text-[2rem] sm:text-[2.5rem] leading-none text-amber-400" data-testid={`text-final-rank-${bigRankRound.id}`}>
                   #{bigRankRound.rank}
                 </div>
               </div>
