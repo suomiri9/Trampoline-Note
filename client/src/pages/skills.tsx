@@ -338,9 +338,7 @@ export default function SkillsPage() {
   const addLabel = activeTab === "drills" ? "Add Drill" : activeTab === "connections" ? "Add Connection" : activeTab === "parts" ? "Add Part" : "Add Skill";
 
   return (
-    // Fixed viewport-height layout: header/tabs stay put, only the list scrolls.
-    // 5rem mirrors the Router wrapper's pb-20 (App.tsx) so total body height === 100dvh.
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 md:pt-8 pb-2 h-[calc(100dvh_-_5rem)] flex flex-col overflow-hidden">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-[350px]">
       <PageHeader
         eyebrow="Skill Library"
         title="My Skills"
@@ -367,7 +365,7 @@ export default function SkillsPage() {
           </>
         }
       />
-      <Tabs value={activeTab} className="flex-1 min-h-0 flex flex-col gap-6" onValueChange={(v) => { setActiveTab(v); cancelEditing(); setReorderMode(false); }}>
+      <Tabs value={activeTab} className="flex flex-col gap-6" onValueChange={(v) => { setActiveTab(v); cancelEditing(); setReorderMode(false); }}>
         <TabsList className="inline-flex h-auto flex-wrap justify-start gap-1 rounded-xl bg-secondary/40 p-1 shrink-0 self-start">
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="drills">Drills</TabsTrigger>
@@ -378,8 +376,8 @@ export default function SkillsPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="skills" className="flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0 flex flex-col">
+        <TabsContent value="skills">
+          <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
               <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
@@ -440,12 +438,12 @@ export default function SkillsPage() {
                   </Form>
               </DialogContent>
             </Dialog>
-            <Card className="flex-1 min-h-0 flex flex-col">
+            <Card>
               <CardHeader className="flex flex-row items-center justify-between shrink-0">
                 <CardTitle>Skills Library</CardTitle>
                 {renderReorderButton()}
               </CardHeader>
-              <CardContent className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
+              <CardContent className="overflow-x-auto">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(skills)}>
                   <Table>
                     <TableHeader><TableRow className="border-border/60 hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow w-24">Code</TableHead><TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
@@ -498,8 +496,8 @@ export default function SkillsPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="drills" className="flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0 flex flex-col">
+        <TabsContent value="drills">
+          <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
               <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
@@ -560,12 +558,12 @@ export default function SkillsPage() {
                   </Form>
               </DialogContent>
             </Dialog>
-            <Card className="flex-1 min-h-0 flex flex-col">
+            <Card>
               <CardHeader className="flex flex-row items-center justify-between shrink-0">
                 <CardTitle>Drills Library</CardTitle>
                 {renderReorderButton()}
               </CardHeader>
-              <CardContent className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
+              <CardContent className="overflow-x-auto">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(drills)}>
                   <Table>
                     <TableHeader><TableRow className="border-border/60 hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow w-24">Code</TableHead><TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
@@ -618,8 +616,8 @@ export default function SkillsPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="connections" className="flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0 flex flex-col">
+        <TabsContent value="connections">
+          <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
               <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
@@ -742,12 +740,12 @@ export default function SkillsPage() {
                   </div>
               </DialogContent>
             </Dialog>
-            <Card className="flex-1 min-h-0 flex flex-col">
+            <Card>
               <CardHeader className="flex flex-row items-center justify-between shrink-0">
                 <CardTitle>Connections Library</CardTitle>
                 {renderReorderButton()}
               </CardHeader>
-              <CardContent className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
+              <CardContent className="overflow-x-auto">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(frequentConnections)}>
                   <Table>
                     <TableHeader><TableRow className="border-border/60 hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow">Sequence</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
@@ -802,8 +800,8 @@ export default function SkillsPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="parts" className="flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0 flex flex-col">
+        <TabsContent value="parts">
+          <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
               <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
@@ -939,12 +937,12 @@ export default function SkillsPage() {
                   </div>
               </DialogContent>
             </Dialog>
-            <Card className="flex-1 min-h-0 flex flex-col">
+            <Card>
               <CardHeader className="flex flex-row items-center justify-between shrink-0">
                 <CardTitle>Routine Parts Library</CardTitle>
                 {renderReorderButton()}
               </CardHeader>
-              <CardContent className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
+              <CardContent className="overflow-x-auto">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(routineParts)}>
                   <Table>
                     <TableHeader><TableRow className="border-border/60 hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow">Sequence</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
