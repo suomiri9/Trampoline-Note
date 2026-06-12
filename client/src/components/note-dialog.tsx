@@ -1238,7 +1238,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                             <div key={idx} className="flex items-center gap-1.5 cursor-pointer" onClick={() => setEditingRoutineIdx(idx)}>
                                               <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none shrink-0">ROUTINE</Badge>
                                               <span className="text-[11px] font-bold text-primary truncate max-w-[120px]">{r?.name || it.routineName}</span>
-                                              <button type="button" onClick={(e) => { e.stopPropagation(); removeSkill(idx); }} className="shrink-0 text-muted-foreground/40 hover:text-destructive p-0.5" aria-label="Remove from connection" data-testid={`button-remove-conn-item-${idx}`}><X className="h-3 w-3" /></button>
                                               {sep}
                                             </div>
                                           );
@@ -1250,7 +1249,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                             <div key={idx} className="flex items-center gap-1.5 cursor-pointer" onClick={() => setEditingRoutineIdx(idx)}>
                                               <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] text-white border-none shrink-0", isPart ? "bg-gray-500" : "bg-red-500")}>{isPart ? "PART" : "CONN"}</Badge>
                                               <span className={cn("text-[11px] font-bold truncate max-w-[120px]", isPart ? "text-gray-700 dark:text-gray-300" : "text-red-600 dark:text-red-400")}>{fc?.name || it.fcName}</span>
-                                              <button type="button" onClick={(e) => { e.stopPropagation(); removeSkill(idx); }} className="shrink-0 text-muted-foreground/40 hover:text-destructive p-0.5" aria-label="Remove from connection" data-testid={`button-remove-conn-item-${idx}`}><X className="h-3 w-3" /></button>
                                               {sep}
                                             </div>
                                           );
@@ -1264,7 +1262,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                                 ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400"
                                                 : "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
                                             )}>{sk?.code}</Badge>
-                                            <button type="button" onClick={(e) => { e.stopPropagation(); removeSkill(idx); }} className="shrink-0 text-muted-foreground/40 hover:text-destructive p-0.5" aria-label="Remove from connection" data-testid={`button-remove-conn-item-${idx}`}><X className="h-3 w-3" /></button>
                                             {sep}
                                           </div>
                                         );
