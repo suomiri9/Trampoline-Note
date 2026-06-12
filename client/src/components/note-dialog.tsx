@@ -1294,7 +1294,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                       </div>
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                                        <DropdownMenuContent align="end" className="w-36 rounded-xl" onCloseAutoFocus={(e) => e.preventDefault()}>
                                           <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (grpNote !== undefined && grpNote !== null) { updateSkillNote(grpNoteIdx, undefined); } else { addNoteAndFocus(grpNoteIdx); } }}><MessageSquare className="h-3.5 w-3.5" /> {grpNote !== undefined && grpNote !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
                                           <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
                                           <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeGroup(group.indices)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
@@ -1372,7 +1372,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         {(!isConnected || iIdx === 0) ? (
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                                            <DropdownMenuContent align="end" className="w-36 rounded-xl" onCloseAutoFocus={(e) => e.preventDefault()}>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { addNoteAndFocus(idx); } }}><MessageSquare className="h-3.5 w-3.5" /> {item.note !== undefined && item.note !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
@@ -1441,7 +1441,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         {(!isConnected || iIdx === 0) ? (
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                                            <DropdownMenuContent align="end" className="w-36 rounded-xl" onCloseAutoFocus={(e) => e.preventDefault()}>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { addNoteAndFocus(idx); } }}><MessageSquare className="h-3.5 w-3.5" /> {item.note !== undefined && item.note !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
@@ -1520,7 +1520,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                       {(!isConnected || iIdx === 0) ? (
                                         <DropdownMenu>
                                           <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                                          <DropdownMenuContent align="end" className="w-36 rounded-xl" onCloseAutoFocus={(e) => e.preventDefault()}>
                                             <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => {
                                               if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); }
                                               else { addNoteAndFocus(isConnected ? group.indices[0] : idx); }
