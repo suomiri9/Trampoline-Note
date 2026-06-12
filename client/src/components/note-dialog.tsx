@@ -1178,7 +1178,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </div>
 
                   <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handlePracticeListDragEnd}>
-                  <div ref={practiceListRef}>
+                  <div ref={practiceListRef} className="max-h-[296px] overflow-y-auto overscroll-contain">
                     {(() => {
                       const groups: Array<{ items: typeof selectedSkills; indices: number[] }> = [];
                       let curItems: typeof selectedSkills = [];
