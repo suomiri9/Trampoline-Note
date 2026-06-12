@@ -20,15 +20,12 @@ errors after edits), and careful reasoning about the JSX/state changes. Only the
 login page itself is screenshot-verifiable.
 
 ## Some TypeScript errors are pre-existing and runtime-safe
-`tsc --noEmit` reports errors that are NOT from current feature work and do not
-block the app (Vite/esbuild transpiles without type-checking):
-- `score.tsx` TS2367 on `form.watch/getValues("category"|"type")` — the untyped
-  `useForm` narrows against `as const` defaults; comparisons look "impossible" to
-  tsc but are correct at runtime.
-- `note-card.tsx` / `note-dialog.tsx` `.note` property + `use-notes.ts`
-  `NoteInput`/`NoteUpdateInput` missing exports from `@shared/routes`, and a
-  `downlevelIteration` Set-spread error.
+`tsc --noEmit` reports a handful of long-standing errors that are NOT from
+current feature work and do not block the app (Vite/esbuild transpiles without
+type-checking) — they come from untyped `useForm` narrowing and a few
+parsed/narrowed `SkillItem`-style objects that lack a `.note` field at the type
+level. Re-run `tsc` to see the current exact list; don't memorize it.
 
 **How to apply:** when verifying a change, filter tsc output to the files you
-actually edited. Don't try to "fix" the above unless the task is specifically
-about them.
+actually edited and ignore the pre-existing baseline. Don't try to "fix" those
+unless the task is specifically about them.

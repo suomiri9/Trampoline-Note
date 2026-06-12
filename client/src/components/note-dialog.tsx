@@ -1273,9 +1273,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                 <div className="px-3 py-2">
                                   <div className="flex flex-wrap items-center gap-2">
                                     <div
-                                      className={cn("flex flex-wrap items-center gap-1.5 flex-1 min-w-0", group.items.every(it => it.id !== -2 && it.id !== -3) && "cursor-pointer")}
+                                      className={cn("flex flex-wrap items-center gap-1.5 flex-1 min-w-0", group.items.some(it => it.id !== -2 && it.id !== -3) && "cursor-pointer")}
                                       onClick={() => {
-                                        if (group.items.every(it => it.id !== -2 && it.id !== -3)) {
+                                        if (group.items.some(it => it.id !== -2 && it.id !== -3)) {
                                           setEditingConnIndices(group.indices);
                                         }
                                       }}
@@ -1286,7 +1286,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         if (it.id === -2) {
                                           const r = routines?.find(rt => rt.id === it.routineId);
                                           return (
-                                            <div key={idx} className="flex items-center gap-1.5 cursor-pointer" onClick={() => setEditingRoutineIdx(idx)}>
+                                            <div key={idx} className="flex items-center gap-1.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); setEditingRoutineIdx(idx); }}>
                                               <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none shrink-0">ROUTINE</Badge>
                                               <span className="text-[11px] font-bold text-primary truncate max-w-[120px]">{r?.name || it.routineName}</span>
                                               {sep}
@@ -1297,7 +1297,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           const fc = allItems?.find(s => s.id === it.fcId);
                                           const isPart = fc?.isDrill === 3;
                                           return (
-                                            <div key={idx} className="flex items-center gap-1.5 cursor-pointer" onClick={() => setEditingRoutineIdx(idx)}>
+                                            <div key={idx} className="flex items-center gap-1.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); setEditingRoutineIdx(idx); }}>
                                               <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] text-white border-none shrink-0", isPart ? "bg-gray-500" : "bg-red-500")}>{isPart ? "PART" : "CONN"}</Badge>
                                               <span className={cn("text-[11px] font-bold truncate max-w-[120px]", isPart ? "text-gray-700 dark:text-gray-300" : "text-red-600 dark:text-red-400")}>{fc?.name || it.fcName}</span>
                                               {sep}
@@ -1632,24 +1632,32 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 skillIds={skillIds}
                 allSkills={allItems || []}
                 onSkillIdsChange={(newIds) => {
+                  let combinedLen = newIds.length;
                   setSelectedSkills(prev => {
-                    const first = prev[indices[0]];
-                    const reps = first?.reps;
-                    const note = first?.note;
-                    const newItems: SkillItem[] = newIds.map((id, i) => {
-                      const base: SkillItem = { id };
-                      if (i === 0) {
-                        if (reps !== undefined) base.reps = reps;
-                        if (note !== undefined) base.note = note;
-                      }
-                      return base;
-                    });
                     const sortedIdx = [...indices].sort((a, b) => a - b);
                     const minIdx = sortedIdx[0];
                     const set = new Set(sortedIdx);
+                    const first = prev[minIdx];
+                    const reps = first?.reps;
+                    const note = first?.note;
+                    // Keep any routine/connection members of this group (in order);
+                    // the skill editor only edits plain skills, so we re-attach them.
+                    const preserved = sortedIdx
+                      .map(i => prev[i])
+                      .filter((it): it is SkillItem => !!it && (it.id === -2 || it.id === -3))
+                      .map(it => ({ ...it, reps: undefined, note: undefined }));
+                    const skillItems: SkillItem[] = newIds.map(id => ({ id }));
+                    const combined: SkillItem[] = [...skillItems, ...preserved];
+                    // reps is a group-wide property: every member carries it (matches updateReps),
+                    // since calculateTotalDD multiplies by the LAST member's reps. note stays on the first.
+                    combined.forEach((it, i) => {
+                      if (reps !== undefined) it.reps = reps;
+                      if (note !== undefined && i === 0) it.note = note;
+                    });
+                    combinedLen = combined.length;
                     const ns: SkillItem[] = [];
                     for (let i = 0; i < prev.length; i++) {
-                      if (i === minIdx) ns.push(...newItems);
+                      if (i === minIdx) ns.push(...combined);
                       if (!set.has(i)) ns.push(prev[i]);
                     }
                     form.setValue('skills', JSON.stringify(ns));
@@ -1659,7 +1667,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     setEditingConnIndices(null);
                   } else {
                     const minIdx = Math.min(...indices);
-                    setEditingConnIndices(Array.from({ length: newIds.length }, (_, k) => minIdx + k));
+                    setEditingConnIndices(Array.from({ length: combinedLen }, (_, k) => minIdx + k));
                   }
                 }}
                 onClose={() => setEditingConnIndices(null)}
