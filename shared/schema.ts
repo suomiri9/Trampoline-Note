@@ -45,6 +45,8 @@ export const scores = pgTable("scores", {
   type: text("type").notNull().default("practice"), // "practice" or "competition"
   category: text("category").notNull().default("vol"), // "set", "vol", "both", or "vol_vol"
   competitionName: text("competition_name"),
+  competitionId: text("competition_id"), // groups rounds (prelims/final) of one competition; null for practice/trial
+  round: text("round"), // "prelims" or "final" for competitions; null otherwise
   rank: integer("rank"),
   // Set scores (also used for single vol)
   execution: real("execution").notNull().default(0),

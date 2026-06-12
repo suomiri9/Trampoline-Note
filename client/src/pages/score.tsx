@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState, useEffect, useRef, type ReactNode } from "react";
+import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertScoreSchema, type Score, type Routine, type Skill, type InsertScore } from "@shared/schema";
@@ -36,9 +36,11 @@ const scoreDefaults = {
   routineIdVol: undefined as number | undefined,
   attempt: null as number | null,
   attemptVol: null as number | null,
-  type: "practice" as const,
-  category: "vol" as const,
+  type: "practice" as string,
+  category: "vol" as string,
   competitionName: "",
+  competitionId: null as string | null,
+  round: null as string | null,
   rank: undefined as number | undefined,
   execution: 0,
   difficulty: 0,
@@ -77,6 +79,38 @@ function ScoreBreakdown({ e, d, h, t, label, total, totalColor, totalTestId }: {
   );
 }
 
+function ScoreGroups({ score, totalColor }: { score: Score; totalColor: string }) {
+  const isMulti = score.category === "both" || score.category === "vol_vol";
+  const group1Label = score.category === "vol_vol" ? "VOL 1" : "SET";
+  const group2Label = score.category === "vol_vol" ? "VOL 2" : "VOL";
+  return (
+    <div className="space-y-4">
+      <ScoreBreakdown
+        e={score.execution}
+        d={score.difficulty}
+        h={score.horizontal}
+        t={score.timeOfFlight}
+        label={isMulti ? `${group1Label}${score.attempt != null ? ` · attempt ${score.attempt}` : ""}` : undefined}
+        total={score.total}
+        totalColor={totalColor}
+        totalTestId={`text-group1-total-${score.id}`}
+      />
+      {isMulti && (
+        <ScoreBreakdown
+          e={score.executionVol ?? 0}
+          d={score.difficultyVol ?? 0}
+          h={score.horizontalVol ?? 0}
+          t={score.timeOfFlightVol ?? 0}
+          label={`${group2Label}${score.attemptVol != null ? ` · attempt ${score.attemptVol}` : ""}`}
+          total={score.totalVol ?? 0}
+          totalColor={totalColor}
+          totalTestId={`text-group2-total-${score.id}`}
+        />
+      )}
+    </div>
+  );
+}
+
 function ScoreCard({
   score,
   routines,
@@ -105,8 +139,6 @@ function ScoreCard({
     : "border-primary/40 text-primary";
 
   const title = routine?.name ?? (isMulti ? "Set & Vol" : "Score");
-  const group1Label = score.category === "vol_vol" ? "VOL 1" : "SET";
-  const group2Label = score.category === "vol_vol" ? "VOL 2" : "VOL";
 
   return (
     <div
@@ -153,30 +185,180 @@ function ScoreCard({
           </div>
         </div>
 
-        <div className="mt-4 pt-4 border-t border-border/60 space-y-4">
-          <ScoreBreakdown
-            e={score.execution}
-            d={score.difficulty}
-            h={score.horizontal}
-            t={score.timeOfFlight}
-            label={isMulti ? `${group1Label}${score.attempt != null ? ` · attempt ${score.attempt}` : ""}` : undefined}
-            total={score.total}
-            totalColor={totalColor}
-            totalTestId={`text-group1-total-${score.id}`}
-          />
-          {isMulti && (
-            <ScoreBreakdown
-              e={score.executionVol ?? 0}
-              d={score.difficultyVol ?? 0}
-              h={score.horizontalVol ?? 0}
-              t={score.timeOfFlightVol ?? 0}
-              label={`${group2Label}${score.attemptVol != null ? ` · attempt ${score.attemptVol}` : ""}`}
-              total={score.totalVol ?? 0}
-              totalColor={totalColor}
-              totalTestId={`text-group2-total-${score.id}`}
-            />
+        <div className="mt-4 pt-4 border-t border-border/60">
+          <ScoreGroups score={score} totalColor={totalColor} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const roundOrder = (round?: string | null) => (round === "final" ? 1 : round === "prelims" ? 0 : 2);
+const roundLabel = (round?: string | null) => (round === "final" ? "Final" : round === "prelims" ? "Prelims" : "Round");
+
+function newCompetitionId(): string {
+  try {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  } catch {
+    /* fall through */
+  }
+  return `comp_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function RoundBlock({
+  score,
+  routines,
+  hideRank,
+  onEdit,
+  onDelete,
+}: {
+  score: Score;
+  routines?: Routine[];
+  hideRank?: boolean;
+  onEdit: (score: Score) => void;
+  onDelete: (id: number) => void;
+}) {
+  const routine = routines?.find((r) => r.id === score.routineId);
+  const routineVol = routines?.find((r) => r.id === score.routineIdVol);
+  const isMulti = score.category === "both" || score.category === "vol_vol";
+  const grandTotal = isMulti ? score.total + (score.totalVol || 0) : score.total;
+  const title = routine?.name ?? (isMulti ? (score.category === "vol_vol" ? "Vol & Vol" : "Set & Vol") : "Routine");
+
+  return (
+    <div className="pt-4 border-t border-border/60 first:border-t-0 first:pt-0" data-testid={`round-${score.id}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="eyebrow !text-[10px] text-amber-400/80">{roundLabel(score.round)}</div>
+          <div className="font-semibold text-sm mt-0.5 truncate" data-testid={`text-round-name-${score.id}`}>{title}</div>
+          {isMulti && routineVol && (
+            <div className="font-mono text-[11px] text-muted-foreground mt-0.5 truncate">+ {routineVol.name}</div>
+          )}
+          {!hideRank && score.rank != null && (
+            <div className="font-mono text-xs text-muted-foreground mt-0.5" data-testid={`text-round-rank-${score.id}`}>Rank #{score.rank}</div>
           )}
         </div>
+        <div className="shrink-0 flex items-start gap-1">
+          <div className="text-right">
+            <div className="font-display font-normal text-3xl leading-none text-amber-400" data-testid={`text-round-total-${score.id}`}>
+              {grandTotal.toFixed(1)}
+            </div>
+            <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">Total</div>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7 -mr-1 text-muted-foreground/50 hover:text-foreground" data-testid={`btn-round-actions-${score.id}`}>
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-36 rounded-xl">
+              <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => onEdit(score)} data-testid={`btn-round-edit-${score.id}`}>
+                <Pencil className="h-3.5 w-3.5" /> Edit round
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => onDelete(score.id)} data-testid={`btn-round-delete-${score.id}`}>
+                <Trash2 className="h-3.5 w-3.5" /> Delete round
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+      <div className="mt-3">
+        <ScoreGroups score={score} totalColor="text-amber-400" />
+      </div>
+    </div>
+  );
+}
+
+function CompetitionCard({
+  rounds,
+  routines,
+  onEditRound,
+  onDeleteRound,
+  onDeleteComp,
+  onAddFinal,
+  testId,
+}: {
+  rounds: Score[];
+  routines?: Routine[];
+  onEditRound: (score: Score) => void;
+  onDeleteRound: (id: number) => void;
+  onDeleteComp: (ids: number[]) => void;
+  onAddFinal: (prelims: Score) => void;
+  testId?: string;
+}) {
+  const finalRound = rounds.find((r) => r.round === "final");
+  const prelimsRound = rounds.find((r) => r.round !== "final") ?? rounds[0];
+  const first = rounds[0];
+  const compName = first.competitionName || "Competition";
+  const displayDate = [...rounds].map((r) => r.date).sort()[0];
+
+  return (
+    <div className="relative card-3d rounded-2xl overflow-hidden" data-testid={testId}>
+      <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" aria-hidden="true" />
+      <div className="p-5 pl-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="font-mono text-xs text-muted-foreground flex items-center gap-1.5">
+              <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+              <span>{format(new Date(displayDate), "EEE, d MMM yyyy")}</span>
+            </div>
+            <h3 className="font-bold text-lg mt-1.5 truncate" data-testid={`text-comp-name-${first.id}`}>{compName}</h3>
+            <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold uppercase tracking-wider border-amber-500/40 text-amber-400">
+              competition
+            </span>
+          </div>
+          <div className="shrink-0 flex items-start gap-1">
+            {finalRound?.rank != null && (
+              <div className="text-right">
+                <div className="eyebrow !text-[10px] text-amber-400/70">Final Rank</div>
+                <div className="font-display font-normal text-5xl sm:text-6xl leading-none text-amber-400" data-testid={`text-final-rank-${finalRound.id}`}>
+                  #{finalRound.rank}
+                </div>
+              </div>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 -mr-1 text-muted-foreground/50 hover:text-foreground" data-testid={`btn-comp-actions-${first.id}`}>
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44 rounded-xl">
+                {!finalRound && (
+                  <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => onAddFinal(prelimsRound)} data-testid={`btn-comp-add-final-${first.id}`}>
+                    <Plus className="h-3.5 w-3.5" /> Add final round
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => onDeleteComp(rounds.map((r) => r.id))} data-testid={`btn-comp-delete-${first.id}`}>
+                  <Trash2 className="h-3.5 w-3.5" /> Delete competition
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        <div className="mt-2 space-y-4">
+          {rounds.map((r) => (
+            <RoundBlock
+              key={r.id}
+              score={r}
+              routines={routines}
+              hideRank={r.round === "final"}
+              onEdit={onEditRound}
+              onDelete={onDeleteRound}
+            />
+          ))}
+        </div>
+
+        {!finalRound && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onAddFinal(prelimsRound)}
+            className="w-full mt-4 h-10 rounded-xl border-amber-500/30 text-amber-400 hover:text-amber-300 gap-1.5"
+            data-testid={`btn-add-final-${first.id}`}
+          >
+            <Plus className="w-4 h-4" /> Add Final
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -187,6 +369,7 @@ export default function ScorePage() {
   const [isAdding, setIsAdding] = useState(false);
   const [editingScore, setEditingScore] = useState<Score | null>(null);
   const [deleteScoreId, setDeleteScoreId] = useState<number | null>(null);
+  const [deleteCompIds, setDeleteCompIds] = useState<number[] | null>(null);
   const [customSkillIds, setCustomSkillIds] = useState<number[] | null>(null);
   const [customSkillIdsVol, setCustomSkillIdsVol] = useState<number[] | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<"set" | "vol" | null>(null);
@@ -273,6 +456,26 @@ export default function ScorePage() {
     }
   });
 
+  const deleteCompMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      for (const id of ids) {
+        await apiRequest("DELETE", `/api/scores/${id}`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
+      toast({ title: "Competition deleted" });
+    },
+    onError: (err) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
+      toast({
+        title: "Couldn't delete competition",
+        description: err instanceof Error ? err.message : "Some rounds may not have been deleted. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const skipDDAutoFill = useRef(false);
 
   function startEdit(score: Score) {
@@ -288,6 +491,8 @@ export default function ScorePage() {
       type: score.type as any,
       category: score.category as any,
       competitionName: score.competitionName ?? "",
+      competitionId: score.competitionId ?? null,
+      round: score.round ?? null,
       rank: score.rank ?? undefined,
       execution: score.execution,
       difficulty: score.difficulty,
@@ -316,6 +521,22 @@ export default function ScorePage() {
     } else {
       setCustomSkillIdsVol(null);
     }
+  }
+
+  function startAddFinal(prelims: Score) {
+    skipDDAutoFill.current = true;
+    setEditingScore(null);
+    setIsAdding(true);
+    setCustomSkillIds(null);
+    setCustomSkillIdsVol(null);
+    form.reset({
+      ...scoreDefaults,
+      date: prelims.date,
+      type: "competition",
+      competitionName: prelims.competitionName ?? "",
+      competitionId: prelims.competitionId ?? newCompetitionId(),
+      round: "final",
+    });
   }
 
   const form = useForm({
@@ -388,6 +609,32 @@ export default function ScorePage() {
     return t > max ? t : max;
   }, 0);
 
+  type RenderItem =
+    | { kind: "comp"; key: string; sortDate: string; rounds: Score[] }
+    | { kind: "single"; key: string; sortDate: string; score: Score };
+
+  const renderItems = useMemo<RenderItem[]>(() => {
+    const list = scores ?? [];
+    const groups = new Map<string, Score[]>();
+    const items: RenderItem[] = [];
+    for (const s of list) {
+      if (s.type === "competition" && s.competitionId) {
+        const existing = groups.get(s.competitionId);
+        if (existing) existing.push(s);
+        else groups.set(s.competitionId, [s]);
+      } else {
+        items.push({ kind: "single", key: `s-${s.id}`, sortDate: s.date, score: s });
+      }
+    }
+    for (const [compId, rounds] of Array.from(groups.entries())) {
+      const sorted = [...rounds].sort((a, b) => roundOrder(a.round) - roundOrder(b.round) || a.date.localeCompare(b.date));
+      const sortDate = sorted.map((r) => r.date).sort().reverse()[0] ?? sorted[0].date;
+      items.push({ kind: "comp", key: `c-${compId}`, sortDate, rounds: sorted });
+    }
+    items.sort((a, b) => b.sortDate.localeCompare(a.sortDate));
+    return items;
+  }, [scores]);
+
   return (
     <PageLayout>
       <PageHeader
@@ -428,10 +675,14 @@ export default function ScorePage() {
           </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit((data) => {
+                const values =
+                  data.type === "competition"
+                    ? { ...data, round: data.round || "prelims", competitionId: data.competitionId || newCompetitionId() }
+                    : { ...data, round: null, competitionId: null };
                 if (editingScore) {
-                  updateMutation.mutate({ id: editingScore.id, values: data });
+                  updateMutation.mutate({ id: editingScore.id, values });
                 } else {
-                  createMutation.mutate(data);
+                  createMutation.mutate(values);
                 }
               }, (errors) => {
                 const first = Object.values(errors).find(
@@ -472,7 +723,16 @@ export default function ScorePage() {
                     <FormField control={form.control} name="type" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Type</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={(val) => {
+                          field.onChange(val);
+                          if (val === "competition") {
+                            if (!form.getValues("round")) form.setValue("round", editingScore?.round ?? "prelims");
+                            if (!form.getValues("competitionId") && editingScore?.competitionId) form.setValue("competitionId", editingScore.competitionId);
+                          } else {
+                            form.setValue("round", null);
+                            form.setValue("competitionId", null);
+                          }
+                        }} value={field.value}>
                           <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger></FormControl>
                           <SelectContent>
                             <SelectItem value="practice">Practice</SelectItem>
@@ -500,13 +760,27 @@ export default function ScorePage() {
                 </div>
 
                 {form.watch("type") === "competition" && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <FormField control={form.control} name="competitionName" render={({ field }) => (
-                      <FormItem><FormLabel>Competition Name</FormLabel><FormControl><Input {...field} placeholder="e.g. State Championships" className="rounded-xl h-11" /></FormControl></FormItem>
+                      <FormItem><FormLabel>Competition Name</FormLabel><FormControl><Input {...field} value={field.value ?? ""} placeholder="e.g. State Championships" className="rounded-xl h-11" /></FormControl></FormItem>
                     )} />
-                    <FormField control={form.control} name="rank" render={({ field }) => (
-                      <FormItem><FormLabel>Rank</FormLabel><FormControl><Input type="number" {...field} value={field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(undefined); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} placeholder="e.g. 1" className="rounded-xl h-11 font-mono" /></FormControl></FormItem>
-                    )} />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField control={form.control} name="round" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Round</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value ?? "prelims"}>
+                            <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              <SelectItem value="prelims">Prelims</SelectItem>
+                              <SelectItem value="final">Final</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="rank" render={({ field }) => (
+                        <FormItem><FormLabel>{form.watch("round") === "final" ? "Final Rank" : "Prelims Rank"}</FormLabel><FormControl><Input type="number" {...field} value={field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(undefined); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} placeholder="e.g. 1" className="rounded-xl h-11 font-mono" /></FormControl></FormItem>
+                      )} />
+                    </div>
                   </div>
                 )}
 
@@ -682,30 +956,43 @@ export default function ScorePage() {
             />
           </div>
         ) : null}
-        {(!offlineModeEnabled || isOnline) && scores?.map((score) => (
-          <ScoreCard
-            key={score.id}
-            score={score}
-            routines={routines}
-            testId={`card-score-${score.id}`}
-            actions={
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 -mr-1 text-muted-foreground/50 hover:text-foreground" data-testid={`btn-score-actions-${score.id}`}>
-                    <MoreVertical className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-32 rounded-xl">
-                  <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEdit(score)} data-testid={`btn-score-edit-${score.id}`}>
-                    <Pencil className="h-3.5 w-3.5" /> Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteScoreId(score.id)} data-testid={`btn-score-delete-${score.id}`}>
-                    <Trash2 className="h-3.5 w-3.5" /> Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            }
-          />
+        {(!offlineModeEnabled || isOnline) && renderItems.map((item) => (
+          item.kind === "comp" ? (
+            <CompetitionCard
+              key={item.key}
+              rounds={item.rounds}
+              routines={routines}
+              testId={`card-competition-${item.rounds[0].id}`}
+              onEditRound={startEdit}
+              onDeleteRound={setDeleteScoreId}
+              onDeleteComp={setDeleteCompIds}
+              onAddFinal={startAddFinal}
+            />
+          ) : (
+            <ScoreCard
+              key={item.key}
+              score={item.score}
+              routines={routines}
+              testId={`card-score-${item.score.id}`}
+              actions={
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 -mr-1 text-muted-foreground/50 hover:text-foreground" data-testid={`btn-score-actions-${item.score.id}`}>
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-32 rounded-xl">
+                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEdit(item.score)} data-testid={`btn-score-edit-${item.score.id}`}>
+                      <Pencil className="h-3.5 w-3.5" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteScoreId(item.score.id)} data-testid={`btn-score-delete-${item.score.id}`}>
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              }
+            />
+          )
         ))}
         {(!offlineModeEnabled || isOnline) && scores?.length === 0 && queuedScores.length === 0 && (
           <div className="text-center py-20 card-3d rounded-2xl md:col-span-2">
@@ -721,6 +1008,15 @@ export default function ScorePage() {
         title="Delete this score?"
         description="This action cannot be undone."
         onConfirm={() => { if (deleteScoreId !== null) { deleteMutation.mutate(deleteScoreId); setDeleteScoreId(null); } }}
+        confirmLabel="Delete"
+      />
+
+      <ConfirmDialog
+        open={deleteCompIds !== null}
+        onOpenChange={(open) => { if (!open) setDeleteCompIds(null); }}
+        title="Delete this competition?"
+        description="All rounds in this competition will be permanently deleted. This action cannot be undone."
+        onConfirm={() => { if (deleteCompIds !== null) { deleteCompMutation.mutate(deleteCompIds); setDeleteCompIds(null); } }}
         confirmLabel="Delete"
       />
     </PageLayout>

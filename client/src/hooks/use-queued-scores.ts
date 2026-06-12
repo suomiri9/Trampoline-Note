@@ -32,6 +32,8 @@ export function useQueuedScores(): PendingScore[] {
               type: body.type ?? "practice",
               category: body.category ?? "vol",
               competitionName: body.competitionName ?? null,
+              competitionId: body.competitionId ?? null,
+              round: body.round ?? null,
               rank: body.rank ?? null,
               routineId: body.routineId ?? null,
               routineIdVol: body.routineIdVol ?? null,
