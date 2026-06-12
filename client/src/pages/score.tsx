@@ -129,13 +129,16 @@ function ScoreCard({
   const routine = routines?.find((r) => r.id === score.routineId);
   const routineVol = routines?.find((r) => r.id === score.routineIdVol);
   const isComp = score.type === "competition";
+  const isTrial = score.type === "trial";
   const isMulti = score.category === "both" || score.category === "vol_vol";
   const grandTotal = isMulti ? score.total + (score.totalVol || 0) : score.total;
 
-  const totalColor = isComp ? "text-amber-400" : "text-primary";
-  const accentBar = isComp ? "bg-amber-500" : "bg-primary";
+  const totalColor = isComp ? "text-amber-400" : isTrial ? "text-red-400" : "text-primary";
+  const accentBar = isComp ? "bg-amber-500" : isTrial ? "bg-red-500" : "bg-primary";
   const pillClass = isComp
     ? "border-amber-500/40 text-amber-400"
+    : isTrial
+    ? "border-red-500/40 text-red-400"
     : "border-primary/40 text-primary";
 
   const title = routine?.name ?? (isMulti ? "Set & Vol" : "Score");
@@ -161,6 +164,11 @@ function ScoreCard({
                 {score.rank != null ? ` · #${score.rank}` : ""}
               </p>
             )}
+            {isTrial && (
+              <span className={cn("inline-block mt-1.5 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold uppercase tracking-wider", pillClass)}>
+                {score.type}
+              </span>
+            )}
             {isMulti && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 <Badge variant="outline" className="rounded-md text-[10px] font-mono">
@@ -177,9 +185,11 @@ function ScoreCard({
               <div className={cn("font-display font-normal text-5xl sm:text-6xl leading-none", totalColor)} data-testid={`text-score-total-${score.id}`}>
                 {grandTotal.toFixed(1)}
               </div>
-              <span className={cn("inline-block mt-2 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold uppercase tracking-wider", pillClass)}>
-                {score.type}
-              </span>
+              {!isTrial && (
+                <span className={cn("inline-block mt-2 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold uppercase tracking-wider", pillClass)}>
+                  {score.type}
+                </span>
+              )}
             </div>
             {actions}
           </div>
