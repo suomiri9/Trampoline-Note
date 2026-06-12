@@ -52,7 +52,7 @@ const scoreDefaults = {
   totalVol: 0,
 };
 
-function ScoreBreakdown({ e, d, h, t, label }: { e: number; d: number; h: number; t: number; label?: string }) {
+function ScoreBreakdown({ e, d, h, t, label, total, totalColor, totalTestId }: { e: number; d: number; h: number; t: number; label?: string; total?: number; totalColor?: string; totalTestId?: string }) {
   const cols = [
     { k: "E", v: e.toFixed(1) },
     { k: "DD", v: d.toFixed(1) },
@@ -62,7 +62,12 @@ function ScoreBreakdown({ e, d, h, t, label }: { e: number; d: number; h: number
   return (
     <div>
       {label && (
-        <div className="eyebrow text-[0.6rem] tracking-[0.2em] mb-2 text-muted-foreground/80">{label}</div>
+        <div className="flex items-baseline justify-between gap-2 mb-2">
+          <span className="eyebrow text-[0.6rem] tracking-[0.2em] text-muted-foreground/80">{label}</span>
+          {total != null && (
+            <span className={cn("font-mono text-base font-bold tabular-nums leading-none", totalColor)} data-testid={totalTestId}>{total.toFixed(1)}</span>
+          )}
+        </div>
       )}
       <div className="grid grid-cols-4 gap-2 text-center">
         {cols.map((c) => (
@@ -159,6 +164,9 @@ function ScoreCard({
             h={score.horizontal}
             t={score.timeOfFlight}
             label={isMulti ? `${group1Label}${score.attempt != null ? ` · attempt ${score.attempt}` : ""}` : undefined}
+            total={isMulti ? score.total : undefined}
+            totalColor={totalColor}
+            totalTestId={`text-group1-total-${score.id}`}
           />
           {isMulti && (
             <ScoreBreakdown
@@ -167,6 +175,9 @@ function ScoreCard({
               h={score.horizontalVol ?? 0}
               t={score.timeOfFlightVol ?? 0}
               label={`${group2Label}${score.attemptVol != null ? ` · attempt ${score.attemptVol}` : ""}`}
+              total={score.totalVol ?? 0}
+              totalColor={totalColor}
+              totalTestId={`text-group2-total-${score.id}`}
             />
           )}
         </div>
