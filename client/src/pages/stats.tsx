@@ -202,6 +202,7 @@ export default function StatsPage() {
     ? (notes ?? []).filter(n => isWithinInterval(parseISO(n.date.substring(0, 10)), { start: periodStart!, end: periodEnd! }))
     : (notes ?? []);
   const sessionsInPeriod = chartData.reduce((s, d) => s + d.sessions, 0);
+  const activeDays = chartData.reduce((n, d) => n + (d.sessions > 0 ? 1 : 0), 0);
   const periodTotalDD = totalDDInRange;
   const periodAvgDD = sessionsInPeriod > 0 ? periodTotalDD / sessionsInPeriod : 0;
   const periodBest = notesInPeriod.reduce((m, n) => Math.max(m, n.rating ?? 0), 0);
@@ -262,21 +263,25 @@ export default function StatsPage() {
               <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-full" aria-hidden="true" />
               <div className="eyebrow mb-2">Sessions</div>
               <div className="text-4xl sm:text-5xl font-display font-normal text-primary tracking-tight" data-testid="stat-sessions">{sessionsInPeriod}</div>
+              <div className="text-[11px] leading-tight text-muted-foreground/70 mt-1.5" data-testid="text-sessions-caption">over {activeDays} day{activeDays === 1 ? "" : "s"}</div>
             </div>
             <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
               <span className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-full" aria-hidden="true" />
               <div className="eyebrow mb-2">Total DD</div>
               <div className="text-4xl sm:text-5xl font-display font-normal text-emerald-400 tracking-tight" data-testid="stat-total-dd">{periodTotalDD.toFixed(1)}</div>
+              <div className="text-[11px] leading-tight text-muted-foreground/70 mt-1.5">total difficulty</div>
             </div>
             <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
               <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 rounded-full" aria-hidden="true" />
               <div className="eyebrow mb-2">Avg DD</div>
               <div className="text-4xl sm:text-5xl font-display font-normal text-amber-400 tracking-tight" data-testid="stat-avg-dd">{periodAvgDD.toFixed(1)}</div>
+              <div className="text-[11px] leading-tight text-muted-foreground/70 mt-1.5">DD per session</div>
             </div>
             <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
               <span className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500 rounded-full" aria-hidden="true" />
               <div className="eyebrow mb-2">Best ★</div>
               <div className="text-4xl sm:text-5xl font-display font-normal text-rose-400 tracking-tight" data-testid="stat-best">{periodBest.toFixed(1)}</div>
+              <div className="text-[11px] leading-tight text-muted-foreground/70 mt-1.5">highest star rating</div>
             </div>
           </div>
         </div>
@@ -339,7 +344,11 @@ export default function StatsPage() {
                     }}
                     itemStyle={{ color: 'hsl(var(--foreground))' }}
                     labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
-                    formatter={(value: any) => value !== null ? [Number(value).toFixed(1), "DD"] : ["Rest day", ""]}
+                    formatter={(value: any, _n: any, item: any) => {
+                      if (value === null || value === undefined) return ["Rest day", ""];
+                      const s = item?.payload?.sessions ?? 0;
+                      return [`${Number(value).toFixed(1)} DD · ${s} session${s === 1 ? "" : "s"}`, ""];
+                    }}
                     labelFormatter={range === "year" ? (v: string) => { try { return format(parseISO(v), "d MMM"); } catch { return v; } } : undefined}
                     cursor={{ stroke: 'hsl(var(--primary) / 0.3)', strokeWidth: 1 }}
                   />
