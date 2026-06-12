@@ -26,11 +26,11 @@ function Navigation() {
   const [location] = useLocation();
   const { user } = useAuth();
   const navItems = [
-    { href: "/", label: "Training", icon: LayoutDashboard, iconColor: "text-blue-400", activeColor: "bg-blue-500/15 text-blue-400" },
-    { href: "/score", label: "Score", icon: Trophy, iconColor: "text-yellow-400", activeColor: "bg-yellow-500/15 text-yellow-400" },
-    { href: "/stats", label: "Progress", icon: BarChart3, iconColor: "text-green-400", activeColor: "bg-green-500/15 text-green-400" },
-    { href: "/skills", label: "Skills", icon: Target, iconColor: "text-red-400", activeColor: "bg-red-500/15 text-red-400" },
-    { href: "/routines", label: "Routines", icon: Layers, iconColor: "text-purple-400", activeColor: "bg-purple-500/15 text-purple-400" },
+    { href: "/", label: "Training", icon: LayoutDashboard, lightColor: "text-blue-400/45", activeColor: "bg-blue-500/15 text-blue-400" },
+    { href: "/score", label: "Score", icon: Trophy, lightColor: "text-yellow-400/45", activeColor: "bg-yellow-500/15 text-yellow-400" },
+    { href: "/stats", label: "Progress", icon: BarChart3, lightColor: "text-green-400/45", activeColor: "bg-green-500/15 text-green-400" },
+    { href: "/skills", label: "Skills", icon: Target, lightColor: "text-red-400/45", activeColor: "bg-red-500/15 text-red-400" },
+    { href: "/routines", label: "Routines", icon: Layers, lightColor: "text-purple-400/45", activeColor: "bg-purple-500/15 text-purple-400" },
   ];
 
   const baseItem =
@@ -49,10 +49,10 @@ function Navigation() {
                 baseItem,
                 active
                   ? `${item.activeColor} font-semibold`
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                  : `${item.lightColor} hover:bg-secondary`,
               )}
             >
-              <item.icon className={cn("w-4 h-4", active && item.iconColor)} />
+              <item.icon className="w-4 h-4" />
               <span className="hidden sm:inline">{item.label}</span>
             </div>
           </Link>
