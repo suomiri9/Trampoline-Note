@@ -68,7 +68,7 @@ function ScoreBreakdown({ e, d, h, t, label }: { e: number; d: number; h: number
         {cols.map((c) => (
           <div key={c.k}>
             <div className="font-mono text-[14px] font-semibold tabular-nums tracking-tight">{c.v}</div>
-            <div className="eyebrow text-[0.6rem] mt-1 text-muted-foreground/70">{c.k}</div>
+            <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">{c.k}</div>
           </div>
         ))}
       </div>
