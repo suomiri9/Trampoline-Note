@@ -6,22 +6,25 @@ interface StarRatingProps {
   value: number | null | undefined;
   onChange: (value: number | null) => void;
   readonly?: boolean;
+  size?: "sm" | "md";
 }
 
-export function StarRating({ value, onChange, readonly = false }: StarRatingProps) {
+export function StarRating({ value, onChange, readonly = false, size = "md" }: StarRatingProps) {
   const [hoverValue, setHoverValue] = useState<number | null>(null);
   
   const displayValue = hoverValue ?? value ?? 0;
+  const isSm = size === "sm";
 
   return (
-    <div className="flex items-center gap-1" onMouseLeave={() => setHoverValue(null)}>
+    <div className={cn("flex items-center", isSm ? "gap-0.5" : "gap-1")} onMouseLeave={() => setHoverValue(null)}>
       {[1, 2, 3, 4, 5].map((star) => (
         <button
           key={star}
           type="button"
           disabled={readonly}
           className={cn(
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full p-1 transition-all duration-200",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full transition-all duration-200",
+            isSm ? "p-0" : "p-1",
             readonly ? "cursor-default" : "cursor-pointer hover:scale-110 active:scale-95"
           )}
           onClick={() => {
@@ -36,7 +39,8 @@ export function StarRating({ value, onChange, readonly = false }: StarRatingProp
         >
           <Star
             className={cn(
-              "w-5 h-5 transition-all duration-300",
+              "transition-all duration-300",
+              isSm ? "w-2.5 h-2.5" : "w-5 h-5",
               displayValue >= star 
                 ? "fill-yellow-400 text-yellow-400" 
                 : "fill-transparent text-muted-foreground/30 hover:text-yellow-300"

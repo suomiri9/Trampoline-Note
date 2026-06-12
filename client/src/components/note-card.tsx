@@ -75,12 +75,10 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                 <Clock className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
                 {formatTime(note.startTime, timeFormat)} - {formatTime(note.endTime, timeFormat)}
               </span>
+              {note.rating ? (
+                <StarRating value={note.rating} onChange={() => {}} readonly size="sm" />
+              ) : null}
             </div>
-            {note.rating ? (
-              <div className="-ml-1 scale-90 origin-left">
-                <StarRating value={note.rating} onChange={() => {}} readonly />
-              </div>
-            ) : null}
           </div>
           <div className="flex items-start gap-2 shrink-0">
             {isPending && <PendingSyncBadge testId={`badge-pending-sync-${note.id}`} />}
