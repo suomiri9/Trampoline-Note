@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
-import { calcDDFromSkillIds } from "@/lib/training-utils";
+import { useNotes } from "@/hooks/use-notes";
+import { calcDDFromSkillIds, parseNoteSkills } from "@/lib/training-utils";
 import { useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { useTypeToSearch } from "@/hooks/use-type-to-search";
 import { PageLayout } from "@/components/page-layout";
@@ -30,7 +31,23 @@ export default function RoutinesPage() {
   const { data: allItems } = useSkills();
   const skills = allItems?.filter(item => item.isDrill === 0 && item.archived !== 1);
   const { data: allRoutines, createRoutine, deleteRoutine, updateRoutine, isCreating, isUpdating } = useRoutines();
-  
+  const { data: notes } = useNotes();
+
+  const firstPracticedByRoutine = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const note of notes ?? []) {
+      const ids = new Set<number>();
+      for (const it of parseNoteSkills(note.skills)) {
+        if (it.id === -2 && typeof it.routineId === "number") ids.add(it.routineId);
+      }
+      for (const rid of Array.from(ids)) {
+        const existing = map.get(rid);
+        if (!existing || note.date < existing) map.set(rid, note.date);
+      }
+    }
+    return map;
+  }, [notes]);
+
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
   const [name, setName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
@@ -282,9 +299,9 @@ export default function RoutinesPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {routines?.map((routine) => {
           const dd = calcDDFromSkillIds(routine.skillIds, allItems || []);
-          const created = routine.createdAt ? new Date(routine.createdAt) : null;
-          const createdLabel = created && !isNaN(created.getTime())
-            ? `${String(created.getDate()).padStart(2, "0")}-${String(created.getMonth() + 1).padStart(2, "0")}-${created.getFullYear()}`
+          const firstPracticed = firstPracticedByRoutine.get(routine.id);
+          const practicedLabel = firstPracticed
+            ? (() => { const [y, m, d] = firstPracticed.split("-"); return `${d}-${m}-${y}`; })()
             : null;
           return (
             <div
@@ -300,8 +317,8 @@ export default function RoutinesPage() {
               <div className="flex items-start justify-between gap-3">
                 <h3 className="font-semibold text-base leading-tight flex items-center gap-2 flex-wrap min-w-0 pt-1">
                   <span className="truncate">{routine.name}</span>
-                  {createdLabel && (
-                    <span className="text-[10px] font-mono font-normal text-muted-foreground shrink-0" data-testid={`text-routine-created-${routine.id}`}>{createdLabel}</span>
+                  {practicedLabel && (
+                    <span className="text-[10px] font-mono font-normal text-muted-foreground shrink-0" data-testid={`text-routine-first-practiced-${routine.id}`}>{practicedLabel}</span>
                   )}
                   {routine.id < 0 && (
                     <PendingSyncBadge testId={`badge-pending-routine-${routine.id}`} />

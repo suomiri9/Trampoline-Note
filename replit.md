@@ -35,7 +35,7 @@ Near-black dark theme is the default baseline (`<html class="dark">` in `client/
 - `sessions` — Express session store
 - `notes` — Training sessions (per user)
 - `skills` — Skills/drills/frequent connections (per user)
-- `routines` — 10-skill routines (per user); `createdAt` (timestamp, `defaultNow`) records when each routine was made and is shown as a `dd-mm-yyyy` mono label beside the routine name on the Routines card
+- `routines` — 10-skill routines (per user); `createdAt` (timestamp, `defaultNow`) records when each routine was made. The Routines card shows a `dd-mm-yyyy` mono label beside the routine name that is the routine's **first practiced date** (earliest training note whose parsed `skills` contain a routine item `id === -2` with that `routineId`) — computed client-side in `routines.tsx` via `firstPracticedByRoutine`; the label is hidden until the routine has been practiced at least once (it is NOT `createdAt`)
 - `scores` — Competition/practice scores with E/D/H/T fields (per user). `competitionId` (text, nullable) + `round` (text, nullable: `"prelims"`/`"final"`) group multiple rounds of one competition into a single card; null for practice/trial and legacy competition rows
 
 ## Auth
