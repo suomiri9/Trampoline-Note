@@ -66,7 +66,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
         <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-full" aria-hidden="true" />
         <div className="flex justify-between items-stretch gap-3 mb-3">
           <div className="min-w-0 flex flex-col gap-2 pt-0.5">
-            <div className="flex items-center flex-wrap gap-x-4 gap-y-1 font-mono text-[12px] sm:text-[13px] text-muted-foreground">
+            <div className="flex items-center flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] text-muted-foreground">
               <span className="flex items-center gap-1.5 whitespace-nowrap">
                 <Calendar className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
                 {format(new Date(note.date), "EEE, d MMM yyyy")}
