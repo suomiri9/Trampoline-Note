@@ -211,7 +211,6 @@ export default function StatsPage() {
   const allNotes = notes ?? [];
   const allTimeTotalDD = allNotes.reduce((sum, n) => sum + calculateTotalDD(parseNoteSkills(n.skills), allItems, routines), 0);
   const allTimeSessions = allNotes.length;
-  const allTimeBestRating = allNotes.reduce((m, n) => Math.max(m, n.rating ?? 0), 0);
   const earliestNoteDate = allNotes.reduce<string | null>((min, n) => {
     const d = n.date.substring(0, 10);
     return min === null || d < min ? d : min;
@@ -399,7 +398,6 @@ export default function StatsPage() {
               {[
                 { label: "Total DD Trained", value: allTimeTotalDD.toFixed(1), testId: "overview-total-dd" },
                 { label: "Sessions Logged", value: String(allTimeSessions), testId: "overview-sessions" },
-                { label: "Best Session Rating", value: allTimeBestRating > 0 ? String(allTimeBestRating) : "—", testId: "overview-best-rating" },
                 { label: "Active Since", value: activeSince, testId: "overview-active-since" },
                 { label: "Skills in Library", value: String(skillsInLibrary), testId: "overview-skills" },
               ].map((row) => (
