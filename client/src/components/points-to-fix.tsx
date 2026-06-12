@@ -168,6 +168,7 @@ export function PointsToFix({
     fromRoutineId: number | null;
   } | null>(null);
   const dialogContentRef = useRef<HTMLDivElement>(null);
+  const addDialogContentRef = useRef<HTMLDivElement>(null);
 
   const hasDraft =
     draftName.trim().length > 0 ||
@@ -811,34 +812,26 @@ export function PointsToFix({
                           <X className="h-4 w-4" />
                         </Button>
                       )}
-                      <Popover
-                        open={addOpen}
-                        onOpenChange={(v) => {
-                          if (!v && hasDraft) return;
-                          setAddOpen(v);
-                        }}
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => setAddOpen(true)}
+                        className="h-11 shrink-0 rounded-xl px-3 gap-1"
+                        data-testid="button-open-add-point"
                       >
-                        <PopoverTrigger asChild>
-                          <Button
-                            type="button"
-                            size="sm"
-                            className="h-11 shrink-0 rounded-xl px-3 gap-1"
-                            data-testid="button-open-add-point"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent
-                          container={dialogContentRef.current}
-                          className="w-[min(360px,calc(100vw-48px))] p-3 space-y-3"
-                          align="end"
-                          onInteractOutside={(e) => {
-                            if (hasDraft) e.preventDefault();
-                          }}
-                          onEscapeKeyDown={(e) => {
-                            if (hasDraft) e.preventDefault();
-                          }}
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+                        <DialogContent
+                          ref={addDialogContentRef}
+                          className="sm:max-w-[420px] w-[calc(100vw-32px)] max-w-[calc(100vw-32px)] max-h-[85vh] overflow-y-auto rounded-2xl p-4 sm:p-5"
                         >
+                          <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2 text-base">
+                              <Plus className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                              New Point
+                            </DialogTitle>
+                          </DialogHeader>
                           {draftSkillIds.length === 0 && draftRoutineIds.length === 0 && (
                             <div className="space-y-1.5">
                               <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
@@ -896,7 +889,7 @@ export function PointsToFix({
                                     </Button>
                                   </PopoverTrigger>
                                   <PopoverContent
-                                    container={dialogContentRef.current}
+                                    container={addDialogContentRef.current}
                                     className="p-0 w-[--radix-popover-trigger-width]"
                                     align="start"
                                   >
@@ -1090,8 +1083,8 @@ export function PointsToFix({
                             <Plus className="w-4 h-4" />
                             Add Point
                           </Button>
-                        </PopoverContent>
-                      </Popover>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                     {noResults ? (
                       <p className="text-sm text-muted-foreground italic py-4 text-center">
