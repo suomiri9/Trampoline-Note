@@ -25,7 +25,7 @@ Near-black dark theme is the default baseline (`<html class="dark">` in `client/
 
 1. **Training** (`/`) — Log sessions with date, time, skills/drills, routines, notes, star rating. In the add/edit dialog the star rating sits inline to the RIGHT of the start→end time row; on the training-log card (Home) the star rating sits directly BELOW the date/time line.
 2. **Score** (`/score`) — Track E/D/H/T scores per routine; supports Set/Vol/both, practice or competition, partial attempts
-3. **Progress** (`/stats`) — Line chart of total daily DD over time
+3. **Progress** (`/stats`) — Line chart of total daily DD over time. The four stat cards (Sessions, Total DD, Avg DD, Best ★) are scoped to the chart's currently selected range + offset (week/month/year/all), not all-time; a scope row above the cards shows the period title + date range with the hint "Totals reflect the selected range". `periodTitle` is offset-aware (This/Last/generic) and reused by the chart card's DD eyebrow.
 4. **Skills** (`/skills`) — Manage skills/drills/frequent connections library
 5. **Routines** (`/routines`) — Build 10-skill routines
 

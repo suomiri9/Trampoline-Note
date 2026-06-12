@@ -187,14 +187,24 @@ export default function StatsPage() {
     touchStartX.current = null;
   };
 
-  // ---- All-time aggregates (independent of selected range) ----
-  const allTimeTotalDD = Object.values(ddByDate).reduce((s, d) => s + d.difficulty, 0);
-  const sessionsLogged = notes?.length ?? 0;
-  const avgDD = sessionsLogged > 0 ? allTimeTotalDD / sessionsLogged : 0;
-  const bestRating = notes?.reduce((m, n) => Math.max(m, n.rating ?? 0), 0) ?? 0;
-  const skillsCount = allItems?.length ?? 0;
-  const allDateKeys = Object.keys(ddByDate).sort();
-  const activeSince = allDateKeys.length ? format(parseISO(allDateKeys[0]), "MMM yyyy") : "—";
+  // ---- Selected-period aggregates: the cards follow the chart's range + offset ----
+  let periodStart: Date | null = null;
+  let periodEnd: Date | null = null;
+  if (range === "week") {
+    const ws = addWeeks(startOfWeek(today, { weekStartsOn: 1 }), offset);
+    periodStart = ws; periodEnd = endOfWeek(ws, { weekStartsOn: 1 });
+  } else if (range === "month") {
+    const ref = addMonths(today, offset); periodStart = startOfMonth(ref); periodEnd = endOfMonth(ref);
+  } else if (range === "year") {
+    const ref = addYears(today, offset); periodStart = startOfYear(ref); periodEnd = endOfYear(ref);
+  }
+  const notesInPeriod = periodStart && periodEnd
+    ? (notes ?? []).filter(n => isWithinInterval(parseISO(n.date.substring(0, 10)), { start: periodStart!, end: periodEnd! }))
+    : (notes ?? []);
+  const sessionsInPeriod = chartData.reduce((s, d) => s + d.sessions, 0);
+  const periodTotalDD = totalDDInRange;
+  const periodAvgDD = sessionsInPeriod > 0 ? periodTotalDD / sessionsInPeriod : 0;
+  const periodBest = notesInPeriod.reduce((m, n) => Math.max(m, n.rating ?? 0), 0);
 
   // ---- Period delta (current vs previous comparable period) ----
   const periodTotalFor = (off: number): number => {
@@ -207,7 +217,7 @@ export default function StatsPage() {
     } else if (range === "year") {
       const ref = addYears(today, off); start = startOfYear(ref); end = endOfYear(ref);
     } else {
-      return allTimeTotalDD;
+      return 0;
     }
     let sum = 0;
     for (const [k, v] of Object.entries(ddByDate)) {
@@ -220,9 +230,14 @@ export default function StatsPage() {
     ? ((totalDDInRange - prevPeriodTotal) / prevPeriodTotal) * 100
     : (totalDDInRange > 0 ? 100 : 0);
   const showDelta = navigable && (prevPeriodTotal > 0 || totalDDInRange > 0);
-  const periodTitle = range === "week" ? "This Week" : range === "month" ? "This Month" : range === "year" ? "This Year" : "All Time";
+  const periodTitle = range === "all"
+    ? "All Time"
+    : range === "week"
+      ? (offset === 0 ? "This Week" : offset === -1 ? "Last Week" : "Week")
+      : range === "month"
+        ? (offset === 0 ? "This Month" : offset === -1 ? "Last Month" : "Month")
+        : (offset === 0 ? "This Year" : offset === -1 ? "Last Year" : "Year");
   const prevLabel = range === "week" ? "vs last week" : range === "month" ? "vs last month" : range === "year" ? "vs last year" : "";
-  const stars = Math.round(bestRating);
 
   return (
     <PageLayout>
@@ -234,26 +249,35 @@ export default function StatsPage() {
       />
 
       <div className="grid gap-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
-            <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-full" aria-hidden="true" />
-            <div className="eyebrow mb-2">Sessions</div>
-            <div className="text-4xl sm:text-5xl font-display font-normal text-primary tracking-tight" data-testid="stat-sessions">{sessionsLogged}</div>
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <div className="flex items-baseline gap-2">
+              <span className="eyebrow" data-testid="text-stats-scope">{periodTitle}</span>
+              <span className="text-xs font-mono text-muted-foreground" data-testid="text-stats-period">{periodLabel}</span>
+            </div>
+            <span className="text-[11px] text-muted-foreground/70">Totals reflect the selected range</span>
           </div>
-          <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
-            <span className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-full" aria-hidden="true" />
-            <div className="eyebrow mb-2">Total DD</div>
-            <div className="text-4xl sm:text-5xl font-display font-normal text-emerald-400 tracking-tight" data-testid="stat-total-dd">{allTimeTotalDD.toFixed(1)}</div>
-          </div>
-          <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
-            <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 rounded-full" aria-hidden="true" />
-            <div className="eyebrow mb-2">Avg DD</div>
-            <div className="text-4xl sm:text-5xl font-display font-normal text-amber-400 tracking-tight" data-testid="stat-avg-dd">{avgDD.toFixed(1)}</div>
-          </div>
-          <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
-            <span className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500 rounded-full" aria-hidden="true" />
-            <div className="eyebrow mb-2">Best ★</div>
-            <div className="text-4xl sm:text-5xl font-display font-normal text-rose-400 tracking-tight" data-testid="stat-best">{bestRating.toFixed(1)}</div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
+              <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-full" aria-hidden="true" />
+              <div className="eyebrow mb-2">Sessions</div>
+              <div className="text-4xl sm:text-5xl font-display font-normal text-primary tracking-tight" data-testid="stat-sessions">{sessionsInPeriod}</div>
+            </div>
+            <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
+              <span className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-full" aria-hidden="true" />
+              <div className="eyebrow mb-2">Total DD</div>
+              <div className="text-4xl sm:text-5xl font-display font-normal text-emerald-400 tracking-tight" data-testid="stat-total-dd">{periodTotalDD.toFixed(1)}</div>
+            </div>
+            <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
+              <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 rounded-full" aria-hidden="true" />
+              <div className="eyebrow mb-2">Avg DD</div>
+              <div className="text-4xl sm:text-5xl font-display font-normal text-amber-400 tracking-tight" data-testid="stat-avg-dd">{periodAvgDD.toFixed(1)}</div>
+            </div>
+            <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
+              <span className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500 rounded-full" aria-hidden="true" />
+              <div className="eyebrow mb-2">Best ★</div>
+              <div className="text-4xl sm:text-5xl font-display font-normal text-rose-400 tracking-tight" data-testid="stat-best">{periodBest.toFixed(1)}</div>
+            </div>
           </div>
         </div>
 
