@@ -775,237 +775,271 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </Button>
                 </div>
 
-                {showNewSkill && (
-                  <div className={cn("p-3 rounded-xl border space-y-2", newSkillIsDrill ? "border-yellow-200 dark:border-yellow-800 bg-yellow-50/50 dark:bg-yellow-900/10" : "border-border bg-secondary/20")}>
-                    <div className="flex items-center justify-between">
-                      <span className={cn("text-xs font-bold", newSkillIsDrill ? "text-yellow-600 dark:text-yellow-400" : "text-foreground/80")}>{newSkillIsDrill ? "New Drill" : "New Skill"}</span>
-                      <div className="flex gap-1">
-                        <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground" onClick={() => setNewSkillIsDrill(!newSkillIsDrill)}>Switch to {newSkillIsDrill ? "Skill" : "Drill"}</Button>
-                        <button type="button" onClick={() => setShowNewSkill(false)}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
-                      </div>
-                    </div>
+                <Dialog open={showNewSkill} onOpenChange={(o) => { if (!o) setShowNewSkill(false); }}>
+                  <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>{newSkillIsDrill ? "Add New Drill" : "Add New Skill"}</DialogTitle>
+                    </DialogHeader>
                     {(() => {
                       const dupItems = allItems?.filter(s => (newSkillIsDrill ? s.isDrill === 1 : s.isDrill === 0) && s.archived !== 1) || [];
                       if (dupItems.length === 0) return null;
                       return (
-                        <Select value="" onValueChange={(v) => {
-                          const src = dupItems.find(s => s.id === parseInt(v));
-                          if (!src) return;
-                          setNewSkillName(`${src.name} (copy)`);
-                          setNewSkillCode(src.code);
-                          setNewSkillDD(src.difficulty.toString());
-                        }}>
-                          <SelectTrigger className="rounded-lg h-8 text-xs" data-testid="select-duplicate-inline-skill"><SelectValue placeholder={`Duplicate from existing ${newSkillIsDrill ? "drill" : "skill"}...`} /></SelectTrigger>
-                          <SelectContent>
-                            {dupItems.map(s => (
-                              <SelectItem key={s.id} value={s.id.toString()}><span className="text-xs"><span className="font-mono">{s.code}</span> — {s.name}</span></SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      );
-                    })()}
-                    <div className="flex gap-2">
-                      <Input placeholder="Name" value={newSkillName} onChange={e => setNewSkillName(e.target.value)} className="rounded-lg h-9 text-xs w-1/2" />
-                      <Input placeholder="Code" value={newSkillCode} onChange={e => setNewSkillCode(e.target.value)} className="rounded-lg h-9 text-xs w-1/2" />
-                    </div>
-                    <Input type="number" step="0.1" min="0" placeholder="DD" value={newSkillDD} onChange={e => setNewSkillDD(e.target.value)} className="rounded-lg h-9 text-xs w-20" />
-                    <Button type="button" size="sm" className="w-full h-8 rounded-lg text-xs" disabled={!newSkillName || !newSkillCode || isCreatingSkill} onClick={async () => {
-                      try {
-                        await createSkill({ name: newSkillName, code: newSkillCode, difficulty: parseFloat(newSkillDD) || 0, isDrill: newSkillIsDrill ? 1 : 0 });
-                        setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); setShowNewSkill(false);
-                      } catch {}
-                    }}>Save {newSkillIsDrill ? "Drill" : "Skill"}</Button>
-                  </div>
-                )}
-
-                {showNewConn && (
-                  <div className="p-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-red-600 dark:text-red-400">New Connection</span>
-                      <div className="flex gap-1">
-                        <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground" onClick={() => { setShowNewConn(false); setShowNewRoutine(true); setNewRoutineName(""); setNewRoutineSkillIds([]); }}>Switch to Routine</Button>
-                        <button type="button" onClick={() => setShowNewConn(false)}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
-                      </div>
-                    </div>
-                    {(() => {
-                      const dupConns = allItems?.filter(s => s.isDrill === 2 && s.archived !== 1) || [];
-                      if (dupConns.length === 0) return null;
-                      return (
-                        <Select value="" onValueChange={(v) => {
-                          const src = dupConns.find(s => s.id === parseInt(v));
-                          if (!src) return;
-                          setNewConnName(`${src.name} (copy)`);
-                          setNewConnSkillIds(src.skillIds || []);
-                        }}>
-                          <SelectTrigger className="rounded-lg h-8 text-xs" data-testid="select-duplicate-inline-connection"><SelectValue placeholder="Duplicate from existing connection..." /></SelectTrigger>
-                          <SelectContent>
-                            {dupConns.map(s => (
-                              <SelectItem key={s.id} value={s.id.toString()}><span className="text-xs">{s.name}</span></SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      );
-                    })()}
-                    <Input placeholder="Name (e.g. Ba+BT)" value={newConnName} onChange={e => setNewConnName(e.target.value)} className="rounded-lg h-9 text-xs" />
-                    <div className="flex items-center gap-2">
-                    <Popover open={connSkillPickerOpen} onOpenChange={(v) => { setConnSkillPickerOpen(v); if (!v) setConnSkillSearch(""); }}>
-                      <PopoverTrigger asChild>
-                        <Button type="button" variant="outline" role="combobox" className="rounded-lg h-8 flex-1 min-w-0 justify-start font-normal text-xs text-muted-foreground" data-testid="btn-open-conn-skill-picker">
-                          <Search className="h-3.5 w-3.5 mr-2 opacity-60 shrink-0" />
-                          <span className="truncate">Add skill to connection...</span>
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width]" align="start">
-                        <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
-                          <CommandInput placeholder="Search by name or code..." className="h-10" value={connSkillSearch} onValueChange={setConnSkillSearch} />
-                          <CommandList className="max-h-[280px]">
-                            <CommandEmpty>No matches.</CommandEmpty>
-                            <CommandGroup heading="Skills">
-                              {allItems?.filter(s => s.isDrill === 0 && s.archived !== 1).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
-                                <CommandItem key={s.id} value={`${s.code} ${s.name} skill`} onSelect={() => { addRecentSkill(s.id); setNewConnSkillIds(prev => [...prev, s.id]); setConnSkillPickerOpen(false); }} data-testid={`pick-conn-skill-${s.id}`}>
-                                  <span className="font-mono text-xs font-semibold text-foreground mr-2">{s.code}</span>
-                                  {s.code !== s.name && <span className="text-muted-foreground">- {s.name}</span>}
-                                </CommandItem>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground mb-1 block">Duplicate from existing</label>
+                          <Select value="" onValueChange={(v) => {
+                            const src = dupItems.find(s => s.id === parseInt(v));
+                            if (!src) return;
+                            setNewSkillName(`${src.name} (copy)`);
+                            setNewSkillCode(src.code);
+                            setNewSkillDD(src.difficulty.toString());
+                          }}>
+                            <SelectTrigger data-testid="select-duplicate-inline-skill"><SelectValue placeholder={`Pick a ${newSkillIsDrill ? "drill" : "skill"} to copy...`} /></SelectTrigger>
+                            <SelectContent>
+                              {dupItems.map(s => (
+                                <SelectItem key={s.id} value={s.id.toString()}><span className="font-mono mr-2">{s.code}</span> {s.name}</SelectItem>
                               ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                    <span className="text-[10px] shrink-0 text-muted-foreground" data-testid="text-new-conn-skill-count">{newConnSkillIds.length} skills</span>
-                    </div>
-                    {(() => {
-                      const recents = globalRecentSkillIds
-                        .map(id => allItems?.find(s => s.id === id && s.isDrill === 0 && s.archived !== 1))
-                        .filter((s): s is NonNullable<typeof s> => !!s);
-                      if (recents.length === 0) return null;
-                      return (
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {recents.map(s => (
-                              <button key={`nc-recent-${s.id}`} type="button" onClick={() => { addRecentSkill(s.id); setNewConnSkillIds(prev => [...prev, s.id]); }} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95" data-testid={`btn-new-conn-recent-${s.id}`}>{s.code}</button>
-                            ))}
-                          </div>
+                            </SelectContent>
+                          </Select>
                         </div>
                       );
                     })()}
-                    {newConnSkillIds.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium leading-none">Name</label>
+                        <Input placeholder={newSkillIsDrill ? "Tuck Jump" : "Back Tuck"} value={newSkillName} onChange={e => setNewSkillName(e.target.value)} data-testid="input-new-skill-name" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium leading-none">Code</label>
+                        <Input placeholder={newSkillIsDrill ? "TJ" : "BT"} value={newSkillCode} onChange={e => setNewSkillCode(e.target.value)} data-testid="input-new-skill-code" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium leading-none">Difficulty</label>
+                        <Input type="number" step="0.1" min="0" placeholder="0.0" value={newSkillDD} onChange={e => setNewSkillDD(e.target.value)} data-testid="input-new-skill-dd" />
+                      </div>
+                      <Button type="button" className="w-full" disabled={!newSkillName || !newSkillCode || isCreatingSkill} onClick={async () => {
+                        try {
+                          await createSkill({ name: newSkillName, code: newSkillCode, difficulty: parseFloat(newSkillDD) || 0, isDrill: newSkillIsDrill ? 1 : 0 });
+                          setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); setShowNewSkill(false);
+                        } catch {}
+                      }} data-testid="btn-save-new-skill">Add {newSkillIsDrill ? "Drill" : "Skill"}</Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={showNewConn} onOpenChange={(o) => { if (!o) setShowNewConn(false); }}>
+                  <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Add New Connection</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      {(() => {
+                        const dupConns = allItems?.filter(s => s.isDrill === 2 && s.archived !== 1) || [];
+                        if (dupConns.length === 0) return null;
+                        return (
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Duplicate from existing</label>
+                            <Select value="" onValueChange={(v) => {
+                              const src = dupConns.find(s => s.id === parseInt(v));
+                              if (!src) return;
+                              setNewConnName(`${src.name} (copy)`);
+                              setNewConnSkillIds(src.skillIds || []);
+                            }}>
+                              <SelectTrigger data-testid="select-duplicate-inline-connection"><SelectValue placeholder="Pick a connection to copy..." /></SelectTrigger>
+                              <SelectContent>
+                                {dupConns.map(s => (
+                                  <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        );
+                      })()}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium leading-none">Connection Name</label>
+                        <Input placeholder="e.g. Ba+BT" value={newConnName} onChange={e => setNewConnName(e.target.value)} data-testid="input-new-conn-name" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium leading-none">Build Sequence</label>
+                        <div className="flex items-center gap-2">
+                          <Popover open={connSkillPickerOpen} onOpenChange={(v) => { setConnSkillPickerOpen(v); if (!v) setConnSkillSearch(""); }}>
+                            <PopoverTrigger asChild>
+                              <Button type="button" variant="outline" role="combobox" className="h-9 flex-1 min-w-0 justify-start font-normal text-sm text-muted-foreground" data-testid="btn-open-conn-skill-picker">
+                                <Search className="h-3.5 w-3.5 mr-2 opacity-60 shrink-0" />
+                                <span className="truncate">Add skill to sequence...</span>
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+                              <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
+                                <CommandInput placeholder="Search by name or code..." className="h-10" value={connSkillSearch} onValueChange={setConnSkillSearch} />
+                                <CommandList className="max-h-[320px]">
+                                  <CommandEmpty>No matches.</CommandEmpty>
+                                  <CommandGroup heading="Skills">
+                                    {allItems?.filter(s => s.isDrill === 0 && s.archived !== 1).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
+                                      <CommandItem key={s.id} value={`${s.code} ${s.name} skill`} onSelect={() => { addRecentSkill(s.id); setNewConnSkillIds(prev => [...prev, s.id]); setConnSkillPickerOpen(false); }} data-testid={`pick-conn-skill-${s.id}`}>
+                                        <span className="font-mono text-xs font-semibold text-foreground mr-2">{s.code}</span>
+                                        {s.code !== s.name && <span className="text-muted-foreground">- {s.name}</span>}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          <span className="text-xs shrink-0 text-muted-foreground" data-testid="text-new-conn-skill-count">{newConnSkillIds.length} skills</span>
+                        </div>
+                        {(() => {
+                          const recents = globalRecentSkillIds
+                            .map(id => allItems?.find(s => s.id === id && s.isDrill === 0 && s.archived !== 1))
+                            .filter((s): s is NonNullable<typeof s> => !!s);
+                          if (recents.length === 0) return null;
+                          return (
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {recents.map(s => (
+                                  <button key={`nc-recent-${s.id}`} type="button" onClick={() => { addRecentSkill(s.id); setNewConnSkillIds(prev => [...prev, s.id]); }} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95" data-testid={`btn-new-conn-recent-${s.id}`}>{s.code}</button>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
                       <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleNewConnChipDragEnd}>
                         <SortableContext items={newConnSkillIds.map((_, i) => `nc-${i}`)} strategy={rectSortingStrategy}>
-                          <div className="flex flex-wrap gap-1 pt-1 border-t border-red-500/10">
+                          <div className="min-h-[80px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-2 items-start">
                             {newConnSkillIds.map((sid, i) => {
                               const s = allItems?.find(sk => sk.id === sid);
                               return (
                                 <SortableChip key={`nc-${i}`} uid={`nc-${i}`}>
-                                  <Badge variant="outline" className="font-mono text-[10px] gap-0 pr-0 py-0 items-stretch overflow-hidden" data-testid={`chip-new-conn-skill-${i}`}>
-                                    <span className="py-0.5 pl-2 pr-1 flex items-center">{s?.code}</span>
-                                    <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => setNewConnSkillIds(prev => prev.filter((_, j) => j !== i))} className="px-2 flex items-center justify-center hover:bg-muted/60 active:bg-muted" data-testid={`btn-remove-new-conn-skill-${i}`} aria-label="Remove">
-                                      <X className="h-3 w-3" />
-                                    </button>
+                                  <Badge variant="secondary" className="gap-0 pr-0 py-0 items-stretch overflow-hidden" data-testid={`chip-new-conn-skill-${i}`}>
+                                    <span className="py-0.5 pl-2.5 pr-1.5 flex items-center">{s?.code}</span>
+                                    <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => setNewConnSkillIds(prev => prev.filter((_, j) => j !== i))} className="px-2.5 flex items-center justify-center hover:bg-muted/60 active:bg-muted" data-testid={`btn-remove-new-conn-skill-${i}`} aria-label="Remove"><X className="h-3.5 w-3.5" /></button>
                                   </Badge>
                                 </SortableChip>
                               );
                             })}
+                            {newConnSkillIds.length === 0 && <span className="text-xs text-muted-foreground p-2">No skills added yet</span>}
                           </div>
                         </SortableContext>
                       </DndContext>
-                    )}
-                    <Button type="button" size="sm" className="w-full h-8 rounded-lg text-xs bg-red-500 hover:bg-red-600 text-white" disabled={!newConnName || newConnSkillIds.length === 0 || isCreatingSkill} onClick={async () => {
-                      try {
-                        const dd = newConnSkillIds.reduce((acc, sid) => acc + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0);
-                        await createSkill({ name: newConnName, code: newConnName, difficulty: dd, isDrill: 2, skillIds: newConnSkillIds });
-                        setNewConnName(""); setNewConnSkillIds([]); setShowNewConn(false);
-                      } catch {}
-                    }}>Save Connection</Button>
-                  </div>
-                )}
-
-                {showNewRoutine && (
-                  <div className="p-3 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-primary">New Routine</span>
-                      <div className="flex gap-1">
-                        <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground" onClick={() => { setShowNewRoutine(false); setShowNewConn(true); setNewConnName(""); setNewConnSkillIds([]); }}>Switch to Connection</Button>
-                        <button type="button" onClick={() => setShowNewRoutine(false)}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
+                      <div className="pt-2 flex justify-between items-center">
+                        <span className="text-sm font-medium">Total DD:</span>
+                        <span className="font-mono font-bold text-primary">{newConnSkillIds.reduce((acc, sid) => acc + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0).toFixed(1)}</span>
                       </div>
+                      <Button type="button" className="w-full" disabled={!newConnName || newConnSkillIds.length === 0 || isCreatingSkill} onClick={async () => {
+                        try {
+                          const dd = newConnSkillIds.reduce((acc, sid) => acc + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0);
+                          await createSkill({ name: newConnName, code: newConnName, difficulty: dd, isDrill: 2, skillIds: newConnSkillIds });
+                          setNewConnName(""); setNewConnSkillIds([]); setShowNewConn(false);
+                        } catch {}
+                      }} data-testid="btn-save-new-conn">Save Connection</Button>
                     </div>
-                    {(() => {
-                      const dupRoutines = routines?.filter(r => r.archived !== 1) || [];
-                      if (dupRoutines.length === 0) return null;
-                      return (
-                        <Select value="" onValueChange={(v) => {
-                          const src = dupRoutines.find(r => r.id === parseInt(v));
-                          if (!src) return;
-                          setNewRoutineName(`${src.name} (copy)`);
-                          setNewRoutineSkillIds(src.skillIds.slice(0, 10));
-                        }}>
-                          <SelectTrigger className="rounded-lg h-8 text-xs" data-testid="select-duplicate-inline-routine"><SelectValue placeholder="Duplicate from existing routine..." /></SelectTrigger>
-                          <SelectContent>
-                            {dupRoutines.map(r => (
-                              <SelectItem key={r.id} value={r.id.toString()}><span className="text-xs">{r.name}</span></SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      );
-                    })()}
-                    <Input placeholder="Name" value={newRoutineName} onChange={e => setNewRoutineName(e.target.value)} className="rounded-lg h-9 text-xs" />
-                    <div className="flex items-center gap-2">
-                      <Popover open={routineSkillPickerOpen} onOpenChange={(v) => { if (!v) { setRoutineSkillPickerOpen(false); setRoutineSkillSearch(""); return; } if (newRoutineSkillIds.length < 10) setRoutineSkillPickerOpen(true); }}>
-                        <PopoverTrigger asChild>
-                          <Button type="button" variant="outline" role="combobox" disabled={newRoutineSkillIds.length >= 10} className="rounded-lg h-8 flex-1 min-w-0 justify-start font-normal text-xs text-muted-foreground" data-testid="btn-open-routine-skill-picker">
-                            <Search className="h-3.5 w-3.5 mr-2 opacity-60 shrink-0" />
-                            <span className="truncate">{newRoutineSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."}</span>
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width]" align="start">
-                          <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
-                            <CommandInput placeholder="Search by name or code..." className="h-10" value={routineSkillSearch} onValueChange={setRoutineSkillSearch} />
-                            <CommandList className="max-h-[280px]">
-                              <CommandEmpty>No matches.</CommandEmpty>
-                              <CommandGroup heading="Skills">
-                                {allItems?.filter(s => s.isDrill === 0 && s.archived !== 1).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
-                                  <CommandItem key={s.id} value={`${s.code} ${s.name} skill`} onSelect={() => { setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, s.id] : prev); setRoutineSkillPickerOpen(false); }} data-testid={`pick-routine-skill-${s.id}`}>
-                                    <span className="font-mono text-xs font-semibold text-foreground mr-2">{s.code}</span>
-                                    {s.code !== s.name && <span className="text-muted-foreground">- {s.name}</span>}
-                                  </CommandItem>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={showNewRoutine} onOpenChange={(o) => { if (!o) setShowNewRoutine(false); }}>
+                  <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Create Routine</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      {(() => {
+                        const dupRoutines = routines?.filter(r => r.archived !== 1) || [];
+                        if (dupRoutines.length === 0) return null;
+                        return (
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Duplicate from existing</label>
+                            <Select value="" onValueChange={(v) => {
+                              const src = dupRoutines.find(r => r.id === parseInt(v));
+                              if (!src) return;
+                              setNewRoutineName(`${src.name} (copy)`);
+                              setNewRoutineSkillIds(src.skillIds.slice(0, 10));
+                            }}>
+                              <SelectTrigger data-testid="select-duplicate-inline-routine"><SelectValue placeholder="Pick a routine to copy..." /></SelectTrigger>
+                              <SelectContent>
+                                {dupRoutines.map(r => (
+                                  <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>
                                 ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      <span className={cn("text-[10px] shrink-0", newRoutineSkillIds.length >= 10 ? "text-red-500 font-bold" : "text-muted-foreground")}>{newRoutineSkillIds.length}/10</span>
-                    </div>
-                    {newRoutineSkillIds.length > 0 && (
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        );
+                      })()}
+                      <Input placeholder="Routine Name" value={newRoutineName} onChange={e => setNewRoutineName(e.target.value)} data-testid="input-new-routine-name" />
+                      <div className="flex items-center gap-2">
+                        <Popover open={routineSkillPickerOpen} onOpenChange={(v) => { if (!v) { setRoutineSkillPickerOpen(false); setRoutineSkillSearch(""); return; } if (newRoutineSkillIds.length < 10) setRoutineSkillPickerOpen(true); }}>
+                          <PopoverTrigger asChild>
+                            <Button type="button" variant="outline" role="combobox" disabled={newRoutineSkillIds.length >= 10} className="h-10 flex-1 justify-start font-normal text-muted-foreground" data-testid="btn-open-routine-skill-picker">
+                              <Search className="h-3.5 w-3.5 mr-2 opacity-60" />
+                              {newRoutineSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+                            <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
+                              <CommandInput placeholder="Search by name or code..." className="h-10" value={routineSkillSearch} onValueChange={setRoutineSkillSearch} />
+                              <CommandList className="max-h-[280px]">
+                                <CommandEmpty>No matches.</CommandEmpty>
+                                <CommandGroup heading="Skills">
+                                  {allItems?.filter(s => s.isDrill === 0 && s.archived !== 1).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
+                                    <CommandItem key={s.id} value={`${s.code} ${s.name} skill`} onSelect={() => { addRecentSkill(s.id); setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, s.id] : prev); setRoutineSkillPickerOpen(false); }} data-testid={`pick-routine-skill-${s.id}`}>
+                                      <span className="font-mono text-xs font-semibold text-foreground mr-2">{s.code}</span>
+                                      {s.code !== s.name && <span className="text-muted-foreground">- {s.name}</span>}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <span className={cn("text-xs shrink-0 font-mono", newRoutineSkillIds.length >= 10 ? "text-red-500 font-bold" : "text-muted-foreground")}>{newRoutineSkillIds.length}/10</span>
+                      </div>
+                      {(() => {
+                        const recents = globalRecentSkillIds
+                          .map(id => allItems?.find(s => s.id === id && s.isDrill === 0 && s.archived !== 1))
+                          .filter((s): s is NonNullable<typeof s> => !!s);
+                        if (recents.length === 0) return null;
+                        return (
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {recents.map(s => (
+                                <button key={`nr-recent-${s.id}`} type="button" disabled={newRoutineSkillIds.length >= 10} onClick={() => { addRecentSkill(s.id); setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, s.id] : prev); }} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95 disabled:opacity-40 disabled:pointer-events-none" data-testid={`btn-new-routine-recent-${s.id}`}>{s.code}</button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleNewRoutineChipDragEnd}>
                         <SortableContext items={newRoutineSkillIds.map((_, i) => `nr-${i}`)} strategy={rectSortingStrategy}>
-                          <div className="flex flex-wrap gap-1 pt-1 border-t border-primary/10">
+                          <div className="min-h-[80px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-2 items-start">
                             {newRoutineSkillIds.map((sid, i) => {
                               const s = allItems?.find(sk => sk.id === sid);
                               return (
                                 <SortableChip key={`nr-${i}`} uid={`nr-${i}`}>
-                                  <Badge variant="outline" className="font-mono text-[10px] gap-0 pr-0 py-0 items-stretch overflow-hidden" data-testid={`chip-new-routine-skill-${i}`}>
-                                    <span className="py-0.5 pl-2 pr-1 flex items-center">{s?.code}</span>
-                                    <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => setNewRoutineSkillIds(prev => prev.filter((_, j) => j !== i))} className="px-2 flex items-center justify-center hover:bg-muted/60 active:bg-muted" data-testid={`btn-remove-new-routine-skill-${i}`} aria-label="Remove">
-                                      <X className="h-3 w-3" />
-                                    </button>
+                                  <Badge variant="secondary" className="gap-0 pr-0 py-0 items-stretch overflow-hidden" data-testid={`chip-new-routine-skill-${i}`}>
+                                    <span className="py-0.5 pl-2.5 pr-1.5 flex items-center">{s?.code}</span>
+                                    <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => setNewRoutineSkillIds(prev => prev.filter((_, j) => j !== i))} className="px-2.5 flex items-center justify-center hover:bg-muted/60 active:bg-muted" data-testid={`btn-remove-new-routine-skill-${i}`} aria-label="Remove"><X className="h-3.5 w-3.5" /></button>
                                   </Badge>
                                 </SortableChip>
                               );
                             })}
+                            {newRoutineSkillIds.length === 0 && <span className="text-xs text-muted-foreground p-2">No skills added yet</span>}
                           </div>
                         </SortableContext>
                       </DndContext>
-                    )}
-                    <Button type="button" size="sm" className="w-full h-8 rounded-lg text-xs" disabled={!newRoutineName || newRoutineSkillIds.length === 0 || isCreatingRoutine} onClick={async () => {
-                      try {
-                        await createRoutine({ name: newRoutineName, code: newRoutineName, skillIds: newRoutineSkillIds });
-                        setNewRoutineName(""); setNewRoutineSkillIds([]); setShowNewRoutine(false);
-                      } catch {}
-                    }}>Save Routine</Button>
-                  </div>
-                )}
+                      <div className="pt-4 border-t flex justify-between items-center">
+                        <span className="text-sm font-medium text-muted-foreground">Total Difficulty</span>
+                        <span className="text-2xl font-display font-normal text-primary">{newRoutineSkillIds.reduce((acc, sid) => acc + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0).toFixed(1)}</span>
+                      </div>
+                      <Button type="button" className="w-full h-11" disabled={!newRoutineName || newRoutineSkillIds.length === 0 || isCreatingRoutine} onClick={async () => {
+                        try {
+                          await createRoutine({ name: newRoutineName, code: newRoutineName, skillIds: newRoutineSkillIds });
+                          setNewRoutineName(""); setNewRoutineSkillIds([]); setShowNewRoutine(false);
+                        } catch {}
+                      }} data-testid="btn-save-new-routine">Save Routine</Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
 
                 {showNewPart && (() => {
                   const partRoutines = (routines || []).filter(r => r.archived !== 1);
@@ -1019,115 +1053,124 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   const finalName = (newPartNameOverride ?? "").trim() || auto;
                   const dd = slice.reduce((a, sid) => a + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0);
                   return (
-                    <div className="p-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-100/50 dark:bg-gray-900/10 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-gray-600 dark:text-gray-300">New Routine Part</span>
-                        <button type="button" onClick={() => { setShowNewPart(false); setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); }}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
-                      </div>
-                      <Select value={newPartRoutineId !== null ? String(newPartRoutineId) : ""} onValueChange={(v) => {
-                        const id = parseInt(v);
-                        setNewPartRoutineId(Number.isFinite(id) ? id : null);
-                        setNewPartStart(1);
-                        const r = partRoutines.find(rr => rr.id === id);
-                        setNewPartEnd(r?.skillIds.length || 10);
-                        setNewPartNameOverride(null);
-                      }}>
-                        <SelectTrigger className="rounded-lg h-9 text-xs" data-testid="select-new-part-routine"><SelectValue placeholder="Pick a routine..." /></SelectTrigger>
-                        <SelectContent>
-                          {partRoutines.map(r => (
-                            <SelectItem key={r.id} value={String(r.id)}><span className="text-xs">{r.name}</span></SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {sel && (
-                        <>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-medium text-muted-foreground">Start (1–{total})</label>
-                              <Input
-                                type="number" min={1} max={total}
-                                value={newPartStart || ""}
-                                onChange={(e) => {
-                                  const raw = e.target.value;
-                                  if (raw === "") { setNewPartStart(0); setNewPartNameOverride(null); return; }
-                                  const n = parseInt(raw);
-                                  if (!Number.isFinite(n)) return;
-                                  setNewPartStart(Math.max(0, Math.min(total, n)));
-                                  setNewPartNameOverride(null);
-                                }}
-                                onBlur={() => {
-                                  const v = Math.max(1, Math.min(total, newPartStart || 1));
-                                  setNewPartStart(v);
-                                  if (v > newPartEnd) setNewPartEnd(v);
-                                }}
-                                className="rounded-lg h-8 text-xs"
-                                data-testid="input-new-part-start"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-medium text-muted-foreground">End ({newPartStart}–{total})</label>
-                              <Input
-                                type="number" min={newPartStart || 1} max={total}
-                                value={newPartEnd || ""}
-                                onChange={(e) => {
-                                  const raw = e.target.value;
-                                  if (raw === "") { setNewPartEnd(0); setNewPartNameOverride(null); return; }
-                                  const n = parseInt(raw);
-                                  if (!Number.isFinite(n)) return;
-                                  setNewPartEnd(Math.max(0, Math.min(total, n)));
-                                  setNewPartNameOverride(null);
-                                }}
-                                onBlur={() => {
-                                  const start = newPartStart || 1;
-                                  const v = Math.max(start, Math.min(total, newPartEnd || start));
-                                  setNewPartEnd(v);
-                                }}
-                                className="rounded-lg h-8 text-xs"
-                                data-testid="input-new-part-end"
-                              />
-                            </div>
+                    <Dialog open={showNewPart} onOpenChange={(o) => { if (!o) { setShowNewPart(false); setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); } }}>
+                      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>Add New Routine Part</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-3">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Routine</label>
+                            <Select value={newPartRoutineId !== null ? String(newPartRoutineId) : ""} onValueChange={(v) => {
+                              const id = parseInt(v);
+                              setNewPartRoutineId(Number.isFinite(id) ? id : null);
+                              setNewPartStart(1);
+                              const r = partRoutines.find(rr => rr.id === id);
+                              setNewPartEnd(r?.skillIds.length || 10);
+                              setNewPartNameOverride(null);
+                            }}>
+                              <SelectTrigger data-testid="select-new-part-routine"><SelectValue placeholder="Pick a routine..." /></SelectTrigger>
+                              <SelectContent>
+                                {partRoutines.map(r => (
+                                  <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
-                          <Input
-                            placeholder={auto}
-                            value={finalName}
-                            onChange={(e) => setNewPartNameOverride(e.target.value)}
-                            className="rounded-lg h-9 text-xs"
-                            data-testid="input-new-part-name"
-                          />
-                          <div className="flex flex-wrap gap-1 pt-1 border-t border-gray-500/20">
-                            {slice.length === 0 ? (
-                              <span className="text-[10px] text-muted-foreground p-1">Empty range</span>
-                            ) : slice.map((sid, i) => {
-                              const s = allItems?.find(sk => sk.id === sid);
-                              return (
-                                <Badge key={`np-${i}`} variant="outline" className="font-mono text-[10px]">
-                                  {effStart + i}. {s?.code || "?"}
-                                </Badge>
-                              );
-                            })}
-                          </div>
-                          <div className="flex justify-between items-center text-[11px]">
-                            <span className="text-muted-foreground">Total DD</span>
-                            <span className="font-mono font-semibold text-foreground">{dd.toFixed(1)}</span>
-                          </div>
-                        </>
-                      )}
-                      <Button
-                        type="button" size="sm"
-                        className="w-full h-8 rounded-lg text-xs bg-gray-500 hover:bg-gray-600 text-white"
-                        disabled={!sel || slice.length === 0 || !finalName || isCreatingSkill}
-                        onClick={async () => {
-                          try {
-                            const created = await createSkill({ name: finalName, code: finalName, difficulty: dd, isDrill: 3, skillIds: slice });
-                            if (created && (created as Skill).id !== undefined) {
-                              addSkill(String((created as Skill).id));
-                            }
-                            setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); setShowNewPart(false);
-                          } catch {}
-                        }}
-                        data-testid="btn-save-new-part"
-                      >Save Routine Part</Button>
-                    </div>
+                          {sel && (
+                            <>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                  <label className="text-xs font-medium text-muted-foreground">Start (1–{total})</label>
+                                  <Input
+                                    type="number" min={1} max={total}
+                                    value={newPartStart || ""}
+                                    onChange={(e) => {
+                                      const raw = e.target.value;
+                                      if (raw === "") { setNewPartStart(0); setNewPartNameOverride(null); return; }
+                                      const n = parseInt(raw);
+                                      if (!Number.isFinite(n)) return;
+                                      setNewPartStart(Math.max(0, Math.min(total, n)));
+                                      setNewPartNameOverride(null);
+                                    }}
+                                    onBlur={() => {
+                                      const v = Math.max(1, Math.min(total, newPartStart || 1));
+                                      setNewPartStart(v);
+                                      if (v > newPartEnd) setNewPartEnd(v);
+                                    }}
+                                    data-testid="input-new-part-start"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-xs font-medium text-muted-foreground">End ({newPartStart}–{total})</label>
+                                  <Input
+                                    type="number" min={newPartStart || 1} max={total}
+                                    value={newPartEnd || ""}
+                                    onChange={(e) => {
+                                      const raw = e.target.value;
+                                      if (raw === "") { setNewPartEnd(0); setNewPartNameOverride(null); return; }
+                                      const n = parseInt(raw);
+                                      if (!Number.isFinite(n)) return;
+                                      setNewPartEnd(Math.max(0, Math.min(total, n)));
+                                      setNewPartNameOverride(null);
+                                    }}
+                                    onBlur={() => {
+                                      const start = newPartStart || 1;
+                                      const v = Math.max(start, Math.min(total, newPartEnd || start));
+                                      setNewPartEnd(v);
+                                    }}
+                                    data-testid="input-new-part-end"
+                                  />
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs font-medium text-muted-foreground">Name</label>
+                                <Input
+                                  placeholder={auto}
+                                  value={finalName}
+                                  onChange={(e) => setNewPartNameOverride(e.target.value)}
+                                  data-testid="input-new-part-name"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs font-medium text-muted-foreground">Skills in this part</label>
+                                <div className="min-h-[60px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-1.5 items-start">
+                                  {slice.length === 0 ? (
+                                    <span className="text-xs text-muted-foreground p-1">Empty range</span>
+                                  ) : slice.map((sid, i) => {
+                                    const s = allItems?.find(sk => sk.id === sid);
+                                    return (
+                                      <Badge key={`np-${i}`} variant="outline" className="font-mono text-[10px]">
+                                        {effStart + i}. {s?.code || "?"}
+                                      </Badge>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                              <div className="pt-1 flex justify-between items-center">
+                                <span className="text-sm font-medium">Total DD:</span>
+                                <span className="font-mono font-bold text-primary">{dd.toFixed(1)}</span>
+                              </div>
+                            </>
+                          )}
+                          <Button
+                            type="button"
+                            className="w-full"
+                            disabled={!sel || slice.length === 0 || !finalName || isCreatingSkill}
+                            onClick={async () => {
+                              try {
+                                const created = await createSkill({ name: finalName, code: finalName, difficulty: dd, isDrill: 3, skillIds: slice });
+                                if (created && (created as Skill).id !== undefined) {
+                                  addSkill(String((created as Skill).id));
+                                }
+                                setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); setShowNewPart(false);
+                              } catch {}
+                            }}
+                            data-testid="btn-save-new-part"
+                          >Save Routine Part</Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   );
                 })()}
 
