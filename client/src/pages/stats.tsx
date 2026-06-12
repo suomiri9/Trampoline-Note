@@ -207,6 +207,18 @@ export default function StatsPage() {
   const periodAvgDD = sessionsInPeriod > 0 ? periodTotalDD / sessionsInPeriod : 0;
   const periodBest = notesInPeriod.reduce((m, n) => Math.max(m, calculateTotalDD(parseNoteSkills(n.skills), allItems, routines)), 0);
 
+  // ---- All-time overview (not period-scoped) ----
+  const allNotes = notes ?? [];
+  const allTimeTotalDD = allNotes.reduce((sum, n) => sum + calculateTotalDD(parseNoteSkills(n.skills), allItems, routines), 0);
+  const allTimeSessions = allNotes.length;
+  const allTimeBestRating = allNotes.reduce((m, n) => Math.max(m, n.rating ?? 0), 0);
+  const earliestNoteDate = allNotes.reduce<string | null>((min, n) => {
+    const d = n.date.substring(0, 10);
+    return min === null || d < min ? d : min;
+  }, null);
+  const activeSince = earliestNoteDate ? format(parseISO(earliestNoteDate), "MMM yyyy") : "—";
+  const skillsInLibrary = (allItems ?? []).filter(i => i.isDrill === 0 && i.archived !== 1).length;
+
   // ---- Period delta (current vs previous comparable period) ----
   const periodTotalFor = (off: number): number => {
     let start: Date, end: Date;
@@ -379,6 +391,24 @@ export default function StatsPage() {
             ) : (
               <div className="text-center mt-2 text-xs font-mono text-muted-foreground" data-testid="text-period-label">{periodLabel}</div>
             )}
+          </div>
+
+          <div className="card-3d rounded-2xl p-5">
+            <div className="eyebrow mb-2">All-Time</div>
+            <div className="divide-y divide-border/50">
+              {[
+                { label: "Total DD Trained", value: allTimeTotalDD.toFixed(1), testId: "overview-total-dd" },
+                { label: "Sessions Logged", value: String(allTimeSessions), testId: "overview-sessions" },
+                { label: "Best Session Rating", value: allTimeBestRating > 0 ? String(allTimeBestRating) : "—", testId: "overview-best-rating" },
+                { label: "Active Since", value: activeSince, testId: "overview-active-since" },
+                { label: "Skills in Library", value: String(skillsInLibrary), testId: "overview-skills" },
+              ].map((row) => (
+                <div key={row.label} className="flex items-center justify-between py-3.5">
+                  <span className="text-sm text-muted-foreground">{row.label}</span>
+                  <span className="font-mono text-base text-foreground" data-testid={row.testId}>{row.value}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
         </div>
