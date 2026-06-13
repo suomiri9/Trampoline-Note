@@ -710,13 +710,13 @@ export default function ScorePage() {
             <div className="eyebrow text-amber-400/70">Competition Personal Best</div>
             <div className="mt-4 grid grid-cols-2 gap-4">
               <div>
-                <div className="font-display font-normal text-4xl sm:text-5xl text-amber-400 leading-none tracking-tight" data-testid="text-pb-set">
+                <div className="font-display font-normal text-5xl sm:text-6xl text-amber-400 leading-none tracking-tight" data-testid="text-pb-set">
                   {personalBests.set > 0 ? personalBests.set.toFixed(1) : "—"}
                 </div>
                 <div className="eyebrow !text-[10px] mt-1.5 text-muted-foreground/70">Set Score</div>
               </div>
               <div>
-                <div className="font-display font-normal text-4xl sm:text-5xl text-amber-400 leading-none tracking-tight" data-testid="text-pb-vol">
+                <div className="font-display font-normal text-5xl sm:text-6xl text-amber-400 leading-none tracking-tight" data-testid="text-pb-vol">
                   {personalBests.vol > 0 ? personalBests.vol.toFixed(1) : "—"}
                 </div>
                 <div className="eyebrow !text-[10px] mt-1.5 text-muted-foreground/70">Vol Score</div>
