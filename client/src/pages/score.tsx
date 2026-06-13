@@ -127,8 +127,7 @@ function ScoreCard({
 }) {
   const isComp = score.type === "competition";
   const isTrial = score.type === "trial";
-  const isMulti = score.category === "both" || score.category === "vol_vol";
-  const grandTotal = isMulti ? score.total + (score.totalVol || 0) : score.total;
+  const grandTotal = effectiveTotal(score);
 
   const totalColor = isComp ? "text-amber-400" : isTrial ? "text-red-400" : "text-primary";
   const accentBar = isComp ? "bg-amber-500" : isTrial ? "bg-red-500" : "bg-primary";
@@ -209,6 +208,14 @@ function newCompetitionId(): string {
   return `comp_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+// Overall score for a row: vol_vol counts the BEST of the two voluntary routines,
+// "both" sums set + vol, everything else is the single total.
+function effectiveTotal(score: Pick<Score, "category" | "total" | "totalVol">): number {
+  if (score.category === "vol_vol") return Math.max(score.total, score.totalVol ?? 0);
+  if (score.category === "both") return score.total + (score.totalVol ?? 0);
+  return score.total;
+}
+
 function RoundBlock({
   score,
   hideRank,
@@ -224,8 +231,7 @@ function RoundBlock({
   onEdit: (score: Score) => void;
   onDelete: (id: number) => void;
 }) {
-  const isMulti = score.category === "both" || score.category === "vol_vol";
-  const grandTotal = isMulti ? score.total + (score.totalVol || 0) : score.total;
+  const grandTotal = effectiveTotal(score);
 
   return (
     <div className="pt-4 border-t border-border/60 first:border-t-0 first:pt-0" data-testid={`round-${score.id}`}>
@@ -525,11 +531,14 @@ export default function ScorePage() {
     setCustomSkillIdsVol(null);
     const compId = prelims.competitionId ?? newCompetitionId();
     if (!prelims.competitionId) {
+      // Legacy prelims row has no competitionId — it MUST be backfilled before the final
+      // is created, otherwise the final saves as its own standalone one-round group.
       try {
         await apiRequest("PUT", `/api/scores/${prelims.id}`, { competitionId: compId, round: prelims.round || "prelims" });
         queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
       } catch {
-        // best-effort backfill; the final still saves and groups once the prelims row carries the id
+        toast({ title: "Couldn't add a final round", description: "Please try again.", variant: "destructive" });
+        return;
       }
     }
     setIsAdding(true);
@@ -609,7 +618,7 @@ export default function ScorePage() {
   }, [customSkillIdsVol, allSkills]);
 
   const personalBest = (scores ?? []).reduce((max, s) => {
-    const t = (s.category === "both" || s.category === "vol_vol") ? s.total + (s.totalVol || 0) : s.total;
+    const t = effectiveTotal(s);
     return t > max ? t : max;
   }, 0);
 
