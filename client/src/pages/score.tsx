@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertScoreSchema, type Score, type Routine, type Skill, type InsertScore } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { calcDDFromSkillIds } from "@/lib/training-utils";
+import { calcDDFromSkillIds, parseNoteSkills } from "@/lib/training-utils";
 import { PageLayout } from "@/components/page-layout";
 import { PageHeader, primaryActionClass } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -13,6 +13,7 @@ import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { useOnline } from "@/hooks/use-online";
+import { useNotes } from "@/hooks/use-notes";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { useQueuedScores } from "@/hooks/use-queued-scores";
 import { deleteQueuedByTempId, isQueuedOfflineResult, tryNetworkOrEnqueue, type OfflineQueuedResult } from "@/lib/offline-queue";
@@ -57,6 +58,13 @@ const scoreDefaults = {
   totalVol: 0,
 };
 
+const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function formatMonthYear(dateStr: string): string {
+  const [y, m] = dateStr.split("-");
+  const mi = parseInt(m, 10) - 1;
+  return `${MONTH_ABBR[mi] ?? ""} ${y}`.trim();
+}
+
 function ScoreBreakdown({ e, d, h, t, label, routineName, total, totalColor, totalTestId }: { e: number; d: number; h: number; t: number; label?: string; routineName?: string | null; total?: number; totalColor?: string; totalTestId?: string }) {
   const cols: { k: string; v: string; accent?: boolean }[] = [
     { k: "E", v: e.toFixed(1) },
@@ -70,7 +78,11 @@ function ScoreBreakdown({ e, d, h, t, label, routineName, total, totalColor, tot
       {(label || routineName) && (
         <div className="flex items-baseline gap-2 mb-2 min-w-0">
           {label && <span className="eyebrow text-[0.6rem] tracking-[0.2em] text-muted-foreground/80 shrink-0">{label}</span>}
-          {routineName && <span className="text-[11px] text-muted-foreground/70 truncate">{routineName}</span>}
+          {routineName && (
+            <span className="inline-block max-w-full truncate rounded-lg border border-border/70 px-2 py-0.5 font-mono text-[11px] text-muted-foreground align-middle">
+              {routineName}
+            </span>
+          )}
         </div>
       )}
       <div className={cn("grid gap-2 text-center", total != null ? "grid-cols-5" : "grid-cols-4")}>
@@ -85,11 +97,17 @@ function ScoreBreakdown({ e, d, h, t, label, routineName, total, totalColor, tot
   );
 }
 
-function ScoreGroups({ score, totalColor, routines }: { score: Score; totalColor: string; routines?: Routine[] }) {
+function ScoreGroups({ score, totalColor, routines, firstPracticedByRoutine }: { score: Score; totalColor: string; routines?: Routine[]; firstPracticedByRoutine?: Map<number, string> }) {
   const isMulti = score.category === "both" || score.category === "vol_vol";
   const group1Label = score.category === "vol_vol" ? "VOL 1" : score.category === "vol" ? "VOL" : "SET";
   const group2Label = score.category === "vol_vol" ? "VOL 2" : "VOL";
-  const routineName = (id?: number | null) => (id != null ? routines?.find((r) => r.id === id)?.name : undefined);
+  const routineName = (id?: number | null) => {
+    if (id == null) return undefined;
+    const name = routines?.find((r) => r.id === id)?.name;
+    if (!name) return undefined;
+    const fp = firstPracticedByRoutine?.get(id);
+    return fp ? `${name} (${formatMonthYear(fp)}-)` : name;
+  };
   return (
     <div className="space-y-4">
       <ScoreBreakdown
@@ -127,6 +145,7 @@ function ScoreCard({
   pendingBadge,
   testId,
   pending,
+  firstPracticedByRoutine,
 }: {
   score: Score;
   routines?: Routine[];
@@ -134,6 +153,7 @@ function ScoreCard({
   pendingBadge?: ReactNode;
   testId?: string;
   pending?: boolean;
+  firstPracticedByRoutine?: Map<number, string>;
 }) {
   const isComp = score.type === "competition";
   const isTrial = score.type === "trial";
@@ -182,7 +202,7 @@ function ScoreCard({
         </div>
 
         <div className="mt-4 pt-4 border-t border-border/60">
-          <ScoreGroups score={score} totalColor={totalColor} routines={routines} />
+          <ScoreGroups score={score} totalColor={totalColor} routines={routines} firstPracticedByRoutine={firstPracticedByRoutine} />
         </div>
       </div>
     </div>
@@ -239,6 +259,7 @@ function RoundBlock({
   onEdit,
   onDelete,
   routines,
+  firstPracticedByRoutine,
 }: {
   score: Score;
   hideRank?: boolean;
@@ -247,6 +268,7 @@ function RoundBlock({
   onEdit: (score: Score) => void;
   onDelete: (id: number) => void;
   routines?: Routine[];
+  firstPracticedByRoutine?: Map<number, string>;
 }) {
   const grandTotal = effectiveTotal(score);
 
@@ -286,7 +308,7 @@ function RoundBlock({
         </div>
       </div>
       <div className="mt-3">
-        <ScoreGroups score={score} totalColor={accent} routines={routines} />
+        <ScoreGroups score={score} totalColor={accent} routines={routines} firstPracticedByRoutine={firstPracticedByRoutine} />
       </div>
     </div>
   );
@@ -301,6 +323,7 @@ function CompetitionCard({
   onAddFinal,
   testId,
   routines,
+  firstPracticedByRoutine,
 }: {
   rounds: Score[];
   variant?: "competition" | "trial";
@@ -310,6 +333,7 @@ function CompetitionCard({
   onAddFinal: (prelims: Score) => void;
   testId?: string;
   routines?: Routine[];
+  firstPracticedByRoutine?: Map<number, string>;
 }) {
   const isTrial = variant === "trial";
   const theme = COMP_THEME[variant];
@@ -376,6 +400,7 @@ function CompetitionCard({
               onEdit={onEditRound}
               onDelete={onDeleteRound}
               routines={routines}
+              firstPracticedByRoutine={firstPracticedByRoutine}
             />
           ))}
         </div>
@@ -404,6 +429,21 @@ export default function ScorePage() {
   const queuedScores = useQueuedScores();
   const { data: routines } = useQuery<Routine[]>({ queryKey: ["/api/routines"] });
   const { data: allSkills } = useQuery<Skill[]>({ queryKey: ["/api/skills"] });
+  const { data: notes } = useNotes();
+  const firstPracticedByRoutine = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const note of notes ?? []) {
+      const ids = new Set<number>();
+      for (const it of parseNoteSkills(note.skills)) {
+        if (it.id === -2 && typeof it.routineId === "number") ids.add(it.routineId);
+      }
+      for (const rid of Array.from(ids)) {
+        const existing = map.get(rid);
+        if (!existing || note.date < existing) map.set(rid, note.date);
+      }
+    }
+    return map;
+  }, [notes]);
 
   type CreateScoreResult = OfflineQueuedResult | Score;
   const createMutation = useMutation<CreateScoreResult, Error, InsertScore>({
@@ -1054,6 +1094,7 @@ export default function ScorePage() {
             key={`pending-${score.id}`}
             score={score}
             routines={routines}
+            firstPracticedByRoutine={firstPracticedByRoutine}
             testId={`card-score-pending-${score.id}`}
             pending
             pendingBadge={<PendingSyncBadge testId={`badge-pending-score-${score.id}`} />}
@@ -1104,6 +1145,7 @@ export default function ScorePage() {
               onDeleteComp={setDeleteCompIds}
               onAddFinal={startAddFinal}
               routines={routines}
+              firstPracticedByRoutine={firstPracticedByRoutine}
             />
           ) : item.score.type === "trial" ? (
             <CompetitionCard
@@ -1116,12 +1158,14 @@ export default function ScorePage() {
               onDeleteComp={setDeleteCompIds}
               onAddFinal={startAddFinal}
               routines={routines}
+              firstPracticedByRoutine={firstPracticedByRoutine}
             />
           ) : (
             <ScoreCard
               key={item.key}
               score={item.score}
               routines={routines}
+              firstPracticedByRoutine={firstPracticedByRoutine}
               testId={`card-score-${item.score.id}`}
               actions={
                 <DropdownMenu>
