@@ -707,10 +707,7 @@ export default function ScorePage() {
           <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" aria-hidden="true" />
           <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-amber-500/10 blur-3xl" aria-hidden="true" />
           <div className="p-6 pl-7">
-            <div className="flex items-baseline justify-between gap-3">
-              <div className="eyebrow text-amber-400/70">Personal Best</div>
-              <div className="eyebrow !text-[10px] text-muted-foreground/60">Competition only</div>
-            </div>
+            <div className="eyebrow text-amber-400/70">Competition Personal Best</div>
             <div className="mt-4 grid grid-cols-2 gap-4">
               <div>
                 <div className="font-display font-normal text-4xl sm:text-5xl text-amber-400 leading-none tracking-tight" data-testid="text-pb-set">
