@@ -2,11 +2,52 @@
 
 A full-stack trampoline training note app built with React, Express, Drizzle ORM, and PostgreSQL.
 
+## Contents
+
+- [Architecture](#architecture)
+- [Key Files](#key-files)
+- [Data Model](#data-model)
+- [Auth](#auth)
+- [Design System (Dark Monospace)](#design-system-dark-monospace)
+- [Components & Interaction Patterns](#components--interaction-patterns)
+- [Pages](#pages)
+- [Mobile / Touch Handling](#mobile--touch-handling)
+- [Offline Mode (PWA + sync queue)](#offline-mode-pwa--sync-queue)
+- [Running](#running)
+- [User Preferences](#user-preferences)
+
 ## Architecture
 
 - **Frontend**: React + Vite + TypeScript, Shadcn UI, TanStack Query, Wouter routing, Recharts
 - **Backend**: Express.js + TypeScript, Drizzle ORM, PostgreSQL
 - **Auth**: Custom email/password authentication with bcrypt, express-session with PostgreSQL session store
+
+## Key Files
+
+- `shared/schema.ts` — Drizzle table definitions + Zod schemas
+- `shared/models/auth.ts` — Users and sessions table definitions
+- `server/auth.ts` — Authentication setup (register, login, logout, session middleware)
+- `server/storage.ts` — Data access layer (all methods scoped by userId)
+- `server/routes.ts` — API route handlers
+- `server/index.ts` — Express app setup
+- `client/src/App.tsx` — Router + auth gate + navigation
+- `client/src/hooks/use-auth.ts` — Auth state hook (login, register, logout mutations)
+- `client/src/pages/login.tsx` — Login/register form
+
+## Data Model
+
+Drizzle tables (see `shared/schema.ts`; auth tables in `shared/models/auth.ts`). Every domain table is scoped per user.
+
+- `users` — User profiles with hashed passwords (email/password auth).
+- `sessions` — Express session store.
+- `notes` — Training sessions (per user).
+- `skills` — Skills/drills/frequent connections (per user).
+- `routines` — 10-skill routines (per user). `createdAt` (timestamp, `defaultNow`) records when each routine was made. The Routines card shows a `dd-mm-yyyy` mono label beside the routine name that is the routine's **first practiced date** (earliest training note whose parsed `skills` contain a routine item `id === -2` with that `routineId`) — computed client-side in `routines.tsx` via `firstPracticedByRoutine`; the label is hidden until the routine has been practiced at least once (it is NOT `createdAt`).
+- `scores` — Competition/practice scores with E/D/H/T fields (per user). `competitionId` (text, nullable) + `round` (text, nullable: `"prelims"`/`"final"`) group multiple rounds of one competition into a single card; null for practice/trial and legacy competition rows.
+
+## Auth
+
+Custom email/password authentication. All API routes are protected with `isAuthenticated` middleware. Data is filtered by `userId` (from session). The frontend shows a login/register form when unauthenticated. Demo user (id `55504735`) has email `suomi.ri.9@gmail.com` and password `tramplog2026`.
 
 ## Design System (Dark Monospace)
 
@@ -44,6 +85,14 @@ Three families only. CSS vars and helpers live in `client/src/index.css`; all th
 - Standalone in-card/section eyebrows use the `.eyebrow` class with NO literal `// ` — never hardcode `// ` in page/section markup.
 - `.eyebrow` is safe on `<th>` (used for table column headers on Skills).
 
+### Cards, nav, and charts
+
+- **Cards**: flat dark with a colored left accent bar (`<span absolute left-0 w-1 bg-primary>`) and a large Bebas accent figure (e.g. TOTAL DD on note cards, totals on stats).
+- **Bottom nav (`Navigation` in `client/src/App.tsx`)**: each tab has its own color — Training=blue, Score=yellow, Progress=green, Skills=red, Routines=purple (Settings stays neutral). Inactive tabs show a LIGHT tint of their color (`lightColor`, e.g. `text-blue-400/45`, inherited by both icon and label); the active tab shows the full REAL color — colored icon + matching tinted background + colored label. Color classes are literal Tailwind strings per `navItem` so JIT picks them up.
+- **Charts**: Recharts colors use theme CSS vars (`hsl(var(--primary))`, `hsl(var(--border))`, etc.) so the chart fits the dark theme.
+
+## Components & Interaction Patterns
+
 ### `PageHeader` (`client/src/components/page-header.tsx`)
 
 Centralizes page titles.
@@ -68,12 +117,6 @@ Centralizes page titles.
 - **In-note skill editors (`SkillEditorOverlay`)**: the note-dialog's Edit Connection (`editingConnIndices`) and Edit Routine/Connection (`editingRoutineIdx`) editors are NOT full-cover overlays — each renders as a CENTERED popup: a dimmed/blurred backdrop (`absolute inset-0 z-30 flex items-center justify-center bg-black/60 backdrop-blur-sm`) holding a `max-w-md max-h-full` card (`flex flex-col … rounded-2xl border shadow-xl`). The backdrop click closes the editor only when the click target IS the backdrop itself (`if (e.target === e.currentTarget)`), so a dnd drag released over the backdrop doesn't close it; the card stops propagation. `SkillEditorOverlay` keeps its own header (title + default "Done" button via `closeVariant="button"`) and the inner list scrolls (`flex-1 min-h-0`). The Score page's two `SkillEditorOverlay` usages are different — they DO cover their card section (`absolute inset-0`) and use `closeVariant="icon"`.
 - **Editing a MIXED connection** (an inline `+`-joined group that mixes plain skills with a routine `id -2` / connection-or-part `id -3`): tapping the skill area opens the "Edit Connection" (`editingConnIndices`) popup whenever the group has ≥1 plain skill (the wrapper gate is `group.items.some(plain)`, NOT `every`); tapping a routine/conn CHIP opens ITS own editor (`editingRoutineIdx`) and `e.stopPropagation()`s so it doesn't also fire the wrapper. The connection editor only edits plain skills but PRESERVES the routine/conn members: on save they are re-appended AFTER the edited skills (so a middle routine moves to the end) and the editing index range is reset to `length skills + preserved`.
 - **Reps is a group-wide property** — it must be written to EVERY member of a group (this is what `updateReps` does), because `calculateTotalDD` sets `currentGroupReps = item.reps || 1` per item so the LAST member's reps wins; putting reps only on the first member silently drops the multiplier. `note` stays on the first member only.
-
-### Cards, nav, and charts
-
-- **Cards**: flat dark with a colored left accent bar (`<span absolute left-0 w-1 bg-primary>`) and a large Bebas accent figure (e.g. TOTAL DD on note cards, totals on stats).
-- **Bottom nav (`Navigation` in `client/src/App.tsx`)**: each tab has its own color — Training=blue, Score=yellow, Progress=green, Skills=red, Routines=purple (Settings stays neutral). Inactive tabs show a LIGHT tint of their color (`lightColor`, e.g. `text-blue-400/45`, inherited by both icon and label); the active tab shows the full REAL color — colored icon + matching tinted background + colored label. Color classes are literal Tailwind strings per `navItem` so JIT picks them up.
-- **Charts**: Recharts colors use theme CSS vars (`hsl(var(--primary))`, `hsl(var(--border))`, etc.) so the chart fits the dark theme.
 
 ## Pages
 
@@ -114,31 +157,6 @@ Centralizes page titles.
 ### 5. Routines (`/routines`)
 
 - Build 10-skill routines.
-
-## Database Tables
-
-- `users` — User profiles with hashed passwords (email/password auth).
-- `sessions` — Express session store.
-- `notes` — Training sessions (per user).
-- `skills` — Skills/drills/frequent connections (per user).
-- `routines` — 10-skill routines (per user). `createdAt` (timestamp, `defaultNow`) records when each routine was made. The Routines card shows a `dd-mm-yyyy` mono label beside the routine name that is the routine's **first practiced date** (earliest training note whose parsed `skills` contain a routine item `id === -2` with that `routineId`) — computed client-side in `routines.tsx` via `firstPracticedByRoutine`; the label is hidden until the routine has been practiced at least once (it is NOT `createdAt`).
-- `scores` — Competition/practice scores with E/D/H/T fields (per user). `competitionId` (text, nullable) + `round` (text, nullable: `"prelims"`/`"final"`) group multiple rounds of one competition into a single card; null for practice/trial and legacy competition rows.
-
-## Auth
-
-Custom email/password authentication. All API routes are protected with `isAuthenticated` middleware. Data is filtered by `userId` (from session). The frontend shows a login/register form when unauthenticated. Demo user (id `55504735`) has email `suomi.ri.9@gmail.com` and password `tramplog2026`.
-
-## Key Files
-
-- `shared/schema.ts` — Drizzle table definitions + Zod schemas
-- `shared/models/auth.ts` — Users and sessions table definitions
-- `server/auth.ts` — Authentication setup (register, login, logout, session middleware)
-- `server/storage.ts` — Data access layer (all methods scoped by userId)
-- `server/routes.ts` — API route handlers
-- `server/index.ts` — Express app setup
-- `client/src/App.tsx` — Router + auth gate + navigation
-- `client/src/hooks/use-auth.ts` — Auth state hook (login, register, logout mutations)
-- `client/src/pages/login.tsx` — Login/register form
 
 ## Mobile / Touch Handling
 
