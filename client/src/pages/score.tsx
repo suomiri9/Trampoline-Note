@@ -57,7 +57,7 @@ const scoreDefaults = {
   totalVol: 0,
 };
 
-function ScoreBreakdown({ e, d, h, t, label, total, totalColor, totalTestId }: { e: number; d: number; h: number; t: number; label?: string; total?: number; totalColor?: string; totalTestId?: string }) {
+function ScoreBreakdown({ e, d, h, t, label, routineName, total, totalColor, totalTestId }: { e: number; d: number; h: number; t: number; label?: string; routineName?: string | null; total?: number; totalColor?: string; totalTestId?: string }) {
   const cols: { k: string; v: string; accent?: boolean }[] = [
     { k: "E", v: e.toFixed(1) },
     { k: "DD", v: d.toFixed(1) },
@@ -67,8 +67,11 @@ function ScoreBreakdown({ e, d, h, t, label, total, totalColor, totalTestId }: {
   ];
   return (
     <div>
-      {label && (
-        <div className="eyebrow text-[0.6rem] tracking-[0.2em] mb-2 text-muted-foreground/80">{label}</div>
+      {(label || routineName) && (
+        <div className="flex items-baseline justify-between gap-2 mb-2 min-w-0">
+          {label && <span className="eyebrow text-[0.6rem] tracking-[0.2em] text-muted-foreground/80 shrink-0">{label}</span>}
+          {routineName && <span className="text-[11px] text-muted-foreground/70 truncate text-right">{routineName}</span>}
+        </div>
       )}
       <div className={cn("grid gap-2 text-center", total != null ? "grid-cols-5" : "grid-cols-4")}>
         {cols.map((c) => (
@@ -82,10 +85,11 @@ function ScoreBreakdown({ e, d, h, t, label, total, totalColor, totalTestId }: {
   );
 }
 
-function ScoreGroups({ score, totalColor }: { score: Score; totalColor: string }) {
+function ScoreGroups({ score, totalColor, routines }: { score: Score; totalColor: string; routines?: Routine[] }) {
   const isMulti = score.category === "both" || score.category === "vol_vol";
-  const group1Label = score.category === "vol_vol" ? "VOL 1" : "SET";
+  const group1Label = score.category === "vol_vol" ? "VOL 1" : score.category === "vol" ? "VOL" : "SET";
   const group2Label = score.category === "vol_vol" ? "VOL 2" : "VOL";
+  const routineName = (id?: number | null) => (id != null ? routines?.find((r) => r.id === id)?.name : undefined);
   return (
     <div className="space-y-4">
       <ScoreBreakdown
@@ -93,7 +97,8 @@ function ScoreGroups({ score, totalColor }: { score: Score; totalColor: string }
         d={score.difficulty}
         h={score.horizontal}
         t={score.timeOfFlight}
-        label={isMulti ? `${group1Label}${score.attempt != null ? ` · attempt ${score.attempt}` : ""}` : undefined}
+        label={`${group1Label}${score.attempt != null ? ` · attempt ${score.attempt}` : ""}`}
+        routineName={routineName(score.routineId)}
         total={score.total}
         totalColor={totalColor}
         totalTestId={`text-group1-total-${score.id}`}
@@ -105,6 +110,7 @@ function ScoreGroups({ score, totalColor }: { score: Score; totalColor: string }
           h={score.horizontalVol ?? 0}
           t={score.timeOfFlightVol ?? 0}
           label={`${group2Label}${score.attemptVol != null ? ` · attempt ${score.attemptVol}` : ""}`}
+          routineName={routineName(score.routineIdVol)}
           total={score.totalVol ?? 0}
           totalColor={totalColor}
           totalTestId={`text-group2-total-${score.id}`}
@@ -176,7 +182,7 @@ function ScoreCard({
         </div>
 
         <div className="mt-4 pt-4 border-t border-border/60">
-          <ScoreGroups score={score} totalColor={totalColor} />
+          <ScoreGroups score={score} totalColor={totalColor} routines={routines} />
         </div>
       </div>
     </div>
@@ -232,6 +238,7 @@ function RoundBlock({
   accentEyebrow = "text-amber-400/80",
   onEdit,
   onDelete,
+  routines,
 }: {
   score: Score;
   hideRank?: boolean;
@@ -239,6 +246,7 @@ function RoundBlock({
   accentEyebrow?: string;
   onEdit: (score: Score) => void;
   onDelete: (id: number) => void;
+  routines?: Routine[];
 }) {
   const grandTotal = effectiveTotal(score);
 
@@ -278,7 +286,7 @@ function RoundBlock({
         </div>
       </div>
       <div className="mt-3">
-        <ScoreGroups score={score} totalColor={accent} />
+        <ScoreGroups score={score} totalColor={accent} routines={routines} />
       </div>
     </div>
   );
@@ -292,6 +300,7 @@ function CompetitionCard({
   onDeleteComp,
   onAddFinal,
   testId,
+  routines,
 }: {
   rounds: Score[];
   variant?: "competition" | "trial";
@@ -300,6 +309,7 @@ function CompetitionCard({
   onDeleteComp: (ids: number[]) => void;
   onAddFinal: (prelims: Score) => void;
   testId?: string;
+  routines?: Routine[];
 }) {
   const isTrial = variant === "trial";
   const theme = COMP_THEME[variant];
@@ -365,6 +375,7 @@ function CompetitionCard({
               accentEyebrow={theme.accentEyebrow}
               onEdit={onEditRound}
               onDelete={onDeleteRound}
+              routines={routines}
             />
           ))}
         </div>
@@ -1092,6 +1103,7 @@ export default function ScorePage() {
               onDeleteRound={setDeleteScoreId}
               onDeleteComp={setDeleteCompIds}
               onAddFinal={startAddFinal}
+              routines={routines}
             />
           ) : item.score.type === "trial" ? (
             <CompetitionCard
@@ -1103,6 +1115,7 @@ export default function ScorePage() {
               onDeleteRound={setDeleteScoreId}
               onDeleteComp={setDeleteCompIds}
               onAddFinal={startAddFinal}
+              routines={routines}
             />
           ) : (
             <ScoreCard
