@@ -156,6 +156,9 @@ function ScoreCard({
               <span>{format(new Date(score.date), "EEE, d MMM yyyy")}</span>
               {pendingBadge}
             </div>
+            <span className={cn("inline-block mt-1.5 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold uppercase tracking-wider", pillClass)}>
+              {score.type}
+            </span>
             <div className="font-mono text-[11px] text-muted-foreground mt-1.5 truncate" data-testid={`text-score-name-${score.id}`}>
               {title}{isMulti && routineVol ? ` + ${routineVol.name}` : ""}
             </div>
@@ -165,9 +168,6 @@ function ScoreCard({
                 {score.rank != null ? ` · #${score.rank}` : ""}
               </p>
             )}
-            <span className={cn("inline-block mt-1.5 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold uppercase tracking-wider", pillClass)}>
-              {score.type}
-            </span>
           </div>
           <div className="shrink-0 flex items-start gap-1">
             <div className="text-right">
