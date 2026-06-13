@@ -258,7 +258,7 @@ function RoundBlock({
             <div className={cn("font-display font-normal text-4xl sm:text-5xl leading-none", accent)} data-testid={`text-round-total-${score.id}`}>
               {grandTotal.toFixed(1)}
             </div>
-            <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">Total</div>
+            <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">{score.category === "vol_vol" ? "Best" : "Total"}</div>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
