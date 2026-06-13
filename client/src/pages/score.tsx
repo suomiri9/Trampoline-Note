@@ -24,7 +24,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
 import { Trash2, Plus, Trophy, CalendarIcon, Pencil, MoreVertical } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -157,7 +156,9 @@ function ScoreCard({
               <span>{format(new Date(score.date), "EEE, d MMM yyyy")}</span>
               {pendingBadge}
             </div>
-            <h3 className="font-bold text-lg mt-1.5 truncate" data-testid={`text-score-name-${score.id}`}>{title}</h3>
+            <div className="font-mono text-[11px] text-muted-foreground mt-1.5 truncate" data-testid={`text-score-name-${score.id}`}>
+              {title}{isMulti && routineVol ? ` + ${routineVol.name}` : ""}
+            </div>
             {isComp && (score.competitionName || score.rank != null) && (
               <p className="text-sm text-muted-foreground mt-0.5 truncate">
                 {score.competitionName}
@@ -168,16 +169,6 @@ function ScoreCard({
               <span className={cn("inline-block mt-1.5 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold uppercase tracking-wider", pillClass)}>
                 {score.type}
               </span>
-            )}
-            {isMulti && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                <Badge variant="outline" className="rounded-md text-[10px] font-mono">
-                  {score.category === "both" ? "Set & Vol" : "Vol & Vol"}
-                </Badge>
-                {routineVol && (
-                  <Badge variant="outline" className="rounded-md text-[10px] font-mono">{routineVol.name}</Badge>
-                )}
-              </div>
             )}
           </div>
           <div className="shrink-0 flex items-start gap-1">
