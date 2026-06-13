@@ -165,22 +165,15 @@ function ScoreCard({
                 {score.rank != null ? ` · #${score.rank}` : ""}
               </p>
             )}
-            {isTrial && (
-              <span className={cn("inline-block mt-1.5 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold uppercase tracking-wider", pillClass)}>
-                {score.type}
-              </span>
-            )}
+            <span className={cn("inline-block mt-1.5 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold uppercase tracking-wider", pillClass)}>
+              {score.type}
+            </span>
           </div>
           <div className="shrink-0 flex items-start gap-1">
             <div className="text-right">
               <div className={cn("font-display font-normal text-5xl sm:text-6xl leading-none", totalColor)} data-testid={`text-score-total-${score.id}`}>
                 {grandTotal.toFixed(1)}
               </div>
-              {!isTrial && (
-                <span className={cn("inline-block mt-2 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold uppercase tracking-wider", pillClass)}>
-                  {score.type}
-                </span>
-              )}
             </div>
             {actions}
           </div>
