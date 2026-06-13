@@ -634,10 +634,30 @@ export default function ScorePage() {
     form.setValue("difficultyVol", Number(calcDDFromSkillIds(customSkillIdsVol, allSkills).toFixed(1)));
   }, [customSkillIdsVol, allSkills]);
 
-  const personalBest = (scores ?? []).reduce((max, s) => {
-    const t = effectiveTotal(s);
-    return t > max ? t : max;
-  }, 0);
+  // Personal bests are computed from COMPETITION rows only, broken down per metric.
+  const compScores = (scores ?? []).filter((s) => s.type === "competition");
+  const personalBests = compScores.reduce(
+    (acc, s) => {
+      // Set Score: only categories that have a real set routine.
+      if (s.category === "set" || s.category === "both") acc.set = Math.max(acc.set, s.total);
+      // Vol Score: single vol stores its total in `total`; "both"/"vol_vol" use the vol field(s).
+      if (s.category === "vol") acc.vol = Math.max(acc.vol, s.total);
+      else if (s.category === "both") acc.vol = Math.max(acc.vol, s.totalVol ?? 0);
+      else if (s.category === "vol_vol") acc.vol = Math.max(acc.vol, s.total, s.totalVol ?? 0);
+      // E / DD / TOF: best across whichever routines the row carries.
+      acc.e = Math.max(acc.e, effectiveE(s.execution, s.executionTwo, s.doubleExecution));
+      acc.dd = Math.max(acc.dd, s.difficulty);
+      acc.tof = Math.max(acc.tof, s.timeOfFlight);
+      if (s.category === "both" || s.category === "vol_vol") {
+        acc.e = Math.max(acc.e, effectiveE(s.executionVol ?? 0, s.executionTwoVol, s.doubleExecutionVol));
+        acc.dd = Math.max(acc.dd, s.difficultyVol ?? 0);
+        acc.tof = Math.max(acc.tof, s.timeOfFlightVol ?? 0);
+      }
+      return acc;
+    },
+    { set: 0, vol: 0, e: 0, dd: 0, tof: 0 },
+  );
+  const hasComps = compScores.length > 0;
 
   type RenderItem =
     | { kind: "comp"; key: string; sortDate: string; rounds: Score[] }
@@ -682,17 +702,42 @@ export default function ScorePage() {
         }
       />
 
-      {personalBest > 0 && (
+      {hasComps && (
         <div className="relative card-3d rounded-2xl overflow-hidden mb-6">
           <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" aria-hidden="true" />
           <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-amber-500/10 blur-3xl" aria-hidden="true" />
           <div className="p-6 pl-7">
-            <div className="eyebrow text-amber-400/70">Personal Best</div>
-            <div className="mt-1 flex items-baseline gap-3">
-              <span className="font-display font-normal text-6xl sm:text-7xl text-amber-400 leading-none tracking-tight" data-testid="text-personal-best">
-                {personalBest.toFixed(1)}
-              </span>
-              <span className="text-sm text-muted-foreground">total score</span>
+            <div className="flex items-baseline justify-between gap-3">
+              <div className="eyebrow text-amber-400/70">Personal Best</div>
+              <div className="eyebrow !text-[10px] text-muted-foreground/60">Competition only</div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <div>
+                <div className="font-display font-normal text-4xl sm:text-5xl text-amber-400 leading-none tracking-tight" data-testid="text-pb-set">
+                  {personalBests.set > 0 ? personalBests.set.toFixed(1) : "—"}
+                </div>
+                <div className="eyebrow !text-[10px] mt-1.5 text-muted-foreground/70">Set Score</div>
+              </div>
+              <div>
+                <div className="font-display font-normal text-4xl sm:text-5xl text-amber-400 leading-none tracking-tight" data-testid="text-pb-vol">
+                  {personalBests.vol > 0 ? personalBests.vol.toFixed(1) : "—"}
+                </div>
+                <div className="eyebrow !text-[10px] mt-1.5 text-muted-foreground/70">Vol Score</div>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-border/60 grid grid-cols-3 gap-2 text-center">
+              <div>
+                <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid="text-pb-e">{personalBests.e.toFixed(1)}</div>
+                <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">E</div>
+              </div>
+              <div>
+                <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid="text-pb-dd">{personalBests.dd.toFixed(1)}</div>
+                <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">DD</div>
+              </div>
+              <div>
+                <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid="text-pb-tof">{personalBests.tof.toFixed(2)}</div>
+                <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">TOF</div>
+              </div>
             </div>
           </div>
         </div>
