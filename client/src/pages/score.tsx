@@ -125,8 +125,6 @@ function ScoreCard({
   testId?: string;
   pending?: boolean;
 }) {
-  const routine = routines?.find((r) => r.id === score.routineId);
-  const routineVol = routines?.find((r) => r.id === score.routineIdVol);
   const isComp = score.type === "competition";
   const isTrial = score.type === "trial";
   const isMulti = score.category === "both" || score.category === "vol_vol";
@@ -139,8 +137,6 @@ function ScoreCard({
     : isTrial
     ? "border-red-500/40 text-red-400"
     : "border-primary/40 text-primary";
-
-  const title = routine?.name ?? (isMulti ? "Set & Vol" : "Score");
 
   return (
     <div
@@ -159,9 +155,6 @@ function ScoreCard({
             <span className={cn("inline-block mt-1.5 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold uppercase tracking-wider", pillClass)}>
               {score.type}
             </span>
-            <div className="font-mono text-[11px] text-muted-foreground mt-1.5 truncate" data-testid={`text-score-name-${score.id}`}>
-              {title}{isMulti && routineVol ? ` + ${routineVol.name}` : ""}
-            </div>
             {isComp && (score.competitionName || score.rank != null) && (
               <p className="text-sm text-muted-foreground mt-0.5 truncate">
                 {score.competitionName}
@@ -218,44 +211,28 @@ function newCompetitionId(): string {
 
 function RoundBlock({
   score,
-  routines,
   hideRank,
-  hideName,
-  hideRoundLabel,
-  hideActions,
   accent = "text-amber-400",
   accentEyebrow = "text-amber-400/80",
   onEdit,
   onDelete,
 }: {
   score: Score;
-  routines?: Routine[];
   hideRank?: boolean;
-  hideName?: boolean;
-  hideRoundLabel?: boolean;
-  hideActions?: boolean;
   accent?: string;
   accentEyebrow?: string;
   onEdit: (score: Score) => void;
   onDelete: (id: number) => void;
 }) {
-  const routine = routines?.find((r) => r.id === score.routineId);
-  const routineVol = routines?.find((r) => r.id === score.routineIdVol);
   const isMulti = score.category === "both" || score.category === "vol_vol";
   const grandTotal = isMulti ? score.total + (score.totalVol || 0) : score.total;
-  const title = routine?.name ?? (isMulti ? (score.category === "vol_vol" ? "Vol & Vol" : "Set & Vol") : "Routine");
 
   return (
     <div className="pt-4 border-t border-border/60 first:border-t-0 first:pt-0" data-testid={`round-${score.id}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          {!hideRoundLabel && (
+          {score.round && (
             <div className={cn("eyebrow !text-[10px]", accentEyebrow)}>{roundLabel(score.round)}</div>
-          )}
-          {!hideName && (
-            <div className="font-mono text-[11px] text-muted-foreground mt-0.5 truncate" data-testid={`text-round-name-${score.id}`}>
-              {title}{isMulti && routineVol ? ` + ${routineVol.name}` : ""}
-            </div>
           )}
           {!hideRank && score.rank != null && (
             <div className="font-mono text-xs text-muted-foreground mt-0.5" data-testid={`text-round-rank-${score.id}`}>Rank #{score.rank}</div>
@@ -268,23 +245,21 @@ function RoundBlock({
             </div>
             <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">Total</div>
           </div>
-          {!hideActions && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 -mr-1 text-muted-foreground/50 hover:text-foreground" data-testid={`btn-round-actions-${score.id}`}>
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-36 rounded-xl">
-                <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => onEdit(score)} data-testid={`btn-round-edit-${score.id}`}>
-                  <Pencil className="h-3.5 w-3.5" /> Edit round
-                </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => onDelete(score.id)} data-testid={`btn-round-delete-${score.id}`}>
-                  <Trash2 className="h-3.5 w-3.5" /> Delete round
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7 -mr-1 text-muted-foreground/50 hover:text-foreground" data-testid={`btn-round-actions-${score.id}`}>
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-36 rounded-xl">
+              <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => onEdit(score)} data-testid={`btn-round-edit-${score.id}`}>
+                <Pencil className="h-3.5 w-3.5" /> Edit round
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => onDelete(score.id)} data-testid={`btn-round-delete-${score.id}`}>
+                <Trash2 className="h-3.5 w-3.5" /> Delete round
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       <div className="mt-3">
@@ -296,7 +271,6 @@ function RoundBlock({
 
 function CompetitionCard({
   rounds,
-  routines,
   variant = "competition",
   onEditRound,
   onDeleteRound,
@@ -305,7 +279,6 @@ function CompetitionCard({
   testId,
 }: {
   rounds: Score[];
-  routines?: Routine[];
   variant?: "competition" | "trial";
   onEditRound: (score: Score) => void;
   onDeleteRound: (id: number) => void;
@@ -319,12 +292,8 @@ function CompetitionCard({
   const prelimsRound = rounds.find((r) => r.round !== "final") ?? rounds[0];
   const bigRankRound = finalRound ?? prelimsRound;
   const first = rounds[0];
-  const firstRoutine = routines?.find((r) => r.id === first.routineId);
-  const firstMulti = first.category === "both" || first.category === "vol_vol";
-  const fallbackName =
-    firstRoutine?.name ?? (firstMulti ? (first.category === "vol_vol" ? "Vol & Vol" : "Set & Vol") : "Trial");
   const hasName = !!first.competitionName;
-  const compName = hasName ? first.competitionName! : isTrial ? fallbackName : "Competition";
+  const compName = hasName ? first.competitionName! : isTrial ? "Trial" : "Competition";
   const displayDate = [...rounds].map((r) => r.date).sort()[0];
 
   return (
@@ -358,18 +327,12 @@ function CompetitionCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44 rounded-xl">
-                {isTrial ? (
-                  <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => onEditRound(first)} data-testid={`btn-comp-edit-${first.id}`}>
-                    <Pencil className="h-3.5 w-3.5" /> Edit
+                {!finalRound && (
+                  <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => onAddFinal(prelimsRound)} data-testid={`btn-comp-add-final-${first.id}`}>
+                    <Plus className="h-3.5 w-3.5" /> Add final round
                   </DropdownMenuItem>
-                ) : (
-                  !finalRound && (
-                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => onAddFinal(prelimsRound)} data-testid={`btn-comp-add-final-${first.id}`}>
-                      <Plus className="h-3.5 w-3.5" /> Add final round
-                    </DropdownMenuItem>
-                  )
                 )}
-                <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => (isTrial ? onDeleteRound(first.id) : onDeleteComp(rounds.map((r) => r.id)))} data-testid={`btn-comp-delete-${first.id}`}>
+                <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => onDeleteComp(rounds.map((r) => r.id))} data-testid={`btn-comp-delete-${first.id}`}>
                   <Trash2 className="h-3.5 w-3.5" /> {isTrial ? "Delete trial" : "Delete competition"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -382,11 +345,7 @@ function CompetitionCard({
             <RoundBlock
               key={r.id}
               score={r}
-              routines={routines}
               hideRank={r.id === bigRankRound?.id}
-              hideName={isTrial && !hasName}
-              hideRoundLabel={isTrial}
-              hideActions={isTrial}
               accent={theme.accent}
               accentEyebrow={theme.accentEyebrow}
               onEdit={onEditRound}
@@ -559,18 +518,27 @@ export default function ScorePage() {
     }
   }
 
-  function startAddFinal(prelims: Score) {
+  async function startAddFinal(prelims: Score) {
     skipDDAutoFill.current = true;
     setEditingScore(null);
-    setIsAdding(true);
     setCustomSkillIds(null);
     setCustomSkillIdsVol(null);
+    const compId = prelims.competitionId ?? newCompetitionId();
+    if (!prelims.competitionId) {
+      try {
+        await apiRequest("PUT", `/api/scores/${prelims.id}`, { competitionId: compId, round: prelims.round || "prelims" });
+        queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
+      } catch {
+        // best-effort backfill; the final still saves and groups once the prelims row carries the id
+      }
+    }
+    setIsAdding(true);
     form.reset({
       ...scoreDefaults,
       date: prelims.date,
-      type: "competition",
+      type: prelims.type === "trial" ? "trial" : "competition",
       competitionName: prelims.competitionName ?? "",
-      competitionId: prelims.competitionId ?? newCompetitionId(),
+      competitionId: compId,
       round: "final",
     });
   }
@@ -654,7 +622,7 @@ export default function ScorePage() {
     const groups = new Map<string, Score[]>();
     const items: RenderItem[] = [];
     for (const s of list) {
-      if (s.type === "competition" && s.competitionId) {
+      if ((s.type === "competition" || s.type === "trial") && s.competitionId) {
         const existing = groups.get(s.competitionId);
         if (existing) existing.push(s);
         else groups.set(s.competitionId, [s]);
@@ -712,10 +680,8 @@ export default function ScorePage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit((data) => {
                 const values =
-                  data.type === "competition"
+                  data.type === "competition" || data.type === "trial"
                     ? { ...data, round: data.round || "prelims", competitionId: data.competitionId || newCompetitionId() }
-                    : data.type === "trial"
-                    ? { ...data, round: null, competitionId: null }
                     : { ...data, round: null, competitionId: null, competitionName: "", rank: null };
                 if (editingScore) {
                   updateMutation.mutate({ id: editingScore.id, values });
@@ -763,7 +729,7 @@ export default function ScorePage() {
                         <FormLabel>Type</FormLabel>
                         <Select onValueChange={(val) => {
                           field.onChange(val);
-                          if (val === "competition") {
+                          if (val === "competition" || val === "trial") {
                             if (!form.getValues("round")) form.setValue("round", editingScore?.round ?? "prelims");
                             if (!form.getValues("competitionId") && editingScore?.competitionId) form.setValue("competitionId", editingScore.competitionId);
                           } else {
@@ -797,10 +763,10 @@ export default function ScorePage() {
                   </div>
                 </div>
 
-                {form.watch("type") === "competition" && (
+                {(form.watch("type") === "competition" || form.watch("type") === "trial") && (
                   <div className="space-y-4">
                     <FormField control={form.control} name="competitionName" render={({ field }) => (
-                      <FormItem><FormLabel>Competition Name</FormLabel><FormControl><Input {...field} value={field.value ?? ""} placeholder="e.g. State Championships" className="rounded-xl h-11" /></FormControl></FormItem>
+                      <FormItem><FormLabel>{form.watch("type") === "trial" ? "Name" : "Competition Name"}</FormLabel><FormControl><Input {...field} value={field.value ?? ""} placeholder={form.watch("type") === "trial" ? "e.g. Squad Trial" : "e.g. State Championships"} className="rounded-xl h-11" /></FormControl></FormItem>
                     )} />
                     <div className="grid grid-cols-2 gap-4">
                       <FormField control={form.control} name="round" render={({ field }) => (
@@ -819,17 +785,6 @@ export default function ScorePage() {
                         <FormItem><FormLabel>{form.watch("round") === "final" ? "Final Rank" : "Prelims Rank"}</FormLabel><FormControl><Input type="number" {...field} value={field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(undefined); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} placeholder="e.g. 1" className="rounded-xl h-11 font-mono" /></FormControl></FormItem>
                       )} />
                     </div>
-                  </div>
-                )}
-
-                {form.watch("type") === "trial" && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="competitionName" render={({ field }) => (
-                      <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} value={field.value ?? ""} placeholder="e.g. Squad Trial" className="rounded-xl h-11" /></FormControl></FormItem>
-                    )} />
-                    <FormField control={form.control} name="rank" render={({ field }) => (
-                      <FormItem><FormLabel>Rank</FormLabel><FormControl><Input type="number" {...field} value={field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(undefined); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} placeholder="e.g. 1" className="rounded-xl h-11 font-mono" /></FormControl></FormItem>
-                    )} />
                   </div>
                 )}
 
@@ -1009,9 +964,9 @@ export default function ScorePage() {
           item.kind === "comp" ? (
             <CompetitionCard
               key={item.key}
+              variant={item.rounds[0].type === "trial" ? "trial" : "competition"}
               rounds={item.rounds}
-              routines={routines}
-              testId={`card-competition-${item.rounds[0].id}`}
+              testId={`card-${item.rounds[0].type === "trial" ? "trial" : "competition"}-${item.rounds[0].id}`}
               onEditRound={startEdit}
               onDeleteRound={setDeleteScoreId}
               onDeleteComp={setDeleteCompIds}
@@ -1022,7 +977,6 @@ export default function ScorePage() {
               key={item.key}
               variant="trial"
               rounds={[item.score]}
-              routines={routines}
               testId={`card-trial-${item.score.id}`}
               onEditRound={startEdit}
               onDeleteRound={setDeleteScoreId}
@@ -1075,8 +1029,8 @@ export default function ScorePage() {
       <ConfirmDialog
         open={deleteCompIds !== null}
         onOpenChange={(open) => { if (!open) setDeleteCompIds(null); }}
-        title="Delete this competition?"
-        description="All rounds in this competition will be permanently deleted. This action cannot be undone."
+        title="Delete this entry?"
+        description="All rounds in this entry will be permanently deleted. This action cannot be undone."
         onConfirm={() => { if (deleteCompIds !== null) { deleteCompMutation.mutate(deleteCompIds); setDeleteCompIds(null); } }}
         confirmLabel="Delete"
       />
