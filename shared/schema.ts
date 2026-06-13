@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, date, real, varchar, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, date, real, varchar, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -49,7 +49,9 @@ export const scores = pgTable("scores", {
   round: text("round"), // "prelims" or "final" for competitions; null otherwise
   rank: integer("rank"),
   // Set scores (also used for single vol)
-  execution: real("execution").notNull().default(0),
+  execution: real("execution").notNull().default(0), // first execution judge (E1)
+  executionTwo: real("execution_two"), // second execution judge (E2); null when not used
+  doubleExecution: boolean("double_execution").default(false), // when true, E = E1 * 2 (second judge mirrors first)
   difficulty: real("difficulty").notNull().default(0),
   horizontal: real("horizontal").notNull().default(0),
   timeOfFlight: real("time_of_flight").notNull().default(0),
@@ -57,6 +59,8 @@ export const scores = pgTable("scores", {
   attempt: integer("attempt"), // null = full 10 skills, 1-9 = partial attempt
   // Vol scores (used when category is "both" or "vol_vol")
   executionVol: real("execution_vol"),
+  executionTwoVol: real("execution_two_vol"), // second execution judge (E2) for the vol routine
+  doubleExecutionVol: boolean("double_execution_vol").default(false),
   difficultyVol: real("difficulty_vol"),
   horizontalVol: real("horizontal_vol"),
   timeOfFlightVol: real("time_of_flight_vol"),
