@@ -269,10 +269,9 @@ function RoundBlock({
             <div className={cn("eyebrow !text-[10px]", accentEyebrow)}>{roundLabel(score.round)}</div>
           )}
           {!hideName && (
-            <div className="font-semibold text-sm mt-0.5 truncate" data-testid={`text-round-name-${score.id}`}>{title}</div>
-          )}
-          {!hideName && isMulti && routineVol && (
-            <div className="font-mono text-[11px] text-muted-foreground mt-0.5 truncate">+ {routineVol.name}</div>
+            <div className="font-mono text-[11px] text-muted-foreground mt-0.5 truncate" data-testid={`text-round-name-${score.id}`}>
+              {title}{isMulti && routineVol ? ` + ${routineVol.name}` : ""}
+            </div>
           )}
           {!hideRank && score.rank != null && (
             <div className="font-mono text-xs text-muted-foreground mt-0.5" data-testid={`text-round-rank-${score.id}`}>Rank #{score.rank}</div>
