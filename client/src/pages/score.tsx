@@ -634,28 +634,46 @@ export default function ScorePage() {
     form.setValue("difficultyVol", Number(calcDDFromSkillIds(customSkillIdsVol, allSkills).toFixed(1)));
   }, [customSkillIdsVol, allSkills]);
 
-  // Personal bests are computed from COMPETITION rows only, broken down per metric.
+  // Personal bests from COMPETITION rows only, split per routine type (Set vs Vol).
+  // Single "vol" and the two routines of "vol_vol" store voluntary stats in the
+  // primary/set fields, so those feed the Vol bests; only "set"/"both" rows feed the
+  // Set bests. Set has no DD of its own, so it's omitted from the Set breakdown.
   const compScores = (scores ?? []).filter((s) => s.type === "competition");
-  const personalBests = compScores.reduce(
+  const pb = compScores.reduce(
     (acc, s) => {
-      // Set Score: only categories that have a real set routine.
-      if (s.category === "set" || s.category === "both") acc.set = Math.max(acc.set, s.total);
-      // Vol Score: single vol stores its total in `total`; "both"/"vol_vol" use the vol field(s).
-      if (s.category === "vol") acc.vol = Math.max(acc.vol, s.total);
-      else if (s.category === "both") acc.vol = Math.max(acc.vol, s.totalVol ?? 0);
-      else if (s.category === "vol_vol") acc.vol = Math.max(acc.vol, s.total, s.totalVol ?? 0);
-      // E / DD / TOF: best across whichever routines the row carries.
-      acc.e = Math.max(acc.e, effectiveE(s.execution, s.executionTwo, s.doubleExecution));
-      acc.dd = Math.max(acc.dd, s.difficulty);
-      acc.tof = Math.max(acc.tof, s.timeOfFlight);
-      if (s.category === "both" || s.category === "vol_vol") {
-        acc.e = Math.max(acc.e, effectiveE(s.executionVol ?? 0, s.executionTwoVol, s.doubleExecutionVol));
-        acc.dd = Math.max(acc.dd, s.difficultyVol ?? 0);
-        acc.tof = Math.max(acc.tof, s.timeOfFlightVol ?? 0);
+      const e1 = effectiveE(s.execution, s.executionTwo, s.doubleExecution);
+      const e2 = effectiveE(s.executionVol ?? 0, s.executionTwoVol, s.doubleExecutionVol);
+      if (s.category === "set" || s.category === "both") {
+        acc.set.score = Math.max(acc.set.score, s.total);
+        acc.set.e = Math.max(acc.set.e, e1);
+        acc.set.h = Math.max(acc.set.h, s.horizontal);
+        acc.set.tof = Math.max(acc.set.tof, s.timeOfFlight);
+      }
+      if (s.category === "vol") {
+        acc.vol.score = Math.max(acc.vol.score, s.total);
+        acc.vol.e = Math.max(acc.vol.e, e1);
+        acc.vol.dd = Math.max(acc.vol.dd, s.difficulty);
+        acc.vol.h = Math.max(acc.vol.h, s.horizontal);
+        acc.vol.tof = Math.max(acc.vol.tof, s.timeOfFlight);
+      } else if (s.category === "both") {
+        acc.vol.score = Math.max(acc.vol.score, s.totalVol ?? 0);
+        acc.vol.e = Math.max(acc.vol.e, e2);
+        acc.vol.dd = Math.max(acc.vol.dd, s.difficultyVol ?? 0);
+        acc.vol.h = Math.max(acc.vol.h, s.horizontalVol ?? 0);
+        acc.vol.tof = Math.max(acc.vol.tof, s.timeOfFlightVol ?? 0);
+      } else if (s.category === "vol_vol") {
+        acc.vol.score = Math.max(acc.vol.score, s.total, s.totalVol ?? 0);
+        acc.vol.e = Math.max(acc.vol.e, e1, e2);
+        acc.vol.dd = Math.max(acc.vol.dd, s.difficulty, s.difficultyVol ?? 0);
+        acc.vol.h = Math.max(acc.vol.h, s.horizontal, s.horizontalVol ?? 0);
+        acc.vol.tof = Math.max(acc.vol.tof, s.timeOfFlight, s.timeOfFlightVol ?? 0);
       }
       return acc;
     },
-    { set: 0, vol: 0, e: 0, dd: 0, tof: 0 },
+    {
+      set: { score: 0, e: 0, h: 0, tof: 0 },
+      vol: { score: 0, e: 0, dd: 0, h: 0, tof: 0 },
+    },
   );
   const hasComps = compScores.length > 0;
 
@@ -708,32 +726,43 @@ export default function ScorePage() {
           <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-amber-500/10 blur-3xl" aria-hidden="true" />
           <div className="p-6 pl-7">
             <div className="eyebrow text-amber-400/70">Competition Personal Best</div>
-            <div className="mt-4 grid grid-cols-2 gap-4">
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <div className="font-display font-normal text-5xl sm:text-6xl text-amber-400 leading-none tracking-tight" data-testid="text-pb-set">
-                  {personalBests.set > 0 ? personalBests.set.toFixed(1) : "—"}
+                  {pb.set.score > 0 ? pb.set.score.toFixed(1) : "—"}
                 </div>
                 <div className="eyebrow !text-[10px] mt-1.5 text-muted-foreground/70">Set Score</div>
+                <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-3 gap-2 text-center">
+                  {[
+                    { k: "E", id: "e", v: pb.set.e.toFixed(1) },
+                    { k: "H", id: "h", v: pb.set.h.toFixed(1) },
+                    { k: "TOF", id: "tof", v: pb.set.tof.toFixed(2) },
+                  ].map((c) => (
+                    <div key={c.k}>
+                      <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid={`text-pb-set-${c.id}`}>{c.v}</div>
+                      <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">{c.k}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div>
                 <div className="font-display font-normal text-5xl sm:text-6xl text-amber-400 leading-none tracking-tight" data-testid="text-pb-vol">
-                  {personalBests.vol > 0 ? personalBests.vol.toFixed(1) : "—"}
+                  {pb.vol.score > 0 ? pb.vol.score.toFixed(1) : "—"}
                 </div>
                 <div className="eyebrow !text-[10px] mt-1.5 text-muted-foreground/70">Vol Score</div>
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-border/60 grid grid-cols-3 gap-2 text-center">
-              <div>
-                <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid="text-pb-e">{personalBests.e.toFixed(1)}</div>
-                <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">E</div>
-              </div>
-              <div>
-                <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid="text-pb-dd">{personalBests.dd.toFixed(1)}</div>
-                <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">DD</div>
-              </div>
-              <div>
-                <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid="text-pb-tof">{personalBests.tof.toFixed(2)}</div>
-                <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">TOF</div>
+                <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-4 gap-2 text-center">
+                  {[
+                    { k: "E", id: "e", v: pb.vol.e.toFixed(1) },
+                    { k: "DD", id: "dd", v: pb.vol.dd.toFixed(1) },
+                    { k: "H", id: "h", v: pb.vol.h.toFixed(1) },
+                    { k: "TOF", id: "tof", v: pb.vol.tof.toFixed(2) },
+                  ].map((c) => (
+                    <div key={c.k}>
+                      <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid={`text-pb-vol-${c.id}`}>{c.v}</div>
+                      <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">{c.k}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
