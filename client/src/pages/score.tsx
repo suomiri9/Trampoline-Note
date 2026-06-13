@@ -68,9 +68,9 @@ function ScoreBreakdown({ e, d, h, t, label, routineName, total, totalColor, tot
   return (
     <div>
       {(label || routineName) && (
-        <div className="flex items-baseline justify-between gap-2 mb-2 min-w-0">
+        <div className="flex items-baseline gap-2 mb-2 min-w-0">
           {label && <span className="eyebrow text-[0.6rem] tracking-[0.2em] text-muted-foreground/80 shrink-0">{label}</span>}
-          {routineName && <span className="text-[11px] text-muted-foreground/70 truncate text-right">{routineName}</span>}
+          {routineName && <span className="text-[11px] text-muted-foreground/70 truncate">{routineName}</span>}
         </div>
       )}
       <div className={cn("grid gap-2 text-center", total != null ? "grid-cols-5" : "grid-cols-4")}>
