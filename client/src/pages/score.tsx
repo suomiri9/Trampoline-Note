@@ -735,7 +735,7 @@ export default function ScorePage() {
                 <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-3 gap-2 text-center">
                   {[
                     { k: "E", id: "e", v: pb.set.e.toFixed(1) },
-                    { k: "H", id: "h", v: pb.set.h.toFixed(1) },
+                    { k: "HD", id: "h", v: pb.set.h.toFixed(1) },
                     { k: "TOF", id: "tof", v: pb.set.tof.toFixed(2) },
                   ].map((c) => (
                     <div key={c.k}>
@@ -754,7 +754,7 @@ export default function ScorePage() {
                   {[
                     { k: "E", id: "e", v: pb.vol.e.toFixed(1) },
                     { k: "DD", id: "dd", v: pb.vol.dd.toFixed(1) },
-                    { k: "H", id: "h", v: pb.vol.h.toFixed(1) },
+                    { k: "HD", id: "h", v: pb.vol.h.toFixed(1) },
                     { k: "TOF", id: "tof", v: pb.vol.tof.toFixed(2) },
                   ].map((c) => (
                     <div key={c.k}>
