@@ -979,34 +979,31 @@ export default function ScorePage() {
                       className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 rounded-xl shadow-lg shadow-black/5 p-4"
                     />
                   )}
-                  <div className="space-y-3">
-                    <div className="space-y-1.5">
-                      <FormLabel className="text-[10px] sm:text-xs">E1 + E2</FormLabel>
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <FormField control={form.control} name="execution" render={({ field }) => (
-                          <FormItem className="flex-1"><FormControl><Input type="number" step="0.1" placeholder="E1" value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" data-testid="input-execution-1" /></FormControl></FormItem>
-                        )} />
-                        <span className="text-muted-foreground text-sm font-mono shrink-0">+</span>
-                        <FormField control={form.control} name="executionTwo" render={({ field }) => (
-                          <FormItem className="flex-1"><FormControl><Input type="number" step="0.1" placeholder="E2" disabled={!!form.watch("doubleExecution")} value={form.watch("doubleExecution") ? (form.watch("execution") || "") : (field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value)} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono disabled:opacity-60" data-testid="input-execution-2" /></FormControl></FormItem>
-                        )} />
-                        <Button type="button" variant={form.watch("doubleExecution") ? "default" : "outline"} size="sm" className="h-9 sm:h-11 rounded-xl px-2.5 text-xs font-mono shrink-0" onClick={() => form.setValue("doubleExecution", !form.watch("doubleExecution"))} data-testid="button-double-execution">×2</Button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
-                      <FormField control={form.control} name="difficulty" render={({ field }) => (
-                        <FormItem><FormLabel className="text-[10px] sm:text-xs">D</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
-                      )} />
-                      <FormField control={form.control} name="horizontal" render={({ field }) => (
-                        <FormItem><FormLabel className="text-[10px] sm:text-xs">H</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
-                      )} />
-                      <FormField control={form.control} name="timeOfFlight" render={({ field }) => (
-                        <FormItem><FormLabel className="text-[10px] sm:text-xs">T</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
-                      )} />
-                      <FormField control={form.control} name="total" render={({ field }) => (
-                        <FormItem><FormLabel className="text-[10px] sm:text-xs">Total</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono bg-background font-bold text-primary" /></FormControl></FormItem>
-                      )} />
-                    </div>
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
+                    <FormField control={form.control} name="execution" render={({ field }) => (
+                      <FormItem><FormLabel className="text-[10px] sm:text-xs">E1</FormLabel><FormControl><Input type="number" step="0.1" placeholder="E1" value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" data-testid="input-execution-1" /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="executionTwo" render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between gap-1">
+                          <FormLabel className="text-[10px] sm:text-xs">E2</FormLabel>
+                          <button type="button" aria-pressed={!!form.watch("doubleExecution")} onClick={() => form.setValue("doubleExecution", !form.watch("doubleExecution"))} className={cn("rounded px-1 py-0.5 text-[9px] sm:text-[10px] font-mono leading-none border transition-colors", form.watch("doubleExecution") ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground border-border hover:text-foreground")} data-testid="button-double-execution">Same</button>
+                        </div>
+                        <FormControl><Input type="number" step="0.1" placeholder="E2" disabled={!!form.watch("doubleExecution")} value={form.watch("doubleExecution") ? (form.watch("execution") || "") : (field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value)} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono disabled:opacity-60" data-testid="input-execution-2" /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="difficulty" render={({ field }) => (
+                      <FormItem><FormLabel className="text-[10px] sm:text-xs">D</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="horizontal" render={({ field }) => (
+                      <FormItem><FormLabel className="text-[10px] sm:text-xs">H</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="timeOfFlight" render={({ field }) => (
+                      <FormItem><FormLabel className="text-[10px] sm:text-xs">T</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="total" render={({ field }) => (
+                      <FormItem><FormLabel className="text-[10px] sm:text-xs">Total</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono bg-background font-bold text-primary" /></FormControl></FormItem>
+                    )} />
                   </div>
                 </div>
 
@@ -1049,34 +1046,31 @@ export default function ScorePage() {
                         className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 rounded-xl shadow-lg shadow-black/5 p-4"
                       />
                     )}
-                    <div className="space-y-3">
-                      <div className="space-y-1.5">
-                        <FormLabel className="text-[10px] sm:text-xs">E1 + E2</FormLabel>
-                        <div className="flex items-center gap-1.5 sm:gap-2">
-                          <FormField control={form.control} name="executionVol" render={({ field }) => (
-                            <FormItem className="flex-1"><FormControl><Input type="number" step="0.1" placeholder="E1" value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" data-testid="input-execution-vol-1" /></FormControl></FormItem>
-                          )} />
-                          <span className="text-muted-foreground text-sm font-mono shrink-0">+</span>
-                          <FormField control={form.control} name="executionTwoVol" render={({ field }) => (
-                            <FormItem className="flex-1"><FormControl><Input type="number" step="0.1" placeholder="E2" disabled={!!form.watch("doubleExecutionVol")} value={form.watch("doubleExecutionVol") ? (form.watch("executionVol") || "") : (field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value)} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono disabled:opacity-60" data-testid="input-execution-vol-2" /></FormControl></FormItem>
-                          )} />
-                          <Button type="button" variant={form.watch("doubleExecutionVol") ? "default" : "outline"} size="sm" className="h-9 sm:h-11 rounded-xl px-2.5 text-xs font-mono shrink-0" onClick={() => form.setValue("doubleExecutionVol", !form.watch("doubleExecutionVol"))} data-testid="button-double-execution-vol">×2</Button>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
-                        <FormField control={form.control} name="difficultyVol" render={({ field }) => (
-                          <FormItem><FormLabel className="text-[10px] sm:text-xs">D</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
-                        )} />
-                        <FormField control={form.control} name="horizontalVol" render={({ field }) => (
-                          <FormItem><FormLabel className="text-[10px] sm:text-xs">H</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
-                        )} />
-                        <FormField control={form.control} name="timeOfFlightVol" render={({ field }) => (
-                          <FormItem><FormLabel className="text-[10px] sm:text-xs">T</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
-                        )} />
-                        <FormField control={form.control} name="totalVol" render={({ field }) => (
-                          <FormItem><FormLabel className="text-[10px] sm:text-xs">Total</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono bg-background font-bold text-primary" /></FormControl></FormItem>
-                        )} />
-                      </div>
+                    <div className="grid grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
+                      <FormField control={form.control} name="executionVol" render={({ field }) => (
+                        <FormItem><FormLabel className="text-[10px] sm:text-xs">E1</FormLabel><FormControl><Input type="number" step="0.1" placeholder="E1" value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" data-testid="input-execution-vol-1" /></FormControl></FormItem>
+                      )} />
+                      <FormField control={form.control} name="executionTwoVol" render={({ field }) => (
+                        <FormItem>
+                          <div className="flex items-center justify-between gap-1">
+                            <FormLabel className="text-[10px] sm:text-xs">E2</FormLabel>
+                            <button type="button" aria-pressed={!!form.watch("doubleExecutionVol")} onClick={() => form.setValue("doubleExecutionVol", !form.watch("doubleExecutionVol"))} className={cn("rounded px-1 py-0.5 text-[9px] sm:text-[10px] font-mono leading-none border transition-colors", form.watch("doubleExecutionVol") ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground border-border hover:text-foreground")} data-testid="button-double-execution-vol">Same</button>
+                          </div>
+                          <FormControl><Input type="number" step="0.1" placeholder="E2" disabled={!!form.watch("doubleExecutionVol")} value={form.watch("doubleExecutionVol") ? (form.watch("executionVol") || "") : (field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value)} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono disabled:opacity-60" data-testid="input-execution-vol-2" /></FormControl>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="difficultyVol" render={({ field }) => (
+                        <FormItem><FormLabel className="text-[10px] sm:text-xs">D</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
+                      )} />
+                      <FormField control={form.control} name="horizontalVol" render={({ field }) => (
+                        <FormItem><FormLabel className="text-[10px] sm:text-xs">H</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
+                      )} />
+                      <FormField control={form.control} name="timeOfFlightVol" render={({ field }) => (
+                        <FormItem><FormLabel className="text-[10px] sm:text-xs">T</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
+                      )} />
+                      <FormField control={form.control} name="totalVol" render={({ field }) => (
+                        <FormItem><FormLabel className="text-[10px] sm:text-xs">Total</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono bg-background font-bold text-primary" /></FormControl></FormItem>
+                      )} />
                     </div>
                   </div>
                 )}
