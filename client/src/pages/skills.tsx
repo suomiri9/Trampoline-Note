@@ -589,7 +589,6 @@ export default function SkillsPage() {
                               <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-8">{shape.code}</TableCell>
                               <TableCell className="font-medium text-foreground">
                                 <span className="inline-flex items-center gap-2 flex-wrap">
-                                  <span className="text-muted-foreground">↳</span>
                                   <span>{shape.name}</span>
                                   {shape.id < 0 && (
                                     <PendingSyncBadge size="xs" testId={`badge-pending-skill-${shape.id}`} />
@@ -745,7 +744,6 @@ export default function SkillsPage() {
                               <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-8">{shape.code}</TableCell>
                               <TableCell className="font-medium text-foreground">
                                 <span className="inline-flex items-center gap-2 flex-wrap">
-                                  <span className="text-muted-foreground">↳</span>
                                   <span>{shape.name}</span>
                                   {shape.id < 0 && (
                                     <PendingSyncBadge size="xs" testId={`badge-pending-skill-${shape.id}`} />
