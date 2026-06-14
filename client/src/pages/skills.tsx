@@ -545,7 +545,7 @@ export default function SkillsPage() {
                             <TableCell className="font-mono text-sm text-muted-foreground w-24">
                               <span className="inline-flex items-center gap-1">
                                 {hasShapes ? (
-                                  expanded ? <ChevronDown className="h-5 w-5 shrink-0 text-foreground" strokeWidth={3} /> : <ChevronRight className="h-5 w-5 shrink-0 text-foreground" strokeWidth={3} />
+                                  expanded ? <ChevronDown className="h-5 w-5 shrink-0 text-foreground" strokeWidth={2.25} /> : <ChevronRight className="h-5 w-5 shrink-0 text-foreground" strokeWidth={2.25} />
                                 ) : (
                                   <span className="inline-block w-5 shrink-0" />
                                 )}
@@ -700,7 +700,7 @@ export default function SkillsPage() {
                             <TableCell className="font-mono text-sm text-muted-foreground w-24">
                               <span className="inline-flex items-center gap-1">
                                 {hasShapes ? (
-                                  expanded ? <ChevronDown className="h-5 w-5 shrink-0 text-foreground" strokeWidth={3} /> : <ChevronRight className="h-5 w-5 shrink-0 text-foreground" strokeWidth={3} />
+                                  expanded ? <ChevronDown className="h-5 w-5 shrink-0 text-foreground" strokeWidth={2.25} /> : <ChevronRight className="h-5 w-5 shrink-0 text-foreground" strokeWidth={2.25} />
                                 ) : (
                                   <span className="inline-block w-5 shrink-0" />
                                 )}
