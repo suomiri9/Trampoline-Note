@@ -529,10 +529,10 @@ export default function SkillsPage() {
                             id={`skill-${skill.id}`}
                             reorderMode={reorderMode}
                             className={cn(
-                              !reorderMode && "cursor-pointer",
-                              editingSkill?.id === skill.id ? "bg-muted/50" : !reorderMode && "hover:bg-muted/30"
+                              !reorderMode && !hasShapes && "cursor-pointer",
+                              editingSkill?.id === skill.id ? "bg-muted/50" : !reorderMode && !hasShapes && "hover:bg-muted/30"
                             )}
-                            onClick={() => navigate(`/skills/${skill.id}`)}
+                            onClick={hasShapes ? undefined : () => navigate(`/skills/${skill.id}`)}
                             testId={`row-skill-${skill.id}`}
                           >
                             <TableCell className="font-mono text-sm text-muted-foreground w-24">{skill.code}</TableCell>
@@ -678,10 +678,10 @@ export default function SkillsPage() {
                             id={`skill-${drill.id}`}
                             reorderMode={reorderMode}
                             className={cn(
-                              !reorderMode && "cursor-pointer",
-                              editingSkill?.id === drill.id ? "bg-muted/50" : !reorderMode && "hover:bg-muted/30"
+                              !reorderMode && !hasShapes && "cursor-pointer",
+                              editingSkill?.id === drill.id ? "bg-muted/50" : !reorderMode && !hasShapes && "hover:bg-muted/30"
                             )}
-                            onClick={() => navigate(`/skills/${drill.id}`)}
+                            onClick={hasShapes ? undefined : () => navigate(`/skills/${drill.id}`)}
                             testId={`row-drill-${drill.id}`}
                           >
                             <TableCell className="font-mono text-sm text-muted-foreground w-24">{drill.code}</TableCell>

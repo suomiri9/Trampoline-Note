@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Calendar, Hash, Star, TrendingUp, Loader2, ChevronLeft, ChevronRight, Wrench } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { useRef, useCallback, useMemo, useState } from "react";
+import { useRef, useCallback, useMemo, useState, useEffect } from "react";
 import {
   CompletionChart,
   RepsChart,
@@ -30,7 +30,7 @@ export default function SkillDetailPage() {
   const skill = allSkills?.find(s => s.id === skillId);
 
   const isConnection = skill?.isDrill === 2 || skill?.isDrill === 3;
-  const hasShapes = !!allSkills && skill?.parentSkillId == null && allSkills.some(s => s.parentSkillId === skillId);
+  const hasShapes = !!allSkills && skill?.parentSkillId == null && allSkills.some(s => s.parentSkillId === skillId && s.archived !== 1);
 
   const [pointsOpen, setPointsOpen] = useState(false);
   const skillPoints = useMemo(
@@ -39,8 +39,13 @@ export default function SkillDetailPage() {
   );
 
   const currentType = skill?.isDrill ?? 0;
+  const parentIds = useMemo(() => {
+    const set = new Set<number>();
+    (allSkills || []).forEach(s => { if (s.parentSkillId != null && s.archived !== 1) set.add(s.parentSkillId); });
+    return set;
+  }, [allSkills]);
   const orderedIds = allSkills
-    ? allSkills.filter(s => s.isDrill === currentType && (s.archived !== 1 || s.id === skillId)).map(s => s.id)
+    ? allSkills.filter(s => s.isDrill === currentType && !parentIds.has(s.id) && (s.archived !== 1 || s.id === skillId)).map(s => s.id)
     : [];
   const currentIndex = orderedIds.indexOf(skillId);
 
@@ -85,6 +90,10 @@ export default function SkillDetailPage() {
 
   const historyLoading = isConnection ? connLoading : repsLoading;
 
+  useEffect(() => {
+    if (hasShapes) navigate("/skills", { replace: true });
+  }, [hasShapes, navigate]);
+
   if (skillsLoading || historyLoading) {
     return (
       <PageLayout>
@@ -93,6 +102,10 @@ export default function SkillDetailPage() {
         </div>
       </PageLayout>
     );
+  }
+
+  if (hasShapes) {
+    return null;
   }
 
   if (!skill) {
@@ -339,24 +352,22 @@ export default function SkillDetailPage() {
       <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {header}
 
-        {!hasShapes && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-            <StatCard icon={<Hash className="w-4 h-4" />} label="Total Reps" value={totalReps.toString()} testId="stat-total-reps" />
-            <StatCard icon={<Calendar className="w-4 h-4" />} label="Sessions" value={totalSessions.toString()} testId="stat-total-sessions" />
-            <StatCard
-              icon={<TrendingUp className="w-4 h-4" />}
-              label="First Practiced"
-              value={firstPracticed ? format(parseISO(firstPracticed), "MMM d, yyyy") : "—"}
-              testId="stat-first-practiced"
-            />
-            <StatCard
-              icon={<Star className="w-4 h-4" />}
-              label="Last Practiced"
-              value={lastPracticed ? format(parseISO(lastPracticed), "MMM d, yyyy") : "—"}
-              testId="stat-last-practiced"
-            />
-          </div>
-        )}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <StatCard icon={<Hash className="w-4 h-4" />} label="Total Reps" value={totalReps.toString()} testId="stat-total-reps" />
+          <StatCard icon={<Calendar className="w-4 h-4" />} label="Sessions" value={totalSessions.toString()} testId="stat-total-sessions" />
+          <StatCard
+            icon={<TrendingUp className="w-4 h-4" />}
+            label="First Practiced"
+            value={firstPracticed ? format(parseISO(firstPracticed), "MMM d, yyyy") : "—"}
+            testId="stat-first-practiced"
+          />
+          <StatCard
+            icon={<Star className="w-4 h-4" />}
+            label="Last Practiced"
+            value={lastPracticed ? format(parseISO(lastPracticed), "MMM d, yyyy") : "—"}
+            testId="stat-last-practiced"
+          />
+        </div>
 
         {skillPoints.length > 0 && (
           <Card className="mb-6">
@@ -384,45 +395,41 @@ export default function SkillDetailPage() {
           </Card>
         )}
 
-        {!hasShapes && (
-          <>
-            <RepsChart title="Reps per Day" data={chartData} />
+        <RepsChart title="Reps per Day" data={chartData} />
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Session History</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {entries.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-no-history">
-                    No training sessions found for this skill yet.
-                  </p>
-                ) : (
-                  <div className="space-y-2 max-h-[50vh] overflow-y-auto" data-testid="list-session-history">
-                    {[...entries].reverse().map((entry) => (
-                      <div
-                        key={`${entry.noteId}-${entry.date}`}
-                        className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                        data-testid={`row-session-${entry.noteId}`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium font-mono" data-testid={`text-date-${entry.noteId}`}>
-                            {format(parseISO(entry.date), "MMM d, yyyy")}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Badge variant="outline" className="font-mono text-xs" data-testid={`badge-reps-${entry.noteId}`}>
-                            {entry.reps} rep{entry.reps !== 1 ? "s" : ""}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Session History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {entries.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-no-history">
+                No training sessions found for this skill yet.
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto" data-testid="list-session-history">
+                {[...entries].reverse().map((entry) => (
+                  <div
+                    key={`${entry.noteId}-${entry.date}`}
+                    className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                    data-testid={`row-session-${entry.noteId}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium font-mono" data-testid={`text-date-${entry.noteId}`}>
+                        {format(parseISO(entry.date), "MMM d, yyyy")}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="font-mono text-xs" data-testid={`badge-reps-${entry.noteId}`}>
+                        {entry.reps} rep{entry.reps !== 1 ? "s" : ""}
+                      </Badge>
+                    </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {bottomNav}
 
