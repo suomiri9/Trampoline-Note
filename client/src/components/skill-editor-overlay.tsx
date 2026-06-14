@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Skill } from "@shared/schema";
+import { skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
 
 interface SkillEditorOverlayProps {
   title: string;
@@ -79,8 +80,8 @@ export function SkillEditorOverlay({
                   <SortableSkillRow
                     key={uids[i]}
                     uid={uids[i]}
-                    code={sk?.code}
-                    name={sk?.name}
+                    code={skillDisplayCode(sk, allSkills)}
+                    name={skillDisplayName(sk, allSkills)}
                     isDrill={sk?.isDrill}
                     onRemove={() => removeSkill(i)}
                   />
@@ -103,8 +104,8 @@ export function SkillEditorOverlay({
                     "font-mono text-[10px]",
                     s.isDrill === 3 ? "border-muted-foreground/40 text-muted-foreground" :
                     s.isDrill === 2 ? "border-red-300 text-red-500" : ""
-                  )}>{s.code}</Badge>
-                  <span className="text-xs">{s.name}</span>
+                  )}>{skillDisplayCode(s, allSkills)}</Badge>
+                  <span className="text-xs">{skillDisplayName(s, allSkills)}</span>
                   {s.isDrill === 2 && <span className="text-[10px] text-red-500 font-medium">(Connection)</span>}
                   {s.isDrill === 3 && <span className="text-[10px] text-muted-foreground font-medium">(Routine Part)</span>}
                 </div>

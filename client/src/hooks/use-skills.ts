@@ -28,6 +28,8 @@ export function useSkills() {
           skillIds: skill.skillIds ?? null,
           sortOrder: skill.sortOrder ?? null,
           archived: 0,
+          parentSkillId: skill.parentSkillId ?? null,
+          shape: skill.shape ?? null,
         }) as Skill & { id: number },
         async (signal) => {
           const res = await fetch(api.skills.create.path, {

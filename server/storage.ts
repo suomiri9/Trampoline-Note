@@ -16,6 +16,15 @@ import {
 } from "@shared/schema";
 import { eq, desc, and, isNull, sql, gte } from "drizzle-orm";
 
+// Thrown when a shape grouping link (parentSkillId) is invalid. Routes map this
+// to a 400 so bad links never silently persist.
+export class SkillLinkError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SkillLinkError";
+  }
+}
+
 export interface IStorage {
   // Notes
   getNotes(userId: string, opts?: { limit?: number; offset?: number }): Promise<NoteResponse[]>;
@@ -100,8 +109,47 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(skills).where(eq(skills.userId, userId));
   }
 
+  // Validate a shape-grouping link before it is persisted: the parent must be
+  // the caller's own top-level base (a skill OR a drill), never a connection or
+  // routine part, never a shape itself (no nesting), and never the row itself. A
+  // shape must be the SAME type (skill/drill) as its base. When relinking an
+  // existing row, that row must not already own shapes (which would nest a group).
+  private async assertValidParent(userId: string, parentSkillId: number, childIsDrill: number, selfId?: number): Promise<void> {
+    if (!Number.isInteger(parentSkillId) || parentSkillId <= 0) {
+      throw new SkillLinkError("Invalid parent.");
+    }
+    if (selfId != null && parentSkillId === selfId) {
+      throw new SkillLinkError("An item cannot be its own shape parent.");
+    }
+    const [parent] = await db.select().from(skills)
+      .where(and(eq(skills.id, parentSkillId), eq(skills.userId, userId)));
+    if (!parent) {
+      throw new SkillLinkError("Parent not found.");
+    }
+    if (parent.isDrill !== 0 && parent.isDrill !== 1) {
+      throw new SkillLinkError("Shapes can only be grouped under a skill or drill.");
+    }
+    if (parent.isDrill !== childIsDrill) {
+      throw new SkillLinkError("A shape must be the same type (skill/drill) as its base.");
+    }
+    if (parent.parentSkillId != null) {
+      throw new SkillLinkError("Shapes cannot be nested under another shape.");
+    }
+    if (selfId != null) {
+      const [child] = await db.select().from(skills)
+        .where(and(eq(skills.parentSkillId, selfId), eq(skills.userId, userId)))
+        .limit(1);
+      if (child) {
+        throw new SkillLinkError("This item has its own shapes, so it cannot become a shape of another.");
+      }
+    }
+  }
+
   async createSkill(userId: string, insertSkill: InsertSkill): Promise<Skill> {
     const isDrill = insertSkill.isDrill ?? 0;
+    if (insertSkill.parentSkillId != null) {
+      await this.assertValidParent(userId, insertSkill.parentSkillId, isDrill);
+    }
     const difficulty = insertSkill.difficulty ?? 0;
 
     const sameCategory = await db.select()
@@ -140,14 +188,42 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateSkill(id: number, userId: string, updates: Partial<InsertSkill>): Promise<Skill | undefined> {
+    const [existing] = await db.select().from(skills)
+      .where(and(eq(skills.id, id), eq(skills.userId, userId)));
+    if (existing) {
+      const effectiveIsDrill = updates.isDrill ?? existing.isDrill;
+      if (updates.parentSkillId != null) {
+        await this.assertValidParent(userId, updates.parentSkillId, effectiveIsDrill, id);
+      }
+      // A base that already owns shapes can't switch type — its children would
+      // become a different type than their base, breaking the grouping invariant.
+      if (updates.isDrill != null && updates.isDrill !== existing.isDrill) {
+        const [child] = await db.select().from(skills)
+          .where(and(eq(skills.parentSkillId, id), eq(skills.userId, userId)))
+          .limit(1);
+        if (child) {
+          throw new SkillLinkError("Cannot change the type of an item that has shapes.");
+        }
+      }
+    }
     const [updated] = await db.update(skills)
       .set(updates)
       .where(and(eq(skills.id, id), eq(skills.userId, userId)))
       .returning();
+    // Cascade archive/unarchive of a base skill to its shape children so a
+    // shape never outlives (or gets orphaned in active lists from) its base.
+    if (updated && updates.archived != null) {
+      await db.update(skills)
+        .set({ archived: updates.archived })
+        .where(and(eq(skills.parentSkillId, id), eq(skills.userId, userId)));
+    }
     return updated;
   }
 
   async deleteSkill(id: number, userId: string): Promise<void> {
+    // Cascade delete: remove any shape children of this base skill first so
+    // no orphaned shapes remain.
+    await db.delete(skills).where(and(eq(skills.parentSkillId, id), eq(skills.userId, userId)));
     await db.delete(skills).where(and(eq(skills.id, id), eq(skills.userId, userId)));
   }
 

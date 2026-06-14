@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/command";
 import type { SafeUser } from "@shared/models/auth";
 import type { Routine } from "@shared/schema";
+import { skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
 
 export type PointToFix = {
   id: string;
@@ -473,9 +474,9 @@ export function PointsToFix({
                 const filterRoutine =
                   filterKind === "routine" && filterId !== null ? routineById(filterId) : null;
                 const filterLabel = filterSkill
-                  ? filterSkill.code === filterSkill.name
-                    ? filterSkill.code
-                    : `${filterSkill.code} - ${filterSkill.name}`
+                  ? skillDisplayCode(filterSkill, skills) === skillDisplayName(filterSkill, skills)
+                    ? skillDisplayCode(filterSkill, skills)
+                    : `${skillDisplayCode(filterSkill, skills)} - ${skillDisplayName(filterSkill, skills)}`
                   : filterRoutine
                     ? filterRoutine.name
                     : "";
@@ -703,7 +704,7 @@ export function PointsToFix({
                                   {filterSkillsList.map((s) => (
                                     <CommandItem
                                       key={`fs-${s.id}`}
-                                      value={`${s.code} ${s.name} skill`}
+                                      value={`${skillDisplayCode(s, skills)} ${skillDisplayName(s, skills)} skill`}
                                       onSelect={() => {
                                         setFilterKind("skill");
                                         setFilterId(s.id);
@@ -712,10 +713,10 @@ export function PointsToFix({
                                       data-testid={`filter-skill-${s.id}`}
                                     >
                                       <span className="font-mono text-xs font-semibold text-foreground mr-2">
-                                        {s.code}
+                                        {skillDisplayCode(s, skills)}
                                       </span>
-                                      {s.code !== s.name && (
-                                        <span className="text-muted-foreground">- {s.name}</span>
+                                      {skillDisplayCode(s, skills) !== skillDisplayName(s, skills) && (
+                                        <span className="text-muted-foreground">- {skillDisplayName(s, skills)}</span>
                                       )}
                                     </CommandItem>
                                   ))}
@@ -911,7 +912,7 @@ export function PointsToFix({
                                             {linkSkillsList.map((s) => (
                                               <CommandItem
                                                 key={`ls-${s.id}`}
-                                                value={`${s.code} ${s.name} skill`}
+                                                value={`${skillDisplayCode(s, skills)} ${skillDisplayName(s, skills)} skill`}
                                                 onSelect={() => {
                                                   addSkillToDraft(`skill:${s.id}`);
                                                   setLinkOpen(false);
@@ -919,10 +920,10 @@ export function PointsToFix({
                                                 data-testid={`option-skill-${s.id}`}
                                               >
                                                 <span className="font-mono text-xs font-semibold text-foreground mr-2">
-                                                  {s.code}
+                                                  {skillDisplayCode(s, skills)}
                                                 </span>
-                                                {s.code !== s.name && (
-                                                  <span className="text-muted-foreground">- {s.name}</span>
+                                                {skillDisplayCode(s, skills) !== skillDisplayName(s, skills) && (
+                                                  <span className="text-muted-foreground">- {skillDisplayName(s, skills)}</span>
                                                 )}
                                               </CommandItem>
                                             ))}
@@ -1015,7 +1016,7 @@ export function PointsToFix({
                                       className="pr-1 gap-1"
                                       data-testid={`badge-draft-skill-${id}`}
                                     >
-                                      <span className="font-mono">{s?.code || "?"}</span>
+                                      <span className="font-mono">{skillDisplayCode(s, skills) || "?"}</span>
                                       <span className="text-[9px] uppercase opacity-70">
                                         {TYPE_LABEL[t]}
                                       </span>
@@ -1157,17 +1158,17 @@ export function PointsToFix({
                                 : t === "connection"
                                   ? "text-red-500 dark:text-red-400"
                                   : "";
-                            const sameCodeName = !!s && s.code === s.name;
+                            const sameCodeName = !!s && skillDisplayCode(s, skills) === skillDisplayName(s, skills);
                             const header = (
                               <div className="flex items-center gap-2 min-w-0 flex-wrap">
                                 <span className="font-mono text-xs font-semibold text-foreground">
-                                  {s?.code || "?"}
+                                  {skillDisplayCode(s, skills) || "?"}
                                 </span>
                                 {!sameCodeName && (
                                   <>
                                     <span className="text-muted-foreground">-</span>
                                     <span className="text-sm text-muted-foreground truncate">
-                                      {s?.name || "Unknown skill"}
+                                      {skillDisplayName(s, skills) || "Unknown skill"}
                                     </span>
                                   </>
                                 )}
@@ -1249,8 +1250,8 @@ export function PointsToFix({
           totalLinks > 1 &&
           (deleteTarget.fromSkillId !== null || deleteTarget.fromRoutineId !== null);
         const groupName = deleteTarget?.fromSkillId
-          ? skillById(deleteTarget.fromSkillId)?.code ||
-            skillById(deleteTarget.fromSkillId)?.name ||
+          ? skillDisplayCode(skillById(deleteTarget.fromSkillId), skills) ||
+            skillDisplayName(skillById(deleteTarget.fromSkillId), skills) ||
             "this group"
           : deleteTarget?.fromRoutineId
             ? routineById(deleteTarget.fromRoutineId)?.name || "this routine"

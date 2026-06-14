@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
+import { skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
 import { useAuth } from "@/hooks/use-auth";
 import { PageLayout } from "@/components/page-layout";
 import { PointsToFix, parsePoints } from "@/components/points-to-fix";
@@ -140,11 +141,11 @@ export default function SkillDetailPage() {
       <div>
         <div className="eyebrow mb-2">// {typeLabel}</div>
         <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="text-3xl sm:text-4xl font-display font-normal tracking-tight" data-testid="text-skill-name">{skill.name}</h1>
+          <h1 className="text-3xl sm:text-4xl font-display font-normal tracking-tight" data-testid="text-skill-name">{skillDisplayName(skill, allSkills)}</h1>
           <Badge variant="secondary" data-testid="badge-skill-type">{typeLabel}</Badge>
         </div>
         <p className="text-muted-foreground text-sm mt-2 font-mono">
-          Code <span className="text-foreground/80" data-testid="text-skill-code">{skill.code}</span>
+          Code <span className="text-foreground/80" data-testid="text-skill-code">{skillDisplayCode(skill, allSkills)}</span>
           {"  ·  "}
           DD <span className="text-primary font-semibold" data-testid="text-skill-difficulty">{skill.difficulty.toFixed(1)}</span>
         </p>
@@ -161,7 +162,7 @@ export default function SkillDetailPage() {
         data-testid="button-prev-skill-bottom"
       >
         <ChevronLeft className="w-4 h-4" />
-        <span className="truncate max-w-[120px]">{prevSkill?.name || ""}</span>
+        <span className="truncate max-w-[120px]">{skillDisplayName(prevSkill, allSkills) || ""}</span>
       </button>
       <button
         className="flex items-center gap-1 hover:text-foreground transition-colors disabled:opacity-30"
@@ -169,7 +170,7 @@ export default function SkillDetailPage() {
         onClick={goNext}
         data-testid="button-next-skill-bottom"
       >
-        <span className="truncate max-w-[120px]">{nextSkill?.name || ""}</span>
+        <span className="truncate max-w-[120px]">{skillDisplayName(nextSkill, allSkills) || ""}</span>
         <ChevronRight className="w-4 h-4" />
       </button>
     </div>
@@ -200,7 +201,7 @@ export default function SkillDetailPage() {
                     return (
                       <div key={idx} className="flex flex-col items-center gap-1">
                         <Badge variant="outline" className="px-2 py-1 font-mono" data-testid={`badge-conn-skill-${idx}`}>
-                          {sub?.code || "???"}
+                          {skillDisplayCode(sub, allSkills) || "???"}
                         </Badge>
                         <span className="text-[10px] text-muted-foreground font-semibold font-mono">
                           {sub?.difficulty.toFixed(1) || "0.0"}

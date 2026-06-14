@@ -27,6 +27,32 @@ export function parseNoteSkills(skillsString: string | null | undefined): SkillI
   }
 }
 
+export function shapeParentOf(
+  skill: Pick<Skill, "parentSkillId"> | undefined | null,
+  allSkills: Skill[] | undefined | null,
+): Skill | undefined {
+  if (!skill || skill.parentSkillId == null || !allSkills) return undefined;
+  return allSkills.find(s => s.id === skill.parentSkillId);
+}
+
+export function skillDisplayCode(
+  skill: Pick<Skill, "code" | "parentSkillId"> | undefined | null,
+  allSkills: Skill[] | undefined | null,
+): string {
+  if (!skill) return "";
+  const parent = shapeParentOf(skill, allSkills);
+  return parent ? `${parent.code}${skill.code}` : skill.code;
+}
+
+export function skillDisplayName(
+  skill: Pick<Skill, "name" | "parentSkillId"> | undefined | null,
+  allSkills: Skill[] | undefined | null,
+): string {
+  if (!skill) return "";
+  const parent = shapeParentOf(skill, allSkills);
+  return parent ? `${parent.name}${skill.name}` : skill.name;
+}
+
 export function suggestRoutinePartName(routineName: string, start: number, end: number, total: number): string {
   if (start <= 1 && end >= total) return routineName;
   const len = end - start + 1;

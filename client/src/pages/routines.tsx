@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { useNotes } from "@/hooks/use-notes";
-import { calcDDFromSkillIds, parseNoteSkills } from "@/lib/training-utils";
+import { calcDDFromSkillIds, parseNoteSkills, skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
 import { useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { useTypeToSearch } from "@/hooks/use-type-to-search";
 import { PageLayout } from "@/components/page-layout";
@@ -225,12 +225,12 @@ export default function RoutinesPage() {
                         }).map(skill => (
                           <CommandItem
                             key={skill.id}
-                            value={`${skill.code} ${skill.name} skill`}
+                            value={`${skillDisplayCode(skill, allItems)} ${skillDisplayName(skill, allItems)} skill`}
                             onSelect={() => { handleAddSkill(skill.id); setTopPickerOpen(false); }}
                             data-testid={`pick-routine-skill-${skill.id}`}
                           >
-                            <span className="font-mono text-xs font-semibold text-foreground mr-2">{skill.code}</span>
-                            {skill.code !== skill.name && <span className="text-muted-foreground">- {skill.name}</span>}
+                            <span className="font-mono text-xs font-semibold text-foreground mr-2">{skillDisplayCode(skill, allItems)}</span>
+                            {skillDisplayCode(skill, allItems) !== skillDisplayName(skill, allItems) && <span className="text-muted-foreground">- {skillDisplayName(skill, allItems)}</span>}
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -250,7 +250,7 @@ export default function RoutinesPage() {
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
                   <div className="flex flex-wrap gap-1.5">
                     {recents.map(s => (
-                      <button key={`routine-recent-${s.id}`} type="button" disabled={selectedSkillIds.length >= 10} onClick={() => handleAddSkill(s.id)} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95 disabled:opacity-40 disabled:pointer-events-none" data-testid={`btn-routine-recent-${s.id}`}>{s.code}</button>
+                      <button key={`routine-recent-${s.id}`} type="button" disabled={selectedSkillIds.length >= 10} onClick={() => handleAddSkill(s.id)} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95 disabled:opacity-40 disabled:pointer-events-none" data-testid={`btn-routine-recent-${s.id}`}>{skillDisplayCode(s, allItems)}</button>
                     ))}
                   </div>
                 </div>
@@ -264,7 +264,7 @@ export default function RoutinesPage() {
                     return (
                       <SortableChip key={`slot-${idx}`} uid={`slot-${idx}`}>
                         <Badge variant="secondary" className="gap-0 pr-0 py-0 items-stretch overflow-hidden" data-testid={`chip-routine-skill-${idx}`}>
-                          <span className="py-0.5 pl-2.5 pr-1.5 flex items-center">{s?.code}</span>
+                          <span className="py-0.5 pl-2.5 pr-1.5 flex items-center">{skillDisplayCode(s, allItems)}</span>
                           <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => handleRemoveSkill(idx)} className="px-2.5 flex items-center justify-center hover:bg-muted/60 active:bg-muted" data-testid={`btn-remove-routine-skill-${idx}`} aria-label="Remove"><X className="h-3.5 w-3.5" /></button>
                         </Badge>
                       </SortableChip>
@@ -350,9 +350,9 @@ export default function RoutinesPage() {
                     <span
                       key={idx}
                       className="text-center text-[11px] font-mono text-muted-foreground bg-secondary/40 border border-border/50 rounded-md px-1 py-1 truncate"
-                      title={skill?.name}
+                      title={skillDisplayName(skill, allItems)}
                     >
-                      {skill?.code || "—"}
+                      {skillDisplayCode(skill, allItems) || "—"}
                     </span>
                   );
                 })}

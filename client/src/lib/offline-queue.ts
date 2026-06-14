@@ -324,10 +324,16 @@ function remapBody(kind: QueueKind, body: any, idMap: Map<number, number>): any 
     return { ...body, skills: remapNoteSkillsString(body.skills, idMap) };
   }
   if (kind === 'routine' || kind === 'skill') {
+    let next = body;
     if (Array.isArray(body.skillIds)) {
-      return { ...body, skillIds: body.skillIds.map((id: number) => idMap.get(id) ?? id) };
+      next = { ...next, skillIds: body.skillIds.map((id: number) => idMap.get(id) ?? id) };
     }
-    return body;
+    // A shape created offline references its (possibly also-offline) base via
+    // parentSkillId — remap it to the real id once the base has synced.
+    if (kind === 'skill' && typeof body.parentSkillId === 'number' && idMap.has(body.parentSkillId)) {
+      next = { ...next, parentSkillId: idMap.get(body.parentSkillId) };
+    }
+    return next;
   }
   if (kind === 'score') {
     const next = { ...body };

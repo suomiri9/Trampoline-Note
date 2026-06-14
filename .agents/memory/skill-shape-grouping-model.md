@@ -1,0 +1,54 @@
+---
+name: Skill shape-grouping model (base = pure grouping)
+description: How tuck/pike/straight shapes relate to their base skill, and why the base has no DD / is not loggable.
+---
+
+# Skill shape grouping: base is a PURE GROUPING
+
+This model applies to BOTH skills and drills (a base's shape children always share the base's
+`isDrill`). When a skill OR drill has shape variants (each its own `skills` row linked via
+`parentSkillId` + `shape`),
+the BASE row is a pure grouping: it has **no DD of its own** and is **not directly loggable**.
+All DD lives in the explicit shape children (tuck `o` / pike `<` / straight `/`). The base is NOT
+"the implicit first shape" — that earlier framing was superseded.
+
+Concretely: the add/edit form hides the base Difficulty field once a shape draft exists and forces
+base `difficulty` to 0 on save; the skills library shows the base row's DD as `—` and counts shapes
+as children-only (no `+1`); the training-log shape chooser lists only the children (the base itself
+is not a selectable option), so a grouped base can never be logged with DD 0.
+
+The shape "Code" is a fixed dropdown of symbols (`o`/`<`/`/`), and the chosen symbol becomes the
+shape row's `code` and `shape`. There is intentionally NO separate free-text per-shape code field.
+
+**Why:** The user explicitly requested this in a follow-up ("delete dd for itself and only show dd
+with shape when a shape added" + make shape Code a dropdown). It overrides the ORIGINAL shape-grouping spec
+(base stays a normal loggable skill; explicit per-shape code with no auto-derivation). The automated
+code review keeps grading against that original spec and will flag these two points as regressions —
+they are intentional, user-directed deviations, not bugs. The genuinely valid review concern (a
+grouped base being loggable with DD 0, skewing session totals) was fixed by removing the base from
+the picker chooser.
+
+**How to apply:** Don't "restore" base DD / base loggability or add a free-text shape code to satisfy
+a code review — confirm with the user first, because it contradicts their stated intent. Server-side
+`storage.assertValidParent(userId, parentSkillId, childIsDrill, selfId?)` (→ `SkillLinkError` → 400)
+guards parentSkillId links: no self-parent, parent must be a top-level base of the SAME KIND as the
+child (`parent.isDrill === childIsDrill` — skills can't nest under drill bases or vice-versa), no
+nesting under a shape, a row that owns shapes can't become one; `updateSkill` also blocks flipping
+`isDrill` on a base that owns children. The shared Shapes editor is
+`client/src/components/shape-drafts-editor.tsx`, reused by the Skills-tab skill+drill forms and the
+note-dialog quick-add (New Skill + New Drill).
+
+## Combined shape display (base+shape) everywhere EXCEPT the library
+
+A later follow-up: a shape must show its FULL identity wherever it appears — code = `baseCode+shapeCode`
+(e.g. `8--<`), name = `baseName+shapeName` (e.g. `BT`), pure concatenation, no separator — via
+`skillDisplayCode`/`skillDisplayName` in `client/src/lib/training-utils.ts`. Two surfaces INTENTIONALLY
+keep the shape's OWN code/name because the base is already on screen: (1) the Skills-library nested
+shape rows (grouped under the base, matches the approved mockup), and (2) the training-log
+shape-chooser HEADING (`${base.code} — pick shape`) — though the chooser's list ITEMS are combined.
+Also: selecting the shape Code dropdown sets `code`+`shape` but no longer auto-fills the Name (user types it).
+
+**Why:** user asked for the combined identity so logged/listed shapes read unambiguously; the library
+stays grouped-and-own to avoid redundant `B`-prefix noise under an already-labelled base. **How to apply:**
+don't make the library rows combine (it would duplicate the base label) and don't drop the combine from
+the usage surfaces — and don't re-add name auto-fill on the shape Code dropdown.

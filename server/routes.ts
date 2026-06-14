@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import type { Server } from "http";
-import { storage } from "./storage";
+import { storage, SkillLinkError } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { isAuthenticated, getUserId } from "./auth";
@@ -115,6 +115,9 @@ export async function registerRoutes(
           field: err.errors[0].path.join('.'),
         });
       }
+      if (err instanceof SkillLinkError) {
+        return res.status(400).json({ message: err.message });
+      }
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -153,6 +156,9 @@ export async function registerRoutes(
           message: err.errors[0].message,
           field: err.errors[0].path.join('.'),
         });
+      }
+      if (err instanceof SkillLinkError) {
+        return res.status(400).json({ message: err.message });
       }
       res.status(500).json({ message: "Internal server error" });
     }

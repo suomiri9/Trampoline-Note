@@ -24,6 +24,8 @@ export const skills = pgTable("skills", {
   skillIds: integer("skill_ids").array(), // For frequent connections (type 2) and routine parts (type 3)
   sortOrder: integer("sort_order"),
   archived: integer("archived").notNull().default(0), // 0 = active, 1 = archived
+  parentSkillId: integer("parent_skill_id"), // when set, this skill row is a SHAPE of the referenced base skill
+  shape: text("shape"), // shape symbol/label (e.g. "o" tuck, "<" pike, "/" straight); null for non-shape rows
 });
 
 export const routines = pgTable("routines", {

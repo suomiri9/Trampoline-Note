@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
@@ -26,6 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
+import { ShapeDraftsEditor, SHAPE_OPTIONS, type ShapeDraft } from "@/components/shape-drafts-editor";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -98,6 +99,15 @@ export default function SkillsPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<{ id: number; name: string; kind: string } | null>(null);
 
+  const [shapeDrafts, setShapeDrafts] = useState<ShapeDraft[]>([]);
+
+  const [assignTarget, setAssignTarget] = useState<Skill | null>(null);
+  const [assignBaseId, setAssignBaseId] = useState<string>("");
+  const [assignShapeLabel, setAssignShapeLabel] = useState("");
+
+  const shapesOf = (parentId: number): Skill[] =>
+    allItems ? sortByOrder(allItems.filter(s => s.parentSkillId === parentId && archivedFilter(s))) : [];
+
   const sensors = useDndSensors();
   const longPressSensors = useLongPressDndSensors();
 
@@ -111,8 +121,8 @@ export default function SkillsPage() {
   };
 
   const archivedFilter = (item: Skill) => showArchived ? item.archived === 1 : item.archived !== 1;
-  const skills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 0 && archivedFilter(item))) : undefined;
-  const drills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 1 && archivedFilter(item))) : undefined;
+  const skills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 0 && item.parentSkillId == null && archivedFilter(item))) : undefined;
+  const drills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 1 && item.parentSkillId == null && archivedFilter(item))) : undefined;
   const frequentConnections = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 2 && archivedFilter(item))) : undefined;
   const routineParts = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 3 && archivedFilter(item))) : undefined;
   const archivedCount = allItems ? allItems.filter(i => i.archived === 1).length : 0;
@@ -187,25 +197,75 @@ export default function SkillsPage() {
     }
   });
 
+  const isEditingShape = !!editingSkill && editingSkill.parentSkillId != null;
+
+  const syncShapes = async (baseId: number, isDrill: number) => {
+    const existing = (allItems || []).filter(s => s.parentSkillId === baseId);
+    const keptIds = new Set(shapeDrafts.filter(d => d.id != null).map(d => d.id as number));
+    // delete removed shapes
+    for (const ex of existing) {
+      if (!keptIds.has(ex.id)) {
+        await deleteSkill(ex.id);
+      }
+    }
+    // create/update drafts (skip empty rows)
+    for (const d of shapeDrafts) {
+      const label = (d.shape || "").trim();
+      const name = (d.name || "").trim();
+      if (!label && !name) continue;
+      const payload = {
+        name: name || label,
+        code: label || name,
+        difficulty: d.difficulty || 0,
+        isDrill,
+        parentSkillId: baseId,
+        shape: label || null,
+      };
+      if (d.id != null) {
+        await updateSkill({ id: d.id, ...payload });
+      } else {
+        await createSkill(payload);
+      }
+    }
+  };
+
   const onSkillSubmit = async (values: any) => {
+    const hasRealShapes = !isEditingShape && shapeDrafts.some(d => (d.shape || "").trim() || (d.name || "").trim());
+    const baseValues = hasRealShapes ? { ...values, difficulty: 0 } : values;
     if (editingSkill) {
-      await updateSkill({ id: editingSkill.id, ...values });
+      const base = await updateSkill({ id: editingSkill.id, ...baseValues });
+      if (!isEditingShape) {
+        await syncShapes(base?.id ?? editingSkill.id, 0);
+      }
       setEditingSkill(null);
     } else {
-      await createSkill({ ...values, isDrill: 0 });
+      const created = await createSkill({ ...baseValues, isDrill: 0 });
+      if (created?.id != null) {
+        await syncShapes(created.id, 0);
+      }
     }
     skillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 0 });
+    setShapeDrafts([]);
     setShowForm(false);
   };
 
   const onDrillSubmit = async (values: any) => {
+    const hasRealShapes = !isEditingShape && shapeDrafts.some(d => (d.shape || "").trim() || (d.name || "").trim());
+    const baseValues = hasRealShapes ? { ...values, difficulty: 0 } : values;
     if (editingSkill) {
-      await updateSkill({ id: editingSkill.id, ...values });
+      const base = await updateSkill({ id: editingSkill.id, ...baseValues });
+      if (!isEditingShape) {
+        await syncShapes(base?.id ?? editingSkill.id, 1);
+      }
       setEditingSkill(null);
     } else {
-      await createSkill({ ...values, isDrill: 1 });
+      const created = await createSkill({ ...baseValues, isDrill: 1 });
+      if (created?.id != null) {
+        await syncShapes(created.id, 1);
+      }
     }
     drillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 1 });
+    setShapeDrafts([]);
     setShowForm(false);
   };
 
@@ -281,6 +341,15 @@ export default function SkillsPage() {
         difficulty: skill.difficulty,
         isDrill: skill.isDrill,
       });
+      // Load this base drill's existing shapes into editable drafts (a shape
+      // row itself has no sub-shapes).
+      if (skill.parentSkillId == null) {
+        setShapeDrafts(
+          shapesOf(skill.id).map(s => ({ id: s.id, shape: s.shape ?? s.code, name: s.name, difficulty: s.difficulty }))
+        );
+      } else {
+        setShapeDrafts([]);
+      }
     } else {
       skillForm.reset({
         name: skill.name,
@@ -288,6 +357,15 @@ export default function SkillsPage() {
         difficulty: skill.difficulty,
         isDrill: skill.isDrill,
       });
+      // Load this base skill's existing shapes into editable drafts (a shape
+      // row itself has no sub-shapes).
+      if (skill.parentSkillId == null) {
+        setShapeDrafts(
+          shapesOf(skill.id).map(s => ({ id: s.id, shape: s.shape ?? s.code, name: s.name, difficulty: s.difficulty }))
+        );
+      } else {
+        setShapeDrafts([]);
+      }
     }
   };
 
@@ -304,8 +382,10 @@ export default function SkillsPage() {
         setConnSkillIds([]);
       } else if (isDrill === 1) {
         drillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 1 });
+        setShapeDrafts([]);
       } else {
         skillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 0 });
+        setShapeDrafts([]);
       }
     }
     setShowForm(false);
@@ -388,37 +468,23 @@ export default function SkillsPage() {
                 <DialogHeader>
                   <DialogTitle>{editingSkill ? "Edit Skill" : "Add New Skill"}</DialogTitle>
                 </DialogHeader>
-                  {!editingSkill && activeSkills.length > 0 && (
-                    <div className="mb-3">
-                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Duplicate from existing</label>
-                      <Select value="" onValueChange={(v) => {
-                        const src = activeSkills.find(s => s.id === parseInt(v));
-                        if (!src) return;
-                        skillForm.reset({ name: `${src.name} (copy)`, code: src.code, difficulty: src.difficulty, isDrill: 0 });
-                      }}>
-                        <SelectTrigger data-testid="select-duplicate-skill"><SelectValue placeholder="Pick a skill to copy..." /></SelectTrigger>
-                        <SelectContent>
-                          {activeSkills.map(s => (
-                            <SelectItem key={s.id} value={s.id.toString()}>
-                              <span className="font-mono mr-2">{s.code}</span> {s.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
                   <Form {...skillForm}>
                     <form onSubmit={skillForm.handleSubmit(onSkillSubmit)} className="space-y-3">
                       <FormField control={skillForm.control} name="name" render={({ field }) => (
-                        <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} placeholder="Back Tuck" /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} placeholder="Bs" /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={skillForm.control} name="code" render={({ field }) => (
-                        <FormItem><FormLabel>Code</FormLabel><FormControl><Input {...field} placeholder="BT" /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Code</FormLabel><FormControl><Input {...field} placeholder="4-" /></FormControl><FormMessage /></FormItem>
                       )} />
-                      <FormField control={skillForm.control} name="difficulty" render={({ field }) => (
-                        <FormItem><FormLabel>Difficulty</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
-                      )} />
-                      {editingSkill && (
+                      {(isEditingShape || shapeDrafts.length === 0) && (
+                        <FormField control={skillForm.control} name="difficulty" render={({ field }) => (
+                          <FormItem><FormLabel>Difficulty</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                      )}
+                      {!isEditingShape && (
+                        <ShapeDraftsEditor drafts={shapeDrafts} onChange={setShapeDrafts} namePlaceholder="Bs" />
+                      )}
+                      {editingSkill && shapeDrafts.length === 0 && (
                         <FormField control={skillForm.control} name="isDrill" render={({ field }) => (
                           <FormItem>
                             <FormLabel>Type</FormLabel>
@@ -454,9 +520,12 @@ export default function SkillsPage() {
                     <TableHeader><TableRow className="border-border/60 hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow w-24">Code</TableHead><TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
                     <SortableContext items={(skills || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
                       <TableBody>
-                        {skills?.map((skill) => (
+                        {skills?.map((skill) => {
+                          const shapes = shapesOf(skill.id);
+                          const hasShapes = shapes.length > 0;
+                          return (
+                          <Fragment key={skill.id}>
                           <SortableRow
-                            key={skill.id}
                             id={`skill-${skill.id}`}
                             reorderMode={reorderMode}
                             className={cn(
@@ -470,20 +539,26 @@ export default function SkillsPage() {
                             <TableCell className="font-medium text-foreground">
                               <span className="inline-flex items-center gap-2 flex-wrap">
                                 <span>{skill.name}</span>
+                                {hasShapes && (
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 font-mono" data-testid={`badge-shapes-${skill.id}`}>{shapes.length} shapes</Badge>
+                                )}
                                 {skill.id < 0 && (
                                   <PendingSyncBadge size="xs" testId={`badge-pending-skill-${skill.id}`} />
                                 )}
                               </span>
                             </TableCell>
-                            <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{skill.difficulty.toFixed(1)}</TableCell>
+                            <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{hasShapes ? "—" : skill.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
                               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon" data-testid={`button-actions-skill-${skill.id}`}><MoreVertical className="h-4 w-4" /></Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                                  <DropdownMenuContent align="end" className="w-44 rounded-xl">
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEditing(skill)}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
+                                    {!hasShapes && (
+                                      <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { setAssignTarget(skill); setAssignBaseId(""); setAssignShapeLabel(""); }} data-testid={`button-assign-shape-${skill.id}`}><Target className="h-3.5 w-3.5" /> Assign as shape</DropdownMenuItem>
+                                    )}
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => toggleArchive(skill)} data-testid={`button-archive-skill-${skill.id}`}>{skill.archived === 1 ? <><ArchiveRestore className="h-3.5 w-3.5" /> Unarchive</> : <><Archive className="h-3.5 w-3.5" /> Archive</>}</DropdownMenuItem>
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget({ id: skill.id, name: skill.name })}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                   </DropdownMenuContent>
@@ -491,7 +566,41 @@ export default function SkillsPage() {
                               </TableCell>
                             )}
                           </SortableRow>
-                        ))}
+                          {!reorderMode && shapes.map((shape) => (
+                            <TableRow
+                              key={shape.id}
+                              className={cn("cursor-pointer", editingSkill?.id === shape.id ? "bg-muted/50" : "hover:bg-muted/30")}
+                              onClick={() => navigate(`/skills/${shape.id}`)}
+                              data-testid={`row-shape-${shape.id}`}
+                            >
+                              <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-8">{shape.code}</TableCell>
+                              <TableCell className="font-medium text-foreground">
+                                <span className="inline-flex items-center gap-2 flex-wrap">
+                                  <span className="text-muted-foreground">↳</span>
+                                  <span>{shape.name}</span>
+                                  {shape.id < 0 && (
+                                    <PendingSyncBadge size="xs" testId={`badge-pending-skill-${shape.id}`} />
+                                  )}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{shape.difficulty.toFixed(1)}</TableCell>
+                              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" data-testid={`button-actions-skill-${shape.id}`}><MoreVertical className="h-4 w-4" /></Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-44 rounded-xl">
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEditing(shape)}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => updateSkill({ id: shape.id, parentSkillId: null, shape: null })} data-testid={`button-detach-shape-${shape.id}`}><ArchiveRestore className="h-3.5 w-3.5" /> Detach</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget({ id: shape.id, name: shape.name })}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          </Fragment>
+                          );
+                        })}
                       </TableBody>
                     </SortableContext>
                   </Table>
@@ -508,25 +617,6 @@ export default function SkillsPage() {
                 <DialogHeader>
                   <DialogTitle>{editingSkill ? "Edit Drill" : "Add New Drill"}</DialogTitle>
                 </DialogHeader>
-                  {!editingSkill && activeDrills.length > 0 && (
-                    <div className="mb-3">
-                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Duplicate from existing</label>
-                      <Select value="" onValueChange={(v) => {
-                        const src = activeDrills.find(s => s.id === parseInt(v));
-                        if (!src) return;
-                        drillForm.reset({ name: `${src.name} (copy)`, code: src.code, difficulty: src.difficulty, isDrill: 1 });
-                      }}>
-                        <SelectTrigger data-testid="select-duplicate-drill"><SelectValue placeholder="Pick a drill to copy..." /></SelectTrigger>
-                        <SelectContent>
-                          {activeDrills.map(s => (
-                            <SelectItem key={s.id} value={s.id.toString()}>
-                              <span className="font-mono mr-2">{s.code}</span> {s.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
                   <Form {...drillForm}>
                     <form onSubmit={drillForm.handleSubmit(onDrillSubmit)} className="space-y-3">
                       <FormField control={drillForm.control} name="name" render={({ field }) => (
@@ -535,10 +625,15 @@ export default function SkillsPage() {
                       <FormField control={drillForm.control} name="code" render={({ field }) => (
                         <FormItem><FormLabel>Code</FormLabel><FormControl><Input {...field} placeholder="TJ" /></FormControl><FormMessage /></FormItem>
                       )} />
-                      <FormField control={drillForm.control} name="difficulty" render={({ field }) => (
-                        <FormItem><FormLabel>Difficulty</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
-                      )} />
-                      {editingSkill && (
+                      {(isEditingShape || shapeDrafts.length === 0) && (
+                        <FormField control={drillForm.control} name="difficulty" render={({ field }) => (
+                          <FormItem><FormLabel>Difficulty</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                      )}
+                      {!isEditingShape && (
+                        <ShapeDraftsEditor drafts={shapeDrafts} onChange={setShapeDrafts} namePlaceholder="T" testIdPrefix="drill-shape" />
+                      )}
+                      {editingSkill && shapeDrafts.length === 0 && (
                         <FormField control={drillForm.control} name="isDrill" render={({ field }) => (
                           <FormItem>
                             <FormLabel>Type</FormLabel>
@@ -574,9 +669,12 @@ export default function SkillsPage() {
                     <TableHeader><TableRow className="border-border/60 hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow w-24">Code</TableHead><TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
                     <SortableContext items={(drills || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
                       <TableBody>
-                        {drills?.map((drill) => (
+                        {drills?.map((drill) => {
+                          const shapes = shapesOf(drill.id);
+                          const hasShapes = shapes.length > 0;
+                          return (
+                          <Fragment key={drill.id}>
                           <SortableRow
-                            key={drill.id}
                             id={`skill-${drill.id}`}
                             reorderMode={reorderMode}
                             className={cn(
@@ -590,20 +688,26 @@ export default function SkillsPage() {
                             <TableCell className="font-medium text-foreground">
                               <span className="inline-flex items-center gap-2 flex-wrap">
                                 <span>{drill.name}</span>
+                                {hasShapes && (
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 font-mono" data-testid={`badge-shapes-${drill.id}`}>{shapes.length} shapes</Badge>
+                                )}
                                 {drill.id < 0 && (
                                   <PendingSyncBadge size="xs" testId={`badge-pending-drill-${drill.id}`} />
                                 )}
                               </span>
                             </TableCell>
-                            <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{drill.difficulty.toFixed(1)}</TableCell>
+                            <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{hasShapes ? "—" : drill.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
                               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon" data-testid={`button-actions-skill-${drill.id}`}><MoreVertical className="h-4 w-4" /></Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                                  <DropdownMenuContent align="end" className="w-44 rounded-xl">
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEditing(drill)}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
+                                    {!hasShapes && (
+                                      <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { setAssignTarget(drill); setAssignBaseId(""); setAssignShapeLabel(""); }} data-testid={`button-assign-shape-${drill.id}`}><Target className="h-3.5 w-3.5" /> Assign as shape</DropdownMenuItem>
+                                    )}
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => toggleArchive(drill)} data-testid={`button-archive-skill-${drill.id}`}>{drill.archived === 1 ? <><ArchiveRestore className="h-3.5 w-3.5" /> Unarchive</> : <><Archive className="h-3.5 w-3.5" /> Archive</>}</DropdownMenuItem>
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget({ id: drill.id, name: drill.name })}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                   </DropdownMenuContent>
@@ -611,7 +715,41 @@ export default function SkillsPage() {
                               </TableCell>
                             )}
                           </SortableRow>
-                        ))}
+                          {!reorderMode && shapes.map((shape) => (
+                            <TableRow
+                              key={shape.id}
+                              className={cn("cursor-pointer", editingSkill?.id === shape.id ? "bg-muted/50" : "hover:bg-muted/30")}
+                              onClick={() => navigate(`/skills/${shape.id}`)}
+                              data-testid={`row-shape-${shape.id}`}
+                            >
+                              <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-8">{shape.code}</TableCell>
+                              <TableCell className="font-medium text-foreground">
+                                <span className="inline-flex items-center gap-2 flex-wrap">
+                                  <span className="text-muted-foreground">↳</span>
+                                  <span>{shape.name}</span>
+                                  {shape.id < 0 && (
+                                    <PendingSyncBadge size="xs" testId={`badge-pending-skill-${shape.id}`} />
+                                  )}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{shape.difficulty.toFixed(1)}</TableCell>
+                              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" data-testid={`button-actions-skill-${shape.id}`}><MoreVertical className="h-4 w-4" /></Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-44 rounded-xl">
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEditing(shape)}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => updateSkill({ id: shape.id, parentSkillId: null, shape: null })} data-testid={`button-detach-shape-${shape.id}`}><ArchiveRestore className="h-3.5 w-3.5" /> Detach</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget({ id: shape.id, name: shape.name })}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          </Fragment>
+                          );
+                        })}
                       </TableBody>
                     </SortableContext>
                   </Table>
@@ -1010,10 +1148,74 @@ export default function SkillsPage() {
         open={!!deleteTarget}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
         title={`Delete "${deleteTarget?.name}"?`}
-        description="This action cannot be undone."
+        description={deleteTarget && shapesOf(deleteTarget.id).length > 0
+          ? `This will also delete its ${shapesOf(deleteTarget.id).length} shape variant(s). This action cannot be undone.`
+          : "This action cannot be undone."}
         onConfirm={() => { if (deleteTarget) { deleteSkill(deleteTarget.id); setDeleteTarget(null); } }}
         confirmLabel="Delete"
       />
+
+      <Dialog open={!!assignTarget} onOpenChange={(o) => { if (!o) { setAssignTarget(null); setAssignBaseId(""); setAssignShapeLabel(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign as shape</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Nest <span className="font-medium text-foreground">{assignTarget?.name}</span> under a base {assignTarget?.isDrill === 1 ? "drill" : "skill"} as one of its shape variants. Its notes and history are preserved.
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium leading-none">Base {assignTarget?.isDrill === 1 ? "drill" : "skill"}</label>
+              <Select value={assignBaseId} onValueChange={setAssignBaseId}>
+                <SelectTrigger data-testid="select-assign-base"><SelectValue placeholder={`Pick a base ${assignTarget?.isDrill === 1 ? "drill" : "skill"}...`} /></SelectTrigger>
+                <SelectContent>
+                  {(allItems || []).filter(s =>
+                    !!assignTarget &&
+                    s.id !== assignTarget.id &&
+                    s.parentSkillId == null &&
+                    s.isDrill === assignTarget.isDrill &&
+                    s.archived !== 1
+                  ).map(s => (
+                    <SelectItem key={s.id} value={s.id.toString()}>
+                      <span className="font-mono mr-2">{s.code}</span> {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium leading-none">Shape <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <Select value={assignShapeLabel || undefined} onValueChange={setAssignShapeLabel}>
+                <SelectTrigger className="font-mono" data-testid="select-assign-shape-label"><SelectValue placeholder="Pick a shape..." /></SelectTrigger>
+                <SelectContent>
+                  {SHAPE_OPTIONS.map(o => (
+                    <SelectItem key={o.value} value={o.value}>
+                      <span className="font-mono mr-2">{o.value}</span>{o.word}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                className="flex-1"
+                disabled={!assignBaseId || isUpdating}
+                onClick={async () => {
+                  if (!assignTarget || !assignBaseId) return;
+                  await updateSkill({ id: assignTarget.id, parentSkillId: parseInt(assignBaseId), shape: assignShapeLabel.trim() || null });
+                  setAssignTarget(null);
+                  setAssignBaseId("");
+                  setAssignShapeLabel("");
+                }}
+                data-testid="button-confirm-assign"
+              >
+                Assign
+              </Button>
+              <Button type="button" variant="outline" onClick={() => { setAssignTarget(null); setAssignBaseId(""); setAssignShapeLabel(""); }}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={!!archiveTarget}
