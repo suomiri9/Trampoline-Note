@@ -586,7 +586,7 @@ export default function SkillsPage() {
                               onClick={() => navigate(`/skills/${shape.id}`)}
                               data-testid={`row-shape-${shape.id}`}
                             >
-                              <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-8">{shape.code}</TableCell>
+                              <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-12">{shape.code}</TableCell>
                               <TableCell className="font-medium text-foreground">
                                 <span className="inline-flex items-center gap-2 flex-wrap">
                                   <span>{shape.name}</span>
@@ -741,7 +741,7 @@ export default function SkillsPage() {
                               onClick={() => navigate(`/skills/${shape.id}`)}
                               data-testid={`row-shape-${shape.id}`}
                             >
-                              <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-8">{shape.code}</TableCell>
+                              <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-12">{shape.code}</TableCell>
                               <TableCell className="font-medium text-foreground">
                                 <span className="inline-flex items-center gap-2 flex-wrap">
                                   <span>{shape.name}</span>
