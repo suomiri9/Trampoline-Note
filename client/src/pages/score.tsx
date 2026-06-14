@@ -196,6 +196,7 @@ function ScoreCard({
               <div className={cn("font-display font-normal text-5xl sm:text-6xl leading-none", totalColor)} data-testid={`text-score-total-${score.id}`}>
                 {grandTotal.toFixed(1)}
               </div>
+              <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">Score</div>
             </div>
             {actions}
           </div>
