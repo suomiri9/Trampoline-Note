@@ -575,9 +575,8 @@ export default function SkillsPage() {
                             >
                               <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-8">{shape.code}</TableCell>
                               <TableCell className="font-medium text-foreground">
-                                <span className="inline-flex items-center gap-2 flex-wrap">
-                                  <span className="text-muted-foreground">↳</span>
-                                  <span>{shape.name}</span>
+                                <span className="inline-flex items-center gap-2 flex-wrap border-l-2 border-border/60 pl-3">
+                                  <Badge variant="outline" className="rounded-md border-border/70 px-1.5 py-0 text-xs font-mono font-normal text-foreground/90" data-testid={`badge-shape-${shape.id}`}>{shape.name}</Badge>
                                   {shape.id < 0 && (
                                     <PendingSyncBadge size="xs" testId={`badge-pending-skill-${shape.id}`} />
                                   )}
@@ -724,9 +723,8 @@ export default function SkillsPage() {
                             >
                               <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-8">{shape.code}</TableCell>
                               <TableCell className="font-medium text-foreground">
-                                <span className="inline-flex items-center gap-2 flex-wrap">
-                                  <span className="text-muted-foreground">↳</span>
-                                  <span>{shape.name}</span>
+                                <span className="inline-flex items-center gap-2 flex-wrap border-l-2 border-border/60 pl-3">
+                                  <Badge variant="outline" className="rounded-md border-border/70 px-1.5 py-0 text-xs font-mono font-normal text-foreground/90" data-testid={`badge-shape-${shape.id}`}>{shape.name}</Badge>
                                   {shape.id < 0 && (
                                     <PendingSyncBadge size="xs" testId={`badge-pending-skill-${shape.id}`} />
                                   )}
