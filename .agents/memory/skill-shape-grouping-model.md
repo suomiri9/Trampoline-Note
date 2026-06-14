@@ -13,8 +13,8 @@ All DD lives in the explicit shape children (tuck `o` / pike `<` / straight `/`)
 "the implicit first shape" — that earlier framing was superseded.
 
 Concretely: the add/edit form hides the base Difficulty field once a shape draft exists and forces
-base `difficulty` to 0 on save; the skills library shows the base row's DD as `—` and counts shapes
-as children-only (no `+1`); the training-log shape chooser lists only the children (the base itself
+base `difficulty` to 0 on save; the skills library hides the base's DD value (it shows a children-only
+shape count instead) and counts shapes as children-only (no `+1`); the training-log shape chooser lists only the children (the base itself
 is not a selectable option), so a grouped base can never be logged with DD 0.
 
 The shape "Code" is a fixed dropdown of symbols (`o`/`<`/`/`), and the chosen symbol becomes the

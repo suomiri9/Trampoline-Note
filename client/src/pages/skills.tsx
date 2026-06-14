@@ -545,9 +545,9 @@ export default function SkillsPage() {
                             <TableCell className="font-mono text-sm text-muted-foreground w-24">
                               <span className="inline-flex items-center gap-1">
                                 {hasShapes ? (
-                                  expanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                                  expanded ? <ChevronDown className="h-5 w-5 shrink-0 text-foreground" strokeWidth={3} /> : <ChevronRight className="h-5 w-5 shrink-0 text-foreground" strokeWidth={3} />
                                 ) : (
-                                  <span className="inline-block w-3.5 shrink-0" />
+                                  <span className="inline-block w-5 shrink-0" />
                                 )}
                                 <span>{skill.code}</span>
                               </span>
@@ -701,9 +701,9 @@ export default function SkillsPage() {
                             <TableCell className="font-mono text-sm text-muted-foreground w-24">
                               <span className="inline-flex items-center gap-1">
                                 {hasShapes ? (
-                                  expanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                                  expanded ? <ChevronDown className="h-5 w-5 shrink-0 text-foreground" strokeWidth={3} /> : <ChevronRight className="h-5 w-5 shrink-0 text-foreground" strokeWidth={3} />
                                 ) : (
-                                  <span className="inline-block w-3.5 shrink-0" />
+                                  <span className="inline-block w-5 shrink-0" />
                                 )}
                                 <span>{drill.code}</span>
                               </span>
