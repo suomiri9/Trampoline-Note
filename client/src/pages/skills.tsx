@@ -555,15 +555,12 @@ export default function SkillsPage() {
                             <TableCell className="font-medium text-foreground">
                               <span className="inline-flex items-center gap-2 flex-wrap">
                                 <span>{skill.name}</span>
-                                {hasShapes && (
-                                  <Badge variant="outline" className="text-[9px] px-1 py-0 font-mono" data-testid={`badge-shapes-${skill.id}`}>{shapes.length} shapes</Badge>
-                                )}
                                 {skill.id < 0 && (
                                   <PendingSyncBadge size="xs" testId={`badge-pending-skill-${skill.id}`} />
                                 )}
                               </span>
                             </TableCell>
-                            <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{hasShapes ? "—" : skill.difficulty.toFixed(1)}</TableCell>
+                            <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{hasShapes ? (<Badge variant="outline" className="text-[9px] px-1 py-0 font-mono" data-testid={`badge-shapes-${skill.id}`}>{shapes.length} shapes</Badge>) : skill.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
                               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>
@@ -714,15 +711,12 @@ export default function SkillsPage() {
                             <TableCell className="font-medium text-foreground">
                               <span className="inline-flex items-center gap-2 flex-wrap">
                                 <span>{drill.name}</span>
-                                {hasShapes && (
-                                  <Badge variant="outline" className="text-[9px] px-1 py-0 font-mono" data-testid={`badge-shapes-${drill.id}`}>{shapes.length} shapes</Badge>
-                                )}
                                 {drill.id < 0 && (
                                   <PendingSyncBadge size="xs" testId={`badge-pending-drill-${drill.id}`} />
                                 )}
                               </span>
                             </TableCell>
-                            <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{hasShapes ? "—" : drill.difficulty.toFixed(1)}</TableCell>
+                            <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{hasShapes ? (<Badge variant="outline" className="text-[9px] px-1 py-0 font-mono" data-testid={`badge-shapes-${drill.id}`}>{shapes.length} shapes</Badge>) : drill.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
                               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>
