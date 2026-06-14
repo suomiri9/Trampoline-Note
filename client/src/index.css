@@ -125,6 +125,15 @@
   letter-spacing: 0.02em;
 }
 
+/* Disable JetBrains Mono programming ligatures so skill codes (e.g. `-<`, `<=`, `->`)
+   render as literal characters instead of merged arrow/comparison glyphs. */
+.font-mono,
+.font-mono-meta,
+.eyebrow {
+  font-feature-settings: "liga" 0, "calt" 0;
+  font-variant-ligatures: none;
+}
+
 /* Small uppercase monospace eyebrow: `// TRAINING LOG` */
 .eyebrow {
   font-family: var(--font-mono);
