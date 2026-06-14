@@ -108,9 +108,6 @@ export default function SkillsPage() {
   const shapesOf = (parentId: number): Skill[] =>
     allItems ? sortByOrder(allItems.filter(s => s.parentSkillId === parentId && archivedFilter(s))) : [];
 
-  const parentNameOf = (shape: Skill): string =>
-    (shape.parentSkillId != null ? allItems?.find(s => s.id === shape.parentSkillId)?.name : "") ?? "";
-
   const sensors = useDndSensors();
   const longPressSensors = useLongPressDndSensors();
 
@@ -578,10 +575,9 @@ export default function SkillsPage() {
                             >
                               <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-8">{shape.code}</TableCell>
                               <TableCell className="font-medium text-foreground">
-                                <span className="inline-flex items-center gap-1.5 flex-wrap border-l-2 border-border/60 pl-3">
-                                  <span className="text-sm text-muted-foreground" data-testid={`text-shape-parent-${shape.id}`}>{parentNameOf(shape)}</span>
-                                  <span className="text-muted-foreground/40 text-xs">in</span>
-                                  <Badge variant="outline" className="rounded-md border-primary/40 bg-primary/10 px-1.5 py-0 text-xs font-mono font-normal text-foreground" data-testid={`badge-shape-${shape.id}`}>{shape.name}</Badge>
+                                <span className="inline-flex items-center gap-2 flex-wrap">
+                                  <span className="text-muted-foreground">↳</span>
+                                  <span>{shape.name}</span>
                                   {shape.id < 0 && (
                                     <PendingSyncBadge size="xs" testId={`badge-pending-skill-${shape.id}`} />
                                   )}
@@ -728,10 +724,9 @@ export default function SkillsPage() {
                             >
                               <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-8">{shape.code}</TableCell>
                               <TableCell className="font-medium text-foreground">
-                                <span className="inline-flex items-center gap-1.5 flex-wrap border-l-2 border-border/60 pl-3">
-                                  <span className="text-sm text-muted-foreground" data-testid={`text-shape-parent-${shape.id}`}>{parentNameOf(shape)}</span>
-                                  <span className="text-muted-foreground/40 text-xs">in</span>
-                                  <Badge variant="outline" className="rounded-md border-primary/40 bg-primary/10 px-1.5 py-0 text-xs font-mono font-normal text-foreground" data-testid={`badge-shape-${shape.id}`}>{shape.name}</Badge>
+                                <span className="inline-flex items-center gap-2 flex-wrap">
+                                  <span className="text-muted-foreground">↳</span>
+                                  <span>{shape.name}</span>
                                   {shape.id < 0 && (
                                     <PendingSyncBadge size="xs" testId={`badge-pending-skill-${shape.id}`} />
                                   )}
