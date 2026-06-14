@@ -582,7 +582,7 @@ export default function SkillsPage() {
                           {!reorderMode && expanded && shapes.map((shape) => (
                             <TableRow
                               key={shape.id}
-                              className={cn("cursor-pointer", editingSkill?.id === shape.id ? "bg-muted/50" : "hover:bg-muted/30")}
+                              className={cn("cursor-pointer", editingSkill?.id === shape.id ? "bg-muted/50" : "bg-muted/20 hover:bg-muted/40")}
                               onClick={() => navigate(`/skills/${shape.id}`)}
                               data-testid={`row-shape-${shape.id}`}
                             >
@@ -737,7 +737,7 @@ export default function SkillsPage() {
                           {!reorderMode && expanded && shapes.map((shape) => (
                             <TableRow
                               key={shape.id}
-                              className={cn("cursor-pointer", editingSkill?.id === shape.id ? "bg-muted/50" : "hover:bg-muted/30")}
+                              className={cn("cursor-pointer", editingSkill?.id === shape.id ? "bg-muted/50" : "bg-muted/20 hover:bg-muted/40")}
                               onClick={() => navigate(`/skills/${shape.id}`)}
                               data-testid={`row-shape-${shape.id}`}
                             >
