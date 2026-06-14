@@ -38,17 +38,20 @@ nesting under a shape, a row that owns shapes can't become one; `updateSkill` al
 `client/src/components/shape-drafts-editor.tsx`, reused by the Skills-tab skill+drill forms and the
 note-dialog quick-add (New Skill + New Drill).
 
-## Combined shape display (base+shape) everywhere EXCEPT the library
+## Combined shape display (base+shape) — now EVERYWHERE including the library
 
-A later follow-up: a shape must show its FULL identity wherever it appears — code = `baseCode+shapeCode`
+A shape must show its FULL identity wherever it appears — code = `baseCode+shapeCode`
 (e.g. `8--<`), name = `baseName+shapeName` (e.g. `BT`), pure concatenation, no separator — via
-`skillDisplayCode`/`skillDisplayName` in `client/src/lib/training-utils.ts`. Two surfaces INTENTIONALLY
-keep the shape's OWN code/name because the base is already on screen: (1) the Skills-library nested
-shape rows (grouped under the base, matches the approved mockup), and (2) the training-log
-shape-chooser HEADING (`${base.code} — pick shape`) — though the chooser's list ITEMS are combined.
-Also: selecting the shape Code dropdown sets `code`+`shape` but no longer auto-fills the Name (user types it).
+`skillDisplayCode`/`skillDisplayName` in `client/src/lib/training-utils.ts`. This now INCLUDES the
+Skills-library nested shape rows: the user REVERSED the earlier "keep own code/name in the library"
+decision and asked for the combined identity there too. The ONLY surface that still keeps the shape's
+OWN code/name is the training-log shape-chooser HEADING (`${base.code} — pick shape`) — its list ITEMS
+are combined. Also: selecting the shape Code dropdown sets `code`+`shape` but no longer auto-fills the
+Name (user types it).
 
-**Why:** user asked for the combined identity so logged/listed shapes read unambiguously; the library
-stays grouped-and-own to avoid redundant `B`-prefix noise under an already-labelled base. **How to apply:**
-don't make the library rows combine (it would duplicate the base label) and don't drop the combine from
-the usage surfaces — and don't re-add name auto-fill on the shape Code dropdown.
+**Why:** user wants combined identity so listed/logged shapes read unambiguously, and decided the
+library should match (e.g. `4-/` / `BS`) even though the base label is one row up — the earlier
+"avoid redundant base-prefix noise in the library" rationale was overruled by the user.
+**How to apply:** KEEP the library shape rows combined; do NOT "restore" own-code/name there to match
+the old mockup. Don't drop the combine from the other surfaces, and don't re-add name auto-fill on the
+shape Code dropdown.

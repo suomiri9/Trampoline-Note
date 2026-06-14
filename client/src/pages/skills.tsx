@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { useRecentSkills, addRecentSkill } from "@/hooks/use-recent-skills";
-import { calcDDFromSkillIds, suggestRoutinePartName } from "@/lib/training-utils";
+import { calcDDFromSkillIds, suggestRoutinePartName, skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
 import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { useTypeToSearch } from "@/hooks/use-type-to-search";
 import { SortableChip } from "@/components/sortable-chip";
@@ -586,10 +586,10 @@ export default function SkillsPage() {
                               onClick={() => navigate(`/skills/${shape.id}`)}
                               data-testid={`row-shape-${shape.id}`}
                             >
-                              <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-12">{shape.code}</TableCell>
+                              <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-12">{skillDisplayCode(shape, allItems)}</TableCell>
                               <TableCell className="font-medium text-foreground">
                                 <span className="inline-flex items-center gap-2 flex-wrap">
-                                  <span>{shape.name}</span>
+                                  <span>{skillDisplayName(shape, allItems)}</span>
                                   {shape.id < 0 && (
                                     <PendingSyncBadge size="xs" testId={`badge-pending-skill-${shape.id}`} />
                                   )}
@@ -741,10 +741,10 @@ export default function SkillsPage() {
                               onClick={() => navigate(`/skills/${shape.id}`)}
                               data-testid={`row-shape-${shape.id}`}
                             >
-                              <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-12">{shape.code}</TableCell>
+                              <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-12">{skillDisplayCode(shape, allItems)}</TableCell>
                               <TableCell className="font-medium text-foreground">
                                 <span className="inline-flex items-center gap-2 flex-wrap">
-                                  <span>{shape.name}</span>
+                                  <span>{skillDisplayName(shape, allItems)}</span>
                                   {shape.id < 0 && (
                                     <PendingSyncBadge size="xs" testId={`badge-pending-skill-${shape.id}`} />
                                   )}
