@@ -46,11 +46,12 @@ export function skillDisplayCode(
 
 export function skillDisplayName(
   skill: Pick<Skill, "name" | "parentSkillId"> | undefined | null,
-  allSkills: Skill[] | undefined | null,
+  _allSkills?: Skill[] | undefined | null,
 ): string {
+  // Shape NAME is independent: a shape shows its OWN name (e.g. "Tuck"), NOT
+  // parentName+shapeName. (The CODE is still combined via skillDisplayCode.)
   if (!skill) return "";
-  const parent = shapeParentOf(skill, allSkills);
-  return parent ? `${parent.name}${skill.name}` : skill.name;
+  return skill.name;
 }
 
 export function suggestRoutinePartName(routineName: string, start: number, end: number, total: number): string {

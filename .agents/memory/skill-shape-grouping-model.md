@@ -38,20 +38,23 @@ nesting under a shape, a row that owns shapes can't become one; `updateSkill` al
 `client/src/components/shape-drafts-editor.tsx`, reused by the Skills-tab skill+drill forms and the
 note-dialog quick-add (New Skill + New Drill).
 
-## Combined shape display (base+shape) — now EVERYWHERE including the library
+## Shape display: CODE combined, NAME independent (current rule)
 
-A shape must show its FULL identity wherever it appears — code = `baseCode+shapeCode`
-(e.g. `8--<`), name = `baseName+shapeName` (e.g. `BT`), pure concatenation, no separator — via
-`skillDisplayCode`/`skillDisplayName` in `client/src/lib/training-utils.ts`. This now INCLUDES the
-Skills-library nested shape rows: the user REVERSED the earlier "keep own code/name in the library"
-decision and asked for the combined identity there too. The ONLY surface that still keeps the shape's
-OWN code/name is the training-log shape-chooser HEADING (`${base.code} — pick shape`) — its list ITEMS
-are combined. Also: selecting the shape Code dropdown sets `code`+`shape` but no longer auto-fills the
-Name (user types it).
+The CODE/NAME rule for shapes diverged after iteration — settle on this:
+- **CODE is combined** everywhere: `baseCode+shapeCode` (e.g. `8--<`, `4-o`), pure concatenation, no
+  separator — via `skillDisplayCode(skill, allSkills)` in `client/src/lib/training-utils.ts`.
+- **NAME is independent** everywhere: a shape shows ONLY its OWN name (e.g. `T`, `Tuck`), NOT
+  `baseName+shapeName` — via `skillDisplayName(skill)`, which now just returns `skill.name` (parent is
+  NOT prefixed; the `allSkills` arg is kept for signature compatibility but unused).
+- The training-log shape-chooser HEADING still shows the base's OWN code (`${base.code} — pick shape`);
+  its list ITEMS use the combined code + own name.
+- Selecting the shape Code dropdown sets `code`+`shape` but does NOT auto-fill the Name (user types it).
 
-**Why:** user wants combined identity so listed/logged shapes read unambiguously, and decided the
-library should match (e.g. `4-/` / `BS`) even though the base label is one row up — the earlier
-"avoid redundant base-prefix noise in the library" rationale was overruled by the user.
-**How to apply:** KEEP the library shape rows combined; do NOT "restore" own-code/name there to match
-the old mockup. Don't drop the combine from the other surfaces, and don't re-add name auto-fill on the
-shape Code dropdown.
+**Why (evolution — don't relitigate):** user first wanted shapes combined for code AND name everywhere
+(incl. the library), then explicitly chose "independent NAME only, keep CODE combined" (e.g. code `4-o`
+but name shows just `T`). Reason: the combined name (`BT`) read as noise; the combined code already
+disambiguates which base a shape belongs to.
+**How to apply:** keep `skillDisplayCode` concatenating and `skillDisplayName` returning the own name.
+Do NOT re-add parent-name prefixing to `skillDisplayName`, and do NOT add name auto-fill on the shape
+Code dropdown. Both helpers are the single source of truth — every surface routes names/codes through
+them, so change behavior there, not at call sites.
