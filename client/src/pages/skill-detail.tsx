@@ -30,6 +30,7 @@ export default function SkillDetailPage() {
   const skill = allSkills?.find(s => s.id === skillId);
 
   const isConnection = skill?.isDrill === 2 || skill?.isDrill === 3;
+  const hasShapes = !!allSkills && skill?.parentSkillId == null && allSkills.some(s => s.parentSkillId === skillId);
 
   const [pointsOpen, setPointsOpen] = useState(false);
   const skillPoints = useMemo(
@@ -70,7 +71,7 @@ export default function SkillDetailPage() {
 
   const { data: repsHistory, isLoading: repsLoading } = useQuery<RepsEntry[]>({
     queryKey: [`/api/skills/${skillId}/history`],
-    enabled: !!skillId && skillId > 0 && !isConnection,
+    enabled: !!skillId && skillId > 0 && !isConnection && !hasShapes,
     staleTime: 1000 * 60 * 5,
     retry: 1,
   });
@@ -338,22 +339,24 @@ export default function SkillDetailPage() {
       <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {header}
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <StatCard icon={<Hash className="w-4 h-4" />} label="Total Reps" value={totalReps.toString()} testId="stat-total-reps" />
-          <StatCard icon={<Calendar className="w-4 h-4" />} label="Sessions" value={totalSessions.toString()} testId="stat-total-sessions" />
-          <StatCard
-            icon={<TrendingUp className="w-4 h-4" />}
-            label="First Practiced"
-            value={firstPracticed ? format(parseISO(firstPracticed), "MMM d, yyyy") : "—"}
-            testId="stat-first-practiced"
-          />
-          <StatCard
-            icon={<Star className="w-4 h-4" />}
-            label="Last Practiced"
-            value={lastPracticed ? format(parseISO(lastPracticed), "MMM d, yyyy") : "—"}
-            testId="stat-last-practiced"
-          />
-        </div>
+        {!hasShapes && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <StatCard icon={<Hash className="w-4 h-4" />} label="Total Reps" value={totalReps.toString()} testId="stat-total-reps" />
+            <StatCard icon={<Calendar className="w-4 h-4" />} label="Sessions" value={totalSessions.toString()} testId="stat-total-sessions" />
+            <StatCard
+              icon={<TrendingUp className="w-4 h-4" />}
+              label="First Practiced"
+              value={firstPracticed ? format(parseISO(firstPracticed), "MMM d, yyyy") : "—"}
+              testId="stat-first-practiced"
+            />
+            <StatCard
+              icon={<Star className="w-4 h-4" />}
+              label="Last Practiced"
+              value={lastPracticed ? format(parseISO(lastPracticed), "MMM d, yyyy") : "—"}
+              testId="stat-last-practiced"
+            />
+          </div>
+        )}
 
         {skillPoints.length > 0 && (
           <Card className="mb-6">
@@ -381,41 +384,45 @@ export default function SkillDetailPage() {
           </Card>
         )}
 
-        <RepsChart title="Reps per Day" data={chartData} />
+        {!hasShapes && (
+          <>
+            <RepsChart title="Reps per Day" data={chartData} />
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Session History</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {entries.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-no-history">
-                No training sessions found for this skill yet.
-              </p>
-            ) : (
-              <div className="space-y-2 max-h-[50vh] overflow-y-auto" data-testid="list-session-history">
-                {[...entries].reverse().map((entry) => (
-                  <div
-                    key={`${entry.noteId}-${entry.date}`}
-                    className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                    data-testid={`row-session-${entry.noteId}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium font-mono" data-testid={`text-date-${entry.noteId}`}>
-                        {format(parseISO(entry.date), "MMM d, yyyy")}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Badge variant="outline" className="font-mono text-xs" data-testid={`badge-reps-${entry.noteId}`}>
-                        {entry.reps} rep{entry.reps !== 1 ? "s" : ""}
-                      </Badge>
-                    </div>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Session History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {entries.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-no-history">
+                    No training sessions found for this skill yet.
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-[50vh] overflow-y-auto" data-testid="list-session-history">
+                    {[...entries].reverse().map((entry) => (
+                      <div
+                        key={`${entry.noteId}-${entry.date}`}
+                        className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                        data-testid={`row-session-${entry.noteId}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium font-mono" data-testid={`text-date-${entry.noteId}`}>
+                            {format(parseISO(entry.date), "MMM d, yyyy")}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className="font-mono text-xs" data-testid={`badge-reps-${entry.noteId}`}>
+                            {entry.reps} rep{entry.reps !== 1 ? "s" : ""}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        )}
 
         {bottomNav}
 
