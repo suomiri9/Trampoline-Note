@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Pencil, X, Target, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore, MoreVertical, Search } from "lucide-react";
+import { Trash2, Plus, Pencil, X, Target, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore, MoreVertical, Search, ChevronRight, ChevronDown } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -84,6 +84,12 @@ export default function SkillsPage() {
   const [reorderMode, setReorderMode] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [expandedBases, setExpandedBases] = useState<Set<number>>(new Set());
+  const toggleExpanded = (id: number) => setExpandedBases((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   
   const [connName, setConnName] = useState("");
   const [connSkillIds, setConnSkillIds] = useState<number[]>([]);
@@ -523,19 +529,29 @@ export default function SkillsPage() {
                         {skills?.map((skill) => {
                           const shapes = shapesOf(skill.id);
                           const hasShapes = shapes.length > 0;
+                          const expanded = expandedBases.has(skill.id);
                           return (
                           <Fragment key={skill.id}>
                           <SortableRow
                             id={`skill-${skill.id}`}
                             reorderMode={reorderMode}
                             className={cn(
-                              !reorderMode && !hasShapes && "cursor-pointer",
-                              editingSkill?.id === skill.id ? "bg-muted/50" : !reorderMode && !hasShapes && "hover:bg-muted/30"
+                              !reorderMode && "cursor-pointer",
+                              editingSkill?.id === skill.id ? "bg-muted/50" : !reorderMode && "hover:bg-muted/30"
                             )}
-                            onClick={hasShapes ? undefined : () => navigate(`/skills/${skill.id}`)}
+                            onClick={hasShapes ? () => toggleExpanded(skill.id) : () => navigate(`/skills/${skill.id}`)}
                             testId={`row-skill-${skill.id}`}
                           >
-                            <TableCell className="font-mono text-sm text-muted-foreground w-24">{skill.code}</TableCell>
+                            <TableCell className="font-mono text-sm text-muted-foreground w-24">
+                              <span className="inline-flex items-center gap-1">
+                                {hasShapes ? (
+                                  expanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                                ) : (
+                                  <span className="inline-block w-3.5 shrink-0" />
+                                )}
+                                <span>{skill.code}</span>
+                              </span>
+                            </TableCell>
                             <TableCell className="font-medium text-foreground">
                               <span className="inline-flex items-center gap-2 flex-wrap">
                                 <span>{skill.name}</span>
@@ -566,7 +582,7 @@ export default function SkillsPage() {
                               </TableCell>
                             )}
                           </SortableRow>
-                          {!reorderMode && shapes.map((shape) => (
+                          {!reorderMode && expanded && shapes.map((shape) => (
                             <TableRow
                               key={shape.id}
                               className={cn("cursor-pointer", editingSkill?.id === shape.id ? "bg-muted/50" : "hover:bg-muted/30")}
@@ -672,19 +688,29 @@ export default function SkillsPage() {
                         {drills?.map((drill) => {
                           const shapes = shapesOf(drill.id);
                           const hasShapes = shapes.length > 0;
+                          const expanded = expandedBases.has(drill.id);
                           return (
                           <Fragment key={drill.id}>
                           <SortableRow
                             id={`skill-${drill.id}`}
                             reorderMode={reorderMode}
                             className={cn(
-                              !reorderMode && !hasShapes && "cursor-pointer",
-                              editingSkill?.id === drill.id ? "bg-muted/50" : !reorderMode && !hasShapes && "hover:bg-muted/30"
+                              !reorderMode && "cursor-pointer",
+                              editingSkill?.id === drill.id ? "bg-muted/50" : !reorderMode && "hover:bg-muted/30"
                             )}
-                            onClick={hasShapes ? undefined : () => navigate(`/skills/${drill.id}`)}
+                            onClick={hasShapes ? () => toggleExpanded(drill.id) : () => navigate(`/skills/${drill.id}`)}
                             testId={`row-drill-${drill.id}`}
                           >
-                            <TableCell className="font-mono text-sm text-muted-foreground w-24">{drill.code}</TableCell>
+                            <TableCell className="font-mono text-sm text-muted-foreground w-24">
+                              <span className="inline-flex items-center gap-1">
+                                {hasShapes ? (
+                                  expanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                                ) : (
+                                  <span className="inline-block w-3.5 shrink-0" />
+                                )}
+                                <span>{drill.code}</span>
+                              </span>
+                            </TableCell>
                             <TableCell className="font-medium text-foreground">
                               <span className="inline-flex items-center gap-2 flex-wrap">
                                 <span>{drill.name}</span>
@@ -715,7 +741,7 @@ export default function SkillsPage() {
                               </TableCell>
                             )}
                           </SortableRow>
-                          {!reorderMode && shapes.map((shape) => (
+                          {!reorderMode && expanded && shapes.map((shape) => (
                             <TableRow
                               key={shape.id}
                               className={cn("cursor-pointer", editingSkill?.id === shape.id ? "bg-muted/50" : "hover:bg-muted/30")}
