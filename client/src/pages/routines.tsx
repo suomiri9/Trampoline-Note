@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { useNotes } from "@/hooks/use-notes";
-import { calcDDFromSkillIds, parseNoteSkills, skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
+import { calcDDFromSkillIds, parseNoteSkills, skillDisplayCode, skillDisplayName, pickableSkills } from "@/lib/training-utils";
 import { useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { useTypeToSearch } from "@/hooks/use-type-to-search";
 import { PageLayout } from "@/components/page-layout";
@@ -218,7 +218,7 @@ export default function RoutinesPage() {
                     <CommandList className="max-h-[280px]">
                       <CommandEmpty>No matches.</CommandEmpty>
                       <CommandGroup heading="Skills">
-                        {skills?.slice().sort((a, b) => {
+                        {pickableSkills(allItems, 0).slice().sort((a, b) => {
                           const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
                           if (oA !== oB) return oA - oB;
                           return b.difficulty - a.difficulty;
@@ -242,7 +242,7 @@ export default function RoutinesPage() {
             </div>
             {(() => {
               const recents = recentSkillIds
-                .map(id => skills?.find(s => s.id === id))
+                .map(id => pickableSkills(allItems, 0).find(s => s.id === id))
                 .filter((s): s is NonNullable<typeof s> => !!s);
               if (recents.length === 0) return null;
               return (

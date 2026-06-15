@@ -14,8 +14,23 @@ All DD lives in the explicit shape children (tuck `o` / pike `<` / straight `/`)
 
 Concretely: the add/edit form hides the base Difficulty field once a shape draft exists and forces
 base `difficulty` to 0 on save; the skills library hides the base's DD value (it shows a children-only
-shape count instead) and counts shapes as children-only (no `+1`); the training-log shape chooser lists only the children (the base itself
-is not a selectable option), so a grouped base can never be logged with DD 0.
+shape count instead) and counts shapes as children-only (no `+1`); and EVERY skill picker is
+flat-without-parent (see below), so a grouped base can never be logged with DD 0.
+
+## Pickers are FLAT-without-parent (no two-step chooser)
+
+Every skill picker lists shape children as separate selectable rows (combined codes via
+`skillDisplayCode`) PLUS non-shape skills, but NEVER the parent grouping base. The earlier two-step
+in-popover shape chooser (tap base → pick a shape) was REMOVED at the user's request — they wanted
+shapes shown "separated" inline, just with the unloggable parent gone, applied to ALL pickers (the
+complaint was the connection builder showed no shapes at all and other pickers still listed the
+parent). Two shared helpers in `client/src/lib/training-utils.ts` enforce this and are the single
+source of truth: `skillHasShapeChildren(id, allSkills)` and `pickableSkills(allSkills, isDrill)`
+(children + non-shape skills of that kind, parents excluded). Recent-skill rows resolve through
+`pickableSkills(...).find(...)` too so a stale/legacy parent id can't reappear.
+**How to apply:** route any NEW skill picker through `pickableSkills`; never reintroduce a base row or
+a two-step chooser. Connections store real child ids, so DD compute (`calcDDFromSkillIds`) and chip
+display must use `allItems` (which includes children), not the parent-only library list.
 
 The shape "Code" is a fixed dropdown of symbols (`o`/`<`/`/`), and the chosen symbol becomes the
 shape row's `code` and `shape`. There is intentionally NO separate free-text per-shape code field.
@@ -46,8 +61,6 @@ The CODE/NAME rule for shapes diverged after iteration — settle on this:
 - **NAME is independent** everywhere: a shape shows ONLY its OWN name (e.g. `T`, `Tuck`), NOT
   `baseName+shapeName` — via `skillDisplayName(skill)`, which now just returns `skill.name` (parent is
   NOT prefixed; the `allSkills` arg is kept for signature compatibility but unused).
-- The training-log shape-chooser HEADING still shows the base's OWN code (`${base.code} — pick shape`);
-  its list ITEMS use the combined code + own name.
 - Selecting the shape Code dropdown sets `code`+`shape` but does NOT auto-fill the Name (user types it).
 
 **Why (evolution — don't relitigate):** user first wanted shapes combined for code AND name everywhere

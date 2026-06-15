@@ -3,7 +3,8 @@ import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { useRecentSkills, addRecentSkill } from "@/hooks/use-recent-skills";
-import { calcDDFromSkillIds, suggestRoutinePartName, skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
+import { calcDDFromSkillIds, suggestRoutinePartName, skillDisplayCode, skillDisplayName, swapSkillIdsToShape, shapeSwapInfo, pickableSkills } from "@/lib/training-utils";
+import { ShapeSwapPicker } from "@/components/shape-swap-picker";
 import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { useTypeToSearch } from "@/hooks/use-type-to-search";
 import { SortableChip } from "@/components/sortable-chip";
@@ -14,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Pencil, X, Target, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore, MoreVertical, Search, ChevronRight, ChevronDown } from "lucide-react";
+import { Trash2, Plus, Pencil, X, Target, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore, MoreVertical, Search, ChevronRight, ChevronDown, Shapes } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -93,6 +94,7 @@ export default function SkillsPage() {
   
   const [connName, setConnName] = useState("");
   const [connSkillIds, setConnSkillIds] = useState<number[]>([]);
+  const [connShapeSwapOpen, setConnShapeSwapOpen] = useState(false);
   const [connSkillPickerOpen, setConnSkillPickerOpen] = useState(false);
   const [connSkillSearch, setConnSkillSearch] = useState("");
   const [activeTab, setActiveTab] = useState("skills");
@@ -302,7 +304,7 @@ export default function SkillsPage() {
   const onConnectionSubmit = async () => {
     if (!connName || connSkillIds.length === 0) return;
     
-    const totalDifficulty = calcDDFromSkillIds(connSkillIds, skills || []);
+    const totalDifficulty = calcDDFromSkillIds(connSkillIds, allItems || []);
 
     const payload = {
       name: connName,
@@ -826,19 +828,19 @@ export default function SkillsPage() {
                             <CommandList className="max-h-[320px]">
                               <CommandEmpty>No matches.</CommandEmpty>
                               <CommandGroup heading="Skills">
-                                {skills?.slice().sort((a, b) => {
+                                {pickableSkills(allItems, 0).slice().sort((a, b) => {
                                   const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
                                   if (oA !== oB) return oA - oB;
                                   return b.difficulty - a.difficulty;
                                 }).map(s => (
                                   <CommandItem
                                     key={s.id}
-                                    value={`${s.code} ${s.name} skill`}
+                                    value={`${skillDisplayCode(s, allItems)} ${skillDisplayName(s, allItems)} skill`}
                                     onSelect={() => { addSkillToConn(s.id.toString()); setConnSkillPickerOpen(false); }}
                                     data-testid={`pick-conn-skill-${s.id}`}
                                   >
-                                    <span className="font-mono text-xs font-semibold text-foreground mr-2">{s.code}</span>
-                                    {s.code !== s.name && <span className="text-muted-foreground">- {s.name}</span>}
+                                    <span className="font-mono text-xs font-semibold text-foreground mr-2">{skillDisplayCode(s, allItems)}</span>
+                                    {skillDisplayCode(s, allItems) !== skillDisplayName(s, allItems) && <span className="text-muted-foreground">- {skillDisplayName(s, allItems)}</span>}
                                   </CommandItem>
                                 ))}
                               </CommandGroup>
@@ -850,7 +852,7 @@ export default function SkillsPage() {
                       </div>
                       {(() => {
                         const recents = recentSkillIds
-                          .map(id => skills?.find(s => s.id === id))
+                          .map(id => pickableSkills(allItems, 0).find(s => s.id === id))
                           .filter((s): s is NonNullable<typeof s> => !!s);
                         if (recents.length === 0) return null;
                         return (
@@ -858,7 +860,7 @@ export default function SkillsPage() {
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
                             <div className="flex flex-wrap gap-1.5">
                               {recents.map(s => (
-                                <button key={`conn-recent-${s.id}`} type="button" onClick={() => addSkillToConn(s.id.toString())} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95" data-testid={`btn-conn-recent-${s.id}`}>{s.code}</button>
+                                <button key={`conn-recent-${s.id}`} type="button" onClick={() => addSkillToConn(s.id.toString())} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95" data-testid={`btn-conn-recent-${s.id}`}>{skillDisplayCode(s, allItems)}</button>
                               ))}
                             </div>
                           </div>
@@ -870,11 +872,11 @@ export default function SkillsPage() {
                       <SortableContext items={connSkillIds.map((_, i) => `cs-${i}`)} strategy={rectSortingStrategy}>
                         <div className="min-h-[80px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-2 items-start">
                           {connSkillIds.map((id, idx) => {
-                            const s = skills?.find(sk => sk.id === id);
+                            const s = allItems?.find(sk => sk.id === id);
                             return (
                               <SortableChip key={`cs-${idx}`} uid={`cs-${idx}`}>
                                 <Badge variant="secondary" className="gap-0 pr-0 py-0 items-stretch overflow-hidden" data-testid={`chip-conn-skill-${idx}`}>
-                                  <span className="py-0.5 pl-2.5 pr-1.5 flex items-center">{s?.code}</span>
+                                  <span className="py-0.5 pl-2.5 pr-1.5 flex items-center">{skillDisplayCode(s, allItems)}</span>
                                   <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => removeSkillFromConn(idx)} className="px-2.5 flex items-center justify-center hover:bg-muted/60 active:bg-muted" data-testid={`btn-remove-conn-skill-${idx}`} aria-label="Remove"><X className="h-3.5 w-3.5" /></button>
                                 </Badge>
                               </SortableChip>
@@ -885,10 +887,16 @@ export default function SkillsPage() {
                       </SortableContext>
                     </DndContext>
 
+                    {shapeSwapInfo(connSkillIds, allItems, SHAPE_OPTIONS).hasShapeable && (
+                      <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setConnShapeSwapOpen(true)} data-testid="btn-conn-change-shape">
+                        <Shapes className="h-3.5 w-3.5" /> Change shape
+                      </Button>
+                    )}
+
                     <div className="pt-2 flex justify-between items-center">
                       <span className="text-sm font-medium">Total DD:</span>
                       <span className="font-mono font-bold text-primary">
-                        {calcDDFromSkillIds(connSkillIds, skills || []).toFixed(1)}
+                        {calcDDFromSkillIds(connSkillIds, allItems || []).toFixed(1)}
                       </span>
                     </div>
 
@@ -899,6 +907,13 @@ export default function SkillsPage() {
                       {editingSkill && <Button variant="outline" onClick={cancelEditing}>Cancel</Button>}
                     </div>
                   </div>
+                  <ShapeSwapPicker
+                    open={connShapeSwapOpen}
+                    onOpenChange={setConnShapeSwapOpen}
+                    ids={connSkillIds}
+                    allSkills={allItems}
+                    onPick={(shape) => setConnSkillIds(prev => swapSkillIdsToShape(prev, shape, allItems))}
+                  />
               </DialogContent>
             </Dialog>
             <Card>

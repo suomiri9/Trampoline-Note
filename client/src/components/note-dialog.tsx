@@ -3,12 +3,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Clock, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, X, Search } from "lucide-react";
+import { CalendarIcon, Clock, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, X, Search, Shapes } from "lucide-react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { type Note, type Skill } from "@shared/schema";
-import { parseNoteSkills, calculateTotalDD, suggestRoutinePartName, skillDisplayCode, skillDisplayName, type SkillItem } from "@/lib/training-utils";
+import { parseNoteSkills, calculateTotalDD, suggestRoutinePartName, skillDisplayCode, skillDisplayName, swapSkillIdToShape, swapSkillIdsToShape, shapeSwapInfo, isShapeableSkill, pickableSkills, type SkillItem } from "@/lib/training-utils";
+import { ShapeSwapPicker } from "@/components/shape-swap-picker";
 import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { SortableChip } from "@/components/sortable-chip";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -17,7 +18,7 @@ import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
 import { useCreateNote, useUpdateNote } from "@/hooks/use-notes";
 import { updateQueuedByTempId } from "@/lib/offline-queue";
 import { useSkills } from "@/hooks/use-skills";
-import { ShapeDraftsEditor, type ShapeDraft } from "@/components/shape-drafts-editor";
+import { ShapeDraftsEditor, SHAPE_OPTIONS, type ShapeDraft } from "@/components/shape-drafts-editor";
 import { useRecentSkills, addRecentSkill, useRecentEntries, addRecentEntry } from "@/hooks/use-recent-skills";
 import { useTypeToSearch } from "@/hooks/use-type-to-search";
 import { useRoutines } from "@/hooks/use-routines";
@@ -132,7 +133,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [showNewRoutine, setShowNewRoutine] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
-  const [shapePickerBase, setShapePickerBase] = useState<number | null>(null);
+  const [shapeSwapIndices, setShapeSwapIndices] = useState<number[] | null>(null);
+  const [connShapeSwapOpen, setConnShapeSwapOpen] = useState(false);
   const [connSkillSearch, setConnSkillSearch] = useState("");
   const [routineSkillSearch, setRoutineSkillSearch] = useState("");
   const [connSkillPickerOpen, setConnSkillPickerOpen] = useState(false);
@@ -413,6 +415,39 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     });
   };
 
+  // Insert a shape-swapped copy of a group directly below the original, swapping
+  // every shapeable plain skill to `shape` and leaving everything else as-is.
+  const duplicateGroupWithShape = (groupIndices: number[], shape: string) => {
+    setSelectedSkills(prev => {
+      const newSkills = [...prev];
+      const lastIdx = groupIndices[groupIndices.length - 1];
+      const groupItems = groupIndices.map(i => {
+        const item = { ...prev[i] };
+        if (item.id > 0) {
+          const swapped = swapSkillIdToShape(item.id, shape, allItems);
+          if (swapped != null) item.id = swapped;
+        }
+        return item;
+      });
+      const toInsert = [{ id: -1 } as SkillItem, ...groupItems];
+      newSkills.splice(lastIdx + 1, 0, ...toInsert);
+      form.setValue('skills', JSON.stringify(newSkills));
+      return newSkills;
+    });
+  };
+
+  // A group qualifies for shape-swap only when every member is a plain skill
+  // (no routine/conn chips, ids -2/-3) and at least one is shapeable.
+  const groupIsPlainSkills = (indices: number[]) =>
+    indices.every(i => { const it = selectedSkills[i]; return !!it && it.id > 0; });
+  const groupHasShapeable = (indices: number[]) =>
+    indices.some(i => {
+      const it = selectedSkills[i];
+      return !!it && it.id > 0 && isShapeableSkill(allItems?.find(s => s.id === it.id));
+    });
+  const canShapeSwapGroup = (indices: number[]) =>
+    groupIsPlainSkills(indices) && groupHasShapeable(indices);
+
   const updateReps = (indices: number[], reps: number) => {
     const val = Math.max(0, reps);
     setSelectedSkills(prev => {
@@ -624,7 +659,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
                 <div className="flex gap-2">
                   <div className="flex flex-1 min-w-0 basis-0 h-11 rounded-xl border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
-                  <Popover open={pickerOpen} onOpenChange={(v) => { setPickerOpen(v); if (!v) { setPickerSearch(""); setShapePickerBase(null); } }}>
+                  <Popover open={pickerOpen} onOpenChange={(v) => { setPickerOpen(v); if (!v) { setPickerSearch(""); } }}>
                     <PopoverTrigger asChild>
                       <button
                         type="button"
@@ -648,54 +683,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         <CommandList className="max-h-[320px]">
                           <CommandEmpty>No matches.</CommandEmpty>
                           {(() => {
-                            const skillsList = (allItems || [])
-                              .filter(s => s.isDrill === 0 && s.archived !== 1 && s.parentSkillId == null)
-                              .slice()
-                              .sort((a, b) => {
-                                const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
-                                if (oA !== oB) return oA - oB;
-                                return b.difficulty - a.difficulty;
-                              });
-                            const shapesByParent = (parentId: number) => (allItems || [])
-                              .filter(s => s.parentSkillId === parentId && s.archived !== 1)
-                              .slice()
-                              .sort((a, b) => (a.sortOrder ?? 999999) - (b.sortOrder ?? 999999));
-                            if (shapePickerBase != null) {
-                              const base = (allItems || []).find(s => s.id === shapePickerBase);
-                              const shapeOptions = base ? shapesByParent(base.id) : [];
-                              return (
-                                <CommandGroup heading={base ? `${base.code} — pick shape` : "Pick shape"}>
-                                  <CommandItem
-                                    key="shape-back"
-                                    value="back"
-                                    onSelect={() => setShapePickerBase(null)}
-                                    data-testid="pick-shape-back"
-                                  >
-                                    <span className="text-muted-foreground">← Back</span>
-                                  </CommandItem>
-                                  {shapeOptions.map((opt) => (
-                                    <CommandItem
-                                      key={`shape-${opt.id}`}
-                                      value={`${skillDisplayCode(opt, allItems)} ${skillDisplayName(opt, allItems)} ${opt.shape ?? ""} shape`}
-                                      onSelect={() => { addSkill(opt.id.toString()); setPickerOpen(false); setShapePickerBase(null); }}
-                                      data-testid={`pick-shape-${opt.id}`}
-                                    >
-                                      <span className="font-mono text-xs font-semibold text-foreground mr-2">{skillDisplayCode(opt, allItems)}</span>
-                                      <span className="text-muted-foreground">- {skillDisplayName(opt, allItems)}</span>
-                                      <span className="ml-auto font-mono text-xs text-primary">{opt.difficulty.toFixed(1)}</span>
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              );
-                            }
-                            const drillsList = (allItems || [])
-                              .filter(s => s.isDrill === 1 && s.archived !== 1 && s.parentSkillId == null)
-                              .slice()
-                              .sort((a, b) => {
-                                const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
-                                if (oA !== oB) return oA - oB;
-                                return b.difficulty - a.difficulty;
-                              });
+                            const sortFn = (a: Skill, b: Skill) => {
+                              const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
+                              if (oA !== oB) return oA - oB;
+                              return b.difficulty - a.difficulty;
+                            };
+                            const skillsList = pickableSkills(allItems, 0).slice().sort(sortFn);
+                            const drillsList = pickableSkills(allItems, 1).slice().sort(sortFn);
                             const connList = (allItems || [])
                               .filter(s => s.isDrill === 2 && s.skillIds && s.archived !== 1)
                               .slice();
@@ -709,54 +703,33 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               <>
                                 {skillsList.length > 0 && (
                                   <CommandGroup heading="Skills">
-                                    {skillsList.map(item => {
-                                      const childShapes = shapesByParent(item.id);
-                                      const hasShapes = childShapes.length > 0;
-                                      return (
+                                    {skillsList.map(item => (
                                       <CommandItem
                                         key={`s-${item.id}`}
-                                        value={`${item.code} ${item.name} skill`}
-                                        onSelect={() => {
-                                          if (hasShapes) { setShapePickerBase(item.id); setPickerSearch(""); }
-                                          else { addSkill(item.id.toString()); setPickerOpen(false); }
-                                        }}
+                                        value={`${skillDisplayCode(item, allItems)} ${skillDisplayName(item, allItems)} skill`}
+                                        onSelect={() => { addSkill(item.id.toString()); setPickerOpen(false); }}
                                         data-testid={`pick-skill-${item.id}`}
                                       >
-                                        <span className="font-mono text-xs font-semibold text-foreground mr-2">{item.code}</span>
-                                        <span className="text-muted-foreground">- {item.name}</span>
-                                        {hasShapes && (
-                                          <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">{childShapes.length} shapes ›</span>
-                                        )}
+                                        <span className="font-mono text-xs font-semibold text-foreground mr-2">{skillDisplayCode(item, allItems)}</span>
+                                        <span className="text-muted-foreground">- {skillDisplayName(item, allItems)}</span>
                                       </CommandItem>
-                                      );
-                                    })}
+                                    ))}
                                   </CommandGroup>
                                 )}
                                 {drillsList.length > 0 && (
                                   <CommandGroup heading="Drills">
-                                    {drillsList.map(item => {
-                                      const childShapes = shapesByParent(item.id);
-                                      const hasShapes = childShapes.length > 0;
-                                      return (
+                                    {drillsList.map(item => (
                                       <CommandItem
                                         key={`d-${item.id}`}
-                                        value={`${item.code} ${item.name} drill`}
-                                        onSelect={() => {
-                                          if (hasShapes) { setShapePickerBase(item.id); setPickerSearch(""); }
-                                          else { addSkill(item.id.toString()); setPickerOpen(false); }
-                                        }}
+                                        value={`${skillDisplayCode(item, allItems)} ${skillDisplayName(item, allItems)} drill`}
+                                        onSelect={() => { addSkill(item.id.toString()); setPickerOpen(false); }}
                                         data-testid={`pick-drill-${item.id}`}
                                       >
-                                        <span className="font-mono text-xs font-semibold text-foreground mr-2">{item.code}</span>
-                                        <span className="text-muted-foreground">- {item.name}</span>
-                                        {hasShapes ? (
-                                          <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">{childShapes.length} shapes ›</span>
-                                        ) : (
-                                          <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-yellow-600 dark:text-yellow-400">Drill</span>
-                                        )}
+                                        <span className="font-mono text-xs font-semibold text-foreground mr-2">{skillDisplayCode(item, allItems)}</span>
+                                        <span className="text-muted-foreground">- {skillDisplayName(item, allItems)}</span>
+                                        <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-yellow-600 dark:text-yellow-400">Drill</span>
                                       </CommandItem>
-                                      );
-                                    })}
+                                    ))}
                                   </CommandGroup>
                                 )}
                                 {connList.length > 0 && (
@@ -928,7 +901,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                 <CommandList className="max-h-[320px]">
                                   <CommandEmpty>No matches.</CommandEmpty>
                                   <CommandGroup heading="Skills">
-                                    {allItems?.filter(s => s.isDrill === 0 && s.archived !== 1).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
+                                    {pickableSkills(allItems, 0).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
                                       <CommandItem key={s.id} value={`${skillDisplayCode(s, allItems)} ${skillDisplayName(s, allItems)} skill`} onSelect={() => { addRecentSkill(s.id); setNewConnSkillIds(prev => [...prev, s.id]); setConnSkillPickerOpen(false); }} data-testid={`pick-conn-skill-${s.id}`}>
                                         <span className="font-mono text-xs font-semibold text-foreground mr-2">{skillDisplayCode(s, allItems)}</span>
                                         {skillDisplayCode(s, allItems) !== skillDisplayName(s, allItems) && <span className="text-muted-foreground">- {skillDisplayName(s, allItems)}</span>}
@@ -943,7 +916,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         </div>
                         {(() => {
                           const recents = globalRecentSkillIds
-                            .map(id => allItems?.find(s => s.id === id && s.isDrill === 0 && s.archived !== 1))
+                            .map(id => pickableSkills(allItems, 0).find(s => s.id === id))
                             .filter((s): s is NonNullable<typeof s> => !!s);
                           if (recents.length === 0) return null;
                           return (
@@ -976,6 +949,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           </div>
                         </SortableContext>
                       </DndContext>
+                      {shapeSwapInfo(newConnSkillIds, allItems, SHAPE_OPTIONS).hasShapeable && (
+                        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setConnShapeSwapOpen(true)} data-testid="btn-new-conn-change-shape">
+                          <Shapes className="h-3.5 w-3.5" /> Change shape
+                        </Button>
+                      )}
                       <div className="pt-2 flex justify-between items-center">
                         <span className="text-sm font-medium">Total DD:</span>
                         <span className="font-mono font-bold text-primary">{newConnSkillIds.reduce((acc, sid) => acc + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0).toFixed(1)}</span>
@@ -988,6 +966,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         } catch {}
                       }} data-testid="btn-save-new-conn">Save Connection</Button>
                     </div>
+                    <ShapeSwapPicker
+                      open={connShapeSwapOpen}
+                      onOpenChange={setConnShapeSwapOpen}
+                      ids={newConnSkillIds}
+                      allSkills={allItems}
+                      onPick={(shape) => setNewConnSkillIds(prev => swapSkillIdsToShape(prev, shape, allItems))}
+                    />
                   </DialogContent>
                 </Dialog>
 
@@ -1034,7 +1019,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               <CommandList className="max-h-[280px]">
                                 <CommandEmpty>No matches.</CommandEmpty>
                                 <CommandGroup heading="Skills">
-                                  {allItems?.filter(s => s.isDrill === 0 && s.archived !== 1).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
+                                  {pickableSkills(allItems, 0).slice().sort((a, b) => { const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999; if (oA !== oB) return oA - oB; return b.difficulty - a.difficulty; }).map(s => (
                                     <CommandItem key={s.id} value={`${skillDisplayCode(s, allItems)} ${skillDisplayName(s, allItems)} skill`} onSelect={() => { addRecentSkill(s.id); setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, s.id] : prev); setRoutineSkillPickerOpen(false); }} data-testid={`pick-routine-skill-${s.id}`}>
                                       <span className="font-mono text-xs font-semibold text-foreground mr-2">{skillDisplayCode(s, allItems)}</span>
                                       {skillDisplayCode(s, allItems) !== skillDisplayName(s, allItems) && <span className="text-muted-foreground">- {skillDisplayName(s, allItems)}</span>}
@@ -1049,7 +1034,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       </div>
                       {(() => {
                         const recents = globalRecentSkillIds
-                          .map(id => allItems?.find(s => s.id === id && s.isDrill === 0 && s.archived !== 1))
+                          .map(id => pickableSkills(allItems, 0).find(s => s.id === id))
                           .filter((s): s is NonNullable<typeof s> => !!s);
                         if (recents.length === 0) return null;
                         return (
@@ -1394,6 +1379,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         <DropdownMenuContent align="end" className="w-36 rounded-xl" onCloseAutoFocus={(e) => e.preventDefault()}>
                                           <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (grpNote !== undefined && grpNote !== null) { updateSkillNote(grpNoteIdx, undefined); } else { addNoteAndFocus(grpNoteIdx); } }}><MessageSquare className="h-3.5 w-3.5" /> {grpNote !== undefined && grpNote !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
                                           <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                                          {canShapeSwapGroup(group.indices) && (
+                                            <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => setShapeSwapIndices(group.indices)}><Shapes className="h-3.5 w-3.5" /> Duplicate w/ shape</DropdownMenuItem>
+                                          )}
                                           <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeGroup(group.indices)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                         </DropdownMenuContent>
                                       </DropdownMenu>
@@ -1623,6 +1611,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                               else { addNoteAndFocus(isConnected ? group.indices[0] : idx); }
                                             }}><MessageSquare className="h-3.5 w-3.5" /> {item.note !== undefined && item.note !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
                                             <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                                            {canShapeSwapGroup(group.indices) && (
+                                              <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => setShapeSwapIndices(group.indices)}><Shapes className="h-3.5 w-3.5" /> Duplicate w/ shape</DropdownMenuItem>
+                                            )}
                                             <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                           </DropdownMenuContent>
                                         </DropdownMenu>
@@ -1656,6 +1647,14 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </DndContext>
                 </div>
               </div>
+
+              <ShapeSwapPicker
+                open={shapeSwapIndices !== null}
+                onOpenChange={(o) => { if (!o) setShapeSwapIndices(null); }}
+                ids={shapeSwapIndices ? shapeSwapIndices.map(i => selectedSkills[i]?.id).filter((id): id is number => typeof id === "number" && id > 0) : []}
+                allSkills={allItems}
+                onPick={(shape) => { if (shapeSwapIndices) duplicateGroupWithShape(shapeSwapIndices, shape); setShapeSwapIndices(null); }}
+              />
 
               <FormField control={form.control} name="content" render={({ field }) => (
                 <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea placeholder="How did the session go?" className="min-h-[100px] rounded-xl" {...field} /></FormControl></FormItem>

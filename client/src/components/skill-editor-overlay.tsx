@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Skill } from "@shared/schema";
-import { skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
+import { skillDisplayCode, skillDisplayName, skillHasShapeChildren } from "@/lib/training-utils";
 
 interface SkillEditorOverlayProps {
   title: string;
@@ -54,9 +54,9 @@ export function SkillEditorOverlay({
     onSkillIdsChange([...skillIds, parseInt(val)]);
   };
 
-  const availableSkills = filterSkills
-    ? allSkills.filter(filterSkills).sort((a, b) => b.difficulty - a.difficulty)
-    : [...allSkills].sort((a, b) => b.difficulty - a.difficulty);
+  const availableSkills = (filterSkills ? allSkills.filter(filterSkills) : [...allSkills])
+    .filter(s => !skillHasShapeChildren(s.id, allSkills))
+    .sort((a, b) => b.difficulty - a.difficulty);
 
   return (
     <div className={cn("flex flex-col", className)}>
