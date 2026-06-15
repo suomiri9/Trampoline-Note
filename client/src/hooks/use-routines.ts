@@ -77,6 +77,9 @@ export function useRoutines() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.routines.list.path] });
+      // A rename cascades to auto-named routine parts (skills with isDrill 3),
+      // so refresh the skills cache too.
+      queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
       toast({ title: "Routine updated successfully" });
     },
     onError: (error: Error) => {

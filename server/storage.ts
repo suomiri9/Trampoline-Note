@@ -237,11 +237,50 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateRoutine(id: number, userId: string, updates: Partial<InsertRoutine>): Promise<Routine | undefined> {
+    let previousName: string | undefined;
+    if (updates.name !== undefined) {
+      const [existing] = await db.select().from(routines)
+        .where(and(eq(routines.id, id), eq(routines.userId, userId)));
+      previousName = existing?.name;
+    }
     const [updated] = await db.update(routines)
       .set(updates)
       .where(and(eq(routines.id, id), eq(routines.userId, userId)))
       .returning();
+    if (updated && previousName !== undefined && updates.name !== undefined && previousName !== updates.name) {
+      await this.renameRoutineParts(userId, previousName, updates.name);
+    }
     return updated;
+  }
+
+  // When a routine is renamed, keep its auto-named routine parts (isDrill === 3)
+  // in sync. Routine parts hold no link back to their source routine, but their
+  // names follow a fixed format from suggestRoutinePartName: either exactly the
+  // routine name (full range) or "... of <routineName>". The name and code are
+  // rewritten INDEPENDENTLY and only when each matches that exact pattern, so
+  // user-customized part names/codes (e.g. a short code like "L5") are left
+  // untouched.
+  private renamePartField(value: string, oldName: string, newName: string): string | null {
+    const suffix = ` of ${oldName}`;
+    if (value === oldName) return newName;
+    if (value.endsWith(suffix)) {
+      return value.slice(0, value.length - suffix.length) + ` of ${newName}`;
+    }
+    return null;
+  }
+
+  private async renameRoutineParts(userId: string, oldName: string, newName: string): Promise<void> {
+    if (!oldName || oldName === newName) return;
+    const parts = await db.select().from(skills)
+      .where(and(eq(skills.userId, userId), eq(skills.isDrill, 3)));
+    for (const part of parts) {
+      const nextName = this.renamePartField(part.name, oldName, newName);
+      const nextCode = this.renamePartField(part.code, oldName, newName);
+      if (nextName === null && nextCode === null) continue;
+      await db.update(skills)
+        .set({ name: nextName ?? part.name, code: nextCode ?? part.code })
+        .where(and(eq(skills.id, part.id), eq(skills.userId, userId)));
+    }
   }
 
   async deleteRoutine(id: number, userId: string): Promise<void> {
