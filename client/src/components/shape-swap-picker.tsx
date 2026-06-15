@@ -23,7 +23,7 @@ export function ShapeSwapPicker({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xs">
         <DialogHeader>
-          <DialogTitle>Change Shape</DialogTitle>
+          <DialogTitle>Duplicate w/ shape</DialogTitle>
         </DialogHeader>
         <div className="space-y-2">
           {info.options.map(opt => {

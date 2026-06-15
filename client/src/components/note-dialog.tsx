@@ -950,8 +950,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         </SortableContext>
                       </DndContext>
                       {shapeSwapInfo(newConnSkillIds, allItems, SHAPE_OPTIONS).hasShapeable && (
-                        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setConnShapeSwapOpen(true)} data-testid="btn-new-conn-change-shape">
-                          <Shapes className="h-3.5 w-3.5" /> Change shape
+                        <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={!newConnName || isCreatingSkill} onClick={() => setConnShapeSwapOpen(true)} data-testid="btn-new-conn-duplicate-shape">
+                          <Shapes className="h-3.5 w-3.5" /> Duplicate w/ shape
                         </Button>
                       )}
                       <div className="pt-2 flex justify-between items-center">
@@ -971,7 +971,16 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       onOpenChange={setConnShapeSwapOpen}
                       ids={newConnSkillIds}
                       allSkills={allItems}
-                      onPick={(shape) => setNewConnSkillIds(prev => swapSkillIdsToShape(prev, shape, allItems))}
+                      onPick={async (shape) => {
+                        const swapped = swapSkillIdsToShape(newConnSkillIds, shape, allItems);
+                        const dd = swapped.reduce((acc, sid) => acc + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0);
+                        const word = SHAPE_OPTIONS.find(o => o.value === shape)?.word ?? "";
+                        const dupName = word ? `${newConnName} (${word})` : newConnName;
+                        try {
+                          await createSkill({ name: dupName, code: dupName, difficulty: dd, isDrill: 2, skillIds: swapped });
+                          toast({ title: "Connection duplicated", description: `Created "${dupName}"` });
+                        } catch {}
+                      }}
                     />
                   </DialogContent>
                 </Dialog>

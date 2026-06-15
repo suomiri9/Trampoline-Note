@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { useRecentSkills, addRecentSkill } from "@/hooks/use-recent-skills";
+import { useToast } from "@/hooks/use-toast";
 import { calcDDFromSkillIds, suggestRoutinePartName, skillDisplayCode, skillDisplayName, swapSkillIdsToShape, shapeSwapInfo, pickableSkills } from "@/lib/training-utils";
 import { ShapeSwapPicker } from "@/components/shape-swap-picker";
 import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
@@ -80,6 +81,7 @@ export default function SkillsPage() {
   const [, navigate] = useLocation();
   const { data: allItems, createSkill, deleteSkill, updateSkill, reorderSkills, isCreating, isUpdating } = useSkills();
   const { data: routines } = useRoutines();
+  const { toast } = useToast();
   const recentSkillIds = useRecentSkills();
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   const [reorderMode, setReorderMode] = useState(false);
@@ -888,8 +890,8 @@ export default function SkillsPage() {
                     </DndContext>
 
                     {shapeSwapInfo(connSkillIds, allItems, SHAPE_OPTIONS).hasShapeable && (
-                      <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setConnShapeSwapOpen(true)} data-testid="btn-conn-change-shape">
-                        <Shapes className="h-3.5 w-3.5" /> Change shape
+                      <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={!connName || isCreating} onClick={() => setConnShapeSwapOpen(true)} data-testid="btn-conn-duplicate-shape">
+                        <Shapes className="h-3.5 w-3.5" /> Duplicate w/ shape
                       </Button>
                     )}
 
@@ -912,7 +914,21 @@ export default function SkillsPage() {
                     onOpenChange={setConnShapeSwapOpen}
                     ids={connSkillIds}
                     allSkills={allItems}
-                    onPick={(shape) => setConnSkillIds(prev => swapSkillIdsToShape(prev, shape, allItems))}
+                    onPick={async (shape) => {
+                      const swapped = swapSkillIdsToShape(connSkillIds, shape, allItems);
+                      const word = SHAPE_OPTIONS.find(o => o.value === shape)?.word ?? "";
+                      const dupName = word ? `${connName} (${word})` : connName;
+                      try {
+                        await createSkill({
+                          name: dupName,
+                          code: dupName,
+                          difficulty: calcDDFromSkillIds(swapped, allItems || []),
+                          isDrill: 2,
+                          skillIds: swapped,
+                        });
+                        toast({ title: "Connection duplicated", description: `Created "${dupName}"` });
+                      } catch {}
+                    }}
                   />
               </DialogContent>
             </Dialog>
