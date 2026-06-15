@@ -36,12 +36,17 @@ export function shapeParentOf(
 }
 
 export function skillDisplayCode(
-  skill: Pick<Skill, "code" | "parentSkillId"> | undefined | null,
+  skill: Pick<Skill, "code" | "parentSkillId" | "shape"> | undefined | null,
   allSkills: Skill[] | undefined | null,
 ): string {
   if (!skill) return "";
   const parent = shapeParentOf(skill, allSkills);
-  return parent ? `${parent.code}${skill.code}` : skill.code;
+  // A shape's combined code is baseCode + the SHAPE code. Prefer the explicit
+  // `shape` field (set by both the inline Shapes editor and "Assign as shape")
+  // and fall back to the row's own `code` for legacy/inline shapes where they
+  // coincide. Using `shape` keeps the original code intact (so Detach restores
+  // it) instead of concatenating the base code with the child's leftover code.
+  return parent ? `${parent.code}${skill.shape || skill.code}` : skill.code;
 }
 
 export function skillDisplayName(
