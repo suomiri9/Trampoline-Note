@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, X } from "lucide-react";
 
-export type ShapeDraft = { id?: number; shape: string; name: string; difficulty: number };
+export type ShapeDraft = { id?: number; code?: string; shape: string; name: string; difficulty: number };
 
 export const SHAPE_OPTIONS: { value: string; word: string }[] = [
   { value: "o", word: "Tuck" },
