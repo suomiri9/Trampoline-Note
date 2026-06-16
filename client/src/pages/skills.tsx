@@ -1174,7 +1174,7 @@ export default function SkillsPage() {
                                 const s = allItems?.find(sk => sk.id === sid);
                                 return (
                                   <Badge key={`pp-${i}`} variant="outline" className="font-mono text-[10px]">
-                                    {effectivePartStart + i}. {s?.code || "?"}
+                                    {effectivePartStart + i}. {skillDisplayCode(s, allItems) || "?"}
                                   </Badge>
                                 );
                               })

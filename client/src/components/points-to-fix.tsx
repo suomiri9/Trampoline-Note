@@ -727,7 +727,7 @@ export function PointsToFix({
                                   {filterDrillsList.map((s) => (
                                     <CommandItem
                                       key={`fd-${s.id}`}
-                                      value={`${s.code} ${s.name} drill`}
+                                      value={`${skillDisplayCode(s, skills)} ${skillDisplayName(s, skills)} drill`}
                                       onSelect={() => {
                                         setFilterKind("skill");
                                         setFilterId(s.id);
@@ -736,10 +736,10 @@ export function PointsToFix({
                                       data-testid={`filter-drill-${s.id}`}
                                     >
                                       <span className="font-mono text-xs font-semibold text-foreground mr-2">
-                                        {s.code}
+                                        {skillDisplayCode(s, skills)}
                                       </span>
-                                      {s.code !== s.name && (
-                                        <span className="text-muted-foreground">- {s.name}</span>
+                                      {skillDisplayCode(s, skills) !== skillDisplayName(s, skills) && (
+                                        <span className="text-muted-foreground">- {skillDisplayName(s, skills)}</span>
                                       )}
                                       <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-yellow-600 dark:text-yellow-400">
                                         Drill
@@ -934,7 +934,7 @@ export function PointsToFix({
                                             {linkDrillsList.map((s) => (
                                               <CommandItem
                                                 key={`ld-${s.id}`}
-                                                value={`${s.code} ${s.name} drill`}
+                                                value={`${skillDisplayCode(s, skills)} ${skillDisplayName(s, skills)} drill`}
                                                 onSelect={() => {
                                                   addSkillToDraft(`skill:${s.id}`);
                                                   setLinkOpen(false);
@@ -942,10 +942,10 @@ export function PointsToFix({
                                                 data-testid={`option-drill-${s.id}`}
                                               >
                                                 <span className="font-mono text-xs font-semibold text-foreground mr-2">
-                                                  {s.code}
+                                                  {skillDisplayCode(s, skills)}
                                                 </span>
-                                                {s.code !== s.name && (
-                                                  <span className="text-muted-foreground">- {s.name}</span>
+                                                {skillDisplayCode(s, skills) !== skillDisplayName(s, skills) && (
+                                                  <span className="text-muted-foreground">- {skillDisplayName(s, skills)}</span>
                                                 )}
                                                 <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-yellow-600 dark:text-yellow-400">
                                                   Drill
