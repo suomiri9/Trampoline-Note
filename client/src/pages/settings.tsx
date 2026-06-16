@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { useTimeFormat } from "@/hooks/use-time-format";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
+import { useArchiveCascade } from "@/hooks/use-archive-cascade";
 import { useOnline } from "@/hooks/use-online";
 import {
   useQueueCount,
@@ -47,6 +48,7 @@ export default function SettingsPage() {
   const [showSignOutAlert, setShowSignOutAlert] = useState(false);
   const [timeFormat, setTimeFormat] = useTimeFormat();
   const [offlineModeEnabled, setOfflineModeEnabled] = useOfflineMode();
+  const [archiveCascade, setArchiveCascade] = useArchiveCascade();
   const isOnline = useOnline();
   const pendingCount = useQueueCount();
   const failedCount = useFailedCount();
@@ -524,6 +526,18 @@ export default function SettingsPage() {
                   </Button>
                 </div>
               )}
+                </div>
+
+                <div className="p-5 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Archive Parts With Routine</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{archiveCascade ? "On — archiving a routine also archives its routine parts." : "Off — routine parts keep their own archived state."}</p>
+                  </div>
+                  <Switch
+                    checked={archiveCascade}
+                    onCheckedChange={setArchiveCascade}
+                    data-testid="toggle-archive-cascade"
+                  />
                 </div>
 
                 <div className="p-5 flex items-start justify-between gap-3">

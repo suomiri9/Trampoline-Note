@@ -19,16 +19,19 @@ import { Trash2, Pencil, X, Layers, Archive, ArchiveRestore, MoreVertical, Searc
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
-import { type Routine } from "@shared/schema";
+import { type Routine, type Skill } from "@shared/schema";
+import { api } from "@shared/routes";
+import { queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { SortableChip } from "@/components/sortable-chip";
 import { useRecentSkills, addRecentSkill } from "@/hooks/use-recent-skills";
+import { getArchivePartsWithRoutine } from "@/lib/archive-cascade";
 
 export default function RoutinesPage() {
   const [, navigate] = useLocation();
-  const { data: allItems } = useSkills();
+  const { data: allItems, updateSkill } = useSkills();
   const skills = allItems?.filter(item => item.isDrill === 0 && item.archived !== 1);
   const { data: allRoutines, createRoutine, deleteRoutine, updateRoutine, isCreating, isUpdating } = useRoutines();
   const { data: notes } = useNotes();
@@ -62,9 +65,25 @@ export default function RoutinesPage() {
   const routines = allRoutines?.filter(r => showArchived ? r.archived === 1 : r.archived !== 1);
   const archivedCount = allRoutines ? allRoutines.filter(r => r.archived === 1).length : 0;
 
+  // Cascade a routine's archived flag to its OWN routine parts (isDrill === 3,
+  // linked via sourceRoutineId) when the "Archive Parts With Routine" preference
+  // is on (default). Gated client-side so the Settings toggle can disable it.
+  const cascadeArchiveToParts = async (routineId: number, archived: number) => {
+    if (!getArchivePartsWithRoutine()) return;
+    // Don't treat unloaded skills data as "no parts" — fetch fresh if needed.
+    const items =
+      allItems ??
+      ((await queryClient.fetchQuery({ queryKey: [api.skills.list.path] })) as Skill[]);
+    const parts = (items ?? []).filter(
+      (it) => it.isDrill === 3 && it.sourceRoutineId === routineId,
+    );
+    await Promise.all(parts.map((p) => updateSkill({ id: p.id, archived })));
+  };
+
   const toggleArchive = async (routine: Routine) => {
     if (routine.archived === 1) {
       await updateRoutine({ id: routine.id, archived: 0 });
+      await cascadeArchiveToParts(routine.id, 0);
     } else {
       setArchiveTarget({ id: routine.id, name: routine.name });
     }
@@ -73,6 +92,7 @@ export default function RoutinesPage() {
   const confirmArchive = async () => {
     if (!archiveTarget) return;
     await updateRoutine({ id: archiveTarget.id, archived: 1 });
+    await cascadeArchiveToParts(archiveTarget.id, 1);
     setArchiveTarget(null);
   };
 
