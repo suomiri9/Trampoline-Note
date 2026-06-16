@@ -1010,7 +1010,7 @@ export default function SkillsPage() {
                             <TableCell>
                               <div className="flex flex-wrap gap-1">
                                 {conn.skillIds?.map((sid, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-[10px] px-1">{skills?.find(s => s.id === sid)?.code || "?"}</Badge>
+                                  <Badge key={idx} variant="outline" className="text-[10px] px-1">{skillDisplayCode(allItems?.find(s => s.id === sid), allItems) || "?"}</Badge>
                                 ))}
                               </div>
                             </TableCell>
@@ -1207,7 +1207,7 @@ export default function SkillsPage() {
                             <TableCell>
                               <div className="flex flex-wrap gap-1">
                                 {part.skillIds?.map((sid, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-[10px] px-1">{allItems?.find(s => s.id === sid)?.code || "?"}</Badge>
+                                  <Badge key={idx} variant="outline" className="text-[10px] px-1">{skillDisplayCode(allItems?.find(s => s.id === sid), allItems) || "?"}</Badge>
                                 ))}
                               </div>
                             </TableCell>
