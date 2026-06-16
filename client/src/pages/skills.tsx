@@ -239,7 +239,26 @@ export default function SkillsPage() {
     }
   };
 
+  // For a shape child the Code field is prefilled with the COMBINED code
+  // (baseCode + shape). On save we strip the base prefix back off to recover
+  // the shape's own portion, which drives the displayed code via `shape`.
+  const shapePortionFromCombined = (skill: Skill, combined: string | undefined | null) => {
+    const parent = (allItems || []).find(s => s.id === skill.parentSkillId);
+    const baseCode = parent?.code ?? "";
+    const entered = (combined ?? "").toString();
+    return baseCode && entered.startsWith(baseCode) ? entered.slice(baseCode.length) : entered;
+  };
+
   const onSkillSubmit = async (values: any) => {
+    if (editingSkill && isEditingShape) {
+      const shape = shapePortionFromCombined(editingSkill, values.code);
+      await updateSkill({ id: editingSkill.id, name: values.name, difficulty: values.difficulty, shape });
+      setEditingSkill(null);
+      skillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 0 });
+      setShapeDrafts([]);
+      setShowForm(false);
+      return;
+    }
     const hasRealShapes = !isEditingShape && shapeDrafts.some(d => (d.shape || "").trim() || (d.name || "").trim());
     const baseValues = hasRealShapes ? { ...values, difficulty: 0 } : values;
     if (editingSkill) {
@@ -260,6 +279,15 @@ export default function SkillsPage() {
   };
 
   const onDrillSubmit = async (values: any) => {
+    if (editingSkill && isEditingShape) {
+      const shape = shapePortionFromCombined(editingSkill, values.code);
+      await updateSkill({ id: editingSkill.id, name: values.name, difficulty: values.difficulty, shape });
+      setEditingSkill(null);
+      drillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 1 });
+      setShapeDrafts([]);
+      setShowForm(false);
+      return;
+    }
     const hasRealShapes = !isEditingShape && shapeDrafts.some(d => (d.shape || "").trim() || (d.name || "").trim());
     const baseValues = hasRealShapes ? { ...values, difficulty: 0 } : values;
     if (editingSkill) {
@@ -347,7 +375,7 @@ export default function SkillsPage() {
     } else if (skill.isDrill === 1) {
       drillForm.reset({
         name: skill.name,
-        code: skill.code,
+        code: skill.parentSkillId != null ? skillDisplayCode(skill, allItems) : skill.code,
         difficulty: skill.difficulty,
         isDrill: skill.isDrill,
       });
@@ -363,7 +391,7 @@ export default function SkillsPage() {
     } else {
       skillForm.reset({
         name: skill.name,
-        code: skill.code,
+        code: skill.parentSkillId != null ? skillDisplayCode(skill, allItems) : skill.code,
         difficulty: skill.difficulty,
         isDrill: skill.isDrill,
       });
