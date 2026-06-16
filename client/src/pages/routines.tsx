@@ -65,25 +65,26 @@ export default function RoutinesPage() {
   const routines = allRoutines?.filter(r => showArchived ? r.archived === 1 : r.archived !== 1);
   const archivedCount = allRoutines ? allRoutines.filter(r => r.archived === 1).length : 0;
 
-  // Cascade a routine's archived flag to its OWN routine parts (isDrill === 3,
-  // linked via sourceRoutineId) when the "Archive Parts With Routine" preference
-  // is on (default). Gated client-side so the Settings toggle can disable it.
-  const cascadeArchiveToParts = async (routineId: number, archived: number) => {
+  // Cascade a routine's archived flag to its OWN linked items — routine parts
+  // (isDrill === 3) AND connections (isDrill === 2) tagged with this routine via
+  // sourceRoutineId — when the "Archive Parts With Routine" preference is on
+  // (default). Gated client-side so the Settings toggle can disable it.
+  const cascadeArchiveToLinked = async (routineId: number, archived: number) => {
     if (!getArchivePartsWithRoutine()) return;
-    // Don't treat unloaded skills data as "no parts" — fetch fresh if needed.
+    // Don't treat unloaded skills data as "no linked items" — fetch fresh if needed.
     const items =
       allItems ??
       ((await queryClient.fetchQuery({ queryKey: [api.skills.list.path] })) as Skill[]);
-    const parts = (items ?? []).filter(
-      (it) => it.isDrill === 3 && it.sourceRoutineId === routineId,
+    const linked = (items ?? []).filter(
+      (it) => (it.isDrill === 3 || it.isDrill === 2) && it.sourceRoutineId === routineId,
     );
-    await Promise.all(parts.map((p) => updateSkill({ id: p.id, archived })));
+    await Promise.all(linked.map((p) => updateSkill({ id: p.id, archived })));
   };
 
   const toggleArchive = async (routine: Routine) => {
     if (routine.archived === 1) {
       await updateRoutine({ id: routine.id, archived: 0 });
-      await cascadeArchiveToParts(routine.id, 0);
+      await cascadeArchiveToLinked(routine.id, 0);
     } else {
       setArchiveTarget({ id: routine.id, name: routine.name });
     }
@@ -92,7 +93,7 @@ export default function RoutinesPage() {
   const confirmArchive = async () => {
     if (!archiveTarget) return;
     await updateRoutine({ id: archiveTarget.id, archived: 1 });
-    await cascadeArchiveToParts(archiveTarget.id, 1);
+    await cascadeArchiveToLinked(archiveTarget.id, 1);
     setArchiveTarget(null);
   };
 

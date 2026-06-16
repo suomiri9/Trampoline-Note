@@ -141,6 +141,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [routineSkillPickerOpen, setRoutineSkillPickerOpen] = useState(false);
   const [newConnName, setNewConnName] = useState("");
   const [newConnSkillIds, setNewConnSkillIds] = useState<number[]>([]);
+  const [newConnRoutineId, setNewConnRoutineId] = useState<number | null>(null);
   const [newRoutineName, setNewRoutineName] = useState("");
   const [newRoutineSkillIds, setNewRoutineSkillIds] = useState<number[]>([]);
   const [showNewSkill, setShowNewSkill] = useState(false);
@@ -288,6 +289,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         setShowNewRoutine(false);
         setNewConnName("");
         setNewConnSkillIds([]);
+        setNewConnRoutineId(null);
         setNewRoutineName("");
         setNewRoutineSkillIds([]);
         setShowNewSkill(false);
@@ -791,7 +793,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     <DropdownMenuContent align="end" className="w-40 rounded-xl">
                       <DropdownMenuItem className="cursor-pointer text-xs" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setShowNewPart(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); setNewSkillShapes([]); }} data-testid="menu-new-skill">New Skill</DropdownMenuItem>
                       <DropdownMenuItem className="cursor-pointer text-xs text-yellow-600 dark:text-yellow-400" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setShowNewPart(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(true); setNewSkillShapes([]); }} data-testid="menu-new-drill">New Drill</DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-xs text-red-500 dark:text-red-400" onClick={() => { setShowNewConn(true); setShowNewSkill(false); setShowNewRoutine(false); setShowNewPart(false); setNewConnName(""); setNewConnSkillIds([]); }} data-testid="menu-new-connection">New Connection</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-red-500 dark:text-red-400" onClick={() => { setShowNewConn(true); setShowNewSkill(false); setShowNewRoutine(false); setShowNewPart(false); setNewConnName(""); setNewConnSkillIds([]); setNewConnRoutineId(null); }} data-testid="menu-new-connection">New Connection</DropdownMenuItem>
                       <DropdownMenuItem className="cursor-pointer text-xs text-blue-600 dark:text-blue-400" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setShowNewPart(false); setNewRoutineName(""); setNewRoutineSkillIds([]); }} data-testid="menu-new-routine">New Routine</DropdownMenuItem>
                       <DropdownMenuItem className="cursor-pointer text-xs text-gray-600 dark:text-gray-300" onClick={() => { setShowNewPart(true); setShowNewConn(false); setShowNewSkill(false); setShowNewRoutine(false); setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); }} data-testid="menu-new-part">New Routine Part</DropdownMenuItem>
                     </DropdownMenuContent>
@@ -870,6 +872,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               if (!src) return;
                               setNewConnName(`${src.name} (copy)`);
                               setNewConnSkillIds(src.skillIds || []);
+                              setNewConnRoutineId(src.sourceRoutineId ?? null);
                             }}>
                               <SelectTrigger data-testid="select-duplicate-inline-connection"><SelectValue placeholder="Pick a connection to copy..." /></SelectTrigger>
                               <SelectContent>
@@ -884,6 +887,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       <div className="space-y-2">
                         <label className="text-sm font-medium leading-none">Connection Name</label>
                         <Input placeholder="e.g. Ba+BT" value={newConnName} onChange={e => setNewConnName(e.target.value)} data-testid="input-new-conn-name" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium leading-none">Routine <span className="font-normal text-muted-foreground">(optional)</span></label>
+                        <Select value={newConnRoutineId !== null ? String(newConnRoutineId) : "none"} onValueChange={(v) => setNewConnRoutineId(v === "none" ? null : parseInt(v))}>
+                          <SelectTrigger data-testid="select-new-conn-routine"><SelectValue placeholder="No routine" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No routine</SelectItem>
+                            {(routines || []).filter(r => r.archived !== 1).map(r => (
+                              <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[10px] text-muted-foreground">Tag a routine to archive this connection together with it.</p>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium leading-none">Build Sequence</label>
@@ -961,8 +977,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       <Button type="button" className="w-full" disabled={!newConnName || newConnSkillIds.length === 0 || isCreatingSkill} onClick={async () => {
                         try {
                           const dd = newConnSkillIds.reduce((acc, sid) => acc + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0);
-                          await createSkill({ name: newConnName, code: newConnName, difficulty: dd, isDrill: 2, skillIds: newConnSkillIds });
-                          setNewConnName(""); setNewConnSkillIds([]); setShowNewConn(false);
+                          await createSkill({ name: newConnName, code: newConnName, difficulty: dd, isDrill: 2, skillIds: newConnSkillIds, sourceRoutineId: newConnRoutineId });
+                          setNewConnName(""); setNewConnSkillIds([]); setNewConnRoutineId(null); setShowNewConn(false);
                         } catch {}
                       }} data-testid="btn-save-new-conn">Save Connection</Button>
                     </div>
@@ -977,7 +993,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         const word = SHAPE_OPTIONS.find(o => o.value === shape)?.word ?? "";
                         const dupName = word ? `${newConnName} (${word})` : newConnName;
                         try {
-                          await createSkill({ name: dupName, code: dupName, difficulty: dd, isDrill: 2, skillIds: swapped });
+                          await createSkill({ name: dupName, code: dupName, difficulty: dd, isDrill: 2, skillIds: swapped, sourceRoutineId: newConnRoutineId });
                           toast({ title: "Connection duplicated", description: `Created "${dupName}"` });
                         } catch {}
                       }}

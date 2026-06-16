@@ -96,6 +96,7 @@ export default function SkillsPage() {
   
   const [connName, setConnName] = useState("");
   const [connSkillIds, setConnSkillIds] = useState<number[]>([]);
+  const [connRoutineId, setConnRoutineId] = useState<number | null>(null);
   const [connShapeSwapOpen, setConnShapeSwapOpen] = useState(false);
   const [connSkillPickerOpen, setConnSkillPickerOpen] = useState(false);
   const [connSkillSearch, setConnSkillSearch] = useState("");
@@ -342,7 +343,8 @@ export default function SkillsPage() {
       code: connName,
       difficulty: totalDifficulty,
       isDrill: 2,
-      skillIds: connSkillIds
+      skillIds: connSkillIds,
+      sourceRoutineId: connRoutineId,
     };
 
     if (editingSkill) {
@@ -354,6 +356,7 @@ export default function SkillsPage() {
     
     setConnName("");
     setConnSkillIds([]);
+    setConnRoutineId(null);
     setShowForm(false);
   };
 
@@ -376,6 +379,7 @@ export default function SkillsPage() {
     } else if (skill.isDrill === 2) {
       setConnName(skill.name);
       setConnSkillIds(skill.skillIds || []);
+      setConnRoutineId(skill.sourceRoutineId ?? null);
     } else if (skill.isDrill === 1) {
       drillForm.reset({
         name: skill.name,
@@ -422,6 +426,7 @@ export default function SkillsPage() {
       } else if (isDrill === 2) {
         setConnName("");
         setConnSkillIds([]);
+        setConnRoutineId(null);
       } else if (isDrill === 1) {
         drillForm.reset({ name: "", code: "", difficulty: 0, isDrill: 1 });
         setShapeDrafts([]);
@@ -849,6 +854,7 @@ export default function SkillsPage() {
                           if (!src) return;
                           setConnName(`${src.name} (copy)`);
                           setConnSkillIds(src.skillIds || []);
+                          setConnRoutineId(src.sourceRoutineId ?? null);
                         }}>
                           <SelectTrigger data-testid="select-duplicate-connection"><SelectValue placeholder="Pick a connection to copy..." /></SelectTrigger>
                           <SelectContent>
@@ -864,6 +870,23 @@ export default function SkillsPage() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Connection Name</label>
                       <Input value={connName} onChange={e => setConnName(e.target.value)} placeholder="e.g. Ba+BT" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium leading-none">Routine <span className="font-normal text-muted-foreground">(optional)</span></label>
+                      <Select
+                        value={connRoutineId !== null ? String(connRoutineId) : "none"}
+                        onValueChange={(v) => setConnRoutineId(v === "none" ? null : parseInt(v))}
+                      >
+                        <SelectTrigger data-testid="select-conn-routine"><SelectValue placeholder="No routine" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No routine</SelectItem>
+                          {activeRoutines.map(r => (
+                            <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">Tag a routine to archive this connection together with it.</p>
                     </div>
                     
                     <div className="space-y-2">
@@ -977,6 +1000,7 @@ export default function SkillsPage() {
                           difficulty: calcDDFromSkillIds(swapped, allItems || []),
                           isDrill: 2,
                           skillIds: swapped,
+                          sourceRoutineId: connRoutineId,
                         });
                         toast({ title: "Connection duplicated", description: `Created "${dupName}"` });
                       } catch {}

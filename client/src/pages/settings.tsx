@@ -530,8 +530,8 @@ export default function SettingsPage() {
 
                 <div className="p-5 flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium">Archive Parts With Routine</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{archiveCascade ? "On — archiving a routine also archives its routine parts." : "Off — routine parts keep their own archived state."}</p>
+                    <p className="text-sm font-medium">Archive Parts &amp; Connections With Routine</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{archiveCascade ? "On — archiving a routine also archives its routine parts and tagged connections." : "Off — routine parts and connections keep their own archived state."}</p>
                   </div>
                   <Switch
                     checked={archiveCascade}
