@@ -26,6 +26,7 @@ export const skills = pgTable("skills", {
   archived: integer("archived").notNull().default(0), // 0 = active, 1 = archived
   parentSkillId: integer("parent_skill_id"), // when set, this skill row is a SHAPE of the referenced base skill
   shape: text("shape"), // shape symbol/label (e.g. "o" tuck, "<" pike, "/" straight); null for non-shape rows
+  sourceRoutineId: integer("source_routine_id"), // for routine parts (isDrill 3): the routine this part was sliced from; null for legacy/other rows
 });
 
 export const routines = pgTable("routines", {

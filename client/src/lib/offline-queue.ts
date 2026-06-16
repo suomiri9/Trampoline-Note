@@ -333,6 +333,11 @@ function remapBody(kind: QueueKind, body: any, idMap: Map<number, number>): any 
     if (kind === 'skill' && typeof body.parentSkillId === 'number' && idMap.has(body.parentSkillId)) {
       next = { ...next, parentSkillId: idMap.get(body.parentSkillId) };
     }
+    // A routine part created offline references its (possibly also-offline)
+    // source routine via sourceRoutineId — remap it once the routine has synced.
+    if (kind === 'skill' && typeof body.sourceRoutineId === 'number' && idMap.has(body.sourceRoutineId)) {
+      next = { ...next, sourceRoutineId: idMap.get(body.sourceRoutineId) };
+    }
     return next;
   }
   if (kind === 'score') {

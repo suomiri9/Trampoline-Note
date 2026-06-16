@@ -1207,7 +1207,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             disabled={!sel || slice.length === 0 || !finalName || isCreatingSkill}
                             onClick={async () => {
                               try {
-                                const created = await createSkill({ name: finalName, code: finalName, difficulty: dd, isDrill: 3, skillIds: slice });
+                                const created = await createSkill({ name: finalName, code: finalName, difficulty: dd, isDrill: 3, skillIds: slice, sourceRoutineId: sel.id });
                                 if (created && (created as Skill).id !== undefined) {
                                   addSkill(String((created as Skill).id));
                                 }

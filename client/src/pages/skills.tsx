@@ -317,6 +317,7 @@ export default function SkillsPage() {
       difficulty: totalDifficulty,
       isDrill: 3,
       skillIds: partSliceIds,
+      sourceRoutineId: selectedPartRoutine.id,
     };
     if (editingSkill) {
       await updateSkill({ id: editingSkill.id, ...payload });
@@ -361,10 +362,13 @@ export default function SkillsPage() {
     setEditingSkill(skill);
     if (skill.isDrill === 3) {
       // Routine parts: editing the slice itself isn't reversible; let user adjust name only by re-saving with the existing skill ids.
-      const matchedRoutine = (routines || []).find(r => {
-        const ids = r.skillIds.slice(0, 10);
-        return skill.skillIds && skill.skillIds.length > 0 && skill.skillIds.every((sid, i) => ids.indexOf(sid) !== -1);
-      }) || null;
+      // Prefer the stored source routine link; fall back to a fuzzy skill-id match for legacy parts that predate the link.
+      const matchedRoutine =
+        (skill.sourceRoutineId != null ? (routines || []).find(r => r.id === skill.sourceRoutineId) : null) ||
+        (routines || []).find(r => {
+          const ids = r.skillIds.slice(0, 10);
+          return skill.skillIds && skill.skillIds.length > 0 && skill.skillIds.every((sid, i) => ids.indexOf(sid) !== -1);
+        }) || null;
       setPartRoutineId(matchedRoutine?.id ?? null);
       setPartStart(1);
       setPartEnd(skill.skillIds?.length || 1);

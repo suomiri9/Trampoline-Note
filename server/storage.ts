@@ -248,18 +248,18 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(routines.id, id), eq(routines.userId, userId)))
       .returning();
     if (updated && previousName !== undefined && updates.name !== undefined && previousName !== updates.name) {
-      await this.renameRoutineParts(userId, previousName, updates.name);
+      await this.renameRoutineParts(userId, id, previousName, updates.name);
     }
     return updated;
   }
 
-  // When a routine is renamed, keep its auto-named routine parts (isDrill === 3)
-  // in sync. Routine parts hold no link back to their source routine, but their
-  // names follow a fixed format from suggestRoutinePartName: either exactly the
-  // routine name (full range) or "... of <routineName>". The name and code are
-  // rewritten INDEPENDENTLY and only when each matches that exact pattern, so
-  // user-customized part names/codes (e.g. a short code like "L5") are left
-  // untouched.
+  // When a routine is renamed, keep ITS OWN auto-named routine parts (isDrill === 3)
+  // in sync. Parts are scoped to the renamed routine via the sourceRoutineId link,
+  // so renaming one routine NEVER touches another routine's parts (even if names
+  // collide). Among that routine's parts, the name/code are rewritten only when
+  // they still match the auto pattern from suggestRoutinePartName — either exactly
+  // the routine name (full range) or "... of <routineName>" — so user-customized
+  // part names/codes (e.g. a short code like "L5") are left untouched.
   private renamePartField(value: string, oldName: string, newName: string): string | null {
     const suffix = ` of ${oldName}`;
     if (value === oldName) return newName;
@@ -269,10 +269,10 @@ export class DatabaseStorage implements IStorage {
     return null;
   }
 
-  private async renameRoutineParts(userId: string, oldName: string, newName: string): Promise<void> {
+  private async renameRoutineParts(userId: string, routineId: number, oldName: string, newName: string): Promise<void> {
     if (!oldName || oldName === newName) return;
     const parts = await db.select().from(skills)
-      .where(and(eq(skills.userId, userId), eq(skills.isDrill, 3)));
+      .where(and(eq(skills.userId, userId), eq(skills.isDrill, 3), eq(skills.sourceRoutineId, routineId)));
     for (const part of parts) {
       const nextName = this.renamePartField(part.name, oldName, newName);
       const nextCode = this.renamePartField(part.code, oldName, newName);
