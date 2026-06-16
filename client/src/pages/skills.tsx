@@ -4,7 +4,7 @@ import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { useRecentSkills, addRecentSkill } from "@/hooks/use-recent-skills";
 import { useToast } from "@/hooks/use-toast";
-import { calcDDFromSkillIds, suggestRoutinePartName, skillDisplayCode, skillDisplayName, swapSkillIdsToShape, shapeSwapInfo, pickableSkills, skillHasShapeChildren } from "@/lib/training-utils";
+import { calcDDFromSkillIds, suggestRoutinePartName, skillDisplayCode, skillDisplayName, swapSkillIdsToShape, shapeSwapInfo, pickableSkills } from "@/lib/training-utils";
 import { ShapeSwapPicker } from "@/components/shape-swap-picker";
 import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { useTypeToSearch } from "@/hooks/use-type-to-search";
@@ -115,10 +115,6 @@ export default function SkillsPage() {
   const [assignBaseId, setAssignBaseId] = useState<string>("");
   const [assignShapeLabel, setAssignShapeLabel] = useState("");
 
-  const [shapePickBase, setShapePickBase] = useState<Skill | null>(null);
-  const [shapePickLabel, setShapePickLabel] = useState("");
-  const [shapePickSkillId, setShapePickSkillId] = useState("");
-
   const shapesOf = (parentId: number): Skill[] =>
     allItems ? sortByOrder(allItems.filter(s => s.parentSkillId === parentId && archivedFilter(s))) : [];
 
@@ -214,7 +210,7 @@ export default function SkillsPage() {
   const isEditingShape = !!editingSkill && editingSkill.parentSkillId != null;
 
   const syncShapes = async (baseId: number, isDrill: number) => {
-    const existing = shapesOf(baseId);
+    const existing = (allItems || []).filter(s => s.parentSkillId === baseId);
     const keptIds = new Set(shapeDrafts.filter(d => d.id != null).map(d => d.id as number));
     // delete removed shapes
     for (const ex of existing) {
@@ -229,7 +225,7 @@ export default function SkillsPage() {
       if (!label && !name) continue;
       const payload = {
         name: name || label,
-        code: (d.code ?? "").trim() || label || name,
+        code: label || name,
         difficulty: d.difficulty || 0,
         isDrill,
         parentSkillId: baseId,
@@ -359,7 +355,7 @@ export default function SkillsPage() {
       // row itself has no sub-shapes).
       if (skill.parentSkillId == null) {
         setShapeDrafts(
-          shapesOf(skill.id).map(s => ({ id: s.id, code: s.shape && s.shape !== s.code ? s.code : undefined, shape: s.shape ?? s.code, name: s.name, difficulty: s.difficulty }))
+          shapesOf(skill.id).map(s => ({ id: s.id, shape: s.shape ?? s.code, name: s.name, difficulty: s.difficulty }))
         );
       } else {
         setShapeDrafts([]);
@@ -375,7 +371,7 @@ export default function SkillsPage() {
       // row itself has no sub-shapes).
       if (skill.parentSkillId == null) {
         setShapeDrafts(
-          shapesOf(skill.id).map(s => ({ id: s.id, code: s.shape && s.shape !== s.code ? s.code : undefined, shape: s.shape ?? s.code, name: s.name, difficulty: s.difficulty }))
+          shapesOf(skill.id).map(s => ({ id: s.id, shape: s.shape ?? s.code, name: s.name, difficulty: s.difficulty }))
         );
       } else {
         setShapeDrafts([]);
@@ -492,22 +488,20 @@ export default function SkillsPage() {
                           <FormLabel>Code</FormLabel>
                           <div className="flex gap-2">
                             <FormControl><Input {...field} placeholder="4-" /></FormControl>
-                            {editingSkill && !isEditingShape && (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button type="button" variant="outline" className="shrink-0 gap-1 font-mono" data-testid="button-skill-code-shape">
-                                    Shape <ChevronDown className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="rounded-xl">
-                                  {SHAPE_OPTIONS.map(o => (
-                                    <DropdownMenuItem key={o.value} className="cursor-pointer gap-2" onClick={() => { setShapePickBase(editingSkill); setShapePickLabel(o.value); setShapePickSkillId(""); }} data-testid={`menu-skill-code-shape-${o.word.toLowerCase()}`}>
-                                      <span className="font-mono w-4 text-center">{o.value}</span> {o.word}
-                                    </DropdownMenuItem>
-                                  ))}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button type="button" variant="outline" className="shrink-0 gap-1 font-mono" data-testid="button-skill-code-shape">
+                                  Shape <ChevronDown className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="rounded-xl">
+                                {SHAPE_OPTIONS.map(o => (
+                                  <DropdownMenuItem key={o.value} className="cursor-pointer gap-2" onClick={() => field.onChange((field.value || "") + o.value)} data-testid={`menu-skill-code-shape-${o.word.toLowerCase()}`}>
+                                    <span className="font-mono w-4 text-center">{o.value}</span> {o.word}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                           <FormMessage />
                         </FormItem>
@@ -1287,71 +1281,6 @@ export default function SkillsPage() {
                 Assign
               </Button>
               <Button type="button" variant="outline" onClick={() => { setAssignTarget(null); setAssignBaseId(""); setAssignShapeLabel(""); }}>Cancel</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!shapePickBase} onOpenChange={(o) => { if (!o) { setShapePickBase(null); setShapePickLabel(""); setShapePickSkillId(""); } }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Attach existing skill as shape</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Pick an existing skill to nest under <span className="font-medium text-foreground">{shapePickBase?.name}</span> as one of its shape variants. Its notes and history are preserved — it's added to the Shapes list below; save to apply.
-            </p>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium leading-none">Skill</label>
-              <Select value={shapePickSkillId} onValueChange={setShapePickSkillId}>
-                <SelectTrigger data-testid="select-shape-pick-skill"><SelectValue placeholder="Pick a skill..." /></SelectTrigger>
-                <SelectContent>
-                  {(allItems || []).filter(s =>
-                    !!shapePickBase &&
-                    s.id !== shapePickBase.id &&
-                    s.parentSkillId == null &&
-                    s.isDrill === shapePickBase.isDrill &&
-                    s.archived !== 1 &&
-                    !skillHasShapeChildren(s.id, allItems || []) &&
-                    !shapeDrafts.some(d => d.id === s.id)
-                  ).map(s => (
-                    <SelectItem key={s.id} value={s.id.toString()}>
-                      <span className="font-mono mr-2">{s.code}</span> {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium leading-none">Shape</label>
-              <Select value={shapePickLabel || undefined} onValueChange={setShapePickLabel}>
-                <SelectTrigger className="font-mono" data-testid="select-shape-pick-label"><SelectValue placeholder="Pick a shape..." /></SelectTrigger>
-                <SelectContent>
-                  {SHAPE_OPTIONS.map(o => (
-                    <SelectItem key={o.value} value={o.value}>
-                      <span className="font-mono mr-2">{o.value}</span>{o.word}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                className="flex-1"
-                disabled={!shapePickSkillId}
-                onClick={() => {
-                  const picked = (allItems || []).find(s => s.id.toString() === shapePickSkillId);
-                  if (!picked) return;
-                  setShapeDrafts(prev => [...prev, { id: picked.id, code: picked.code, shape: shapePickLabel || picked.code, name: picked.name, difficulty: picked.difficulty }]);
-                  setShapePickBase(null);
-                  setShapePickLabel("");
-                  setShapePickSkillId("");
-                }}
-                data-testid="button-confirm-shape-pick"
-              >
-                Add
-              </Button>
-              <Button type="button" variant="outline" onClick={() => { setShapePickBase(null); setShapePickLabel(""); setShapePickSkillId(""); }}>Cancel</Button>
             </div>
           </div>
         </DialogContent>
