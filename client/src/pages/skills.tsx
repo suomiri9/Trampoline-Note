@@ -4,7 +4,7 @@ import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { useRecentSkills, addRecentSkill } from "@/hooks/use-recent-skills";
 import { useToast } from "@/hooks/use-toast";
-import { calcDDFromSkillIds, suggestRoutinePartName, skillDisplayCode, skillDisplayName, swapSkillIdsToShape, shapeSwapInfo, pickableSkills } from "@/lib/training-utils";
+import { calcDDFromSkillIds, suggestRoutinePartName, skillDisplayCode, skillDisplayName, swapSkillIdsToShape, shapeSwapInfo, pickableSkills, detachedCode } from "@/lib/training-utils";
 import { ShapeSwapPicker } from "@/components/shape-swap-picker";
 import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { useTypeToSearch } from "@/hooks/use-type-to-search";
@@ -664,7 +664,7 @@ export default function SkillsPage() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-44 rounded-xl">
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEditing(shape)}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
-                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => updateSkill({ id: shape.id, parentSkillId: null, shape: null })} data-testid={`button-detach-shape-${shape.id}`}><ArchiveRestore className="h-3.5 w-3.5" /> Detach</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => updateSkill({ id: shape.id, parentSkillId: null, shape: null, code: detachedCode(shape, allItems) })} data-testid={`button-detach-shape-${shape.id}`}><ArchiveRestore className="h-3.5 w-3.5" /> Detach</DropdownMenuItem>
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget({ id: shape.id, name: shape.name })}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
@@ -819,7 +819,7 @@ export default function SkillsPage() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-44 rounded-xl">
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEditing(shape)}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
-                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => updateSkill({ id: shape.id, parentSkillId: null, shape: null })} data-testid={`button-detach-shape-${shape.id}`}><ArchiveRestore className="h-3.5 w-3.5" /> Detach</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => updateSkill({ id: shape.id, parentSkillId: null, shape: null, code: detachedCode(shape, allItems) })} data-testid={`button-detach-shape-${shape.id}`}><ArchiveRestore className="h-3.5 w-3.5" /> Detach</DropdownMenuItem>
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget({ id: shape.id, name: shape.name })}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>

@@ -1,14 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
-import { skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
+import { skillDisplayCode, skillDisplayName, detachedCode } from "@/lib/training-utils";
 import { useAuth } from "@/hooks/use-auth";
 import { PageLayout } from "@/components/page-layout";
 import { PointsToFix, parsePoints } from "@/components/points-to-fix";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, Hash, Star, TrendingUp, Loader2, ChevronLeft, ChevronRight, Wrench } from "lucide-react";
+import { ArrowLeft, Calendar, Hash, Star, TrendingUp, Loader2, ChevronLeft, ChevronRight, Wrench, ArchiveRestore } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useRef, useCallback, useMemo, useState, useEffect } from "react";
 import {
@@ -25,7 +25,7 @@ export default function SkillDetailPage() {
   const [, navigate] = useLocation();
   const skillId = Number(params?.id);
 
-  const { data: allSkills, isLoading: skillsLoading } = useSkills();
+  const { data: allSkills, isLoading: skillsLoading, updateSkill, isUpdating } = useSkills();
   const { user } = useAuth();
   const skill = allSkills?.find(s => s.id === skillId);
 
@@ -123,6 +123,9 @@ export default function SkillDetailPage() {
 
   const typeLabel = skill.isDrill === 0 ? "Skill" : skill.isDrill === 1 ? "Drill" : skill.isDrill === 3 ? "Part" : "Connection";
 
+  const isShape = skill.parentSkillId != null;
+  const parentSkill = isShape ? allSkills?.find(s => s.id === skill.parentSkillId) : null;
+
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < orderedIds.length - 1;
   const prevSkill = hasPrev ? allSkills?.find(s => s.id === orderedIds[currentIndex - 1]) : null;
@@ -163,6 +166,27 @@ export default function SkillDetailPage() {
           {"  ·  "}
           DD <span className="text-primary font-semibold" data-testid="text-skill-difficulty">{skill.difficulty.toFixed(1)}</span>
         </p>
+        {isShape && (
+          <div className="mt-3 flex items-center gap-3 flex-wrap">
+            {parentSkill && (
+              <span className="text-xs text-muted-foreground font-mono" data-testid="text-parent-skill">
+                Variant of <span className="text-foreground/80">{skillDisplayName(parentSkill, allSkills)}</span>
+                {" "}
+                <span className="text-foreground/60">{skillDisplayCode(parentSkill, allSkills)}</span>
+              </span>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              disabled={isUpdating}
+              onClick={() => updateSkill({ id: skillId, parentSkillId: null, shape: null, code: detachedCode(skill, allSkills) })}
+              data-testid="button-detach-from-parent"
+            >
+              <ArchiveRestore className="w-3.5 h-3.5" /> Detach from parent
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

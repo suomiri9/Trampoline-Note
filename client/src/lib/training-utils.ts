@@ -49,6 +49,18 @@ export function skillDisplayCode(
   return parent ? `${parent.code}${skill.shape || skill.code}` : skill.code;
 }
 
+// When a shape variant is DETACHED from its base, give it a sensible standalone
+// code: keep its own raw `code` when present, otherwise fall back to the combined
+// display code so an empty-coded shape (raw `code` blank, only `shape` set) does
+// not become a blank-coded standalone skill.
+export function detachedCode(
+  skill: Pick<Skill, "code" | "parentSkillId" | "shape"> | undefined | null,
+  allSkills: Skill[] | undefined | null,
+): string {
+  if (!skill) return "";
+  return skill.code || skillDisplayCode(skill, allSkills);
+}
+
 export function skillDisplayName(
   skill: Pick<Skill, "name" | "parentSkillId"> | undefined | null,
   _allSkills?: Skill[] | undefined | null,
