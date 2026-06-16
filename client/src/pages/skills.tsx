@@ -488,20 +488,22 @@ export default function SkillsPage() {
                           <FormLabel>Code</FormLabel>
                           <div className="flex gap-2">
                             <FormControl><Input {...field} placeholder="4-" /></FormControl>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button type="button" variant="outline" className="shrink-0 gap-1 font-mono" data-testid="button-skill-code-shape">
-                                  Shape <ChevronDown className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="rounded-xl">
-                                {SHAPE_OPTIONS.map(o => (
-                                  <DropdownMenuItem key={o.value} className="cursor-pointer gap-2" onClick={() => field.onChange((field.value || "") + o.value)} data-testid={`menu-skill-code-shape-${o.word.toLowerCase()}`}>
-                                    <span className="font-mono w-4 text-center">{o.value}</span> {o.word}
-                                  </DropdownMenuItem>
-                                ))}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            {!isEditingShape && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button type="button" variant="outline" className="shrink-0 gap-1 font-mono" data-testid="button-skill-code-shape">
+                                    Shape <ChevronDown className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="rounded-xl">
+                                  {SHAPE_OPTIONS.map(o => (
+                                    <DropdownMenuItem key={o.value} className="cursor-pointer gap-2" onClick={() => setShapeDrafts(prev => [...prev, { shape: o.value, name: "", difficulty: 0 }])} data-testid={`menu-skill-code-shape-${o.word.toLowerCase()}`}>
+                                      <span className="font-mono w-4 text-center">{o.value}</span> {o.word}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
                           </div>
                           <FormMessage />
                         </FormItem>
