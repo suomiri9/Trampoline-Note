@@ -297,8 +297,8 @@ export default function StatsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          <div className="card-3d rounded-2xl p-5">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+          <div className="card-3d rounded-2xl p-5 lg:col-span-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="eyebrow mb-2">{periodTitle} <span className="text-emerald-400">/ DD</span></div>
@@ -392,7 +392,7 @@ export default function StatsPage() {
             )}
           </div>
 
-          <div className="card-3d rounded-2xl p-5">
+          <div className="card-3d rounded-2xl p-5 lg:col-span-1">
             <div className="eyebrow mb-2">All-Time</div>
             <div className="divide-y divide-border/50">
               {[
