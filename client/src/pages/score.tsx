@@ -432,6 +432,7 @@ type GraphSeriesKey = (typeof GRAPH_SERIES)[number]["key"];
 
 function ScoreGraph({ scores }: { scores: Score[] }) {
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [catFilter, setCatFilter] = useState<string>("all");
   const [hidden, setHidden] = useState<Set<GraphSeriesKey>>(new Set());
 
   const data = useMemo(() => {
@@ -457,20 +458,25 @@ function ScoreGraph({ scores }: { scores: Score[] }) {
       .slice()
       .sort((a, b) => a.date.localeCompare(b.date));
 
+    const matchCat = (cat: "set" | "vol") => catFilter === "all" || catFilter === cat;
+
     const points: { idx: number; date: string; label: string; total: number; e: number; dd: number; hd: number; tof: number }[] = [];
     for (const s of sorted) {
       if (s.category === "both") {
-        points.push({ idx: points.length, date: s.date, label: "Set", ...g1(s) });
-        points.push({ idx: points.length, date: s.date, label: "Vol", ...g2(s) });
+        if (matchCat("set")) points.push({ idx: points.length, date: s.date, label: "Set", ...g1(s) });
+        if (matchCat("vol")) points.push({ idx: points.length, date: s.date, label: "Vol", ...g2(s) });
       } else if (s.category === "vol_vol") {
-        points.push({ idx: points.length, date: s.date, label: "Vol 1", ...g1(s) });
-        points.push({ idx: points.length, date: s.date, label: "Vol 2", ...g2(s) });
+        if (matchCat("vol")) {
+          points.push({ idx: points.length, date: s.date, label: "Vol 1", ...g1(s) });
+          points.push({ idx: points.length, date: s.date, label: "Vol 2", ...g2(s) });
+        }
       } else {
-        points.push({ idx: points.length, date: s.date, label: s.category === "vol" ? "Vol" : "Set", ...g1(s) });
+        const cat = s.category === "vol" ? "vol" : "set";
+        if (matchCat(cat)) points.push({ idx: points.length, date: s.date, label: cat === "vol" ? "Vol" : "Set", ...g1(s) });
       }
     }
     return points;
-  }, [scores, typeFilter]);
+  }, [scores, typeFilter, catFilter]);
 
   const toggle = (k: GraphSeriesKey) =>
     setHidden((prev) => {
@@ -487,7 +493,15 @@ function ScoreGraph({ scores }: { scores: Score[] }) {
           <div className="eyebrow mb-1.5">Score Trend <span className="text-amber-400">/ Breakdown</span></div>
           <p className="text-xs text-muted-foreground">One point per routine — Total vs E, DD, HD &amp; TOF.</p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+          <Select value={catFilter} onValueChange={setCatFilter}>
+            <SelectTrigger className="w-[110px] h-8 rounded-xl text-xs border-border/50 font-mono shrink-0" data-testid="select-graph-category"><SelectValue /></SelectTrigger>
+            <SelectContent className="font-mono">
+              <SelectItem value="all">Set &amp; Vol</SelectItem>
+              <SelectItem value="set">Set only</SelectItem>
+              <SelectItem value="vol">Vol only</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-[124px] h-8 rounded-xl text-xs border-border/50 font-mono shrink-0" data-testid="select-graph-type"><SelectValue /></SelectTrigger>
             <SelectContent className="font-mono">
