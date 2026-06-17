@@ -24,10 +24,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
-import { Trash2, Plus, Trophy, CalendarIcon, Pencil, MoreVertical } from "lucide-react";
+import { Trash2, Plus, Trophy, CalendarIcon, Pencil, MoreVertical, TrendingUp } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
 
 const scoreDefaults = {
@@ -418,9 +420,164 @@ function CompetitionCard({
   );
 }
 
+const GRAPH_SERIES = [
+  { key: "total", name: "Total", color: "#f59e0b" },
+  { key: "e", name: "E", color: "#60a5fa" },
+  { key: "dd", name: "DD", color: "#a78bfa" },
+  { key: "hd", name: "HD", color: "#34d399" },
+  { key: "tof", name: "TOF", color: "#fb7185" },
+] as const;
+
+type GraphSeriesKey = (typeof GRAPH_SERIES)[number]["key"];
+
+function ScoreGraph({ scores }: { scores: Score[] }) {
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [hidden, setHidden] = useState<Set<GraphSeriesKey>>(new Set());
+
+  const data = useMemo(() => {
+    return (scores ?? [])
+      .filter((s) => typeFilter === "all" || s.type === typeFilter)
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((s) => {
+        // Keep Total = E + DD + HD + TOF and match the cards' effectiveTotal rule:
+        // "both" sums both groups; "vol_vol" uses whichever group scored higher.
+        if (s.category === "both") {
+          return {
+            date: s.date,
+            total: s.total + (s.totalVol ?? 0),
+            e: effectiveE(s.execution, s.executionTwo, s.doubleExecution) + effectiveE(s.executionVol ?? 0, s.executionTwoVol, s.doubleExecutionVol),
+            dd: s.difficulty + (s.difficultyVol ?? 0),
+            hd: s.horizontal + (s.horizontalVol ?? 0),
+            tof: s.timeOfFlight + (s.timeOfFlightVol ?? 0),
+          };
+        }
+        if (s.category === "vol_vol" && (s.totalVol ?? 0) > s.total) {
+          return {
+            date: s.date,
+            total: s.totalVol ?? 0,
+            e: effectiveE(s.executionVol ?? 0, s.executionTwoVol, s.doubleExecutionVol),
+            dd: s.difficultyVol ?? 0,
+            hd: s.horizontalVol ?? 0,
+            tof: s.timeOfFlightVol ?? 0,
+          };
+        }
+        return {
+          date: s.date,
+          total: s.total,
+          e: effectiveE(s.execution, s.executionTwo, s.doubleExecution),
+          dd: s.difficulty,
+          hd: s.horizontal,
+          tof: s.timeOfFlight,
+        };
+      });
+  }, [scores, typeFilter]);
+
+  const toggle = (k: GraphSeriesKey) =>
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
+
+  return (
+    <div className="card-3d rounded-2xl p-5" data-testid="card-score-graph">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="min-w-0">
+          <div className="eyebrow mb-1.5">Score Trend <span className="text-amber-400">/ Breakdown</span></div>
+          <p className="text-xs text-muted-foreground">Total vs E, DD, HD &amp; TOF over time.</p>
+        </div>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-[124px] h-8 rounded-xl text-xs border-border/50 font-mono shrink-0" data-testid="select-graph-type"><SelectValue /></SelectTrigger>
+          <SelectContent className="font-mono">
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="competition">Competition</SelectItem>
+            <SelectItem value="trial">Trial</SelectItem>
+            <SelectItem value="practice">Practice</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {data.length === 0 ? (
+        <div className="text-center py-16" data-testid="empty-score-graph">
+          <TrendingUp className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">No scores to chart yet.</p>
+        </div>
+      ) : (
+        <>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-mono)' }}
+                  dy={6}
+                  minTickGap={24}
+                  tickFormatter={(d: string) => { try { return format(parseISO(d), "d MMM"); } catch { return d; } }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  width={36}
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-mono)' }}
+                />
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))', color: 'hsl(var(--foreground))', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)', fontFamily: 'var(--font-mono)', fontSize: '12px' }}
+                  itemStyle={{ color: 'hsl(var(--foreground))' }}
+                  labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: 4 }}
+                  labelFormatter={(d: string) => { try { return format(parseISO(d), "EEE, d MMM yyyy"); } catch { return d; } }}
+                  formatter={(value: any, name: any) => [fmtScore(Number(value)), name]}
+                  cursor={{ stroke: 'hsl(var(--primary) / 0.3)', strokeWidth: 1 }}
+                />
+                {GRAPH_SERIES.map((s) => (
+                  <Line
+                    key={s.key}
+                    type="monotone"
+                    dataKey={s.key}
+                    name={s.name}
+                    stroke={s.color}
+                    strokeWidth={s.key === "total" ? 2.5 : 1.5}
+                    hide={hidden.has(s.key)}
+                    dot={data.length > 30 ? false : { r: 2.5, fill: s.color, strokeWidth: 0 }}
+                    activeDot={{ r: 5, fill: s.color, stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+                    connectNulls
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mt-4 justify-center">
+            {GRAPH_SERIES.map((s) => {
+              const off = hidden.has(s.key);
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => toggle(s.key)}
+                  className={cn("flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-mono transition-opacity", off ? "opacity-40 border-border/50" : "border-border")}
+                  data-testid={`legend-${s.key}`}
+                >
+                  <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />
+                  {s.name}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function ScorePage() {
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
+  const [activeTab, setActiveTab] = useState("scores");
   const [editingScore, setEditingScore] = useState<Score | null>(null);
   const [deleteScoreId, setDeleteScoreId] = useState<number | null>(null);
   const [deleteCompIds, setDeleteCompIds] = useState<number[] | null>(null);
@@ -778,6 +935,19 @@ export default function ScorePage() {
           </Button>
         }
       />
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col gap-4 -mt-6">
+        <div
+          className="sticky z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2 bg-background/90 backdrop-blur-md border-b border-border/60"
+          style={{ top: "var(--page-header-h, 96px)" }}
+        >
+          <TabsList className="inline-flex h-auto flex-wrap justify-start gap-1 rounded-xl bg-secondary/40 p-1 shrink-0 self-start">
+            <TabsTrigger value="scores" data-testid="tab-scores">Scores</TabsTrigger>
+            <TabsTrigger value="graph" data-testid="tab-graph">Graph</TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="scores" forceMount className="mt-0 data-[state=inactive]:hidden">
 
       {hasComps && (
         <div className="relative card-3d rounded-2xl overflow-hidden mb-6">
@@ -1199,6 +1369,12 @@ export default function ScorePage() {
           </div>
         )}
       </div>
+        </TabsContent>
+
+        <TabsContent value="graph" className="mt-0">
+          <ScoreGraph scores={(!offlineModeEnabled || isOnline) ? (scores ?? []) : []} />
+        </TabsContent>
+      </Tabs>
 
       <ConfirmDialog
         open={deleteScoreId !== null}
