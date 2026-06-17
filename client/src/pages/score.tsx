@@ -65,13 +65,20 @@ function formatMonthYear(dateStr: string): string {
   return `${MONTH_ABBR[mi] ?? ""} ${y}`.trim();
 }
 
+// Format a score value with up to 3 decimal places, trimming trailing zeros
+// but always keeping at least one decimal (e.g. 50.105, 50.1, 50.0).
+function fmtScore(n: number): string {
+  const r = Math.round((n + Number.EPSILON) * 1000) / 1000;
+  return r.toFixed(3).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, ".0");
+}
+
 function ScoreBreakdown({ e, d, h, t, label, routineName, total, totalColor, totalTestId }: { e: number; d: number; h: number; t: number; label?: string; routineName?: string | null; total?: number; totalColor?: string; totalTestId?: string }) {
   const cols: { k: string; v: string; accent?: boolean }[] = [
     { k: "E", v: e.toFixed(1) },
     { k: "DD", v: d.toFixed(1) },
     { k: "H", v: h.toFixed(1) },
-    { k: "TOF", v: t.toFixed(2) },
-    ...(total != null ? [{ k: "TOTAL", v: total.toFixed(1), accent: true }] : []),
+    { k: "TOF", v: fmtScore(t) },
+    ...(total != null ? [{ k: "TOTAL", v: fmtScore(total), accent: true }] : []),
   ];
   return (
     <div>
@@ -194,7 +201,7 @@ function ScoreCard({
           <div className="shrink-0 flex items-start gap-1">
             <div className="text-right">
               <div className={cn("font-display font-normal text-5xl sm:text-6xl leading-none", totalColor)} data-testid={`text-score-total-${score.id}`}>
-                {grandTotal.toFixed(1)}
+                {fmtScore(grandTotal)}
               </div>
               <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">Score</div>
             </div>
@@ -287,7 +294,7 @@ function RoundBlock({
         <div className="shrink-0 flex items-start gap-1">
           <div className="text-right">
             <div className={cn("font-display font-normal text-4xl sm:text-5xl leading-none", accent)} data-testid={`text-round-total-${score.id}`}>
-              {grandTotal.toFixed(1)}
+              {fmtScore(grandTotal)}
             </div>
             <div className="eyebrow !text-[10px] mt-1 text-muted-foreground/70">Score</div>
           </div>
@@ -661,12 +668,12 @@ export default function ScorePage() {
 
     const eEff = dblE ? Number(e || 0) * 2 : Number(e || 0) + Number(eTwo || 0);
     const total = eEff + Number(d || 0) + Number(h || 0) + Number(t || 0);
-    form.setValue("total", Number(total.toFixed(2)));
+    form.setValue("total", Number(total.toFixed(3)));
 
     if (cat === "both" || cat === "vol_vol") {
       const eEff2 = dblEVol ? Number(e2 || 0) * 2 : Number(e2 || 0) + Number(eTwoVol || 0);
       const total2 = eEff2 + Number(d2 || 0) + Number(h2 || 0) + Number(t2 || 0);
-      form.setValue("totalVol", Number(total2.toFixed(2)));
+      form.setValue("totalVol", Number(total2.toFixed(3)));
     }
   }, [watchFields, routines, allSkills, form, lastRoutineId, lastRoutineIdVol]);
 
@@ -781,14 +788,14 @@ export default function ScorePage() {
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <div className="font-display font-normal text-5xl sm:text-6xl text-amber-400 leading-none tracking-tight" data-testid="text-pb-set">
-                  {pb.set.score > 0 ? pb.set.score.toFixed(1) : "—"}
+                  {pb.set.score > 0 ? fmtScore(pb.set.score) : "—"}
                 </div>
                 <div className="eyebrow !text-[10px] mt-1.5 text-muted-foreground/70">Set Score</div>
                 <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-3 gap-2 text-center">
                   {[
                     { k: "E", id: "e", v: pb.set.e.toFixed(1) },
                     { k: "HD", id: "h", v: pb.set.h.toFixed(1) },
-                    { k: "TOF", id: "tof", v: pb.set.tof.toFixed(2) },
+                    { k: "TOF", id: "tof", v: fmtScore(pb.set.tof) },
                   ].map((c) => (
                     <div key={c.k}>
                       <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid={`text-pb-set-${c.id}`}>{c.v}</div>
@@ -799,7 +806,7 @@ export default function ScorePage() {
               </div>
               <div>
                 <div className="font-display font-normal text-5xl sm:text-6xl text-amber-400 leading-none tracking-tight" data-testid="text-pb-vol">
-                  {pb.vol.score > 0 ? pb.vol.score.toFixed(1) : "—"}
+                  {pb.vol.score > 0 ? fmtScore(pb.vol.score) : "—"}
                 </div>
                 <div className="eyebrow !text-[10px] mt-1.5 text-muted-foreground/70">Vol Score</div>
                 <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-4 gap-2 text-center">
@@ -807,7 +814,7 @@ export default function ScorePage() {
                     { k: "E", id: "e", v: pb.vol.e.toFixed(1) },
                     { k: "DD", id: "dd", v: pb.vol.dd.toFixed(1) },
                     { k: "HD", id: "h", v: pb.vol.h.toFixed(1) },
-                    { k: "TOF", id: "tof", v: pb.vol.tof.toFixed(2) },
+                    { k: "TOF", id: "tof", v: fmtScore(pb.vol.tof) },
                   ].map((c) => (
                     <div key={c.k}>
                       <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid={`text-pb-vol-${c.id}`}>{c.v}</div>
@@ -828,6 +835,9 @@ export default function ScorePage() {
           </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit((data) => {
+                const round3 = (n: number | null | undefined) =>
+                  n == null || !Number.isFinite(n) ? n : Math.round(n * 1000) / 1000;
+                data = { ...data, timeOfFlight: round3(data.timeOfFlight) ?? 0, timeOfFlightVol: round3(data.timeOfFlightVol) ?? 0 };
                 const values =
                   data.type === "competition" || data.type === "trial"
                     ? { ...data, round: data.round || "prelims", competitionId: data.competitionId || newCompetitionId() }
@@ -999,7 +1009,7 @@ export default function ScorePage() {
                       <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">H</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="timeOfFlight" render={({ field }) => (
-                      <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">T</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
+                      <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">T</FormLabel><FormControl><Input type="number" step="0.001" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="total" render={({ field }) => (
                       <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">Total</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono bg-background font-bold text-primary" /></FormControl></FormItem>
@@ -1066,7 +1076,7 @@ export default function ScorePage() {
                         <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">H</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
                       )} />
                       <FormField control={form.control} name="timeOfFlightVol" render={({ field }) => (
-                        <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">T</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
+                        <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">T</FormLabel><FormControl><Input type="number" step="0.001" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
                       )} />
                       <FormField control={form.control} name="totalVol" render={({ field }) => (
                         <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">Total</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono bg-background font-bold text-primary" /></FormControl></FormItem>
