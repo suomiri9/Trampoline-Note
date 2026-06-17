@@ -24,10 +24,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
-import { Trash2, Plus, Trophy, CalendarIcon, Pencil, MoreVertical, TrendingUp } from "lucide-react";
+import { Trash2, Plus, Trophy, CalendarIcon, Pencil, MoreVertical, TrendingUp, SlidersHorizontal } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
@@ -487,15 +487,42 @@ function ScoreGraph({ scores }: { scores: Score[] }) {
           <div className="eyebrow mb-1.5">Score Trend <span className="text-amber-400">/ Breakdown</span></div>
           <p className="text-xs text-muted-foreground">One point per routine — Total vs E, DD, HD &amp; TOF.</p>
         </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[124px] h-8 rounded-xl text-xs border-border/50 font-mono shrink-0" data-testid="select-graph-type"><SelectValue /></SelectTrigger>
-          <SelectContent className="font-mono">
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="competition">Competition</SelectItem>
-            <SelectItem value="trial">Trial</SelectItem>
-            <SelectItem value="practice">Practice</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2 shrink-0">
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[124px] h-8 rounded-xl text-xs border-border/50 font-mono shrink-0" data-testid="select-graph-type"><SelectValue /></SelectTrigger>
+            <SelectContent className="font-mono">
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="competition">Competition</SelectItem>
+              <SelectItem value="trial">Trial</SelectItem>
+              <SelectItem value="practice">Practice</SelectItem>
+            </SelectContent>
+          </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-8 rounded-xl text-xs font-mono border-border/50 gap-1.5 px-3" data-testid="button-graph-elements">
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                Elements
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="font-mono">
+              <DropdownMenuLabel className="text-xs">Show Elements</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {GRAPH_SERIES.map((s) => (
+                <DropdownMenuCheckboxItem
+                  key={s.key}
+                  checked={!hidden.has(s.key)}
+                  onCheckedChange={() => toggle(s.key)}
+                  onSelect={(e) => e.preventDefault()}
+                  className="text-xs"
+                  data-testid={`filter-${s.key}`}
+                >
+                  <span className="inline-block h-2.5 w-2.5 rounded-full mr-2" style={{ background: s.color }} />
+                  {s.name}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {data.length === 0 ? (
