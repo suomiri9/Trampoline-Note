@@ -435,42 +435,41 @@ function ScoreGraph({ scores }: { scores: Score[] }) {
   const [hidden, setHidden] = useState<Set<GraphSeriesKey>>(new Set());
 
   const data = useMemo(() => {
-    return (scores ?? [])
+    // One routine = one point. A "both" / "vol_vol" record holds two routines,
+    // so it emits two points (each keeps Total = E + DD + HD + TOF coherent).
+    const g1 = (s: Score) => ({
+      total: s.total,
+      e: effectiveE(s.execution, s.executionTwo, s.doubleExecution),
+      dd: s.difficulty,
+      hd: s.horizontal,
+      tof: s.timeOfFlight,
+    });
+    const g2 = (s: Score) => ({
+      total: s.totalVol ?? 0,
+      e: effectiveE(s.executionVol ?? 0, s.executionTwoVol, s.doubleExecutionVol),
+      dd: s.difficultyVol ?? 0,
+      hd: s.horizontalVol ?? 0,
+      tof: s.timeOfFlightVol ?? 0,
+    });
+
+    const sorted = (scores ?? [])
       .filter((s) => typeFilter === "all" || s.type === typeFilter)
       .slice()
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .map((s) => {
-        // Keep Total = E + DD + HD + TOF and match the cards' effectiveTotal rule:
-        // "both" sums both groups; "vol_vol" uses whichever group scored higher.
-        if (s.category === "both") {
-          return {
-            date: s.date,
-            total: s.total + (s.totalVol ?? 0),
-            e: effectiveE(s.execution, s.executionTwo, s.doubleExecution) + effectiveE(s.executionVol ?? 0, s.executionTwoVol, s.doubleExecutionVol),
-            dd: s.difficulty + (s.difficultyVol ?? 0),
-            hd: s.horizontal + (s.horizontalVol ?? 0),
-            tof: s.timeOfFlight + (s.timeOfFlightVol ?? 0),
-          };
-        }
-        if (s.category === "vol_vol" && (s.totalVol ?? 0) > s.total) {
-          return {
-            date: s.date,
-            total: s.totalVol ?? 0,
-            e: effectiveE(s.executionVol ?? 0, s.executionTwoVol, s.doubleExecutionVol),
-            dd: s.difficultyVol ?? 0,
-            hd: s.horizontalVol ?? 0,
-            tof: s.timeOfFlightVol ?? 0,
-          };
-        }
-        return {
-          date: s.date,
-          total: s.total,
-          e: effectiveE(s.execution, s.executionTwo, s.doubleExecution),
-          dd: s.difficulty,
-          hd: s.horizontal,
-          tof: s.timeOfFlight,
-        };
-      });
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const points: { idx: number; date: string; label: string; total: number; e: number; dd: number; hd: number; tof: number }[] = [];
+    for (const s of sorted) {
+      if (s.category === "both") {
+        points.push({ idx: points.length, date: s.date, label: "Set", ...g1(s) });
+        points.push({ idx: points.length, date: s.date, label: "Vol", ...g2(s) });
+      } else if (s.category === "vol_vol") {
+        points.push({ idx: points.length, date: s.date, label: "Vol 1", ...g1(s) });
+        points.push({ idx: points.length, date: s.date, label: "Vol 2", ...g2(s) });
+      } else {
+        points.push({ idx: points.length, date: s.date, label: s.category === "vol" ? "Vol" : "Set", ...g1(s) });
+      }
+    }
+    return points;
   }, [scores, typeFilter]);
 
   const toggle = (k: GraphSeriesKey) =>
@@ -486,7 +485,7 @@ function ScoreGraph({ scores }: { scores: Score[] }) {
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="min-w-0">
           <div className="eyebrow mb-1.5">Score Trend <span className="text-amber-400">/ Breakdown</span></div>
-          <p className="text-xs text-muted-foreground">Total vs E, DD, HD &amp; TOF over time.</p>
+          <p className="text-xs text-muted-foreground">One point per routine — Total vs E, DD, HD &amp; TOF.</p>
         </div>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="w-[124px] h-8 rounded-xl text-xs border-border/50 font-mono shrink-0" data-testid="select-graph-type"><SelectValue /></SelectTrigger>
@@ -511,13 +510,13 @@ function ScoreGraph({ scores }: { scores: Score[] }) {
               <LineChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis
-                  dataKey="date"
+                  dataKey="idx"
                   axisLine={false}
                   tickLine={false}
                   tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-mono)' }}
                   dy={6}
                   minTickGap={24}
-                  tickFormatter={(d: string) => { try { return format(parseISO(d), "d MMM"); } catch { return d; } }}
+                  tickFormatter={(i: any) => { const p = data[Number(i)]; if (!p) return ""; try { return format(parseISO(p.date), "d MMM"); } catch { return p.date; } }}
                 />
                 <YAxis
                   axisLine={false}
@@ -529,7 +528,7 @@ function ScoreGraph({ scores }: { scores: Score[] }) {
                   contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))', color: 'hsl(var(--foreground))', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)', fontFamily: 'var(--font-mono)', fontSize: '12px' }}
                   itemStyle={{ color: 'hsl(var(--foreground))' }}
                   labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: 4 }}
-                  labelFormatter={(d: string) => { try { return format(parseISO(d), "EEE, d MMM yyyy"); } catch { return d; } }}
+                  labelFormatter={(i: any) => { const p = data[Number(i)]; if (!p) return ""; let d = p.date; try { d = format(parseISO(p.date), "EEE, d MMM yyyy"); } catch {} return `${d} · ${p.label}`; }}
                   formatter={(value: any, name: any) => [fmtScore(Number(value)), name]}
                   cursor={{ stroke: 'hsl(var(--primary) / 0.3)', strokeWidth: 1 }}
                 />
