@@ -370,7 +370,7 @@ export default function StatsPage() {
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
                     connectNulls
-                    dot={chartData.length > 60 ? false : { r: 3, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
+                    dot={{ r: chartData.length > 60 ? 2 : 3, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
                     activeDot={{ r: 5, fill: 'hsl(var(--primary))', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                   />
                 </LineChart>
