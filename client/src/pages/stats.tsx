@@ -22,6 +22,27 @@ import {
 
 type Range = "week" | "month" | "year" | "all";
 
+function AxisTick(props: any) {
+  const { x, y, payload, index, visibleTicksCount, formatter } = props;
+  const label = formatter ? formatter(payload?.value) : payload?.value;
+  if (label === undefined || label === null || label === "") return null;
+  const anchor =
+    index === 0 ? "start" : index === visibleTicksCount - 1 ? "end" : "middle";
+  return (
+    <text
+      x={x}
+      y={y}
+      dy={12}
+      textAnchor={anchor}
+      fill="hsl(var(--muted-foreground))"
+      fontSize={10}
+      fontFamily="var(--font-mono)"
+    >
+      {label}
+    </text>
+  );
+}
+
 export default function StatsPage() {
   const [range, setRange] = useState<Range>("week");
   const [offset, setOffset] = useState(0); // 0 = current period, -1 = previous, etc.
@@ -348,11 +369,9 @@ export default function StatsPage() {
                     dataKey="date"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-mono)' }}
-                    dy={6}
+                    tick={<AxisTick formatter={xTickFormatter} />}
                     interval={xTickInterval}
                     ticks={xTicks}
-                    tickFormatter={xTickFormatter}
                   />
                   <Tooltip
                     contentStyle={{
