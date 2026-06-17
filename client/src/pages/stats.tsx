@@ -145,24 +145,35 @@ export default function StatsPage() {
       const earliest = parseISO(allKeys[0]);
       const days = eachDayOfInterval({ start: earliest, end: today });
       periodLabel = `${format(earliest, "d MMM yyyy")} – ${format(today, "d MMM yyyy")}`;
-      let lastMonth = -1;
-      let lastYear = -1;
       chartData = days.map(day => {
         const key = format(day, "yyyy-MM-dd");
         const found = ddByDate[key];
-        const m = day.getMonth();
-        const y = day.getFullYear();
-        let label = "";
-        if (y !== lastYear) {
-          label = format(day, "MMM yyyy");
-        } else if (m !== lastMonth) {
-          label = format(day, "MMM");
-        }
-        lastMonth = m;
-        lastYear = y;
-        return { date: label, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0 };
+        return { date: key, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0 };
       });
-      xTickInterval = Math.max(1, Math.floor(days.length / 12));
+      // Adaptive month/year ticks: denser labels for short spans, yearly for long ones.
+      const monthsSpan =
+        (today.getFullYear() - earliest.getFullYear()) * 12 +
+        (today.getMonth() - earliest.getMonth()) + 1;
+      const stepMonths =
+        monthsSpan <= 12 ? 1 : monthsSpan <= 24 ? 2 : monthsSpan <= 36 ? 3 : 12;
+      const tickLabels: Record<string, string> = {};
+      let tickDays: Date[];
+      if (stepMonths === 12) {
+        tickDays = days.filter((d) => d.getMonth() === 0 && d.getDate() === 1);
+        if (tickDays.length === 0) tickDays = [days[0]];
+        tickDays.forEach((d) => { tickLabels[format(d, "yyyy-MM-dd")] = format(d, "yyyy"); });
+      } else {
+        const firstsOfMonth = days.filter((d) => d.getDate() === 1);
+        tickDays = firstsOfMonth.filter((_, i) => i % stepMonths === 0);
+        if (tickDays.length === 0) tickDays = [days[0]];
+        tickDays.forEach((d, i) => {
+          tickLabels[format(d, "yyyy-MM-dd")] =
+            d.getMonth() === 0 || i === 0 ? format(d, "MMM yyyy") : format(d, "MMM");
+        });
+      }
+      xTicks = tickDays.map((d) => format(d, "yyyy-MM-dd"));
+      xTickInterval = 0;
+      xTickFormatter = (v: string) => tickLabels[v] ?? "";
     } else {
       periodLabel = "No data yet";
     }
@@ -361,7 +372,13 @@ export default function StatsPage() {
                       const sessionPart = s > 1 ? ` · ${s} sessions` : "";
                       return [`${Number(value).toFixed(1)} DD${sessionPart}`, ""];
                     }}
-                    labelFormatter={range === "year" ? (v: string) => { try { return format(parseISO(v), "d MMM"); } catch { return v; } } : undefined}
+                    labelFormatter={
+                      range === "all"
+                        ? (v: string) => { try { return format(parseISO(v), "d MMM yyyy"); } catch { return v; } }
+                        : range === "year"
+                        ? (v: string) => { try { return format(parseISO(v), "d MMM"); } catch { return v; } }
+                        : undefined
+                    }
                     cursor={{ stroke: 'hsl(var(--primary) / 0.3)', strokeWidth: 1 }}
                   />
                   <Line
