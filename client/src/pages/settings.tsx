@@ -26,6 +26,7 @@ import {
 import { useTimeFormat } from "@/hooks/use-time-format";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { useArchiveCascade } from "@/hooks/use-archive-cascade";
+import { useShowSkillNames } from "@/hooks/use-skill-label-mode";
 import { useOnline } from "@/hooks/use-online";
 import {
   useQueueCount,
@@ -49,6 +50,7 @@ export default function SettingsPage() {
   const [timeFormat, setTimeFormat] = useTimeFormat();
   const [offlineModeEnabled, setOfflineModeEnabled] = useOfflineMode();
   const [archiveCascade, setArchiveCascade] = useArchiveCascade();
+  const [showSkillNames, setShowSkillNames] = useShowSkillNames();
   const isOnline = useOnline();
   const pendingCount = useQueueCount();
   const failedCount = useFailedCount();
@@ -537,6 +539,18 @@ export default function SettingsPage() {
                     checked={archiveCascade}
                     onCheckedChange={setArchiveCascade}
                     data-testid="toggle-archive-cascade"
+                  />
+                </div>
+
+                <div className="p-5 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Show Skill Names</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{showSkillNames ? "On — skill chips show full names." : "Off — skill chips show short codes."}</p>
+                  </div>
+                  <Switch
+                    checked={showSkillNames}
+                    onCheckedChange={setShowSkillNames}
+                    data-testid="toggle-skill-names"
                   />
                 </div>
 

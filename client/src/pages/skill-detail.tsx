@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { skillDisplayCode, skillDisplayName, detachedCode } from "@/lib/training-utils";
+import { SkillCode } from "@/components/skill-code";
 import { useAuth } from "@/hooks/use-auth";
 import { PageLayout } from "@/components/page-layout";
 import { PointsToFix, parsePoints } from "@/components/points-to-fix";
@@ -239,7 +240,7 @@ export default function SkillDetailPage() {
                     return (
                       <div key={idx} className="flex flex-col items-center gap-1">
                         <Badge variant="outline" className="px-2 py-1 font-mono" data-testid={`badge-conn-skill-${idx}`}>
-                          {skillDisplayCode(sub, allSkills) || "???"}
+                          <SkillCode skill={sub} allSkills={allSkills} fallback="???" />
                         </Badge>
                         <span className="text-[10px] text-muted-foreground font-semibold font-mono">
                           {sub?.difficulty.toFixed(1) || "0.0"}

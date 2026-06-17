@@ -37,6 +37,7 @@ import {
 import type { SafeUser } from "@shared/models/auth";
 import type { Routine } from "@shared/schema";
 import { skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
+import { SkillCode } from "@/components/skill-code";
 
 export type PointToFix = {
   id: string;
@@ -1016,7 +1017,7 @@ export function PointsToFix({
                                       className="pr-1 gap-1"
                                       data-testid={`badge-draft-skill-${id}`}
                                     >
-                                      <span className="font-mono">{skillDisplayCode(s, skills) || "?"}</span>
+                                      <span className="font-mono"><SkillCode skill={s} allSkills={skills} fallback="?" /></span>
                                       <span className="text-[9px] uppercase opacity-70">
                                         {TYPE_LABEL[t]}
                                       </span>

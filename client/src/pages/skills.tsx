@@ -5,6 +5,7 @@ import { useRoutines } from "@/hooks/use-routines";
 import { useRecentSkills, addRecentSkill } from "@/hooks/use-recent-skills";
 import { useToast } from "@/hooks/use-toast";
 import { calcDDFromSkillIds, suggestRoutinePartName, skillDisplayCode, skillDisplayName, swapSkillIdsToShape, shapeSwapInfo, pickableSkills, detachedCode } from "@/lib/training-utils";
+import { SkillCode } from "@/components/skill-code";
 import { ShapeSwapPicker } from "@/components/shape-swap-picker";
 import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { useTypeToSearch } from "@/hooks/use-type-to-search";
@@ -937,7 +938,7 @@ export default function SkillsPage() {
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
                             <div className="flex flex-wrap gap-1.5">
                               {recents.map(s => (
-                                <button key={`conn-recent-${s.id}`} type="button" onClick={() => addSkillToConn(s.id.toString())} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95" data-testid={`btn-conn-recent-${s.id}`}>{skillDisplayCode(s, allItems)}</button>
+                                <button key={`conn-recent-${s.id}`} type="button" onClick={() => addSkillToConn(s.id.toString())} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95" data-testid={`btn-conn-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
                               ))}
                             </div>
                           </div>
@@ -953,7 +954,7 @@ export default function SkillsPage() {
                             return (
                               <SortableChip key={`cs-${idx}`} uid={`cs-${idx}`}>
                                 <Badge variant="secondary" className="gap-0 pr-0 py-0 items-stretch overflow-hidden" data-testid={`chip-conn-skill-${idx}`}>
-                                  <span className="py-0.5 pl-2.5 pr-1.5 flex items-center">{skillDisplayCode(s, allItems)}</span>
+                                  <span className="py-0.5 pl-2.5 pr-1.5 flex items-center"><SkillCode skill={s} allSkills={allItems} /></span>
                                   <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => removeSkillFromConn(idx)} className="px-2.5 flex items-center justify-center hover:bg-muted/60 active:bg-muted" data-testid={`btn-remove-conn-skill-${idx}`} aria-label="Remove"><X className="h-3.5 w-3.5" /></button>
                                 </Badge>
                               </SortableChip>
@@ -1038,7 +1039,7 @@ export default function SkillsPage() {
                             <TableCell>
                               <div className="flex flex-wrap gap-1">
                                 {conn.skillIds?.map((sid, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-[10px] px-1">{skillDisplayCode(allItems?.find(s => s.id === sid), allItems) || "?"}</Badge>
+                                  <Badge key={idx} variant="outline" className="text-[10px] px-1"><SkillCode skill={allItems?.find(s => s.id === sid)} allSkills={allItems} fallback="?" /></Badge>
                                 ))}
                               </div>
                             </TableCell>
@@ -1174,7 +1175,7 @@ export default function SkillsPage() {
                                 const s = allItems?.find(sk => sk.id === sid);
                                 return (
                                   <Badge key={`pp-${i}`} variant="outline" className="font-mono text-[10px]">
-                                    {effectivePartStart + i}. {skillDisplayCode(s, allItems) || "?"}
+                                    {effectivePartStart + i}. <SkillCode skill={s} allSkills={allItems} fallback="?" />
                                   </Badge>
                                 );
                               })
@@ -1235,7 +1236,7 @@ export default function SkillsPage() {
                             <TableCell>
                               <div className="flex flex-wrap gap-1">
                                 {part.skillIds?.map((sid, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-[10px] px-1">{skillDisplayCode(allItems?.find(s => s.id === sid), allItems) || "?"}</Badge>
+                                  <Badge key={idx} variant="outline" className="text-[10px] px-1"><SkillCode skill={allItems?.find(s => s.id === sid)} allSkills={allItems} fallback="?" /></Badge>
                                 ))}
                               </div>
                             </TableCell>

@@ -3,7 +3,8 @@ import { useRoute, useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { useAuth } from "@/hooks/use-auth";
-import { calcDDFromSkillIds, skillDisplayCode } from "@/lib/training-utils";
+import { calcDDFromSkillIds } from "@/lib/training-utils";
+import { SkillCode } from "@/components/skill-code";
 import { PageLayout } from "@/components/page-layout";
 import { PointsToFix, parsePoints } from "@/components/points-to-fix";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -171,7 +172,7 @@ export default function RoutineDetailPage() {
                 return (
                   <div key={idx} className="flex flex-col items-center gap-1">
                     <Badge variant="outline" className="px-2 py-1 font-mono" data-testid={`badge-routine-skill-${idx}`}>
-                      {skillDisplayCode(skill, allSkills) || "???"}
+                      <SkillCode skill={skill} allSkills={allSkills} fallback="???" />
                     </Badge>
                     <span className="text-[10px] text-muted-foreground font-semibold font-mono">
                       {skill?.difficulty.toFixed(1) || "0.0"}

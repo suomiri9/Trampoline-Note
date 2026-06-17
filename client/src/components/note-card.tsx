@@ -2,7 +2,8 @@ import { format } from "date-fns";
 import { Calendar, MoreVertical, Pencil, Trash2, Clock } from "lucide-react";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { type Note } from "@shared/schema";
-import { parseNoteSkills, calculateTotalDD, skillDisplayCode } from "@/lib/training-utils";
+import { parseNoteSkills, calculateTotalDD } from "@/lib/training-utils";
+import { SkillCode } from "@/components/skill-code";
 import { StarRating } from "./star-rating";
 import { 
   DropdownMenu, 
@@ -313,7 +314,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                                     ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
                                     : "border-border/60 text-muted-foreground"
                                 )}>
-                                  {skillDisplayCode(skill, allItems)}
+                                  <SkillCode skill={skill} allSkills={allItems} />
                                 </Badge>
                                 {sep}
                               </div>

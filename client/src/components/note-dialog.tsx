@@ -9,6 +9,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, rectSortingS
 import { CSS } from "@dnd-kit/utilities";
 import { type Note, type Skill } from "@shared/schema";
 import { parseNoteSkills, calculateTotalDD, suggestRoutinePartName, skillDisplayCode, skillDisplayName, swapSkillIdToShape, swapSkillIdsToShape, shapeSwapInfo, isShapeableSkill, pickableSkills, type SkillItem } from "@/lib/training-utils";
+import { SkillCode } from "@/components/skill-code";
 import { ShapeSwapPicker } from "@/components/shape-swap-picker";
 import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { SortableChip } from "@/components/sortable-chip";
@@ -940,7 +941,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
                               <div className="flex flex-wrap gap-1.5">
                                 {recents.map(s => (
-                                  <button key={`nc-recent-${s.id}`} type="button" onClick={() => { addRecentSkill(s.id); setNewConnSkillIds(prev => [...prev, s.id]); }} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95" data-testid={`btn-new-conn-recent-${s.id}`}>{skillDisplayCode(s, allItems)}</button>
+                                  <button key={`nc-recent-${s.id}`} type="button" onClick={() => { addRecentSkill(s.id); setNewConnSkillIds(prev => [...prev, s.id]); }} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95" data-testid={`btn-new-conn-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
                                 ))}
                               </div>
                             </div>
@@ -955,7 +956,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               return (
                                 <SortableChip key={`nc-${i}`} uid={`nc-${i}`}>
                                   <Badge variant="secondary" className="gap-0 pr-0 py-0 items-stretch overflow-hidden" data-testid={`chip-new-conn-skill-${i}`}>
-                                    <span className="py-0.5 pl-2.5 pr-1.5 flex items-center">{skillDisplayCode(s, allItems)}</span>
+                                    <span className="py-0.5 pl-2.5 pr-1.5 flex items-center"><SkillCode skill={s} allSkills={allItems} /></span>
                                     <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => setNewConnSkillIds(prev => prev.filter((_, j) => j !== i))} className="px-2.5 flex items-center justify-center hover:bg-muted/60 active:bg-muted" data-testid={`btn-remove-new-conn-skill-${i}`} aria-label="Remove"><X className="h-3.5 w-3.5" /></button>
                                   </Badge>
                                 </SortableChip>
@@ -1067,7 +1068,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
                             <div className="flex flex-wrap gap-1.5">
                               {recents.map(s => (
-                                <button key={`nr-recent-${s.id}`} type="button" disabled={newRoutineSkillIds.length >= 10} onClick={() => { addRecentSkill(s.id); setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, s.id] : prev); }} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95 disabled:opacity-40 disabled:pointer-events-none" data-testid={`btn-new-routine-recent-${s.id}`}>{skillDisplayCode(s, allItems)}</button>
+                                <button key={`nr-recent-${s.id}`} type="button" disabled={newRoutineSkillIds.length >= 10} onClick={() => { addRecentSkill(s.id); setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, s.id] : prev); }} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95 disabled:opacity-40 disabled:pointer-events-none" data-testid={`btn-new-routine-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
                               ))}
                             </div>
                           </div>
@@ -1081,7 +1082,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               return (
                                 <SortableChip key={`nr-${i}`} uid={`nr-${i}`}>
                                   <Badge variant="secondary" className="gap-0 pr-0 py-0 items-stretch overflow-hidden" data-testid={`chip-new-routine-skill-${i}`}>
-                                    <span className="py-0.5 pl-2.5 pr-1.5 flex items-center">{skillDisplayCode(s, allItems)}</span>
+                                    <span className="py-0.5 pl-2.5 pr-1.5 flex items-center"><SkillCode skill={s} allSkills={allItems} /></span>
                                     <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => setNewRoutineSkillIds(prev => prev.filter((_, j) => j !== i))} className="px-2.5 flex items-center justify-center hover:bg-muted/60 active:bg-muted" data-testid={`btn-remove-new-routine-skill-${i}`} aria-label="Remove"><X className="h-3.5 w-3.5" /></button>
                                   </Badge>
                                 </SortableChip>
@@ -1205,7 +1206,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     const s = allItems?.find(sk => sk.id === sid);
                                     return (
                                       <Badge key={`np-${i}`} variant="outline" className="font-mono text-[10px]">
-                                        {effStart + i}. {skillDisplayCode(s, allItems) || "?"}
+                                        {effStart + i}. <SkillCode skill={s} allSkills={allItems} fallback="?" />
                                       </Badge>
                                     );
                                   })}
@@ -1268,7 +1269,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             "px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors active:scale-95",
                             skill.isDrill === 1 ? "border-yellow-300 text-yellow-600 bg-yellow-50 dark:border-yellow-700 dark:text-yellow-400 dark:bg-yellow-900/10"
                               : "border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50"
-                          )} data-testid={`btn-recent-skill-${ent.id}`}>{skillDisplayCode(skill, allItems)}</button>
+                          )} data-testid={`btn-recent-skill-${ent.id}`}><SkillCode skill={skill} allSkills={allItems} /></button>
                         );
                       })}
                     </div>
@@ -1368,7 +1369,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                               sk?.isDrill === 1
                                                 ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400"
                                                 : "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
-                                            )}>{skillDisplayCode(sk, allItems)}</Badge>
+                                            )}><SkillCode skill={sk} allSkills={allItems} /></Badge>
                                             {sep}
                                           </div>
                                         );
