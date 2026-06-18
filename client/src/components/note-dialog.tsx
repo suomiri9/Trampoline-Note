@@ -121,7 +121,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const { toast } = useToast();
   const createNote = useCreateNote();
   const updateNote = useUpdateNote();
-  const { data: allItems, createSkill, isCreating: isCreatingSkill } = useSkills();
+  const { data: allItems, createSkill, updateSkill, isCreating: isCreatingSkill } = useSkills();
   const globalRecentSkillIds = useRecentSkills();
   const persistedRecentEntries = useRecentEntries();
   const { data: routines, createRoutine, isCreating: isCreatingRoutine } = useRoutines();
@@ -835,7 +835,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           <Input type="number" step="0.1" min="0" placeholder="0.0" value={newSkillDD} onChange={e => setNewSkillDD(e.target.value)} data-testid="input-new-skill-dd" />
                         </div>
                       )}
-                      <ShapeDraftsEditor drafts={newSkillShapes} onChange={setNewSkillShapes} namePlaceholder={newSkillIsDrill ? "T" : "Bs"} testIdPrefix="new-shape" />
+                      <ShapeDraftsEditor
+                        drafts={newSkillShapes}
+                        onChange={setNewSkillShapes}
+                        namePlaceholder={newSkillIsDrill ? "T" : "Bs"}
+                        testIdPrefix="new-shape"
+                        assignableSkills={(allItems || []).filter(s =>
+                          s.isDrill === (newSkillIsDrill ? 1 : 0) &&
+                          s.parentSkillId == null &&
+                          s.archived !== 1 &&
+                          !(allItems || []).some(c => c.parentSkillId === s.id)
+                        )}
+                      />
                       <Button type="button" className="w-full" disabled={!newSkillName || !newSkillCode || isCreatingSkill} onClick={async () => {
                         try {
                           const childIsDrill = newSkillIsDrill ? 1 : 0;
@@ -846,6 +857,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               const label = (d.shape || "").trim();
                               const name = (d.name || "").trim();
                               if (!label && !name) continue;
+                              // An "assign existing skill as shape" draft relinks an
+                              // already-saved skill. Preserve its original code (omit
+                              // `code`) so Detach restores it cleanly.
+                              if (d.existing && d.id != null) {
+                                await updateSkill({ id: d.id, name: name || d.name, difficulty: d.difficulty || 0, isDrill: childIsDrill, parentSkillId: base.id, shape: label || null });
+                                continue;
+                              }
                               await createSkill({ name: name || label, code: label || name, difficulty: d.difficulty || 0, isDrill: childIsDrill, parentSkillId: base.id, shape: label || null });
                             }
                           }
