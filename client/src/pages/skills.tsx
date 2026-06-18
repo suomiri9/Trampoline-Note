@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Pencil, X, Target, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore, MoreVertical, Search, ChevronRight, ChevronDown, Shapes, Unlink } from "lucide-react";
+import { Trash2, Plus, Pencil, X, Link2, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore, MoreVertical, Search, ChevronRight, ChevronDown, Shapes, Unlink } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -669,7 +669,7 @@ export default function SkillsPage() {
                                   <DropdownMenuContent align="end" className="w-44 rounded-xl">
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEditing(skill)}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
                                     {!hasShapes && (
-                                      <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { setAssignTarget(skill); setAssignBaseId(""); setAssignShapeLabel(""); }} data-testid={`button-assign-shape-${skill.id}`}><Target className="h-3.5 w-3.5" /> Assign as shape</DropdownMenuItem>
+                                      <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { setAssignTarget(skill); setAssignBaseId(""); setAssignShapeLabel(""); }} data-testid={`button-assign-shape-${skill.id}`}><Link2 className="h-3.5 w-3.5" /> Assign as shape</DropdownMenuItem>
                                     )}
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => toggleArchive(skill)} data-testid={`button-archive-skill-${skill.id}`}>{skill.archived === 1 ? <><ArchiveRestore className="h-3.5 w-3.5" /> Unarchive</> : <><Archive className="h-3.5 w-3.5" /> Archive</>}</DropdownMenuItem>
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget({ id: skill.id, name: skill.name })}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
@@ -836,7 +836,7 @@ export default function SkillsPage() {
                                   <DropdownMenuContent align="end" className="w-44 rounded-xl">
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEditing(drill)}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
                                     {!hasShapes && (
-                                      <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { setAssignTarget(drill); setAssignBaseId(""); setAssignShapeLabel(""); }} data-testid={`button-assign-shape-${drill.id}`}><Target className="h-3.5 w-3.5" /> Assign as shape</DropdownMenuItem>
+                                      <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { setAssignTarget(drill); setAssignBaseId(""); setAssignShapeLabel(""); }} data-testid={`button-assign-shape-${drill.id}`}><Link2 className="h-3.5 w-3.5" /> Assign as shape</DropdownMenuItem>
                                     )}
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => toggleArchive(drill)} data-testid={`button-archive-skill-${drill.id}`}>{drill.archived === 1 ? <><ArchiveRestore className="h-3.5 w-3.5" /> Unarchive</> : <><Archive className="h-3.5 w-3.5" /> Archive</>}</DropdownMenuItem>
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget({ id: drill.id, name: drill.name })}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
