@@ -4,7 +4,7 @@ import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { useRecentSkills, addRecentSkill } from "@/hooks/use-recent-skills";
 import { useToast } from "@/hooks/use-toast";
-import { calcDDFromSkillIds, suggestRoutinePartName, skillDisplayCode, skillDisplayName, swapSkillIdsToShape, shapeSwapInfo, pickableSkills, detachedCode } from "@/lib/training-utils";
+import { calcDDFromSkillIds, suggestRoutinePartName, skillDisplayCode, skillDisplayName, swapSkillIdsToShape, shapeSwapInfo, pickableSkills, detachedCode, isAssignedShapeChild } from "@/lib/training-utils";
 import { SkillCode } from "@/components/skill-code";
 import { ShapeSwapPicker } from "@/components/shape-swap-picker";
 import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
@@ -214,10 +214,17 @@ export default function SkillsPage() {
   const syncShapes = async (baseId: number, isDrill: number) => {
     const existing = (allItems || []).filter(s => s.parentSkillId === baseId);
     const keptIds = new Set(shapeDrafts.filter(d => d.id != null).map(d => d.id as number));
-    // delete removed shapes
+    // Remove shapes the user deleted from the editor. A generated shape variant is
+    // deleted outright; an assigned existing skill carries its own notes/history, so
+    // it is DETACHED (parentSkillId cleared, original code restored) like the library
+    // "Detach" action — never destroyed.
     for (const ex of existing) {
       if (!keptIds.has(ex.id)) {
-        await deleteSkill(ex.id);
+        if (isAssignedShapeChild(ex)) {
+          await updateSkill({ id: ex.id, parentSkillId: null, shape: null, code: detachedCode(ex, allItems) });
+        } else {
+          await deleteSkill(ex.id);
+        }
       }
     }
     // create/update drafts (skip empty rows)
@@ -225,6 +232,19 @@ export default function SkillsPage() {
       const label = (d.shape || "").trim();
       const name = (d.name || "").trim();
       if (!label && !name) continue;
+      // An "assign existing skill as shape" draft relinks an already-saved skill.
+      // Preserve its original code (omit `code`) so Detach restores it cleanly.
+      if (d.existing && d.id != null) {
+        await updateSkill({
+          id: d.id,
+          name: name || d.name,
+          difficulty: d.difficulty || 0,
+          isDrill,
+          parentSkillId: baseId,
+          shape: label || null,
+        });
+        continue;
+      }
       const payload = {
         name: name || label,
         code: label || name,
@@ -392,7 +412,9 @@ export default function SkillsPage() {
       // row itself has no sub-shapes).
       if (skill.parentSkillId == null) {
         setShapeDrafts(
-          shapesOf(skill.id).map(s => ({ id: s.id, shape: s.shape ?? s.code, name: s.name, difficulty: s.difficulty }))
+          shapesOf(skill.id).map(s => isAssignedShapeChild(s)
+            ? { id: s.id, existing: true, code: s.code, shape: s.shape ?? "", name: s.name, difficulty: s.difficulty }
+            : { id: s.id, shape: s.shape ?? s.code, name: s.name, difficulty: s.difficulty })
         );
       } else {
         setShapeDrafts([]);
@@ -408,7 +430,9 @@ export default function SkillsPage() {
       // row itself has no sub-shapes).
       if (skill.parentSkillId == null) {
         setShapeDrafts(
-          shapesOf(skill.id).map(s => ({ id: s.id, shape: s.shape ?? s.code, name: s.name, difficulty: s.difficulty }))
+          shapesOf(skill.id).map(s => isAssignedShapeChild(s)
+            ? { id: s.id, existing: true, code: s.code, shape: s.shape ?? "", name: s.name, difficulty: s.difficulty }
+            : { id: s.id, shape: s.shape ?? s.code, name: s.name, difficulty: s.difficulty })
         );
       } else {
         setShapeDrafts([]);
@@ -550,7 +574,18 @@ export default function SkillsPage() {
                         )} />
                       )}
                       {!isEditingShape && (
-                        <ShapeDraftsEditor drafts={shapeDrafts} onChange={setShapeDrafts} namePlaceholder="Bs" />
+                        <ShapeDraftsEditor
+                          drafts={shapeDrafts}
+                          onChange={setShapeDrafts}
+                          namePlaceholder="Bs"
+                          assignableSkills={(allItems || []).filter(s =>
+                            s.isDrill === 0 &&
+                            s.parentSkillId == null &&
+                            s.archived !== 1 &&
+                            (!editingSkill || s.id !== editingSkill.id) &&
+                            !(allItems || []).some(c => c.parentSkillId === s.id)
+                          )}
+                        />
                       )}
                       {editingSkill && shapeDrafts.length === 0 && (
                         <FormField control={skillForm.control} name="isDrill" render={({ field }) => (
@@ -705,7 +740,19 @@ export default function SkillsPage() {
                         )} />
                       )}
                       {!isEditingShape && (
-                        <ShapeDraftsEditor drafts={shapeDrafts} onChange={setShapeDrafts} namePlaceholder="T" testIdPrefix="drill-shape" />
+                        <ShapeDraftsEditor
+                          drafts={shapeDrafts}
+                          onChange={setShapeDrafts}
+                          namePlaceholder="T"
+                          testIdPrefix="drill-shape"
+                          assignableSkills={(allItems || []).filter(s =>
+                            s.isDrill === 1 &&
+                            s.parentSkillId == null &&
+                            s.archived !== 1 &&
+                            (!editingSkill || s.id !== editingSkill.id) &&
+                            !(allItems || []).some(c => c.parentSkillId === s.id)
+                          )}
+                        />
                       )}
                       {editingSkill && shapeDrafts.length === 0 && (
                         <FormField control={drillForm.control} name="isDrill" render={({ field }) => (
@@ -1310,7 +1357,7 @@ export default function SkillsPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium leading-none">Shape <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <label className="text-sm font-medium leading-none">Shape</label>
               <Select value={assignShapeLabel || undefined} onValueChange={setAssignShapeLabel}>
                 <SelectTrigger className="font-mono" data-testid="select-assign-shape-label"><SelectValue placeholder="Pick a shape..." /></SelectTrigger>
                 <SelectContent>
@@ -1325,9 +1372,9 @@ export default function SkillsPage() {
             <div className="flex gap-2">
               <Button
                 className="flex-1"
-                disabled={!assignBaseId || isUpdating}
+                disabled={!assignBaseId || !assignShapeLabel || isUpdating}
                 onClick={async () => {
-                  if (!assignTarget || !assignBaseId) return;
+                  if (!assignTarget || !assignBaseId || !assignShapeLabel) return;
                   await updateSkill({ id: assignTarget.id, parentSkillId: parseInt(assignBaseId), shape: assignShapeLabel.trim() || null });
                   setAssignTarget(null);
                   setAssignBaseId("");

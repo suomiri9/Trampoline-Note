@@ -88,6 +88,25 @@ export function skillHasShapeChildren(
   return !!allSkills && allSkills.some(s => s.parentSkillId === skillId && s.archived !== 1);
 }
 
+// True when a shape child carries its OWN independent identity (it was an
+// existing skill relinked under a base via "Assign as shape" / the in-form
+// picker) rather than being a generated variant. A generated variant stores its
+// shape symbol AS its code (`code === shape`) or has no code; an assigned skill
+// keeps its original, distinct `code`. This is intentionally CONSERVATIVE — any
+// shape child with a non-empty code that differs from its shape symbol counts,
+// so even a legacy row assigned before shapes were required is protected. Used to
+// (a) preserve the original code when re-saving a base and (b) DETACH rather than
+// delete such a child when it is removed from the Shapes editor — its
+// notes/history must survive.
+export function isAssignedShapeChild(
+  skill: Pick<Skill, "parentSkillId" | "code" | "shape"> | undefined | null,
+): boolean {
+  if (!skill || skill.parentSkillId == null) return false;
+  const code = (skill.code ?? "").trim();
+  if (!code) return false;
+  return code !== (skill.shape ?? "");
+}
+
 // Flat list of pickable/loggable skills of a given kind for use in EVERY skill
 // picker: shape children (shown with combined codes via skillDisplayCode) +
 // non-shape skills, EXCLUDING parent grouping bases. Not sorted.
