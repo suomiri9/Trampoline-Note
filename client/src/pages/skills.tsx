@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Pencil, X, Target, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore, MoreVertical, Search, ChevronRight, ChevronDown, Shapes } from "lucide-react";
+import { Trash2, Plus, Pencil, X, Target, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore, MoreVertical, Search, ChevronRight, ChevronDown, Shapes, Unlink } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -700,7 +700,7 @@ export default function SkillsPage() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-44 rounded-xl">
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEditing(shape)}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
-                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => updateSkill({ id: shape.id, parentSkillId: null, shape: null, code: detachedCode(shape, allItems) })} data-testid={`button-detach-shape-${shape.id}`}><ArchiveRestore className="h-3.5 w-3.5" /> Detach</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => updateSkill({ id: shape.id, parentSkillId: null, shape: null, code: detachedCode(shape, allItems) })} data-testid={`button-detach-shape-${shape.id}`}><Unlink className="h-3.5 w-3.5" /> Detach</DropdownMenuItem>
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget({ id: shape.id, name: shape.name })}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
@@ -867,7 +867,7 @@ export default function SkillsPage() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-44 rounded-xl">
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEditing(shape)}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
-                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => updateSkill({ id: shape.id, parentSkillId: null, shape: null, code: detachedCode(shape, allItems) })} data-testid={`button-detach-shape-${shape.id}`}><ArchiveRestore className="h-3.5 w-3.5" /> Detach</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => updateSkill({ id: shape.id, parentSkillId: null, shape: null, code: detachedCode(shape, allItems) })} data-testid={`button-detach-shape-${shape.id}`}><Unlink className="h-3.5 w-3.5" /> Detach</DropdownMenuItem>
                                     <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget({ id: shape.id, name: shape.name })}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>

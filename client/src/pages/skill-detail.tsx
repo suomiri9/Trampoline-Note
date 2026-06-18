@@ -9,7 +9,7 @@ import { PointsToFix, parsePoints } from "@/components/points-to-fix";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, Hash, Star, TrendingUp, Loader2, ChevronLeft, ChevronRight, Wrench, ArchiveRestore } from "lucide-react";
+import { ArrowLeft, Calendar, Hash, Star, TrendingUp, Loader2, ChevronLeft, ChevronRight, Wrench, Unlink } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useRef, useCallback, useMemo, useState, useEffect } from "react";
 import {
@@ -184,7 +184,7 @@ export default function SkillDetailPage() {
               onClick={() => updateSkill({ id: skillId, parentSkillId: null, shape: null, code: detachedCode(skill, allSkills) })}
               data-testid="button-detach-from-parent"
             >
-              <ArchiveRestore className="w-3.5 h-3.5" /> Detach from parent
+              <Unlink className="w-3.5 h-3.5" /> Detach from parent
             </Button>
           </div>
         )}
