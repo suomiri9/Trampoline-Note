@@ -173,6 +173,33 @@
   animation: fade-in-up 0.4s ease-out forwards;
 }
 
+/* Splash screen: a trampoline-style bounce for the app mark. */
+@keyframes splash-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scaleX(1) scaleY(1);
+    animation-timing-function: cubic-bezier(0.33, 0, 0.4, 1);
+  }
+  45% {
+    transform: translateY(-26px) scaleX(0.97) scaleY(1.03);
+    animation-timing-function: cubic-bezier(0.6, 0, 0.67, 1);
+  }
+  90% {
+    transform: translateY(0) scaleX(1.05) scaleY(0.95);
+  }
+}
+
+.animate-splash-bounce {
+  animation: splash-bounce 0.95s infinite;
+  transform-origin: center bottom;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-splash-bounce {
+    animation: none;
+  }
+}
+
 /* Flat dark card with a thin border and a subtle inner highlight. */
 .card-3d {
   background: hsl(var(--card));

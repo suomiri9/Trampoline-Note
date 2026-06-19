@@ -21,6 +21,7 @@ import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { drainQueue } from "@/lib/offline-queue";
 import { useToast } from "@/hooks/use-toast";
 import { OfflineIndicator } from "@/components/offline-indicator";
+import { SplashScreen } from "@/components/splash-screen";
 
 function Navigation() {
   const [location] = useLocation();
@@ -210,6 +211,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <SplashScreen />
         <AppContent />
         <Toaster />
       </TooltipProvider>

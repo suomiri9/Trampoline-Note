@@ -12,6 +12,7 @@ A full-stack trampoline training note app built with React, Express, Drizzle ORM
 - [Components & Interaction Patterns](#components--interaction-patterns)
 - [Pages](#pages)
 - [Mobile / Touch Handling](#mobile--touch-handling)
+- [Splash screen](#splash-screen)
 - [Offline Mode (PWA + sync queue)](#offline-mode-pwa--sync-queue)
 - [Running](#running)
 - [User Preferences](#user-preferences)
@@ -168,6 +169,10 @@ Centralizes page titles.
 - Skills tables: `overflow-x-auto` for narrow screens.
 - Score page skill editor containers: `min-h-[280px]` so the overlay has room.
 - Calendar nav buttons and stats week nav: `h-9 w-9` (44px touch target).
+
+## Splash screen
+
+In-app splash overlay (`client/src/components/splash-screen.tsx`, `SplashScreen`) rendered at the App root (`App.tsx`, above `AppContent`) so it covers login + app. Shows on EVERY page load (not localStorage-gated — that is the "every time opened" requirement), then auto-fades after ~1.5s (`VISIBLE_MS`/`FADE_MS`, opacity transition then unmounts). On-brand: dark `bg-mesh` background, app icon (`/icon-512.png`) with a trampoline `animate-splash-bounce` (keyframes in `index.css`, disabled under `prefers-reduced-motion`), `page-title` "Trampoline **Log**" (accent on Log), and a mono `.eyebrow` "Jump · Log · Progress". This is the macOS/desktop splash — native iOS `apple-touch-startup-image` launch images (in `index.html`) only apply to installed iOS PWAs, so the in-app splash is SKIPPED when `navigator.standalone === true` (iOS standalone) to avoid double-splash; it shows everywhere else (macOS, browser tabs, desktop PWA).
 
 ## Offline Mode (PWA + sync queue)
 
