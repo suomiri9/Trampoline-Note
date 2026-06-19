@@ -4,10 +4,17 @@ const VISIBLE_MS = 1500;
 const FADE_MS = 500;
 
 function isIosStandalone() {
-  return (
-    typeof navigator !== "undefined" &&
-    (navigator as Navigator & { standalone?: boolean }).standalone === true
-  );
+  if (typeof navigator === "undefined") return false;
+  const nav = navigator as Navigator & { standalone?: boolean };
+  // navigator.standalone is true for BOTH iOS home-screen PWAs and macOS
+  // "Add to Dock" web apps. We only want to skip our in-app splash where Apple
+  // already shows a NATIVE launch image — that's iOS/iPadOS only (the
+  // apple-touch-startup-image media queries match iPhone/iPad sizes, never a Mac).
+  // So on a MacBook dock app we still show the splash.
+  const isIosDevice =
+    /iPad|iPhone|iPod/.test(nav.userAgent) ||
+    (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);
+  return nav.standalone === true && isIosDevice;
 }
 
 export function SplashScreen() {
