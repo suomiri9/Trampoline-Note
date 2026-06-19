@@ -26,6 +26,7 @@ import {
 import { useTimeFormat } from "@/hooks/use-time-format";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { useArchiveCascade } from "@/hooks/use-archive-cascade";
+import { useTheme } from "@/hooks/use-theme";
 import { useShowSkillNames } from "@/hooks/use-skill-label-mode";
 import { useOnline } from "@/hooks/use-online";
 import {
@@ -50,6 +51,7 @@ export default function SettingsPage() {
   const [timeFormat, setTimeFormat] = useTimeFormat();
   const [offlineModeEnabled, setOfflineModeEnabled] = useOfflineMode();
   const [archiveCascade, setArchiveCascade] = useArchiveCascade();
+  const { theme, setTheme } = useTheme();
   const [showSkillNames, setShowSkillNames] = useShowSkillNames();
   const isOnline = useOnline();
   const pendingCount = useQueueCount();
@@ -357,6 +359,19 @@ export default function SettingsPage() {
             <div>
               <div className="eyebrow mb-3">Preferences</div>
               <div className="rounded-2xl card-3d divide-y divide-border/60 overflow-hidden">
+                <div id="appearance" className="p-5 scroll-mt-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Dark Mode</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{theme === "dark" ? "On — the near-black theme." : "Off — using the light theme."}</p>
+                    </div>
+                    <Switch
+                      checked={theme === "dark"}
+                      onCheckedChange={(v) => setTheme(v ? "dark" : "light")}
+                      data-testid="toggle-theme"
+                    />
+                  </div>
+                </div>
                 <div id="offline" className="p-5 scroll-mt-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">

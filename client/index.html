@@ -9,11 +9,22 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#0a0b10" />
-    <!-- Paint the brand-dark background on the very first frame, before the CSS/JS
-         bundle loads, so the splash never flashes a white background. -->
-    <style>
-      html, body, #root { background-color: #0a0b10; }
-    </style>
+    <!-- Apply the saved theme before first paint so the splash never flashes the
+         wrong background. Dark is the default; the Settings → Appearance toggle
+         switches to light, persisted in localStorage under "theme". -->
+    <script>
+      (function () {
+        try {
+          var light = localStorage.getItem("theme") === "light";
+          var el = document.documentElement;
+          el.classList.toggle("dark", !light);
+          var bg = light ? "#f4f6f9" : "#0a0b10";
+          el.style.backgroundColor = bg;
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", bg);
+        } catch (e) {}
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />

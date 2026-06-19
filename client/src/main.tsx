@@ -3,6 +3,7 @@ import App from "./App";
 import "./index.css";
 import { getOfflineModeEnabled } from "./lib/offline-mode";
 import { registerServiceWorker } from "./lib/offline-control";
+import { applyTheme, getTheme } from "./lib/theme";
 
 if (getOfflineModeEnabled()) {
   window.addEventListener("load", () => {
@@ -42,5 +43,7 @@ console.error = (...args: unknown[]) => {
   if (first && typeof (first as any).message === "string" && RESIZE_OBSERVER_RE.test((first as any).message)) return;
   originalConsoleError.apply(console, args as []);
 };
+
+applyTheme(getTheme());
 
 createRoot(document.getElementById("root")!).render(<App />);

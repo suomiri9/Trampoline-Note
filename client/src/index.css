@@ -4,41 +4,41 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light;
     --font-display: 'Bebas Neue', sans-serif;
     --font-body: 'DM Sans', sans-serif;
     --font-sans: 'DM Sans', sans-serif;
     --font-serif: 'DM Sans', sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-    /* Dark Monospace — near-black with an indigo/blue accent */
-    --background: 228 18% 5%;
-    --foreground: 210 20% 96%;
-    --card: 228 16% 8.5%;
-    --card-foreground: 210 20% 96%;
-    --popover: 228 16% 9%;
-    --popover-foreground: 210 20% 96%;
-    --primary: 230 92% 67%;
+    /* Light Monospace — soft near-white with the same indigo/blue accent */
+    --background: 220 24% 97%;
+    --foreground: 228 28% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 228 28% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 228 28% 12%;
+    --primary: 230 84% 56%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 228 14% 14%;
-    --secondary-foreground: 210 20% 96%;
-    --muted: 228 14% 13%;
-    --muted-foreground: 220 11% 56%;
-    --accent: 228 14% 15%;
-    --accent-foreground: 210 20% 98%;
-    --destructive: 0 72% 56%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 228 12% 16%;
-    --input: 228 12% 16%;
-    --ring: 230 92% 67%;
+    --secondary: 228 18% 92%;
+    --secondary-foreground: 228 28% 18%;
+    --muted: 228 18% 94%;
+    --muted-foreground: 228 10% 42%;
+    --accent: 228 18% 91%;
+    --accent-foreground: 228 28% 16%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 228 16% 86%;
+    --input: 228 16% 86%;
+    --ring: 230 84% 56%;
     --radius: 0.75rem;
 
     /* Accent used for "Points to Fix" / secondary warm action */
-    --gold: 38 92% 58%;
+    --gold: 36 92% 42%;
   }
 
-  /* Keep .dark identical so the app stays dark even if the class is toggled.
-     (A separate task introduces the light/dark theme toggle.) */
+  /* Dark Monospace — the original near-black theme. Applied whenever <html> has
+     the `.dark` class (the default; Settings → Appearance toggles it off). */
   .dark {
     color-scheme: dark;
     --background: 228 18% 5%;
@@ -205,14 +205,17 @@
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   box-shadow:
-    0 1px 0 0 hsl(0 0% 100% / 0.02) inset,
-    0 8px 24px -16px hsl(0 0% 0% / 0.8);
+    0 1px 2px 0 hsl(228 30% 20% / 0.04),
+    0 10px 24px -18px hsl(228 30% 20% / 0.22);
   transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .dark .card-3d {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.02) inset,
+    0 8px 24px -16px hsl(0 0% 0% / 0.8);
 }
 
 .card-3d-hover:hover {
@@ -229,17 +232,20 @@
 
 /* Translucent dark surface for the nav bar and floating chips. */
 .glass-surface {
-  background: hsl(228 18% 8% / 0.82);
+  background: hsl(0 0% 100% / 0.78);
   backdrop-filter: blur(18px) saturate(1.4);
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
   border: 1px solid hsl(var(--border));
   box-shadow:
-    0 1px 0 0 hsl(0 0% 100% / 0.03) inset,
-    0 12px 40px -12px hsl(0 0% 0% / 0.7);
+    0 1px 0 0 hsl(0 0% 100% / 0.6) inset,
+    0 12px 40px -16px hsl(228 30% 20% / 0.25);
 }
 
 .dark .glass-surface {
   background: hsl(228 18% 8% / 0.82);
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.03) inset,
+    0 12px 40px -12px hsl(0 0% 0% / 0.7);
 }
 
 /* Glowing solid-blue primary action. */
@@ -286,11 +292,11 @@
   border: 1px solid hsl(var(--border));
 }
 
-/* Near-black canvas with a faint indigo glow at the top. */
+/* Soft canvas with a faint indigo glow at the top (dark variant below). */
 .bg-mesh {
   background:
-    radial-gradient(ellipse 70% 45% at 15% -5%, hsl(230 92% 67% / 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 90% 0%, hsl(265 80% 60% / 0.05) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 45% at 15% -5%, hsl(230 92% 60% / 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 90% 0%, hsl(265 75% 60% / 0.07) 0%, transparent 55%),
     hsl(var(--background));
 }
 

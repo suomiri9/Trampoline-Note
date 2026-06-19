@@ -47,7 +47,7 @@ export function SplashScreen() {
           src="/icon-512.png"
           alt=""
           draggable={false}
-          className="h-24 w-24 select-none rounded-3xl shadow-2xl shadow-primary/25 ring-1 ring-white/10 animate-splash-bounce"
+          className="h-24 w-24 select-none rounded-3xl shadow-2xl shadow-primary/25 ring-1 ring-black/5 dark:ring-white/10 animate-splash-bounce"
         />
         <div className="flex flex-col items-center gap-2.5">
           <h1 className="page-title text-5xl">
