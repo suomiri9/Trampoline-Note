@@ -1,6 +1,7 @@
 - [Trampoline repl verification quirks](trampoline-verification.md) — auth gate makes app_preview screenshots show the login page; some pre-existing TS errors are esbuild-safe, don't chase them.
 - [Follow-up task cancellation is irreversible](followup-task-irreversible.md) — markFollowUpTaskObsolete is terminal; verify a follow-up's real title/content before retracting it.
 - [Tailwind font-display utility must be registered](tailwind-font-display-utility.md) — `font-*` custom families silently no-op unless added to tailwind.config fontFamily; config needs a workflow restart.
+- [SkillEditorOverlay top-anchoring](skill-editor-overlay-anchoring.md) — note-dialog skill editor uses items-start (not items-center) so deleting rows doesn't re-center and shift the ✕ off the cursor.
 - [Radix Tabs forceMount does not auto-hide](radix-tabs-forcemount.md) — to keep a portaled Dialog working across tabs, give its tab `forceMount` + `data-[state=inactive]:hidden`.
 - [Validation reviews the active task](validation-task-scope.md) — mark_task_complete's code-review judges the active project task (`.local/tasks/`), which can differ from the resumed conversation topic; read the named spec, don't dismiss.
 - [Render skill codes via skillDisplayCode](skill-code-render-helper.md) — raw `skill.code` shows "?"/partial for shape variants; use `skillDisplayCode(s, allItems)`; for code-only chips use the mode-aware `<SkillCode>` (honors the show-names toggle), not code+name surfaces.
