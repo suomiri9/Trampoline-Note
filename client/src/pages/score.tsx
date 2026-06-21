@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
-import { Trash2, Plus, Trophy, CalendarIcon, Pencil, MoreVertical, TrendingUp, SlidersHorizontal } from "lucide-react";
+import { Trash2, Plus, Trophy, CalendarIcon, Pencil, MoreVertical, TrendingUp, SlidersHorizontal, Users } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -44,11 +44,13 @@ const scoreDefaults = {
   competitionId: null as string | null,
   round: null as string | null,
   rank: undefined as number | undefined,
+  synchro: false,
   execution: 0,
   executionTwo: 0,
   doubleExecution: false,
   difficulty: 0,
   horizontal: 0,
+  horizontalTwo: 0,
   timeOfFlight: 0,
   total: 0,
   executionVol: 0,
@@ -56,6 +58,7 @@ const scoreDefaults = {
   doubleExecutionVol: false,
   difficultyVol: 0,
   horizontalVol: 0,
+  horizontalTwoVol: 0,
   timeOfFlightVol: 0,
   totalVol: 0,
 };
@@ -74,12 +77,12 @@ function fmtScore(n: number): string {
   return r.toFixed(3).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, ".0");
 }
 
-function ScoreBreakdown({ e, d, h, t, label, routineName, total, totalColor, totalTestId }: { e: number; d: number; h: number; t: number; label?: string; routineName?: string | null; total?: number; totalColor?: string; totalTestId?: string }) {
+function ScoreBreakdown({ e, d, h, t, label, routineName, total, totalColor, totalTestId, synchro }: { e: number; d: number; h: number; t: number; label?: string; routineName?: string | null; total?: number; totalColor?: string; totalTestId?: string; synchro?: boolean | null }) {
   const cols: { k: string; v: string; accent?: boolean }[] = [
     { k: "E", v: e.toFixed(1) },
     { k: "DD", v: d.toFixed(1) },
     { k: "H", v: h.toFixed(1) },
-    { k: "TOF", v: fmtScore(t) },
+    { k: synchro ? "Sync" : "TOF", v: fmtScore(t) },
     ...(total != null ? [{ k: "TOTAL", v: fmtScore(total), accent: true }] : []),
   ];
   return (
@@ -120,10 +123,11 @@ function ScoreGroups({ score, totalColor, routines, firstPracticedByRoutine }: {
   return (
     <div className="space-y-4">
       <ScoreBreakdown
-        e={effectiveE(score.execution, score.executionTwo, score.doubleExecution)}
+        e={effectiveE(score.execution, score.executionTwo, score.doubleExecution, score.synchro)}
         d={score.difficulty}
-        h={score.horizontal}
+        h={effectiveH(score.horizontal, score.horizontalTwo, score.synchro)}
         t={score.timeOfFlight}
+        synchro={score.synchro}
         label={`${group1Label}${score.attempt != null ? ` · attempt ${score.attempt}` : ""}`}
         routineName={routineName(score.routineId)}
         total={score.total}
@@ -132,10 +136,11 @@ function ScoreGroups({ score, totalColor, routines, firstPracticedByRoutine }: {
       />
       {isMulti && (
         <ScoreBreakdown
-          e={effectiveE(score.executionVol ?? 0, score.executionTwoVol, score.doubleExecutionVol)}
+          e={effectiveE(score.executionVol ?? 0, score.executionTwoVol, score.doubleExecutionVol, score.synchro)}
           d={score.difficultyVol ?? 0}
-          h={score.horizontalVol ?? 0}
+          h={effectiveH(score.horizontalVol ?? 0, score.horizontalTwoVol, score.synchro)}
           t={score.timeOfFlightVol ?? 0}
+          synchro={score.synchro}
           label={`${group2Label}${score.attemptVol != null ? ` · attempt ${score.attemptVol}` : ""}`}
           routineName={routineName(score.routineIdVol)}
           total={score.totalVol ?? 0}
@@ -193,6 +198,11 @@ function ScoreCard({
             <span className={cn("inline-block mt-1.5 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold uppercase tracking-wider", pillClass)}>
               {score.type}
             </span>
+            {score.synchro && (
+              <span className="inline-block mt-1.5 ml-1.5 px-2.5 py-0.5 rounded-md border border-sky-500/40 text-sky-400 text-[10px] font-mono font-semibold uppercase tracking-wider" data-testid={`badge-synchro-${score.id}`}>
+                Synchro
+              </span>
+            )}
             {isComp && (score.competitionName || score.rank != null) && (
               <p className="text-sm text-muted-foreground mt-0.5 truncate">
                 {score.competitionName}
@@ -257,8 +267,16 @@ function effectiveTotal(score: Pick<Score, "category" | "total" | "totalVol">): 
 }
 
 // Combined execution: two judges summed (E1 + E2), or the first judge doubled (E1 * 2).
-function effectiveE(e: number, eTwo: number | null | undefined, dbl: boolean | null | undefined): number {
+// In synchro mode the two boxes are the two athletes' scores, AVERAGED.
+function effectiveE(e: number, eTwo: number | null | undefined, dbl: boolean | null | undefined, synchro?: boolean | null): number {
+  if (synchro) return ((e ?? 0) + (eTwo ?? 0)) / 2;
   return dbl ? e * 2 : e + (eTwo ?? 0);
+}
+
+// Horizontal displacement: single value, or the AVERAGE of two athletes when synchro.
+function effectiveH(h: number, hTwo: number | null | undefined, synchro?: boolean | null): number {
+  if (synchro) return ((h ?? 0) + (hTwo ?? 0)) / 2;
+  return h ?? 0;
 }
 
 function RoundBlock({
@@ -288,6 +306,11 @@ function RoundBlock({
         <div className="min-w-0 flex-1">
           {score.round && (
             <div className={cn("eyebrow !text-[10px]", accentEyebrow)}>{roundLabel(score.round)}</div>
+          )}
+          {score.synchro && (
+            <span className="inline-block mt-0.5 px-2 py-0.5 rounded-md border border-sky-500/40 text-sky-400 text-[9px] font-mono font-semibold uppercase tracking-wider" data-testid={`badge-synchro-round-${score.id}`}>
+              Synchro
+            </span>
           )}
           {!hideRank && score.rank != null && (
             <div className="font-mono text-xs text-muted-foreground mt-0.5" data-testid={`text-round-rank-${score.id}`}>Rank #{score.rank}</div>
@@ -440,16 +463,16 @@ function ScoreGraph({ scores }: { scores: Score[] }) {
     // so it emits two points (each keeps Total = E + DD + HD + TOF coherent).
     const g1 = (s: Score) => ({
       total: s.total,
-      e: effectiveE(s.execution, s.executionTwo, s.doubleExecution),
+      e: effectiveE(s.execution, s.executionTwo, s.doubleExecution, s.synchro),
       dd: s.difficulty,
-      hd: s.horizontal,
+      hd: effectiveH(s.horizontal, s.horizontalTwo, s.synchro),
       tof: s.timeOfFlight,
     });
     const g2 = (s: Score) => ({
       total: s.totalVol ?? 0,
-      e: effectiveE(s.executionVol ?? 0, s.executionTwoVol, s.doubleExecutionVol),
+      e: effectiveE(s.executionVol ?? 0, s.executionTwoVol, s.doubleExecutionVol, s.synchro),
       dd: s.difficultyVol ?? 0,
-      hd: s.horizontalVol ?? 0,
+      hd: effectiveH(s.horizontalVol ?? 0, s.horizontalTwoVol, s.synchro),
       tof: s.timeOfFlightVol ?? 0,
     });
 
@@ -760,11 +783,13 @@ export default function ScorePage() {
       competitionId: score.competitionId ?? null,
       round: score.round ?? null,
       rank: score.rank ?? undefined,
+      synchro: score.synchro ?? false,
       execution: score.execution,
       executionTwo: score.executionTwo ?? 0,
       doubleExecution: score.doubleExecution ?? false,
       difficulty: score.difficulty,
       horizontal: score.horizontal,
+      horizontalTwo: score.horizontalTwo ?? 0,
       timeOfFlight: score.timeOfFlight,
       total: score.total,
       executionVol: score.executionVol ?? 0,
@@ -772,6 +797,7 @@ export default function ScorePage() {
       doubleExecutionVol: score.doubleExecutionVol ?? false,
       difficultyVol: score.difficultyVol ?? 0,
       horizontalVol: score.horizontalVol ?? 0,
+      horizontalTwoVol: score.horizontalTwoVol ?? 0,
       timeOfFlightVol: score.timeOfFlightVol ?? 0,
       totalVol: score.totalVol ?? 0,
     });
@@ -836,10 +862,11 @@ export default function ScorePage() {
     "routineIdVol",
     "executionTwo", "doubleExecution",
     "executionTwoVol", "doubleExecutionVol",
+    "horizontalTwo", "horizontalTwoVol", "synchro",
   ]);
 
   useEffect(() => {
-    const [e, d, h, t, rId, cat, e2, d2, h2, t2, rIdVol, eTwo, dblE, eTwoVol, dblEVol] = watchFields;
+    const [e, d, h, t, rId, cat, e2, d2, h2, t2, rIdVol, eTwo, dblE, eTwoVol, dblEVol, hTwo, hTwoVol, sync] = watchFields;
 
     const routineChanged = rId !== lastRoutineId;
     if (routineChanged) {
@@ -863,13 +890,19 @@ export default function ScorePage() {
       }
     }
 
-    const eEff = dblE ? Number(e || 0) * 2 : Number(e || 0) + Number(eTwo || 0);
-    const total = eEff + Number(d || 0) + Number(h || 0) + Number(t || 0);
+    const eEff = sync
+      ? (Number(e || 0) + Number(eTwo || 0)) / 2
+      : dblE ? Number(e || 0) * 2 : Number(e || 0) + Number(eTwo || 0);
+    const hEff = sync ? (Number(h || 0) + Number(hTwo || 0)) / 2 : Number(h || 0);
+    const total = eEff + Number(d || 0) + hEff + Number(t || 0);
     form.setValue("total", Number(total.toFixed(3)));
 
     if (cat === "both" || cat === "vol_vol") {
-      const eEff2 = dblEVol ? Number(e2 || 0) * 2 : Number(e2 || 0) + Number(eTwoVol || 0);
-      const total2 = eEff2 + Number(d2 || 0) + Number(h2 || 0) + Number(t2 || 0);
+      const eEff2 = sync
+        ? (Number(e2 || 0) + Number(eTwoVol || 0)) / 2
+        : dblEVol ? Number(e2 || 0) * 2 : Number(e2 || 0) + Number(eTwoVol || 0);
+      const hEff2 = sync ? (Number(h2 || 0) + Number(hTwoVol || 0)) / 2 : Number(h2 || 0);
+      const total2 = eEff2 + Number(d2 || 0) + hEff2 + Number(t2 || 0);
       form.setValue("totalVol", Number(total2.toFixed(3)));
     }
   }, [watchFields, routines, allSkills, form, lastRoutineId, lastRoutineIdVol]);
@@ -894,7 +927,7 @@ export default function ScorePage() {
   // Single "vol" and the two routines of "vol_vol" store voluntary stats in the
   // primary/set fields, so those feed the Vol bests; only "set"/"both" rows feed the
   // Set bests. Set has no DD of its own, so it's omitted from the Set breakdown.
-  const compScores = (scores ?? []).filter((s) => s.type === "competition");
+  const compScores = (scores ?? []).filter((s) => s.type === "competition" && !s.synchro);
   const pb = compScores.reduce(
     (acc, s) => {
       const e1 = effectiveE(s.execution, s.executionTwo, s.doubleExecution);
@@ -958,6 +991,9 @@ export default function ScorePage() {
     items.sort((a, b) => b.sortDate.localeCompare(a.sortDate));
     return items;
   }, [scores]);
+
+  const synchroOn = !!form.watch("synchro");
+  const scoreGridCols = synchroOn ? "md:grid-cols-7" : "md:grid-cols-6";
 
   return (
     <PageLayout>
@@ -1048,6 +1084,9 @@ export default function ScorePage() {
                 const round3 = (n: number | null | undefined) =>
                   n == null || !Number.isFinite(n) ? n : Math.round(n * 1000) / 1000;
                 data = { ...data, timeOfFlight: round3(data.timeOfFlight) ?? 0, timeOfFlightVol: round3(data.timeOfFlightVol) ?? 0 };
+                if (data.synchro) {
+                  data = { ...data, doubleExecution: false, doubleExecutionVol: false };
+                }
                 const values =
                   data.type === "competition" || data.type === "trial"
                     ? { ...data, round: data.round || "prelims", competitionId: data.competitionId || newCompetitionId() }
@@ -1130,6 +1169,30 @@ export default function ScorePage() {
                       </FormItem>
                     )} />
                   </div>
+                  <FormField control={form.control} name="synchro" render={({ field }) => (
+                    <FormItem>
+                      <button
+                        type="button"
+                        aria-pressed={!!field.value}
+                        onClick={() => {
+                          const next = !field.value;
+                          field.onChange(next);
+                          if (next) {
+                            form.setValue("doubleExecution", false);
+                            form.setValue("doubleExecutionVol", false);
+                          }
+                        }}
+                        className={cn(
+                          "w-full flex items-center justify-between rounded-xl h-11 px-4 border transition-colors",
+                          field.value ? "bg-sky-500 text-white border-sky-500" : "border-border text-muted-foreground hover:text-foreground",
+                        )}
+                        data-testid="toggle-synchro"
+                      >
+                        <span className="flex items-center gap-2 text-sm font-medium"><Users className="h-4 w-4" /> Synchro</span>
+                        <span className="text-[10px] font-mono uppercase tracking-wider">{field.value ? "On" : "Off"}</span>
+                      </button>
+                    </FormItem>
+                  )} />
                 </div>
 
                 {(form.watch("type") === "competition" || form.watch("type") === "trial") && (
@@ -1199,7 +1262,7 @@ export default function ScorePage() {
                       className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 rounded-xl shadow-lg shadow-black/5 p-4"
                     />
                   )}
-                  <div className="grid grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
+                  <div className={cn("grid grid-cols-3 gap-2 sm:gap-3", scoreGridCols)}>
                     <FormField control={form.control} name="execution" render={({ field }) => (
                       <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">E1</FormLabel><FormControl><Input type="number" step="0.1" placeholder="E1" value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" data-testid="input-execution-1" /></FormControl></FormItem>
                     )} />
@@ -1207,19 +1270,24 @@ export default function ScorePage() {
                       <FormItem>
                         <div className="flex items-center justify-between gap-1">
                           <FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">E2</FormLabel>
-                          <button type="button" aria-pressed={!!form.watch("doubleExecution")} onClick={() => form.setValue("doubleExecution", !form.watch("doubleExecution"))} className={cn("rounded px-1 py-0.5 text-[9px] sm:text-[10px] font-mono leading-none border transition-colors", form.watch("doubleExecution") ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground border-border hover:text-foreground")} data-testid="button-double-execution">E1×2</button>
+                          {!synchroOn && <button type="button" aria-pressed={!!form.watch("doubleExecution")} onClick={() => form.setValue("doubleExecution", !form.watch("doubleExecution"))} className={cn("rounded px-1 py-0.5 text-[9px] sm:text-[10px] font-mono leading-none border transition-colors", form.watch("doubleExecution") ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground border-border hover:text-foreground")} data-testid="button-double-execution">E1×2</button>}
                         </div>
-                        <FormControl><Input type="number" step="0.1" placeholder="E2" disabled={!!form.watch("doubleExecution")} value={form.watch("doubleExecution") ? (form.watch("execution") || "") : (field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value)} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono disabled:opacity-60" data-testid="input-execution-2" /></FormControl>
+                        <FormControl><Input type="number" step="0.1" placeholder="E2" disabled={!synchroOn && !!form.watch("doubleExecution")} value={(!synchroOn && form.watch("doubleExecution")) ? (form.watch("execution") || "") : (field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value)} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono disabled:opacity-60" data-testid="input-execution-2" /></FormControl>
                       </FormItem>
                     )} />
                     <FormField control={form.control} name="difficulty" render={({ field }) => (
                       <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">D</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="horizontal" render={({ field }) => (
-                      <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">H</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
+                      <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">{synchroOn ? "H1" : "H"}</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" data-testid="input-horizontal-1" /></FormControl></FormItem>
                     )} />
+                    {synchroOn && (
+                      <FormField control={form.control} name="horizontalTwo" render={({ field }) => (
+                        <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">H2</FormLabel><FormControl><Input type="number" step="0.1" placeholder="H2" value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" data-testid="input-horizontal-2" /></FormControl></FormItem>
+                      )} />
+                    )}
                     <FormField control={form.control} name="timeOfFlight" render={({ field }) => (
-                      <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">T</FormLabel><FormControl><Input type="number" step="0.001" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
+                      <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">{synchroOn ? "Sync" : "T"}</FormLabel><FormControl><Input type="number" step="0.001" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" data-testid="input-tof" /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="total" render={({ field }) => (
                       <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">Total</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono bg-background font-bold text-primary" /></FormControl></FormItem>
@@ -1266,7 +1334,7 @@ export default function ScorePage() {
                         className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 rounded-xl shadow-lg shadow-black/5 p-4"
                       />
                     )}
-                    <div className="grid grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
+                    <div className={cn("grid grid-cols-3 gap-2 sm:gap-3", scoreGridCols)}>
                       <FormField control={form.control} name="executionVol" render={({ field }) => (
                         <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">E1</FormLabel><FormControl><Input type="number" step="0.1" placeholder="E1" value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" data-testid="input-execution-vol-1" /></FormControl></FormItem>
                       )} />
@@ -1274,19 +1342,24 @@ export default function ScorePage() {
                         <FormItem>
                           <div className="flex items-center justify-between gap-1">
                             <FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">E2</FormLabel>
-                            <button type="button" aria-pressed={!!form.watch("doubleExecutionVol")} onClick={() => form.setValue("doubleExecutionVol", !form.watch("doubleExecutionVol"))} className={cn("rounded px-1 py-0.5 text-[9px] sm:text-[10px] font-mono leading-none border transition-colors", form.watch("doubleExecutionVol") ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground border-border hover:text-foreground")} data-testid="button-double-execution-vol">E1×2</button>
+                            {!synchroOn && <button type="button" aria-pressed={!!form.watch("doubleExecutionVol")} onClick={() => form.setValue("doubleExecutionVol", !form.watch("doubleExecutionVol"))} className={cn("rounded px-1 py-0.5 text-[9px] sm:text-[10px] font-mono leading-none border transition-colors", form.watch("doubleExecutionVol") ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground border-border hover:text-foreground")} data-testid="button-double-execution-vol">E1×2</button>}
                           </div>
-                          <FormControl><Input type="number" step="0.1" placeholder="E2" disabled={!!form.watch("doubleExecutionVol")} value={form.watch("doubleExecutionVol") ? (form.watch("executionVol") || "") : (field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value)} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono disabled:opacity-60" data-testid="input-execution-vol-2" /></FormControl>
+                          <FormControl><Input type="number" step="0.1" placeholder="E2" disabled={!synchroOn && !!form.watch("doubleExecutionVol")} value={(!synchroOn && form.watch("doubleExecutionVol")) ? (form.watch("executionVol") || "") : (field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value)} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono disabled:opacity-60" data-testid="input-execution-vol-2" /></FormControl>
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="difficultyVol" render={({ field }) => (
                         <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">D</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
                       )} />
                       <FormField control={form.control} name="horizontalVol" render={({ field }) => (
-                        <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">H</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
+                        <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">{synchroOn ? "H1" : "H"}</FormLabel><FormControl><Input type="number" step="0.1" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" data-testid="input-horizontal-vol-1" /></FormControl></FormItem>
                       )} />
+                      {synchroOn && (
+                        <FormField control={form.control} name="horizontalTwoVol" render={({ field }) => (
+                          <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">H2</FormLabel><FormControl><Input type="number" step="0.1" placeholder="H2" value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" data-testid="input-horizontal-vol-2" /></FormControl></FormItem>
+                        )} />
+                      )}
                       <FormField control={form.control} name="timeOfFlightVol" render={({ field }) => (
-                        <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">T</FormLabel><FormControl><Input type="number" step="0.001" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" /></FormControl></FormItem>
+                        <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">{synchroOn ? "Sync" : "T"}</FormLabel><FormControl><Input type="number" step="0.001" {...field} value={field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono" data-testid="input-tof-vol" /></FormControl></FormItem>
                       )} />
                       <FormField control={form.control} name="totalVol" render={({ field }) => (
                         <FormItem><FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">Total</FormLabel><FormControl><Input type="number" disabled {...field} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono bg-background font-bold text-primary" /></FormControl></FormItem>

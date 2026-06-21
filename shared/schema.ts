@@ -51,12 +51,14 @@ export const scores = pgTable("scores", {
   competitionId: text("competition_id"), // groups rounds (prelims/final) of one competition; null for practice/trial
   round: text("round"), // "prelims" or "final" for competitions; null otherwise
   rank: integer("rank"),
+  synchro: boolean("synchro").default(false), // synchro mode: E = avg(E1,E2), HD = avg(H1,H2), TOF field is "Sync"
   // Set scores (also used for single vol)
   execution: real("execution").notNull().default(0), // first execution judge (E1)
   executionTwo: real("execution_two"), // second execution judge (E2); null when not used
   doubleExecution: boolean("double_execution").default(false), // when true, E = E1 * 2 (second judge mirrors first)
   difficulty: real("difficulty").notNull().default(0),
   horizontal: real("horizontal").notNull().default(0),
+  horizontalTwo: real("horizontal_two"), // second HD (athlete 2) when synchro; null otherwise
   timeOfFlight: real("time_of_flight").notNull().default(0),
   total: real("total").notNull().default(0),
   attempt: integer("attempt"), // null = full 10 skills, 1-9 = partial attempt
@@ -66,6 +68,7 @@ export const scores = pgTable("scores", {
   doubleExecutionVol: boolean("double_execution_vol").default(false),
   difficultyVol: real("difficulty_vol"),
   horizontalVol: real("horizontal_vol"),
+  horizontalTwoVol: real("horizontal_two_vol"), // second HD (athlete 2) for the vol group when synchro
   timeOfFlightVol: real("time_of_flight_vol"),
   totalVol: real("total_vol"),
   attemptVol: integer("attempt_vol"), // null = full 10 skills, 1-9 = partial attempt
