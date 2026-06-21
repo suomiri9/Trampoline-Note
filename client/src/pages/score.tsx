@@ -199,7 +199,7 @@ function ScoreCard({
               {score.type}
             </span>
             {score.synchro && (
-              <span className="inline-block mt-1.5 ml-1.5 px-2.5 py-0.5 rounded-md border border-sky-500/40 text-sky-400 text-[10px] font-mono font-semibold uppercase tracking-wider" data-testid={`badge-synchro-${score.id}`}>
+              <span className="inline-block mt-1.5 ml-1.5 px-2.5 py-0.5 rounded-md border border-primary/40 text-primary text-[10px] font-mono font-semibold uppercase tracking-wider" data-testid={`badge-synchro-${score.id}`}>
                 Synchro
               </span>
             )}
@@ -308,7 +308,7 @@ function RoundBlock({
             <div className={cn("eyebrow !text-[10px]", accentEyebrow)}>{roundLabel(score.round)}</div>
           )}
           {score.synchro && (
-            <span className="inline-block mt-0.5 px-2 py-0.5 rounded-md border border-sky-500/40 text-sky-400 text-[9px] font-mono font-semibold uppercase tracking-wider" data-testid={`badge-synchro-round-${score.id}`}>
+            <span className="inline-block mt-0.5 px-2 py-0.5 rounded-md border border-primary/40 text-primary text-[9px] font-mono font-semibold uppercase tracking-wider" data-testid={`badge-synchro-round-${score.id}`}>
               Synchro
             </span>
           )}
@@ -1183,13 +1183,12 @@ export default function ScorePage() {
                           }
                         }}
                         className={cn(
-                          "w-full flex items-center justify-between rounded-xl h-11 px-4 border transition-colors",
-                          field.value ? "bg-sky-500 text-white border-sky-500" : "border-border text-muted-foreground hover:text-foreground",
+                          "inline-flex items-center gap-1.5 rounded-lg h-8 px-3 border text-xs font-medium transition-colors",
+                          field.value ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground",
                         )}
                         data-testid="toggle-synchro"
                       >
-                        <span className="flex items-center gap-2 text-sm font-medium"><Users className="h-4 w-4" /> Synchro</span>
-                        <span className="text-[10px] font-mono uppercase tracking-wider">{field.value ? "On" : "Off"}</span>
+                        <Users className="h-3.5 w-3.5" /> Synchro
                       </button>
                     </FormItem>
                   )} />
