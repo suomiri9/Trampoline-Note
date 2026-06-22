@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { useOnline } from "@/hooks/use-online";
 import { useState } from "react";
+import { Link } from "wouter";
 
 export default function LoginPage() {
   const { login, register, loginError, registerError, isLoggingIn, isRegistering } = useAuth();
@@ -147,6 +148,14 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
+
+          {mode === "login" && (
+            <div className="text-center -mt-1">
+              <Link href="/forgot-password" data-testid="link-forgot-password">
+                <span className="text-sm text-primary hover:underline cursor-pointer">Forgot password?</span>
+              </Link>
+            </div>
+          )}
 
           <div className="text-center">
             <button

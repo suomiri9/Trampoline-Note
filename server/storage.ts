@@ -14,7 +14,14 @@ import {
   type Score,
   type InsertScore
 } from "@shared/schema";
-import { eq, desc, and, isNull, sql, gte } from "drizzle-orm";
+import {
+  users,
+  sessions,
+  passwordResetTokens,
+  type User,
+  type PasswordResetToken,
+} from "@shared/models/auth";
+import { eq, desc, and, isNull, sql, gte, gt } from "drizzle-orm";
 
 // Thrown when a shape grouping link (parentSkillId) is invalid. Routes map this
 // to a 400 so bad links never silently persist.
@@ -57,6 +64,12 @@ export interface IStorage {
 
   // Data migration
   claimLegacyData(userId: string): Promise<void>;
+
+  // Password reset
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<void>;
+  getValidResetTokenByHash(tokenHash: string): Promise<PasswordResetToken | undefined>;
+  completePasswordReset(userId: string, tokenId: string, hashedPassword: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -326,6 +339,65 @@ export class DatabaseStorage implements IStorage {
       db.update(routines).set({ userId }).where(isNull(routines.userId)),
       db.update(scores).set({ userId }).where(isNull(scores.userId)),
     ]);
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createPasswordResetToken(
+    userId: string,
+    tokenHash: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await db.insert(passwordResetTokens).values({ userId, tokenHash, expiresAt });
+  }
+
+  async getValidResetTokenByHash(
+    tokenHash: string,
+  ): Promise<PasswordResetToken | undefined> {
+    const [token] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(
+        and(
+          eq(passwordResetTokens.tokenHash, tokenHash),
+          isNull(passwordResetTokens.usedAt),
+          gt(passwordResetTokens.expiresAt, new Date()),
+        ),
+      );
+    return token;
+  }
+
+  // Atomic reset completion: set the new password, mark every outstanding
+  // reset token for the user as used, and destroy all of that user's
+  // sessions (force re-login everywhere after a credential change).
+  async completePasswordReset(
+    userId: string,
+    tokenId: string,
+    hashedPassword: string,
+  ): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({ password: hashedPassword, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+
+      await tx
+        .update(passwordResetTokens)
+        .set({ usedAt: new Date() })
+        .where(
+          and(
+            eq(passwordResetTokens.userId, userId),
+            isNull(passwordResetTokens.usedAt),
+          ),
+        );
+
+      await tx
+        .delete(sessions)
+        .where(sql`${sessions.sess}->>'userId' = ${userId}`);
+    });
   }
 }
 

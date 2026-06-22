@@ -1,4 +1,4 @@
-import { Switch, Route, Link, useLocation } from "wouter";
+import { Switch, Route, Link, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -11,6 +11,8 @@ import RoutinesPage from "@/pages/routines";
 import RoutineDetailPage from "@/pages/routine-detail";
 import StatsPage from "@/pages/stats";
 import LoginPage from "@/pages/login";
+import ForgotPasswordPage from "@/pages/forgot-password";
+import ResetPasswordPage from "@/pages/reset-password";
 import ScorePage from "@/pages/score";
 import SettingsPage from "@/pages/settings";
 import { useAuth } from "@/hooks/use-auth";
@@ -92,6 +94,8 @@ function Router() {
         <Route path="/routines" component={RoutinesPage} />
         <Route path="/routines/:id" component={RoutineDetailPage} />
         <Route path="/settings" component={SettingsPage} />
+        <Route path="/forgot-password"><Redirect to="/" /></Route>
+        <Route path="/reset-password"><Redirect to="/" /></Route>
         <Route component={NotFound} />
       </Switch>
     </div>
@@ -195,7 +199,13 @@ function AppContent() {
   }
 
   if (!isAuthenticated) {
-    return <LoginPage />;
+    return (
+      <Switch>
+        <Route path="/forgot-password" component={ForgotPasswordPage} />
+        <Route path="/reset-password" component={ResetPasswordPage} />
+        <Route component={LoginPage} />
+      </Switch>
+    );
   }
 
   return (

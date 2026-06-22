@@ -2,11 +2,13 @@ import session from "express-session";
 import type { Express, Request, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { storage } from "./storage";
+import { sendPasswordResetEmail } from "./email";
 
 declare module "express-session" {
   interface SessionData {
@@ -58,6 +60,50 @@ const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
 });
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+const resetPasswordSchema = z.object({
+  token: z
+    .string()
+    .min(20)
+    .max(200)
+    .regex(/^[A-Za-z0-9_-]+$/, "Invalid reset token"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 60 minutes
+
+function sha256(value: string): string {
+  return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+// Base URL for emailed reset links. Prefer an explicit configured origin so a
+// forged Host/Origin header can never poison the link; fall back to the
+// request origin (fine for dev / single-domain deploys).
+function getBaseUrl(req: Request): string {
+  const configured = process.env.APP_BASE_URL;
+  if (configured) return configured.replace(/\/+$/, "");
+  return `${req.protocol}://${req.get("host")}`;
+}
+
+// Minimal in-memory rate limiter (per-process). Keeps a brute-forcer from
+// hammering the reset endpoints without pulling in a dependency.
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function rateLimit(key: string, max: number, windowMs: number): boolean {
+  const now = Date.now();
+  const bucket = rateBuckets.get(key);
+  if (!bucket || now > bucket.resetAt) {
+    rateBuckets.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  if (bucket.count >= max) return false;
+  bucket.count += 1;
+  return true;
+}
 
 const DEMO_USER_ID = "55504735";
 const DEMO_EMAIL = "suomi.ri.9@gmail.com";
@@ -193,6 +239,95 @@ export async function setupAuth(app: Express) {
       res.clearCookie("connect.sid", { httpOnly: true, secure: true, sameSite: "lax" });
       res.json({ message: "Logged out" });
     });
+  });
+
+  // Generic response used for ALL forgot-password outcomes so an attacker can't
+  // tell whether an email is registered.
+  const FORGOT_GENERIC = {
+    message: "If an account exists for that email, a reset link has been sent.",
+  };
+
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const input = forgotPasswordSchema.parse(req.body);
+      const normalizedEmail = input.email.trim().toLowerCase();
+
+      const ip = req.ip || "unknown";
+      if (!rateLimit(`forgot:${ip}:${normalizedEmail}`, 5, 15 * 60 * 1000)) {
+        // Still generic — don't reveal throttling tied a real account.
+        return res.json(FORGOT_GENERIC);
+      }
+
+      const user = await storage.getUserByEmail(normalizedEmail);
+      if (user) {
+        const rawToken = crypto.randomBytes(32).toString("base64url");
+        const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+        await storage.createPasswordResetToken(user.id, sha256(rawToken), expiresAt);
+
+        const resetUrl = `${getBaseUrl(req)}/reset-password?token=${rawToken}`;
+        try {
+          await sendPasswordResetEmail({
+            to: normalizedEmail,
+            resetUrl,
+            displayName: user.displayName,
+          });
+        } catch (sendErr) {
+          // Never leak send failures to the client.
+          console.error("Failed to send password reset email:", sendErr);
+        }
+      }
+
+      return res.json(FORGOT_GENERIC);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      console.error("Forgot-password error:", err);
+      // Stay generic even on unexpected errors.
+      return res.json(FORGOT_GENERIC);
+    }
+  });
+
+  app.get("/api/auth/reset-password/validate", async (req, res) => {
+    try {
+      const token = typeof req.query.token === "string" ? req.query.token : "";
+      if (!/^[A-Za-z0-9_-]{20,200}$/.test(token)) {
+        return res.json({ valid: false });
+      }
+      const record = await storage.getValidResetTokenByHash(sha256(token));
+      return res.json({ valid: !!record });
+    } catch (err) {
+      console.error("Validate-reset-token error:", err);
+      return res.json({ valid: false });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const ip = req.ip || "unknown";
+      if (!rateLimit(`reset:${ip}`, 10, 15 * 60 * 1000)) {
+        return res.status(429).json({ message: "Too many attempts. Try again later." });
+      }
+
+      const input = resetPasswordSchema.parse(req.body);
+      const record = await storage.getValidResetTokenByHash(sha256(input.token));
+      if (!record) {
+        return res
+          .status(400)
+          .json({ message: "This reset link is invalid or has expired." });
+      }
+
+      const hashedPassword = await bcrypt.hash(input.password, 10);
+      await storage.completePasswordReset(record.userId, record.id, hashedPassword);
+
+      return res.json({ message: "Password updated. You can now sign in." });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      console.error("Reset-password error:", err);
+      return res.status(500).json({ message: "Could not reset password" });
+    }
   });
 }
 
