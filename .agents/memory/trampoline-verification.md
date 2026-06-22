@@ -19,6 +19,17 @@ pages. Verify instead with `tsc --noEmit`, the workflow/HMR logs (no runtime
 errors after edits), and careful reasoning about the JSX/state changes. Only the
 login page itself is screenshot-verifiable.
 
+## A splash screen overlays the first ~1.5s of every fresh load
+`splash-screen.tsx` shows a full-screen animated app mark for `VISIBLE_MS` (~1.5s)
++ a fade on every page load (timer-based, not once-per-session), so `app_preview`
+screenshots of even UNauthenticated pages (`/forgot-password`, `/reset-password`)
+capture the splash overlay, not the page. The page DOES render underneath (e.g.
+the reset form's password inputs appear in the captured browser DOM logs).
+
+**How to apply:** don't retry screenshots expecting the splash to clear — fresh
+navigation re-arms it. Confirm unauth pages via the DOM/browser logs + code, the
+same as authenticated pages.
+
 ## Some TypeScript errors are pre-existing and runtime-safe
 `tsc --noEmit` reports a handful of long-standing errors that are NOT from
 current feature work and do not block the app (Vite/esbuild transpiles without

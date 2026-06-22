@@ -86,6 +86,10 @@ function sha256(value: string): string {
 function getBaseUrl(req: Request): string {
   const configured = process.env.APP_BASE_URL;
   if (configured) return configured.replace(/\/+$/, "");
+  // Prefer the platform-provided canonical domain over the request Host header
+  // so a spoofed Host can't poison the reset link sent to a victim's inbox.
+  const replitDomain = process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
+  if (replitDomain) return `https://${replitDomain}`;
   return `${req.protocol}://${req.get("host")}`;
 }
 
@@ -318,7 +322,17 @@ export async function setupAuth(app: Express) {
       }
 
       const hashedPassword = await bcrypt.hash(input.password, 10);
-      await storage.completePasswordReset(record.userId, record.id, hashedPassword);
+      const ok = await storage.completePasswordReset(
+        record.userId,
+        record.id,
+        hashedPassword,
+      );
+      if (!ok) {
+        // Lost a concurrent race (token consumed between precheck and commit).
+        return res
+          .status(400)
+          .json({ message: "This reset link is invalid or has expired." });
+      }
 
       return res.json({ message: "Password updated. You can now sign in." });
     } catch (err) {

@@ -50,6 +50,26 @@ Drizzle tables (see `shared/schema.ts`; auth tables in `shared/models/auth.ts`).
 
 Custom email/password authentication. All API routes are protected with `isAuthenticated` middleware. Data is filtered by `userId` (from session). The frontend shows a login/register form when unauthenticated. Demo user (id `55504735`) has email `suomi.ri.9@gmail.com` and password `tramplog2026`.
 
+### Password reset (forgot password by email)
+
+Email-based reset flow: request a link → emailed time-limited single-use link → set a new password. Three routes in `server/auth.ts` (all unauthenticated):
+
+- `POST /api/auth/forgot-password` — ALWAYS returns the same generic 200 (`FORGOT_GENERIC`) for existing/unknown/throttled emails so an attacker can't enumerate accounts. On a hit it generates a `crypto.randomBytes(32).toString("base64url")` raw token, stores **only its sha256 hex** in `passwordResetTokens` with a 60-minute expiry (`RESET_TOKEN_TTL_MS`), and emails the link. Send errors are swallowed (logged server-side) to stay generic.
+- `GET /api/auth/reset-password/validate?token=` — UX precheck; returns `{valid}` (token format-checked then looked up unused+unexpired). Token validity is the only thing exposed, acceptable given 256-bit entropy.
+- `POST /api/auth/reset-password` — validates the token, bcrypt-hashes the new password, and atomically completes the reset.
+
+**Reset link base URL** (`getBaseUrl`): prefers `APP_BASE_URL` env, then the platform-provided `REPLIT_DOMAINS` (canonical `https://` domain), and only falls back to the request `Host` header in dev — so a forged Host can't poison the link sent to a victim's inbox.
+
+**Single-use is enforced atomically** in `storage.completePasswordReset(userId, tokenId, hashedPassword)` (returns `boolean`): inside ONE transaction it does a conditional `UPDATE ... WHERE id=tokenId AND userId AND usedAt IS NULL AND expiresAt > now() RETURNING` — a concurrent submit blocks on the row lock then matches 0 rows (READ COMMITTED re-checks the committed row), so only one reset wins; if 0 rows it returns `false` (route → 400, nothing changed). On success it also sets the new password, marks the user's other outstanding tokens used, and **deletes all of that user's `sessions`** (`sess->>'userId'`) to force re-login everywhere. The route honors the boolean (400 on a lost race).
+
+**Rate limiting**: light in-memory per-process limiter (`rateLimit`) on both POST routes (forgot keyed by ip+email, reset by ip).
+
+**Schema**: `passwordResetTokens` table in `shared/models/auth.ts` (id uuid pk, userId, `tokenHash` unique idx, expiresAt, usedAt nullable, createdAt). New cols only — no data migration needed.
+
+**Email** (`server/email.ts`): `sendPasswordResetEmail({to, resetUrl, displayName})` sends via the **Resend** Replit connector through `@replit/connectors-sdk` (`connectors.proxy("resend", "/emails", {method, body})` — the SDK handles auth/token refresh and JSON-encodes an object body). Themed dark-monospace HTML + plaintext alternative; FROM defaults to `onboarding@resend.dev` (override via `RESET_EMAIL_FROM`). In non-production it ALSO logs the reset link to the server console for local testing; a non-2xx Resend response throws.
+
+**Frontend**: `client/src/pages/forgot-password.tsx` (request form → generic confirmation) and `client/src/pages/reset-password.tsx` (validates the `?token=`, shows checking/invalid/form/done states, requires matching ≥6-char passwords) match the login theme. `login.tsx` has a "Forgot password?" link (login mode only). `App.tsx` routes `/forgot-password` + `/reset-password` in the unauthenticated `<Switch>` and redirects authed users away from them.
+
 ## Design System (Dark Monospace)
 
 Near-black dark theme is the **default** baseline (`<html class="dark">` in `client/index.html`; theme-color `#0a0b10`). A **light/dark toggle** lets users switch to a light theme (Settings → Preferences → "Dark Mode" `Switch`, `data-testid="toggle-theme"`); the choice persists in `localStorage` key `theme` (default `dark` — only the literal value `'light'` opts out). The theme store + hook (`client/src/lib/theme.ts` + `client/src/hooks/use-theme.ts`) mirror the offline-mode/archive-cascade pattern (`getTheme`/`applyTheme`/`setTheme`/`subscribeTheme`, NOT a React context provider): `applyTheme` toggles the `.dark` class on `<html>` and updates the root background + `theme-color` meta (`#0a0b10` dark / `#f4f6f9` light). Tailwind is `darkMode:["class"]`. In `client/src/index.css`, `:root` is now the LIGHT palette (`color-scheme: light`) and `.dark` holds the original dark palette; the helper classes `.card-3d`/`.glass-surface`/`.bg-mesh` have a LIGHT base plus a `.dark` override that restores the exact prior dark look (the dark box-shadows/gradients were MOVED into the `.dark` rules). **First-paint flash avoidance** is a three-way contract that must stay in lockstep: `<html class="dark">` (no-JS default), an inline `<script>` in `client/index.html` that applies the stored theme before CSS/JS load, and `theme.ts` (re-applied once in `main.tsx` before render) — if you change the default or the bg hexes, update all three together. Most other components already carried `dark:` variants, so they adapt automatically; existing users with no stored pref keep the dark theme unchanged.

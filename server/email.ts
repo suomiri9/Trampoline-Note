@@ -1,8 +1,11 @@
-// Password-reset email delivery.
+// Password-reset email delivery via the Resend integration.
 //
-// Until the Resend integration is authorized + wired, this falls back to
-// logging the reset URL to the server console so the full flow remains
-// testable. Once Resend is connected, the real send happens here.
+// Uses the Replit Resend connector through @replit/connectors-sdk, which
+// handles identity, token refresh, and auth headers automatically. In
+// non-production environments the reset link is also logged to the server
+// console so the flow stays easy to test locally.
+
+import { ReplitConnectors } from "@replit/connectors-sdk";
 
 interface PasswordResetEmailParams {
   to: string;
@@ -12,6 +15,9 @@ interface PasswordResetEmailParams {
 
 const FROM_ADDRESS = process.env.RESET_EMAIL_FROM || "onboarding@resend.dev";
 const APP_NAME = "Trampoline Note";
+
+// The SDK fetches fresh auth per request, so a single instance is safe to reuse.
+const connectors = new ReplitConnectors();
 
 function resetEmailHtml(resetUrl: string, displayName?: string | null): string {
   const greeting = displayName ? `Hi ${displayName},` : "Hi,";
@@ -47,9 +53,25 @@ export async function sendPasswordResetEmail({
   resetUrl,
   displayName,
 }: PasswordResetEmailParams): Promise<void> {
-  // Resend wiring is added after the integration is authorized.
-  console.log(`[email] Password reset link for ${to}: ${resetUrl}`);
-  void FROM_ADDRESS;
-  void resetEmailHtml;
-  void resetEmailText;
+  if (process.env.NODE_ENV !== "production") {
+    // Dev aid: keep the link visible in logs for local testing.
+    console.log(`[email] Password reset link for ${to}: ${resetUrl}`);
+  }
+
+  // Resend integration: send through the connectors proxy.
+  const response = await connectors.proxy("resend", "/emails", {
+    method: "POST",
+    body: {
+      from: FROM_ADDRESS,
+      to: [to],
+      subject: `Reset your ${APP_NAME} password`,
+      html: resetEmailHtml(resetUrl, displayName),
+      text: resetEmailText(resetUrl, displayName),
+    },
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Resend send failed (${response.status}): ${detail}`);
+  }
 }

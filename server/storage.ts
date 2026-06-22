@@ -69,7 +69,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<void>;
   getValidResetTokenByHash(tokenHash: string): Promise<PasswordResetToken | undefined>;
-  completePasswordReset(userId: string, tokenId: string, hashedPassword: string): Promise<void>;
+  completePasswordReset(userId: string, tokenId: string, hashedPassword: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -370,15 +370,37 @@ export class DatabaseStorage implements IStorage {
     return token;
   }
 
-  // Atomic reset completion: set the new password, mark every outstanding
-  // reset token for the user as used, and destroy all of that user's
-  // sessions (force re-login everywhere after a credential change).
+  // Atomic reset completion. Returns false if the specific token could not be
+  // consumed (already used, expired, or lost a concurrent race) — in that case
+  // nothing is changed. On success: consume THIS token, set the new password,
+  // invalidate every other outstanding reset token for the user, and destroy
+  // all of that user's sessions (force re-login everywhere after a change).
   async completePasswordReset(
     userId: string,
     tokenId: string,
     hashedPassword: string,
-  ): Promise<void> {
-    await db.transaction(async (tx) => {
+  ): Promise<boolean> {
+    return await db.transaction(async (tx) => {
+      // Conditional UPDATE...RETURNING is the atomic single-use guard: a
+      // concurrent submit blocks on the row lock, then re-evaluates the
+      // `usedAt IS NULL` predicate against the committed row and matches 0 rows.
+      const consumed = await tx
+        .update(passwordResetTokens)
+        .set({ usedAt: new Date() })
+        .where(
+          and(
+            eq(passwordResetTokens.id, tokenId),
+            eq(passwordResetTokens.userId, userId),
+            isNull(passwordResetTokens.usedAt),
+            gt(passwordResetTokens.expiresAt, new Date()),
+          ),
+        )
+        .returning({ id: passwordResetTokens.id });
+
+      if (consumed.length === 0) {
+        return false;
+      }
+
       await tx
         .update(users)
         .set({ password: hashedPassword, updatedAt: new Date() })
@@ -397,6 +419,8 @@ export class DatabaseStorage implements IStorage {
       await tx
         .delete(sessions)
         .where(sql`${sessions.sess}->>'userId' = ${userId}`);
+
+      return true;
     });
   }
 }
