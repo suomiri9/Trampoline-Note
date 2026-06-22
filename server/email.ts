@@ -19,21 +19,50 @@ const APP_NAME = "Trampoline Note";
 // The SDK fetches fresh auth per request, so a single instance is safe to reuse.
 const connectors = new ReplitConnectors();
 
+// The email adapts to the recipient's device light/dark setting via the
+// `prefers-color-scheme` media query. The inline styles are the LIGHT baseline
+// (the safe default for clients that don't support embedded <style> or the
+// media query); the <style> block restores the dark monospace look when the
+// device is in dark mode. `color-scheme`/`supported-color-schemes` tell mail
+// clients we handle theming ourselves so they don't force their own inversion.
 function resetEmailHtml(resetUrl: string, displayName?: string | null): string {
   const greeting = displayName ? `Hi ${displayName},` : "Hi,";
-  return `
-  <div style="background:#0a0b10;padding:32px 16px;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-    <div style="max-width:480px;margin:0 auto;background:#12141c;border:1px solid #23262f;border-radius:16px;padding:32px;color:#e7e9ee;">
-      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#6b86ff;margin-bottom:8px;">// ${APP_NAME}</div>
-      <h1 style="font-size:24px;margin:0 0 16px;color:#ffffff;">Reset your password</h1>
-      <p style="font-size:15px;line-height:1.6;color:#aab0bd;margin:0 0 16px;">${greeting}</p>
-      <p style="font-size:15px;line-height:1.6;color:#aab0bd;margin:0 0 24px;">We received a request to reset your password. Click the button below to choose a new one. This link expires in 60 minutes.</p>
-      <a href="${resetUrl}" style="display:inline-block;background:#3b6bff;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 24px;border-radius:12px;font-size:15px;">Reset password</a>
-      <p style="font-size:13px;line-height:1.6;color:#7c8290;margin:24px 0 0;">If the button doesn't work, paste this link into your browser:</p>
-      <p style="font-size:12px;line-height:1.6;color:#6b86ff;word-break:break-all;margin:4px 0 0;font-family:'JetBrains Mono',monospace;">${resetUrl}</p>
-      <p style="font-size:13px;line-height:1.6;color:#7c8290;margin:24px 0 0;">If you didn't request this, you can safely ignore this email — your password won't change.</p>
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <title>Reset your ${APP_NAME} password</title>
+  <style>
+    :root { color-scheme: light dark; supported-color-schemes: light dark; }
+    @media (prefers-color-scheme: dark) {
+      .email-body { background:#0a0b10 !important; }
+      .email-card { background:#12141c !important; border-color:#23262f !important; color:#e7e9ee !important; }
+      .email-eyebrow { color:#6b86ff !important; }
+      .email-heading { color:#ffffff !important; }
+      .email-text { color:#aab0bd !important; }
+      .email-muted { color:#7c8290 !important; }
+      .email-link { color:#6b86ff !important; }
+    }
+  </style>
+</head>
+<body class="email-body" style="margin:0;padding:0;background:#f4f6f9;">
+  <div class="email-body" style="background:#f4f6f9;padding:32px 16px;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <div class="email-card" style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #e2e6ec;border-radius:16px;padding:32px;color:#2a2d35;">
+      <div class="email-eyebrow" style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#3b5bd9;margin-bottom:8px;">// ${APP_NAME}</div>
+      <h1 class="email-heading" style="font-size:24px;margin:0 0 16px;color:#0a0b10;">Reset your password</h1>
+      <p class="email-text" style="font-size:15px;line-height:1.6;color:#51586a;margin:0 0 16px;">${greeting}</p>
+      <p class="email-text" style="font-size:15px;line-height:1.6;color:#51586a;margin:0 0 24px;">We received a request to reset your password. Click the button below to choose a new one. This link expires in 60 minutes.</p>
+      <a href="${resetUrl}" class="email-cta" style="display:inline-block;background:#3b6bff;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 24px;border-radius:12px;font-size:15px;">Reset password</a>
+      <p class="email-muted" style="font-size:13px;line-height:1.6;color:#858b99;margin:24px 0 0;">If the button doesn't work, paste this link into your browser:</p>
+      <p class="email-link" style="font-size:12px;line-height:1.6;color:#3b5bd9;word-break:break-all;margin:4px 0 0;font-family:'JetBrains Mono',monospace;">${resetUrl}</p>
+      <p class="email-muted" style="font-size:13px;line-height:1.6;color:#858b99;margin:24px 0 0;">If you didn't request this, you can safely ignore this email — your password won't change.</p>
     </div>
-  </div>`;
+  </div>
+</body>
+</html>`;
 }
 
 function resetEmailText(resetUrl: string, displayName?: string | null): string {
