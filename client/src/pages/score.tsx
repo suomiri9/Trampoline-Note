@@ -1272,17 +1272,20 @@ export default function ScorePage() {
                     )}
                   </div>
                   {editingRoutine === "set" && customSkillIds && allSkills && (
-                    <SkillEditorOverlay
-                      title="Edit Skills"
-                      skillIds={customSkillIds}
-                      allSkills={allSkills}
-                      onSkillIdsChange={(ids) => { setCustomSkillIds(ids); form.setValue("attempt", ids.length); }}
-                      onClose={() => setEditingRoutine(null)}
-                      filterSkills={(s) => s.isDrill !== 1}
-                      uidPrefix="skill"
-                      closeVariant="icon"
-                      className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 rounded-xl shadow-lg shadow-black/5 p-4"
-                    />
+                    <div className="absolute inset-0 z-20 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setEditingRoutine(null); }}>
+                      <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-xl shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
+                        <SkillEditorOverlay
+                          title="Edit Skills"
+                          skillIds={customSkillIds}
+                          allSkills={allSkills}
+                          onSkillIdsChange={(ids) => { setCustomSkillIds(ids); form.setValue("attempt", ids.length); }}
+                          onClose={() => setEditingRoutine(null)}
+                          filterSkills={(s) => s.isDrill !== 1}
+                          uidPrefix="skill"
+                          className="flex-1 min-h-0"
+                        />
+                      </div>
+                    </div>
                   )}
                   <div className={cn("grid grid-cols-3 gap-2 sm:gap-3", scoreGridCols)}>
                     <FormField control={form.control} name="execution" render={({ field }) => (
@@ -1360,17 +1363,20 @@ export default function ScorePage() {
                       )}
                     </div>
                     {editingRoutine === "vol" && customSkillIdsVol && allSkills && (
-                      <SkillEditorOverlay
-                        title="Edit Skills (Vol)"
-                        skillIds={customSkillIdsVol}
-                        allSkills={allSkills}
-                        onSkillIdsChange={(ids) => { setCustomSkillIdsVol(ids); form.setValue("attemptVol", ids.length); }}
-                        onClose={() => setEditingRoutine(null)}
-                        filterSkills={(s) => s.isDrill !== 1}
-                        uidPrefix="vskill"
-                        closeVariant="icon"
-                        className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 rounded-xl shadow-lg shadow-black/5 p-4"
-                      />
+                      <div className="absolute inset-0 z-20 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setEditingRoutine(null); }}>
+                        <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-xl shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
+                          <SkillEditorOverlay
+                            title="Edit Skills (Vol)"
+                            skillIds={customSkillIdsVol}
+                            allSkills={allSkills}
+                            onSkillIdsChange={(ids) => { setCustomSkillIdsVol(ids); form.setValue("attemptVol", ids.length); }}
+                            onClose={() => setEditingRoutine(null)}
+                            filterSkills={(s) => s.isDrill !== 1}
+                            uidPrefix="vskill"
+                            className="flex-1 min-h-0"
+                          />
+                        </div>
+                      </div>
                     )}
                     <div className={cn("grid grid-cols-3 gap-2 sm:gap-3", scoreGridCols)}>
                       <FormField control={form.control} name="executionVol" render={({ field }) => (
