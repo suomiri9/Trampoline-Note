@@ -109,6 +109,11 @@ function ScoreBreakdown({ e, d, h, t, label, routineName, total, totalColor, tot
   );
 }
 
+// Shown on the score card only for a partial routine (anything other than a full 10).
+function attemptSuffix(n: number | null | undefined): string {
+  return n != null && n !== 10 ? ` · ${n} skill${n === 1 ? "" : "s"}` : "";
+}
+
 function ScoreGroups({ score, totalColor, routines, firstPracticedByRoutine }: { score: Score; totalColor: string; routines?: Routine[]; firstPracticedByRoutine?: Map<number, string> }) {
   const isMulti = score.category === "both" || score.category === "vol_vol";
   const group1Label = score.category === "vol_vol" ? "VOL 1" : score.category === "vol" ? "VOL" : "SET";
@@ -128,7 +133,7 @@ function ScoreGroups({ score, totalColor, routines, firstPracticedByRoutine }: {
         h={effectiveH(score.horizontal, score.horizontalTwo, score.synchro)}
         t={score.timeOfFlight}
         synchro={score.synchro}
-        label={`${group1Label}${score.attempt != null ? ` · attempt ${score.attempt}` : ""}`}
+        label={`${group1Label}${attemptSuffix(score.attempt)}`}
         routineName={routineName(score.routineId)}
         total={score.total}
         totalColor={totalColor}
@@ -141,7 +146,7 @@ function ScoreGroups({ score, totalColor, routines, firstPracticedByRoutine }: {
           h={effectiveH(score.horizontalVol ?? 0, score.horizontalTwoVol, score.synchro)}
           t={score.timeOfFlightVol ?? 0}
           synchro={score.synchro}
-          label={`${group2Label}${score.attemptVol != null ? ` · attempt ${score.attemptVol}` : ""}`}
+          label={`${group2Label}${attemptSuffix(score.attemptVol)}`}
           routineName={routineName(score.routineIdVol)}
           total={score.totalVol ?? 0}
           totalColor={totalColor}
@@ -775,8 +780,8 @@ export default function ScorePage() {
       date: score.date,
       routineId: score.routineId ?? undefined,
       routineIdVol: score.routineIdVol ?? undefined,
-      attempt: null,
-      attemptVol: null,
+      attempt: score.attempt ?? null,
+      attemptVol: score.attemptVol ?? null,
       type: score.type as any,
       category: score.category as any,
       competitionName: score.competitionName ?? "",
@@ -874,6 +879,7 @@ export default function ScorePage() {
       if (rId && routines) {
         const routine = routines.find(r => r.id === Number(rId));
         if (routine) setCustomSkillIds([...routine.skillIds]);
+        form.setValue("attempt", null);
       } else {
         setCustomSkillIds(null);
       }
@@ -885,6 +891,7 @@ export default function ScorePage() {
       if (rIdVol && routines) {
         const routineV = routines.find(r => r.id === Number(rIdVol));
         if (routineV) setCustomSkillIdsVol([...routineV.skillIds]);
+        form.setValue("attemptVol", null);
       } else {
         setCustomSkillIdsVol(null);
       }
@@ -1247,13 +1254,26 @@ export default function ScorePage() {
                         Skills ({customSkillIds.length})
                       </Button>
                     )}
+                    {!form.watch("routineId") && (
+                      <FormField control={form.control} name="attempt" render={({ field }) => (
+                        <FormItem className="shrink-0 w-28">
+                          <FormLabel>Skills done</FormLabel>
+                          <FormControl>
+                            <Input type="number" min={0} max={10} step={1} inputMode="numeric" placeholder="e.g. 7"
+                              value={field.value == null || Number.isNaN(field.value) ? "" : field.value}
+                              onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(null); return; } const n = Math.trunc(Number(raw)); if (Number.isFinite(n) && n >= 0) field.onChange(Math.min(n, 10)); }}
+                              className="rounded-xl h-11 px-2 text-sm font-mono" data-testid="input-attempt" />
+                          </FormControl>
+                        </FormItem>
+                      )} />
+                    )}
                   </div>
                   {editingRoutine === "set" && customSkillIds && allSkills && (
                     <SkillEditorOverlay
                       title="Edit Skills"
                       skillIds={customSkillIds}
                       allSkills={allSkills}
-                      onSkillIdsChange={setCustomSkillIds}
+                      onSkillIdsChange={(ids) => { setCustomSkillIds(ids); form.setValue("attempt", ids.length); }}
                       onClose={() => setEditingRoutine(null)}
                       filterSkills={(s) => s.isDrill !== 1}
                       uidPrefix="skill"
@@ -1319,13 +1339,26 @@ export default function ScorePage() {
                           Skills ({customSkillIdsVol.length})
                         </Button>
                       )}
+                      {!form.watch("routineIdVol") && (
+                        <FormField control={form.control} name="attemptVol" render={({ field }) => (
+                          <FormItem className="shrink-0 w-28">
+                            <FormLabel>Skills done</FormLabel>
+                            <FormControl>
+                              <Input type="number" min={0} max={10} step={1} inputMode="numeric" placeholder="e.g. 7"
+                                value={field.value == null || Number.isNaN(field.value) ? "" : field.value}
+                                onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(null); return; } const n = Math.trunc(Number(raw)); if (Number.isFinite(n) && n >= 0) field.onChange(Math.min(n, 10)); }}
+                                className="rounded-xl h-11 px-2 text-sm font-mono" data-testid="input-attempt-vol" />
+                            </FormControl>
+                          </FormItem>
+                        )} />
+                      )}
                     </div>
                     {editingRoutine === "vol" && customSkillIdsVol && allSkills && (
                       <SkillEditorOverlay
                         title="Edit Skills (Vol)"
                         skillIds={customSkillIdsVol}
                         allSkills={allSkills}
-                        onSkillIdsChange={setCustomSkillIdsVol}
+                        onSkillIdsChange={(ids) => { setCustomSkillIdsVol(ids); form.setValue("attemptVol", ids.length); }}
                         onClose={() => setEditingRoutine(null)}
                         filterSkills={(s) => s.isDrill !== 1}
                         uidPrefix="vskill"
