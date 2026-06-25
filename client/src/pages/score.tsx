@@ -920,6 +920,8 @@ export default function ScorePage() {
       skipDDAutoFill.current = false;
       return;
     }
+    // Only a routine drives DD auto-fill; ad-hoc skill picking (no routine) records the count only.
+    if (!form.getValues("routineId")) return;
     const cat = form.getValues("category");
     const d = (cat === "set" || cat === "both") ? 0 : Number(calcDDFromSkillIds(customSkillIds, allSkills).toFixed(1));
     form.setValue("difficulty", d);
@@ -927,6 +929,7 @@ export default function ScorePage() {
 
   useEffect(() => {
     if (!customSkillIdsVol || !allSkills) return;
+    if (!form.getValues("routineIdVol")) return;
     form.setValue("difficultyVol", Number(calcDDFromSkillIds(customSkillIdsVol, allSkills).toFixed(1)));
   }, [customSkillIdsVol, allSkills]);
 
@@ -1255,20 +1258,13 @@ export default function ScorePage() {
                       </Button>
                     )}
                     {!form.watch("routineId") && (
-                      <FormField control={form.control} name="attempt" render={({ field }) => (
-                        <FormItem className="shrink-0">
-                          <FormControl>
-                            <div className="flex items-center gap-1.5 h-11 rounded-xl border border-primary/20 px-3 text-xs">
-                              <Pencil className="h-3 w-3" />
-                              <span>Skills</span>
-                              <Input type="number" min={0} max={10} step={1} inputMode="numeric" placeholder="10" aria-label="Skills done"
-                                value={field.value == null || Number.isNaN(field.value) ? "" : field.value}
-                                onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(null); return; } const n = Math.trunc(Number(raw)); if (Number.isFinite(n) && n >= 0) field.onChange(Math.min(n, 10)); }}
-                                className="w-12 h-7 border-0 bg-transparent px-0 text-sm font-mono text-center shadow-none focus-visible:ring-0" data-testid="input-attempt" />
-                            </div>
-                          </FormControl>
-                        </FormItem>
-                      )} />
+                      <Button type="button" variant="outline" size="sm"
+                        className="h-11 rounded-xl border-primary/20 text-xs gap-1.5 shrink-0"
+                        onClick={() => { if (!customSkillIds) setCustomSkillIds([]); setEditingRoutine("set"); }}
+                        data-testid="button-attempt">
+                        <Pencil className="h-3 w-3" />
+                        Skills{form.watch("attempt") != null ? ` (${form.watch("attempt")})` : ""}
+                      </Button>
                     )}
                   </div>
                   {editingRoutine === "set" && customSkillIds && allSkills && (
@@ -1343,20 +1339,13 @@ export default function ScorePage() {
                         </Button>
                       )}
                       {!form.watch("routineIdVol") && (
-                        <FormField control={form.control} name="attemptVol" render={({ field }) => (
-                          <FormItem className="shrink-0">
-                            <FormControl>
-                              <div className="flex items-center gap-1.5 h-11 rounded-xl border border-primary/20 px-3 text-xs">
-                                <Pencil className="h-3 w-3" />
-                                <span>Skills</span>
-                                <Input type="number" min={0} max={10} step={1} inputMode="numeric" placeholder="10" aria-label="Skills done"
-                                  value={field.value == null || Number.isNaN(field.value) ? "" : field.value}
-                                  onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(null); return; } const n = Math.trunc(Number(raw)); if (Number.isFinite(n) && n >= 0) field.onChange(Math.min(n, 10)); }}
-                                  className="w-12 h-7 border-0 bg-transparent px-0 text-sm font-mono text-center shadow-none focus-visible:ring-0" data-testid="input-attempt-vol" />
-                              </div>
-                            </FormControl>
-                          </FormItem>
-                        )} />
+                        <Button type="button" variant="outline" size="sm"
+                          className="h-11 rounded-xl border-primary/20 text-xs gap-1.5 shrink-0"
+                          onClick={() => { if (!customSkillIdsVol) setCustomSkillIdsVol([]); setEditingRoutine("vol"); }}
+                          data-testid="button-attempt-vol">
+                          <Pencil className="h-3 w-3" />
+                          Skills{form.watch("attemptVol") != null ? ` (${form.watch("attemptVol")})` : ""}
+                        </Button>
                       )}
                     </div>
                     {editingRoutine === "vol" && customSkillIdsVol && allSkills && (
