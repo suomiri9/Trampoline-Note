@@ -1269,14 +1269,13 @@ export default function ScorePage() {
                   </div>
                   {editingRoutine === "set" && customSkillIds && allSkills && (
                     <SkillEditorOverlay
-                      title="Edit Skills"
+                      title={form.watch("category") === "vol_vol" ? "Vol 1" : form.watch("category") === "vol" ? "Vol" : "Set"}
                       skillIds={customSkillIds}
                       allSkills={allSkills}
                       onSkillIdsChange={(ids) => { setCustomSkillIds(ids); form.setValue("attempt", ids.length); }}
                       onClose={() => setEditingRoutine(null)}
                       filterSkills={(s) => s.isDrill !== 1}
                       uidPrefix="skill"
-                      closeVariant="icon"
                       className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 rounded-xl shadow-lg shadow-black/5 p-4"
                     />
                   )}
@@ -1350,14 +1349,13 @@ export default function ScorePage() {
                     </div>
                     {editingRoutine === "vol" && customSkillIdsVol && allSkills && (
                       <SkillEditorOverlay
-                        title="Edit Skills (Vol)"
+                        title={form.watch("category") === "vol_vol" ? "Vol 2" : "Vol"}
                         skillIds={customSkillIdsVol}
                         allSkills={allSkills}
                         onSkillIdsChange={(ids) => { setCustomSkillIdsVol(ids); form.setValue("attemptVol", ids.length); }}
                         onClose={() => setEditingRoutine(null)}
                         filterSkills={(s) => s.isDrill !== 1}
                         uidPrefix="vskill"
-                        closeVariant="icon"
                         className="absolute inset-0 bg-background/97 backdrop-blur-sm z-10 rounded-xl shadow-lg shadow-black/5 p-4"
                       />
                     )}
