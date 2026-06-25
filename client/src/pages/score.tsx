@@ -1256,13 +1256,16 @@ export default function ScorePage() {
                     )}
                     {!form.watch("routineId") && (
                       <FormField control={form.control} name="attempt" render={({ field }) => (
-                        <FormItem className="shrink-0 w-28">
-                          <FormLabel>Skills done</FormLabel>
+                        <FormItem className="shrink-0">
                           <FormControl>
-                            <Input type="number" min={0} max={10} step={1} inputMode="numeric" placeholder="e.g. 7"
-                              value={field.value == null || Number.isNaN(field.value) ? "" : field.value}
-                              onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(null); return; } const n = Math.trunc(Number(raw)); if (Number.isFinite(n) && n >= 0) field.onChange(Math.min(n, 10)); }}
-                              className="rounded-xl h-11 px-2 text-sm font-mono" data-testid="input-attempt" />
+                            <div className="flex items-center gap-1.5 h-11 rounded-xl border border-primary/20 px-3 text-xs">
+                              <Pencil className="h-3 w-3" />
+                              <span>Skills</span>
+                              <Input type="number" min={0} max={10} step={1} inputMode="numeric" placeholder="10" aria-label="Skills done"
+                                value={field.value == null || Number.isNaN(field.value) ? "" : field.value}
+                                onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(null); return; } const n = Math.trunc(Number(raw)); if (Number.isFinite(n) && n >= 0) field.onChange(Math.min(n, 10)); }}
+                                className="w-12 h-7 border-0 bg-transparent px-0 text-sm font-mono text-center shadow-none focus-visible:ring-0" data-testid="input-attempt" />
+                            </div>
                           </FormControl>
                         </FormItem>
                       )} />
@@ -1341,13 +1344,16 @@ export default function ScorePage() {
                       )}
                       {!form.watch("routineIdVol") && (
                         <FormField control={form.control} name="attemptVol" render={({ field }) => (
-                          <FormItem className="shrink-0 w-28">
-                            <FormLabel>Skills done</FormLabel>
+                          <FormItem className="shrink-0">
                             <FormControl>
-                              <Input type="number" min={0} max={10} step={1} inputMode="numeric" placeholder="e.g. 7"
-                                value={field.value == null || Number.isNaN(field.value) ? "" : field.value}
-                                onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(null); return; } const n = Math.trunc(Number(raw)); if (Number.isFinite(n) && n >= 0) field.onChange(Math.min(n, 10)); }}
-                                className="rounded-xl h-11 px-2 text-sm font-mono" data-testid="input-attempt-vol" />
+                              <div className="flex items-center gap-1.5 h-11 rounded-xl border border-primary/20 px-3 text-xs">
+                                <Pencil className="h-3 w-3" />
+                                <span>Skills</span>
+                                <Input type="number" min={0} max={10} step={1} inputMode="numeric" placeholder="10" aria-label="Skills done"
+                                  value={field.value == null || Number.isNaN(field.value) ? "" : field.value}
+                                  onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(null); return; } const n = Math.trunc(Number(raw)); if (Number.isFinite(n) && n >= 0) field.onChange(Math.min(n, 10)); }}
+                                  className="w-12 h-7 border-0 bg-transparent px-0 text-sm font-mono text-center shadow-none focus-visible:ring-0" data-testid="input-attempt-vol" />
+                              </div>
                             </FormControl>
                           </FormItem>
                         )} />
