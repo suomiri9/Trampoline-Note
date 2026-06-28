@@ -271,16 +271,24 @@ function effectiveTotal(score: Pick<Score, "category" | "total" | "totalVol">): 
   return score.total;
 }
 
+// Average only the values that were actually entered. Empty boxes are stored as 0,
+// so treat 0 as "absent": one value alone is used as-is, two values are averaged.
+function avgPresent(a: number, b: number): number {
+  const present = [a, b].filter((v) => v > 0);
+  if (present.length === 0) return 0;
+  return present.reduce((sum, v) => sum + v, 0) / present.length;
+}
+
 // Combined execution: two judges summed (E1 + E2), or the first judge doubled (E1 * 2).
-// In synchro mode the two boxes are the two athletes' scores, AVERAGED.
+// In synchro mode the two boxes are the two athletes' scores, AVERAGED (only when both entered).
 function effectiveE(e: number, eTwo: number | null | undefined, dbl: boolean | null | undefined, synchro?: boolean | null): number {
-  if (synchro) return ((e ?? 0) + (eTwo ?? 0)) / 2;
+  if (synchro) return avgPresent(e ?? 0, eTwo ?? 0);
   return dbl ? e * 2 : e + (eTwo ?? 0);
 }
 
-// Horizontal displacement: single value, or the AVERAGE of two athletes when synchro.
+// Horizontal displacement: single value, or the AVERAGE of two athletes when synchro (only when both entered).
 function effectiveH(h: number, hTwo: number | null | undefined, synchro?: boolean | null): number {
-  if (synchro) return ((h ?? 0) + (hTwo ?? 0)) / 2;
+  if (synchro) return avgPresent(h ?? 0, hTwo ?? 0);
   return h ?? 0;
 }
 
