@@ -923,18 +923,14 @@ export default function ScorePage() {
       }
     }
 
-    const eEff = sync
-      ? (Number(e || 0) + Number(eTwo || 0)) / 2
-      : dblE ? Number(e || 0) * 2 : Number(e || 0) + Number(eTwo || 0);
-    const hEff = sync ? (Number(h || 0) + Number(hTwo || 0)) / 2 : Number(h || 0);
+    const eEff = effectiveE(Number(e || 0), Number(eTwo || 0), !!dblE, !!sync);
+    const hEff = effectiveH(Number(h || 0), Number(hTwo || 0), !!sync);
     const total = eEff + Number(d || 0) + hEff + Number(t || 0);
     form.setValue("total", Number(total.toFixed(3)));
 
     if (cat === "both" || cat === "vol_vol") {
-      const eEff2 = sync
-        ? (Number(e2 || 0) + Number(eTwoVol || 0)) / 2
-        : dblEVol ? Number(e2 || 0) * 2 : Number(e2 || 0) + Number(eTwoVol || 0);
-      const hEff2 = sync ? (Number(h2 || 0) + Number(hTwoVol || 0)) / 2 : Number(h2 || 0);
+      const eEff2 = effectiveE(Number(e2 || 0), Number(eTwoVol || 0), !!dblEVol, !!sync);
+      const hEff2 = effectiveH(Number(h2 || 0), Number(hTwoVol || 0), !!sync);
       const total2 = eEff2 + Number(d2 || 0) + hEff2 + Number(t2 || 0);
       form.setValue("totalVol", Number(total2.toFixed(3)));
     }
