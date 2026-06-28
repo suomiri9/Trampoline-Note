@@ -458,10 +458,28 @@ const GRAPH_SERIES = [
 
 type GraphSeriesKey = (typeof GRAPH_SERIES)[number]["key"];
 
-function ScoreGraph({ scores }: { scores: Score[] }) {
+function ScoreGraph({
+  scores,
+  idSuffix = "",
+  eyebrow = "Score Trend",
+  eyebrowAccent = "/ Breakdown",
+  subtitle = "One point per routine — Total vs E, DD, HD & TOF.",
+  synchroLabels = false,
+}: {
+  scores: Score[];
+  idSuffix?: string;
+  eyebrow?: string;
+  eyebrowAccent?: string;
+  subtitle?: string;
+  synchroLabels?: boolean;
+}) {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [catFilter, setCatFilter] = useState<string>("all");
   const [hidden, setHidden] = useState<Set<GraphSeriesKey>>(new Set());
+  const series = useMemo(
+    () => (synchroLabels ? GRAPH_SERIES.map((s) => (s.key === "tof" ? { ...s, name: "Sync" } : s)) : GRAPH_SERIES),
+    [synchroLabels],
+  );
 
   const data = useMemo(() => {
     // One routine = one point. A "both" / "vol_vol" record holds two routines,
@@ -515,15 +533,15 @@ function ScoreGraph({ scores }: { scores: Score[] }) {
     });
 
   return (
-    <div className="card-3d rounded-2xl p-5" data-testid="card-score-graph">
+    <div className="card-3d rounded-2xl p-5" data-testid={`card-score-graph${idSuffix}`}>
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="min-w-0">
-          <div className="eyebrow mb-1.5">Score Trend <span className="text-amber-400">/ Breakdown</span></div>
-          <p className="text-xs text-muted-foreground">One point per routine — Total vs E, DD, HD &amp; TOF.</p>
+          <div className="eyebrow mb-1.5">{eyebrow} <span className="text-amber-400">{eyebrowAccent}</span></div>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
           <Select value={catFilter} onValueChange={setCatFilter}>
-            <SelectTrigger className="w-[110px] h-8 rounded-xl text-xs border-border/50 font-mono shrink-0" data-testid="select-graph-category"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[110px] h-8 rounded-xl text-xs border-border/50 font-mono shrink-0" data-testid={`select-graph-category${idSuffix}`}><SelectValue /></SelectTrigger>
             <SelectContent className="font-mono">
               <SelectItem value="all">Set &amp; Vol</SelectItem>
               <SelectItem value="set">Set only</SelectItem>
@@ -531,7 +549,7 @@ function ScoreGraph({ scores }: { scores: Score[] }) {
             </SelectContent>
           </Select>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[124px] h-8 rounded-xl text-xs border-border/50 font-mono shrink-0" data-testid="select-graph-type"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[124px] h-8 rounded-xl text-xs border-border/50 font-mono shrink-0" data-testid={`select-graph-type${idSuffix}`}><SelectValue /></SelectTrigger>
             <SelectContent className="font-mono">
               <SelectItem value="all">All Types</SelectItem>
               <SelectItem value="competition">Competition</SelectItem>
@@ -541,7 +559,7 @@ function ScoreGraph({ scores }: { scores: Score[] }) {
           </Select>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="h-8 rounded-xl text-xs font-mono border-border/50 gap-1.5 px-3" data-testid="button-graph-elements">
+              <Button variant="outline" className="h-8 rounded-xl text-xs font-mono border-border/50 gap-1.5 px-3" data-testid={`button-graph-elements${idSuffix}`}>
                 <SlidersHorizontal className="w-3.5 h-3.5" />
                 Elements
               </Button>
@@ -549,14 +567,14 @@ function ScoreGraph({ scores }: { scores: Score[] }) {
             <DropdownMenuContent align="end" className="font-mono">
               <DropdownMenuLabel className="text-xs">Show Elements</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {GRAPH_SERIES.map((s) => (
+              {series.map((s) => (
                 <DropdownMenuCheckboxItem
                   key={s.key}
                   checked={!hidden.has(s.key)}
                   onCheckedChange={() => toggle(s.key)}
                   onSelect={(e) => e.preventDefault()}
                   className="text-xs"
-                  data-testid={`filter-${s.key}`}
+                  data-testid={`filter-${s.key}${idSuffix}`}
                 >
                   <span className="inline-block h-2.5 w-2.5 rounded-full mr-2" style={{ background: s.color }} />
                   {s.name}
@@ -568,7 +586,7 @@ function ScoreGraph({ scores }: { scores: Score[] }) {
       </div>
 
       {data.length === 0 ? (
-        <div className="text-center py-16" data-testid="empty-score-graph">
+        <div className="text-center py-16" data-testid={`empty-score-graph${idSuffix}`}>
           <TrendingUp className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-muted-foreground text-sm">No scores to chart yet.</p>
         </div>
@@ -601,7 +619,7 @@ function ScoreGraph({ scores }: { scores: Score[] }) {
                   formatter={(value: any, name: any) => [fmtScore(Number(value)), name]}
                   cursor={{ stroke: 'hsl(var(--primary) / 0.3)', strokeWidth: 1 }}
                 />
-                {GRAPH_SERIES.map((s) => (
+                {series.map((s) => (
                   <Line
                     key={s.key}
                     type="linear"
@@ -620,7 +638,7 @@ function ScoreGraph({ scores }: { scores: Score[] }) {
           </div>
 
           <div className="flex flex-wrap gap-2 mt-4 justify-center">
-            {GRAPH_SERIES.map((s) => {
+            {series.map((s) => {
               const off = hidden.has(s.key);
               return (
                 <button
@@ -628,7 +646,7 @@ function ScoreGraph({ scores }: { scores: Score[] }) {
                   type="button"
                   onClick={() => toggle(s.key)}
                   className={cn("flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-mono transition-opacity", off ? "opacity-40 border-border/50" : "border-border")}
-                  data-testid={`legend-${s.key}`}
+                  data-testid={`legend-${s.key}${idSuffix}`}
                 >
                   <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />
                   {s.name}
@@ -1528,8 +1546,27 @@ export default function ScorePage() {
       </div>
         </TabsContent>
 
-        <TabsContent value="graph" className="mt-0">
-          <ScoreGraph scores={(!offlineModeEnabled || isOnline) ? (scores ?? []) : []} />
+        <TabsContent value="graph" className="mt-0 space-y-5">
+          {(() => {
+            const graphScores = (!offlineModeEnabled || isOnline) ? (scores ?? []) : [];
+            const individual = graphScores.filter((s) => !s.synchro);
+            const synchroScores = graphScores.filter((s) => s.synchro);
+            return (
+              <>
+                <ScoreGraph scores={individual} />
+                {synchroScores.length > 0 && (
+                  <ScoreGraph
+                    scores={synchroScores}
+                    idSuffix="-synchro"
+                    eyebrow="Synchro Trend"
+                    eyebrowAccent="/ Breakdown"
+                    subtitle="Synchro scores — E, HD averaged across both athletes."
+                    synchroLabels
+                  />
+                )}
+              </>
+            );
+          })()}
         </TabsContent>
       </Tabs>
 
