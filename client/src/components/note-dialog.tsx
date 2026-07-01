@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Clock, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, X, Search, Shapes } from "lucide-react";
+import { CalendarIcon, Clock, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, X, Search, Shapes, ChevronDown } from "lucide-react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -827,7 +827,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium leading-none">Code</label>
-                        <Input placeholder={newSkillIsDrill ? "TJ" : "BT"} value={newSkillCode} onChange={e => setNewSkillCode(e.target.value)} data-testid="input-new-skill-code" />
+                        <div className="flex gap-2">
+                          <Input placeholder={newSkillIsDrill ? "TJ" : "BT"} value={newSkillCode} onChange={e => setNewSkillCode(e.target.value)} data-testid="input-new-skill-code" />
+                          {!newSkillIsDrill && newSkillShapes.length === 0 && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button type="button" variant="outline" className="shrink-0 gap-1 font-mono" data-testid="button-new-skill-code-shape">
+                                  Shape <ChevronDown className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="rounded-xl">
+                                {SHAPE_OPTIONS.map(o => (
+                                  <DropdownMenuItem key={o.value} className="cursor-pointer gap-2" onClick={() => setNewSkillCode(prev => (prev || "") + o.value)} data-testid={`menu-new-skill-code-shape-${o.word.toLowerCase()}`}>
+                                    <span className="font-mono w-4 text-center">{o.value}</span> {o.word}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
                       </div>
                       {newSkillShapes.length === 0 && (
                         <div className="space-y-2">
