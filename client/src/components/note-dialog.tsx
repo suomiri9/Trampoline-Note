@@ -829,7 +829,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         <label className="text-sm font-medium leading-none">Code</label>
                         <div className="flex gap-2">
                           <Input placeholder={newSkillIsDrill ? "TJ" : "BT"} value={newSkillCode} onChange={e => setNewSkillCode(e.target.value)} data-testid="input-new-skill-code" />
-                          {!newSkillIsDrill && newSkillShapes.length === 0 && (
+                          {newSkillShapes.length === 0 && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button type="button" variant="outline" className="shrink-0 gap-1 font-mono" data-testid="button-new-skill-code-shape">
