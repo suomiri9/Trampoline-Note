@@ -1104,7 +1104,7 @@ export default function ScorePage() {
       )}
 
       <Dialog open={isAdding} onOpenChange={(o) => { if (!o) { setIsAdding(false); setEditingScore(null); } }}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingScore ? "Edit Score" : "Add New Score"}</DialogTitle>
           </DialogHeader>

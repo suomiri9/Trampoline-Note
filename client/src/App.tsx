@@ -84,7 +84,7 @@ function Navigation() {
 
 function Router() {
   return (
-    <div className="pb-20 bg-mesh min-h-[100dvh]">
+    <div className="pt-safe pb-nav-safe bg-mesh min-h-[100dvh]">
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/score" component={ScorePage} />

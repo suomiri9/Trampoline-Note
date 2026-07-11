@@ -536,7 +536,7 @@ export default function SkillsPage() {
         <TabsContent value="skills">
           <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-              <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingSkill ? "Edit Skill" : "Add New Skill"}</DialogTitle>
                 </DialogHeader>
@@ -724,7 +724,7 @@ export default function SkillsPage() {
         <TabsContent value="drills">
           <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-              <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingSkill ? "Edit Drill" : "Add New Drill"}</DialogTitle>
                 </DialogHeader>
@@ -891,7 +891,7 @@ export default function SkillsPage() {
         <TabsContent value="connections">
           <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-              <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingSkill ? "Edit Connection" : "Add New Connection"}</DialogTitle>
                 </DialogHeader>
@@ -1121,7 +1121,7 @@ export default function SkillsPage() {
         <TabsContent value="parts">
           <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-              <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingSkill ? "Edit Routine Part" : "Add New Routine Part"}</DialogTitle>
                 </DialogHeader>
@@ -1331,7 +1331,7 @@ export default function SkillsPage() {
       />
 
       <Dialog open={!!assignTarget} onOpenChange={(o) => { if (!o) { setAssignTarget(null); setAssignBaseId(""); setAssignShapeLabel(""); } }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Assign as shape</DialogTitle>
           </DialogHeader>

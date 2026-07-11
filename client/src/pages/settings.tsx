@@ -616,7 +616,7 @@ export default function SettingsPage() {
 
       <Dialog open={showFailedDialog} onOpenChange={setShowFailedDialog}>
         <DialogContent
-          className="rounded-2xl max-w-[calc(100vw-32px)] sm:max-w-2xl p-5 sm:p-6 max-h-[85vh] overflow-hidden flex flex-col"
+          className="rounded-2xl max-w-[calc(100vw-32px)] sm:max-w-2xl p-5 sm:p-6 max-h-[85dvh] overflow-hidden flex flex-col"
           data-testid="dialog-rejected-entries"
         >
           <DialogHeader>

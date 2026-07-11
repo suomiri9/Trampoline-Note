@@ -816,7 +816,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 </div>
 
                 <Dialog open={showNewSkill} onOpenChange={(o) => { if (!o) setShowNewSkill(false); }}>
-                  <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>{newSkillIsDrill ? "Add New Drill" : "Add New Skill"}</DialogTitle>
                     </DialogHeader>
@@ -893,7 +893,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 </Dialog>
 
                 <Dialog open={showNewConn} onOpenChange={(o) => { if (!o) setShowNewConn(false); }}>
-                  <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Add New Connection</DialogTitle>
                     </DialogHeader>
@@ -1039,7 +1039,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 </Dialog>
 
                 <Dialog open={showNewRoutine} onOpenChange={(o) => { if (!o) setShowNewRoutine(false); }}>
-                  <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Create Routine</DialogTitle>
                     </DialogHeader>
@@ -1155,7 +1155,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   const dd = slice.reduce((a, sid) => a + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0);
                   return (
                     <Dialog open={showNewPart} onOpenChange={(o) => { if (!o) { setShowNewPart(false); setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); } }}>
-                      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                      <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>Add New Routine Part</DialogTitle>
                         </DialogHeader>

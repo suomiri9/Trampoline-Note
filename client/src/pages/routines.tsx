@@ -191,7 +191,7 @@ export default function RoutinesPage() {
         }
       />
       <Dialog open={showBuilder || !!editingRoutine} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingRoutine ? "Edit Routine" : "Create Routine (10 Skills)"}</DialogTitle>
           </DialogHeader>
