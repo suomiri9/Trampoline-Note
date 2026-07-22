@@ -1,4 +1,4 @@
-import { useState, Fragment } from "react";
+import { useState, useRef, Fragment } from "react";
 import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
@@ -25,8 +25,8 @@ import { insertSkillSchema, type Skill } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
+import { SearchPicker } from "@/components/search-picker";
 import { Badge } from "@/components/ui/badge";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { ShapeDraftsEditor, SHAPE_OPTIONS, type ShapeDraft } from "@/components/shape-drafts-editor";
@@ -100,9 +100,9 @@ export default function SkillsPage() {
   const [connRoutineId, setConnRoutineId] = useState<number | null>(null);
   const [connShapeSwapOpen, setConnShapeSwapOpen] = useState(false);
   const [connSkillPickerOpen, setConnSkillPickerOpen] = useState(false);
-  const [connSkillSearch, setConnSkillSearch] = useState("");
   const [activeTab, setActiveTab] = useState("skills");
-  useTypeToSearch(activeTab === "connections" && !reorderMode, connSkillPickerOpen, setConnSkillPickerOpen, setConnSkillSearch);
+  const connSkillInputRef = useRef<HTMLInputElement>(null);
+  useTypeToSearch(activeTab === "connections" && !reorderMode, connSkillPickerOpen, connSkillInputRef);
 
   const [partRoutineId, setPartRoutineId] = useState<number | null>(null);
   const [partStart, setPartStart] = useState(1);
@@ -112,6 +112,9 @@ export default function SkillsPage() {
   const [archiveTarget, setArchiveTarget] = useState<{ id: number; name: string; kind: string } | null>(null);
 
   const [shapeDrafts, setShapeDrafts] = useState<ShapeDraft[]>([]);
+  // Two-step Add/Edit Skill & Drill dialogs: step 1 = basics (Name/Code/DD),
+  // step 2 = optional shape variants (hosts the ShapeDraftsEditor).
+  const [formStep, setFormStep] = useState<1 | 2>(1);
 
   const [assignTarget, setAssignTarget] = useState<Skill | null>(null);
   const [assignBaseId, setAssignBaseId] = useState<string>("");
@@ -411,13 +414,15 @@ export default function SkillsPage() {
       // Load this base drill's existing shapes into editable drafts (a shape
       // row itself has no sub-shapes).
       if (skill.parentSkillId == null) {
-        setShapeDrafts(
-          shapesOf(skill.id).map(s => isAssignedShapeChild(s)
-            ? { id: s.id, existing: true, code: s.code, shape: s.shape ?? "", name: s.name, difficulty: s.difficulty }
-            : { id: s.id, shape: s.shape ?? s.code, name: s.name, difficulty: s.difficulty })
-        );
+        const drafts = shapesOf(skill.id).map(s => isAssignedShapeChild(s)
+          ? { id: s.id, existing: true, code: s.code, shape: s.shape ?? "", name: s.name, difficulty: s.difficulty }
+          : { id: s.id, shape: s.shape ?? s.code, name: s.name, difficulty: s.difficulty });
+        setShapeDrafts(drafts);
+        // A base that already has shapes opens with them visible (step 2).
+        setFormStep(drafts.length > 0 ? 2 : 1);
       } else {
         setShapeDrafts([]);
+        setFormStep(1);
       }
     } else {
       skillForm.reset({
@@ -429,13 +434,15 @@ export default function SkillsPage() {
       // Load this base skill's existing shapes into editable drafts (a shape
       // row itself has no sub-shapes).
       if (skill.parentSkillId == null) {
-        setShapeDrafts(
-          shapesOf(skill.id).map(s => isAssignedShapeChild(s)
-            ? { id: s.id, existing: true, code: s.code, shape: s.shape ?? "", name: s.name, difficulty: s.difficulty }
-            : { id: s.id, shape: s.shape ?? s.code, name: s.name, difficulty: s.difficulty })
-        );
+        const drafts = shapesOf(skill.id).map(s => isAssignedShapeChild(s)
+          ? { id: s.id, existing: true, code: s.code, shape: s.shape ?? "", name: s.name, difficulty: s.difficulty }
+          : { id: s.id, shape: s.shape ?? s.code, name: s.name, difficulty: s.difficulty });
+        setShapeDrafts(drafts);
+        // A base that already has shapes opens with them visible (step 2).
+        setFormStep(drafts.length > 0 ? 2 : 1);
       } else {
         setShapeDrafts([]);
+        setFormStep(1);
       }
     }
   };
@@ -462,6 +469,7 @@ export default function SkillsPage() {
     }
     setShowForm(false);
     setEditingSkill(null);
+    setFormStep(1);
     setConnSkillPickerOpen(false);
   };
 
@@ -541,73 +549,96 @@ export default function SkillsPage() {
                   <DialogTitle>{editingSkill ? "Edit Skill" : "Add New Skill"}</DialogTitle>
                 </DialogHeader>
                   <Form {...skillForm}>
-                    <form onSubmit={skillForm.handleSubmit(onSkillSubmit)} className="space-y-3">
-                      <FormField control={skillForm.control} name="name" render={({ field }) => (
-                        <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} placeholder="Bs" /></FormControl><FormMessage /></FormItem>
-                      )} />
-                      <FormField control={skillForm.control} name="code" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Code</FormLabel>
-                          <div className="flex gap-2">
-                            <FormControl><Input {...field} placeholder="4-" /></FormControl>
-                            {(isEditingShape || shapeDrafts.length === 0) && (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button type="button" variant="outline" className="shrink-0 gap-1 font-mono" data-testid="button-skill-code-shape">
-                                    Shape <ChevronDown className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="rounded-xl">
-                                  {SHAPE_OPTIONS.map(o => (
-                                    <DropdownMenuItem key={o.value} className="cursor-pointer gap-2" onClick={() => field.onChange((field.value || "") + o.value)} data-testid={`menu-skill-code-shape-${o.word.toLowerCase()}`}>
-                                      <span className="font-mono w-4 text-center">{o.value}</span> {o.word}
-                                    </DropdownMenuItem>
-                                  ))}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            )}
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                      {(isEditingShape || shapeDrafts.length === 0) && (
-                        <FormField control={skillForm.control} name="difficulty" render={({ field }) => (
-                          <FormItem><FormLabel>Difficulty</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
-                        )} />
-                      )}
-                      {!isEditingShape && (
-                        <ShapeDraftsEditor
-                          drafts={shapeDrafts}
-                          onChange={setShapeDrafts}
-                          namePlaceholder="Bs"
-                          assignableSkills={(allItems || []).filter(s =>
-                            s.isDrill === 0 &&
-                            s.parentSkillId == null &&
-                            s.archived !== 1 &&
-                            (!editingSkill || s.id !== editingSkill.id) &&
-                            !(allItems || []).some(c => c.parentSkillId === s.id)
+                    <form onSubmit={skillForm.handleSubmit(onSkillSubmit, () => setFormStep(1))} className="space-y-3">
+                      {formStep === 1 ? (
+                        <>
+                          <FormField control={skillForm.control} name="name" render={({ field }) => (
+                            <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} placeholder="Bs" /></FormControl><FormMessage /></FormItem>
+                          )} />
+                          <FormField control={skillForm.control} name="code" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Code</FormLabel>
+                              <div className="flex gap-2">
+                                <FormControl><Input {...field} placeholder="4-" /></FormControl>
+                                {(isEditingShape || shapeDrafts.length === 0) && (
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button type="button" variant="outline" className="shrink-0 gap-1 font-mono" data-testid="button-skill-code-shape">
+                                        Shape <ChevronDown className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="rounded-xl">
+                                      {SHAPE_OPTIONS.map(o => (
+                                        <DropdownMenuItem key={o.value} className="cursor-pointer gap-2" onClick={() => field.onChange((field.value || "") + o.value)} data-testid={`menu-skill-code-shape-${o.word.toLowerCase()}`}>
+                                          <span className="font-mono w-4 text-center">{o.value}</span> {o.word}
+                                        </DropdownMenuItem>
+                                      ))}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                )}
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          {(isEditingShape || shapeDrafts.length === 0) && (
+                            <FormField control={skillForm.control} name="difficulty" render={({ field }) => (
+                              <FormItem><FormLabel>Difficulty</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                            )} />
                           )}
-                        />
-                      )}
-                      {editingSkill && shapeDrafts.length === 0 && (
-                        <FormField control={skillForm.control} name="isDrill" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Type</FormLabel>
-                            <Select value={String(field.value)} onValueChange={(v) => field.onChange(parseInt(v))}>
-                              <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                              <SelectContent>
-                                <SelectItem value="0">Skill</SelectItem>
-                                <SelectItem value="1">Drill</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
+                          {!isEditingShape && shapeDrafts.length > 0 && (
+                            <p className="text-xs text-muted-foreground" data-testid="text-skill-shapes-hint">
+                              This base has {shapeDrafts.length} shape variant{shapeDrafts.length === 1 ? "" : "s"} — it acts as a grouping and difficulty is set per shape.
+                            </p>
+                          )}
+                          {editingSkill && shapeDrafts.length === 0 && (
+                            <FormField control={skillForm.control} name="isDrill" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Type</FormLabel>
+                                <Select value={String(field.value)} onValueChange={(v) => field.onChange(parseInt(v))}>
+                                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="0">Skill</SelectItem>
+                                    <SelectItem value="1">Drill</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-xs text-muted-foreground">
+                            Optional: split this skill into tuck / pike / straight variants. Once it has shapes, the base becomes a grouping and difficulty is set per shape.
+                          </p>
+                          <ShapeDraftsEditor
+                            drafts={shapeDrafts}
+                            onChange={setShapeDrafts}
+                            namePlaceholder="Bs"
+                            assignableSkills={(allItems || []).filter(s =>
+                              s.isDrill === 0 &&
+                              s.parentSkillId == null &&
+                              s.archived !== 1 &&
+                              (!editingSkill || s.id !== editingSkill.id) &&
+                              !(allItems || []).some(c => c.parentSkillId === s.id)
+                            )}
+                          />
+                        </>
                       )}
                       <div className="flex gap-2">
+                        {formStep === 2 && (
+                          <Button type="button" variant="outline" onClick={() => setFormStep(1)} data-testid="button-skill-shapes-back">
+                            Back
+                          </Button>
+                        )}
                         <Button type="submit" className="flex-1" disabled={isCreating || isUpdating}>
                           {editingSkill ? "Update" : "Add Skill"}
                         </Button>
+                        {formStep === 1 && !isEditingShape && (
+                          <Button type="button" variant="outline" onClick={() => setFormStep(2)} data-testid="button-skill-shapes-step">
+                            Shape variants{shapeDrafts.length > 0 ? ` (${shapeDrafts.length})` : ""}
+                          </Button>
+                        )}
                         {editingSkill && <Button type="button" variant="outline" onClick={cancelEditing}>Cancel</Button>}
                       </div>
                     </form>
@@ -729,52 +760,75 @@ export default function SkillsPage() {
                   <DialogTitle>{editingSkill ? "Edit Drill" : "Add New Drill"}</DialogTitle>
                 </DialogHeader>
                   <Form {...drillForm}>
-                    <form onSubmit={drillForm.handleSubmit(onDrillSubmit)} className="space-y-3">
-                      <FormField control={drillForm.control} name="name" render={({ field }) => (
-                        <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} placeholder="Tuck Jump" /></FormControl><FormMessage /></FormItem>
-                      )} />
-                      <FormField control={drillForm.control} name="code" render={({ field }) => (
-                        <FormItem><FormLabel>Code</FormLabel><FormControl><Input {...field} placeholder="TJ" /></FormControl><FormMessage /></FormItem>
-                      )} />
-                      {(isEditingShape || shapeDrafts.length === 0) && (
-                        <FormField control={drillForm.control} name="difficulty" render={({ field }) => (
-                          <FormItem><FormLabel>Difficulty</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
-                        )} />
-                      )}
-                      {!isEditingShape && (
-                        <ShapeDraftsEditor
-                          drafts={shapeDrafts}
-                          onChange={setShapeDrafts}
-                          namePlaceholder="T"
-                          testIdPrefix="drill-shape"
-                          assignableSkills={(allItems || []).filter(s =>
-                            s.isDrill === 1 &&
-                            s.parentSkillId == null &&
-                            s.archived !== 1 &&
-                            (!editingSkill || s.id !== editingSkill.id) &&
-                            !(allItems || []).some(c => c.parentSkillId === s.id)
+                    <form onSubmit={drillForm.handleSubmit(onDrillSubmit, () => setFormStep(1))} className="space-y-3">
+                      {formStep === 1 ? (
+                        <>
+                          <FormField control={drillForm.control} name="name" render={({ field }) => (
+                            <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} placeholder="Tuck Jump" /></FormControl><FormMessage /></FormItem>
+                          )} />
+                          <FormField control={drillForm.control} name="code" render={({ field }) => (
+                            <FormItem><FormLabel>Code</FormLabel><FormControl><Input {...field} placeholder="TJ" /></FormControl><FormMessage /></FormItem>
+                          )} />
+                          {(isEditingShape || shapeDrafts.length === 0) && (
+                            <FormField control={drillForm.control} name="difficulty" render={({ field }) => (
+                              <FormItem><FormLabel>Difficulty</FormLabel><FormControl><Input type="number" step="0.1" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                            )} />
                           )}
-                        />
-                      )}
-                      {editingSkill && shapeDrafts.length === 0 && (
-                        <FormField control={drillForm.control} name="isDrill" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Type</FormLabel>
-                            <Select value={String(field.value)} onValueChange={(v) => field.onChange(parseInt(v))}>
-                              <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                              <SelectContent>
-                                <SelectItem value="0">Skill</SelectItem>
-                                <SelectItem value="1">Drill</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
+                          {!isEditingShape && shapeDrafts.length > 0 && (
+                            <p className="text-xs text-muted-foreground" data-testid="text-drill-shapes-hint">
+                              This base has {shapeDrafts.length} shape variant{shapeDrafts.length === 1 ? "" : "s"} — it acts as a grouping and difficulty is set per shape.
+                            </p>
+                          )}
+                          {editingSkill && shapeDrafts.length === 0 && (
+                            <FormField control={drillForm.control} name="isDrill" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Type</FormLabel>
+                                <Select value={String(field.value)} onValueChange={(v) => field.onChange(parseInt(v))}>
+                                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="0">Skill</SelectItem>
+                                    <SelectItem value="1">Drill</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-xs text-muted-foreground">
+                            Optional: split this drill into tuck / pike / straight variants. Once it has shapes, the base becomes a grouping and difficulty is set per shape.
+                          </p>
+                          <ShapeDraftsEditor
+                            drafts={shapeDrafts}
+                            onChange={setShapeDrafts}
+                            namePlaceholder="T"
+                            testIdPrefix="drill-shape"
+                            assignableSkills={(allItems || []).filter(s =>
+                              s.isDrill === 1 &&
+                              s.parentSkillId == null &&
+                              s.archived !== 1 &&
+                              (!editingSkill || s.id !== editingSkill.id) &&
+                              !(allItems || []).some(c => c.parentSkillId === s.id)
+                            )}
+                          />
+                        </>
                       )}
                       <div className="flex gap-2">
+                        {formStep === 2 && (
+                          <Button type="button" variant="outline" onClick={() => setFormStep(1)} data-testid="button-drill-shapes-back">
+                            Back
+                          </Button>
+                        )}
                         <Button type="submit" className="flex-1" disabled={isCreating || isUpdating}>
                           {editingSkill ? "Update" : "Add Drill"}
                         </Button>
+                        {formStep === 1 && !isEditingShape && (
+                          <Button type="button" variant="outline" onClick={() => setFormStep(2)} data-testid="button-drill-shapes-step">
+                            Shape variants{shapeDrafts.length > 0 ? ` (${shapeDrafts.length})` : ""}
+                          </Button>
+                        )}
                         {editingSkill && <Button type="button" variant="outline" onClick={cancelEditing}>Cancel</Button>}
                       </div>
                     </form>
@@ -942,16 +996,14 @@ export default function SkillsPage() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Build Sequence</label>
                       <div className="flex items-center gap-2">
-                      <Popover open={connSkillPickerOpen} onOpenChange={(v) => { setConnSkillPickerOpen(v); if (!v) setConnSkillSearch(""); }}>
-                        <PopoverTrigger asChild>
-                          <Button type="button" variant="outline" role="combobox" className="h-9 flex-1 min-w-0 justify-start font-normal text-sm text-muted-foreground" data-testid="btn-open-conn-skill-picker">
-                            <Search className="h-3.5 w-3.5 mr-2 opacity-60 shrink-0" />
-                            <span className="truncate">Add skill to sequence...</span>
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
-                          <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
-                            <CommandInput placeholder="Search by name or code..." className="h-10" value={connSkillSearch} onValueChange={setConnSkillSearch} />
+                      <SearchPicker
+                        open={connSkillPickerOpen}
+                        onOpenChange={setConnSkillPickerOpen}
+                        placeholder="Add skill to sequence..."
+                        className="h-9 flex-1 rounded-xl border border-input bg-background focus-within:ring-1 focus-within:ring-ring"
+                        inputTestId="btn-open-conn-skill-picker"
+                        inputRef={connSkillInputRef}
+                      >
                             <CommandList className="max-h-[320px]">
                               <CommandEmpty>No matches.</CommandEmpty>
                               <CommandGroup heading="Skills">
@@ -972,9 +1024,7 @@ export default function SkillsPage() {
                                 ))}
                               </CommandGroup>
                             </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      </SearchPicker>
                       <span className="text-xs shrink-0 text-muted-foreground" data-testid="text-conn-skill-count">{connSkillIds.length} skills</span>
                       </div>
                       {(() => {

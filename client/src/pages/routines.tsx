@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
@@ -14,8 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
+import { SearchPicker } from "@/components/search-picker";
 import { Trash2, Pencil, X, Layers, Archive, ArchiveRestore, MoreVertical, Search, Plus } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
@@ -60,8 +60,8 @@ export default function RoutinesPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [showBuilder, setShowBuilder] = useState(false);
   const [topPickerOpen, setTopPickerOpen] = useState(false);
-  const [topPickerSearch, setTopPickerSearch] = useState("");
-  useTypeToSearch(true, topPickerOpen, setTopPickerOpen, setTopPickerSearch);
+  const topPickerInputRef = useRef<HTMLInputElement>(null);
+  useTypeToSearch(true, topPickerOpen, topPickerInputRef);
 
   const routines = allRoutines?.filter(r => showArchived ? r.archived === 1 : r.archived !== 1);
   const archivedCount = allRoutines ? allRoutines.filter(r => r.archived === 1).length : 0;
@@ -220,23 +220,15 @@ export default function RoutinesPage() {
               onChange={e => setName(e.target.value)} 
             />
             <div className="flex items-center gap-2">
-              <Popover open={topPickerOpen} onOpenChange={(v) => { if (selectedSkillIds.length >= 10) return; setTopPickerOpen(v); if (!v) setTopPickerSearch(""); }}>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    role="combobox"
-                    disabled={selectedSkillIds.length >= 10}
-                    className="h-10 flex-1 justify-start font-normal text-muted-foreground"
-                    data-testid="btn-open-routine-top-picker"
-                  >
-                    <Search className="h-3.5 w-3.5 mr-2 opacity-60" />
-                    {selectedSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
-                  <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
-                    <CommandInput placeholder="Search by name or code..." className="h-10" value={topPickerSearch} onValueChange={setTopPickerSearch} />
+              <SearchPicker
+                open={topPickerOpen}
+                onOpenChange={(v) => { if (v && selectedSkillIds.length >= 10) return; setTopPickerOpen(v); }}
+                disabled={selectedSkillIds.length >= 10}
+                placeholder={selectedSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."}
+                className="h-10 flex-1 rounded-xl border border-input bg-background focus-within:ring-1 focus-within:ring-ring"
+                inputTestId="btn-open-routine-top-picker"
+                inputRef={topPickerInputRef}
+              >
                     <CommandList className="max-h-[280px]">
                       <CommandEmpty>No matches.</CommandEmpty>
                       <CommandGroup heading="Skills">
@@ -257,9 +249,7 @@ export default function RoutinesPage() {
                         ))}
                       </CommandGroup>
                     </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              </SearchPicker>
               <span className={cn("text-xs shrink-0 font-mono", selectedSkillIds.length >= 10 ? "text-red-500 font-bold" : "text-muted-foreground")} data-testid="text-routine-count">{selectedSkillIds.length}/10</span>
             </div>
             {(() => {

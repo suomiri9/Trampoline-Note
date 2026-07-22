@@ -59,13 +59,12 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import {
-  Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { SearchPicker } from "@/components/search-picker";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -133,11 +132,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [showNewConn, setShowNewConn] = useState(false);
   const [showNewRoutine, setShowNewRoutine] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerSearch, setPickerSearch] = useState("");
   const [shapeSwapIndices, setShapeSwapIndices] = useState<number[] | null>(null);
   const [connShapeSwapOpen, setConnShapeSwapOpen] = useState(false);
-  const [connSkillSearch, setConnSkillSearch] = useState("");
-  const [routineSkillSearch, setRoutineSkillSearch] = useState("");
   const [connSkillPickerOpen, setConnSkillPickerOpen] = useState(false);
   const [routineSkillPickerOpen, setRoutineSkillPickerOpen] = useState(false);
   const [newConnName, setNewConnName] = useState("");
@@ -151,20 +147,24 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [newSkillDD, setNewSkillDD] = useState("");
   const [newSkillIsDrill, setNewSkillIsDrill] = useState(false);
   const [newSkillShapes, setNewSkillShapes] = useState<ShapeDraft[]>([]);
+  // Two-step quick-add New Skill/Drill: step 1 = basics, step 2 = optional shapes.
+  const [newSkillStep, setNewSkillStep] = useState<1 | 2>(1);
   const [showNewPart, setShowNewPart] = useState(false);
   const [newPartRoutineId, setNewPartRoutineId] = useState<number | null>(null);
   const [newPartStart, setNewPartStart] = useState(1);
   const [newPartEnd, setNewPartEnd] = useState(10);
   const [newPartNameOverride, setNewPartNameOverride] = useState<string | null>(null);
 
+  const pickerInputRef = useRef<HTMLInputElement>(null);
+  const connSkillInputRef = useRef<HTMLInputElement>(null);
+  const routineSkillInputRef = useRef<HTMLInputElement>(null);
   useTypeToSearch(
     open && !showNewConn && !showNewRoutine && !showNewSkill && !showNewPart && editingRoutineIdx === null && editingConnIndices === null,
     pickerOpen,
-    setPickerOpen,
-    setPickerSearch,
+    pickerInputRef,
   );
-  useTypeToSearch(open && showNewConn, connSkillPickerOpen, setConnSkillPickerOpen, setConnSkillSearch);
-  useTypeToSearch(open && showNewRoutine, routineSkillPickerOpen, setRoutineSkillPickerOpen, setRoutineSkillSearch);
+  useTypeToSearch(open && showNewConn, connSkillPickerOpen, connSkillInputRef);
+  useTypeToSearch(open && showNewRoutine, routineSkillPickerOpen, routineSkillInputRef);
 
   const recentEntries = (() => {
     if (!allItems) return [] as Array<{ kind: 'skill'; id: number } | { kind: 'routine'; id: number } | { kind: 'fc'; id: number }>;
@@ -662,27 +662,16 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
                 <div className="flex gap-2">
                   <div className="flex flex-1 min-w-0 basis-0 h-11 rounded-xl border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
-                  <Popover open={pickerOpen} onOpenChange={(v) => { setPickerOpen(v); if (!v) { setPickerSearch(""); } }}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        role="combobox"
-                        className="flex-1 min-w-0 flex items-center justify-start font-normal text-muted-foreground px-3 hover-elevate active-elevate-2"
-                        data-testid="btn-open-picker"
-                      >
-                        <Search className="h-4 w-4 mr-2 opacity-60 shrink-0" />
-                        <span className="truncate text-xs">Search skills or add new...</span>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent container={dialogBodyRef.current} className="p-0 w-[--radix-popover-trigger-width]" align="start">
-                      <Command
-                        filter={(value, search) => {
-                          const v = value.toLowerCase();
-                          const s = search.toLowerCase();
-                          return v.includes(s) ? 1 : 0;
-                        }}
-                      >
-                        <CommandInput placeholder="Search by name or code..." className="h-10" value={pickerSearch} onValueChange={setPickerSearch} />
+                  <SearchPicker
+                    open={pickerOpen}
+                    onOpenChange={setPickerOpen}
+                    placeholder="Search skills or add new..."
+                    container={dialogBodyRef.current}
+                    className="flex-1 h-full"
+                    inputClassName="text-xs"
+                    inputTestId="btn-open-picker"
+                    inputRef={pickerInputRef}
+                  >
                         <CommandList className="max-h-[320px]">
                           <CommandEmpty>No matches.</CommandEmpty>
                           {(() => {
@@ -784,16 +773,14 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             );
                           })()}
                         </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                  </SearchPicker>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button type="button" className="shrink-0 px-3 flex items-center justify-center border-l border-input text-muted-foreground hover-elevate active-elevate-2" data-testid="btn-new-item" aria-label="Add new"><Plus className="h-4 w-4" /></button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-40 rounded-xl">
-                      <DropdownMenuItem className="cursor-pointer text-xs" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setShowNewPart(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); setNewSkillShapes([]); }} data-testid="menu-new-skill">New Skill</DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-xs text-yellow-600 dark:text-yellow-400" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setShowNewPart(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(true); setNewSkillShapes([]); }} data-testid="menu-new-drill">New Drill</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setShowNewPart(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); setNewSkillShapes([]); setNewSkillStep(1); }} data-testid="menu-new-skill">New Skill</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-yellow-600 dark:text-yellow-400" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setShowNewPart(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(true); setNewSkillShapes([]); setNewSkillStep(1); }} data-testid="menu-new-drill">New Drill</DropdownMenuItem>
                       <DropdownMenuItem className="cursor-pointer text-xs text-red-500 dark:text-red-400" onClick={() => { setShowNewConn(true); setShowNewSkill(false); setShowNewRoutine(false); setShowNewPart(false); setNewConnName(""); setNewConnSkillIds([]); setNewConnRoutineId(null); }} data-testid="menu-new-connection">New Connection</DropdownMenuItem>
                       <DropdownMenuItem className="cursor-pointer text-xs text-blue-600 dark:text-blue-400" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setShowNewPart(false); setNewRoutineName(""); setNewRoutineSkillIds([]); }} data-testid="menu-new-routine">New Routine</DropdownMenuItem>
                       <DropdownMenuItem className="cursor-pointer text-xs text-gray-600 dark:text-gray-300" onClick={() => { setShowNewPart(true); setShowNewConn(false); setShowNewSkill(false); setShowNewRoutine(false); setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); }} data-testid="menu-new-part">New Routine Part</DropdownMenuItem>
@@ -815,57 +802,78 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </Button>
                 </div>
 
-                <Dialog open={showNewSkill} onOpenChange={(o) => { if (!o) setShowNewSkill(false); }}>
+                <Dialog open={showNewSkill} onOpenChange={(o) => { if (!o) { setShowNewSkill(false); setNewSkillStep(1); } }}>
                   <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>{newSkillIsDrill ? "Add New Drill" : "Add New Skill"}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium leading-none">Name</label>
-                        <Input placeholder={newSkillIsDrill ? "Tuck Jump" : "Back Tuck"} value={newSkillName} onChange={e => setNewSkillName(e.target.value)} data-testid="input-new-skill-name" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium leading-none">Code</label>
-                        <div className="flex gap-2">
-                          <Input placeholder={newSkillIsDrill ? "TJ" : "BT"} value={newSkillCode} onChange={e => setNewSkillCode(e.target.value)} data-testid="input-new-skill-code" />
+                      {newSkillStep === 1 ? (
+                        <>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none">Name</label>
+                            <Input placeholder={newSkillIsDrill ? "Tuck Jump" : "Back Tuck"} value={newSkillName} onChange={e => setNewSkillName(e.target.value)} data-testid="input-new-skill-name" />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none">Code</label>
+                            <div className="flex gap-2">
+                              <Input placeholder={newSkillIsDrill ? "TJ" : "BT"} value={newSkillCode} onChange={e => setNewSkillCode(e.target.value)} data-testid="input-new-skill-code" />
+                              {newSkillShapes.length === 0 && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button type="button" variant="outline" className="shrink-0 gap-1 font-mono" data-testid="button-new-skill-code-shape">
+                                      Shape <ChevronDown className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="rounded-xl">
+                                    {SHAPE_OPTIONS.map(o => (
+                                      <DropdownMenuItem key={o.value} className="cursor-pointer gap-2" onClick={() => setNewSkillCode(prev => (prev || "") + o.value)} data-testid={`menu-new-skill-code-shape-${o.word.toLowerCase()}`}>
+                                        <span className="font-mono w-4 text-center">{o.value}</span> {o.word}
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                            </div>
+                          </div>
                           {newSkillShapes.length === 0 && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button type="button" variant="outline" className="shrink-0 gap-1 font-mono" data-testid="button-new-skill-code-shape">
-                                  Shape <ChevronDown className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="rounded-xl">
-                                {SHAPE_OPTIONS.map(o => (
-                                  <DropdownMenuItem key={o.value} className="cursor-pointer gap-2" onClick={() => setNewSkillCode(prev => (prev || "") + o.value)} data-testid={`menu-new-skill-code-shape-${o.word.toLowerCase()}`}>
-                                    <span className="font-mono w-4 text-center">{o.value}</span> {o.word}
-                                  </DropdownMenuItem>
-                                ))}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium leading-none">Difficulty</label>
+                              <Input type="number" step="0.1" min="0" placeholder="0.0" value={newSkillDD} onChange={e => setNewSkillDD(e.target.value)} data-testid="input-new-skill-dd" />
+                            </div>
                           )}
-                        </div>
-                      </div>
-                      {newSkillShapes.length === 0 && (
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium leading-none">Difficulty</label>
-                          <Input type="number" step="0.1" min="0" placeholder="0.0" value={newSkillDD} onChange={e => setNewSkillDD(e.target.value)} data-testid="input-new-skill-dd" />
-                        </div>
+                          {newSkillShapes.length > 0 && (
+                            <p className="text-xs text-muted-foreground" data-testid="text-new-skill-shapes-hint">
+                              This base has {newSkillShapes.length} shape variant{newSkillShapes.length === 1 ? "" : "s"} — it acts as a grouping and difficulty is set per shape.
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-xs text-muted-foreground">
+                            Optional: split this {newSkillIsDrill ? "drill" : "skill"} into tuck / pike / straight variants. Once it has shapes, the base becomes a grouping and difficulty is set per shape.
+                          </p>
+                          <ShapeDraftsEditor
+                            drafts={newSkillShapes}
+                            onChange={setNewSkillShapes}
+                            namePlaceholder={newSkillIsDrill ? "T" : "Bs"}
+                            testIdPrefix="new-shape"
+                            assignableSkills={(allItems || []).filter(s =>
+                              s.isDrill === (newSkillIsDrill ? 1 : 0) &&
+                              s.parentSkillId == null &&
+                              s.archived !== 1 &&
+                              !(allItems || []).some(c => c.parentSkillId === s.id)
+                            )}
+                          />
+                        </>
                       )}
-                      <ShapeDraftsEditor
-                        drafts={newSkillShapes}
-                        onChange={setNewSkillShapes}
-                        namePlaceholder={newSkillIsDrill ? "T" : "Bs"}
-                        testIdPrefix="new-shape"
-                        assignableSkills={(allItems || []).filter(s =>
-                          s.isDrill === (newSkillIsDrill ? 1 : 0) &&
-                          s.parentSkillId == null &&
-                          s.archived !== 1 &&
-                          !(allItems || []).some(c => c.parentSkillId === s.id)
-                        )}
-                      />
-                      <Button type="button" className="w-full" disabled={!newSkillName || !newSkillCode || isCreatingSkill} onClick={async () => {
+                      <div className="flex gap-2">
+                      {newSkillStep === 2 && (
+                        <Button type="button" variant="outline" onClick={() => setNewSkillStep(1)} data-testid="btn-new-skill-shapes-back">
+                          Back
+                        </Button>
+                      )}
+                      <Button type="button" className="flex-1" disabled={!newSkillName || !newSkillCode || isCreatingSkill} onClick={async () => {
                         try {
                           const childIsDrill = newSkillIsDrill ? 1 : 0;
                           const hasRealShapes = newSkillShapes.some(d => (d.shape || "").trim() || (d.name || "").trim());
@@ -885,9 +893,15 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               await createSkill({ name: name || label, code: label || name, difficulty: d.difficulty || 0, isDrill: childIsDrill, parentSkillId: base.id, shape: label || null });
                             }
                           }
-                          setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); setNewSkillShapes([]); setShowNewSkill(false);
+                          setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); setNewSkillShapes([]); setNewSkillStep(1); setShowNewSkill(false);
                         } catch {}
                       }} data-testid="btn-save-new-skill">Add {newSkillIsDrill ? "Drill" : "Skill"}</Button>
+                      {newSkillStep === 1 && (
+                        <Button type="button" variant="outline" onClick={() => setNewSkillStep(2)} data-testid="btn-new-skill-shapes-step">
+                          Shape variants{newSkillShapes.length > 0 ? ` (${newSkillShapes.length})` : ""}
+                        </Button>
+                      )}
+                      </div>
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -941,16 +955,14 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       <div className="space-y-2">
                         <label className="text-sm font-medium leading-none">Build Sequence</label>
                         <div className="flex items-center gap-2">
-                          <Popover open={connSkillPickerOpen} onOpenChange={(v) => { setConnSkillPickerOpen(v); if (!v) setConnSkillSearch(""); }}>
-                            <PopoverTrigger asChild>
-                              <Button type="button" variant="outline" role="combobox" className="h-9 flex-1 min-w-0 justify-start font-normal text-sm text-muted-foreground" data-testid="btn-open-conn-skill-picker">
-                                <Search className="h-3.5 w-3.5 mr-2 opacity-60 shrink-0" />
-                                <span className="truncate">Add skill to sequence...</span>
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
-                              <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
-                                <CommandInput placeholder="Search by name or code..." className="h-10" value={connSkillSearch} onValueChange={setConnSkillSearch} />
+                          <SearchPicker
+                            open={connSkillPickerOpen}
+                            onOpenChange={setConnSkillPickerOpen}
+                            placeholder="Add skill to sequence..."
+                            className="h-9 flex-1 rounded-xl border border-input bg-background focus-within:ring-1 focus-within:ring-ring"
+                            inputTestId="btn-open-conn-skill-picker"
+                            inputRef={connSkillInputRef}
+                          >
                                 <CommandList className="max-h-[320px]">
                                   <CommandEmpty>No matches.</CommandEmpty>
                                   <CommandGroup heading="Skills">
@@ -962,9 +974,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     ))}
                                   </CommandGroup>
                                 </CommandList>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
+                          </SearchPicker>
                           <span className="text-xs shrink-0 text-muted-foreground" data-testid="text-new-conn-skill-count">{newConnSkillIds.length} skills</span>
                         </div>
                         {(() => {
@@ -1068,16 +1078,15 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       })()}
                       <Input placeholder="Routine Name" value={newRoutineName} onChange={e => setNewRoutineName(e.target.value)} data-testid="input-new-routine-name" />
                       <div className="flex items-center gap-2">
-                        <Popover open={routineSkillPickerOpen} onOpenChange={(v) => { if (!v) { setRoutineSkillPickerOpen(false); setRoutineSkillSearch(""); return; } if (newRoutineSkillIds.length < 10) setRoutineSkillPickerOpen(true); }}>
-                          <PopoverTrigger asChild>
-                            <Button type="button" variant="outline" role="combobox" disabled={newRoutineSkillIds.length >= 10} className="h-10 flex-1 justify-start font-normal text-muted-foreground" data-testid="btn-open-routine-skill-picker">
-                              <Search className="h-3.5 w-3.5 mr-2 opacity-60" />
-                              {newRoutineSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
-                            <Command filter={(value, search) => { const v = value.toLowerCase(); const s = search.toLowerCase(); return v.includes(s) ? 1 : 0; }}>
-                              <CommandInput placeholder="Search by name or code..." className="h-10" value={routineSkillSearch} onValueChange={setRoutineSkillSearch} />
+                        <SearchPicker
+                          open={routineSkillPickerOpen}
+                          onOpenChange={(v) => { if (!v) setRoutineSkillPickerOpen(false); else if (newRoutineSkillIds.length < 10) setRoutineSkillPickerOpen(true); }}
+                          disabled={newRoutineSkillIds.length >= 10}
+                          placeholder={newRoutineSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."}
+                          className="h-10 flex-1 rounded-xl border border-input bg-background focus-within:ring-1 focus-within:ring-ring"
+                          inputTestId="btn-open-routine-skill-picker"
+                          inputRef={routineSkillInputRef}
+                        >
                               <CommandList className="max-h-[280px]">
                                 <CommandEmpty>No matches.</CommandEmpty>
                                 <CommandGroup heading="Skills">
@@ -1089,9 +1098,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                   ))}
                                 </CommandGroup>
                               </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                        </SearchPicker>
                         <span className={cn("text-xs shrink-0 font-mono", newRoutineSkillIds.length >= 10 ? "text-red-500 font-bold" : "text-muted-foreground")}>{newRoutineSkillIds.length}/10</span>
                       </div>
                       {(() => {

@@ -1,18 +1,16 @@
-import { useEffect, useRef } from "react";
+import { useEffect, type RefObject } from "react";
 
+/**
+ * "Type anywhere to search": when enabled and the picker is closed, pressing
+ * a printable character (outside of any other input) focuses the given
+ * SearchPicker input. Focusing opens the popover and the pressed key lands
+ * in the input natively, so no external search state is needed.
+ */
 export function useTypeToSearch(
   enabled: boolean,
   open: boolean,
-  setOpen: (b: boolean) => void,
-  setSearch: (s: string) => void
+  inputRef: RefObject<HTMLInputElement>,
 ) {
-  const prevOpenRef = useRef(open);
-  useEffect(() => {
-    if (prevOpenRef.current && !open) {
-      setSearch("");
-    }
-    prevOpenRef.current = open;
-  }, [open, setSearch]);
   useEffect(() => {
     if (!enabled || open) return;
     const handler = (e: KeyboardEvent) => {
@@ -24,21 +22,11 @@ export function useTypeToSearch(
         const tag = t.tagName;
         if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable) return;
       }
-      e.preventDefault();
-      const key = e.key;
-      setSearch(key);
-      setOpen(true);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const input = document.querySelector<HTMLInputElement>('[cmdk-input]:not([data-hidden])');
-          if (input && document.activeElement === input) {
-            const len = input.value.length;
-            try { input.setSelectionRange(len, len); } catch {}
-          }
-        });
-      });
+      const input = inputRef.current;
+      if (!input || input.disabled) return;
+      input.focus();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [enabled, open, setOpen, setSearch]);
+  }, [enabled, open, inputRef]);
 }

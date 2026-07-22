@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,13 +26,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { SearchPicker } from "@/components/search-picker";
 import type { SafeUser } from "@shared/models/auth";
 import type { Routine } from "@shared/schema";
 import { skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
@@ -665,39 +663,15 @@ export function PointsToFix({
                 return (
                   <div className="space-y-3">
                     <div className="flex gap-2 min-w-0">
-                      <Popover open={filterOpen} onOpenChange={setFilterOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            role="combobox"
-                            className="rounded-xl h-11 flex-1 min-w-0 justify-start font-normal text-muted-foreground"
-                            data-testid="btn-open-filter"
-                          >
-                            <Search className="h-4 w-4 mr-2 opacity-60 shrink-0" />
-                            {hasFilter ? (
-                              <span className="truncate min-w-0 flex-1 text-left text-foreground">{filterLabel}</span>
-                            ) : (
-                              <span className="truncate min-w-0 flex-1 text-left">Search...</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent
-                          container={dialogContentRef.current}
-                          className="p-0 w-[--radix-popover-trigger-width]"
-                          align="start"
-                        >
-                          <Command
-                            filter={(value, search) => {
-                              const v = value.toLowerCase();
-                              const s = search.toLowerCase();
-                              return v.includes(s) ? 1 : 0;
-                            }}
-                          >
-                            <CommandInput
-                              placeholder="Search by name or code..."
-                              className="h-10"
-                            />
+                      <SearchPicker
+                        open={filterOpen}
+                        onOpenChange={setFilterOpen}
+                        placeholder={hasFilter ? filterLabel : "Search..."}
+                        container={dialogContentRef.current}
+                        className="h-11 flex-1 rounded-xl border border-input bg-background focus-within:ring-1 focus-within:ring-ring"
+                        inputClassName={hasFilter ? "placeholder:text-foreground" : undefined}
+                        inputTestId="btn-open-filter"
+                      >
                             <CommandList className="max-h-[320px]">
                               <CommandEmpty>No matches.</CommandEmpty>
                               {filterSkillsList.length > 0 && (
@@ -796,9 +770,7 @@ export function PointsToFix({
                                 </CommandGroup>
                               )}
                             </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      </SearchPicker>
                       {hasFilter && (
                         <Button
                           type="button"
@@ -877,35 +849,15 @@ export function PointsToFix({
                                 (r) => !draftRoutineIds.includes(r.id),
                               );
                               return (
-                                <Popover open={linkOpen} onOpenChange={setLinkOpen}>
-                                  <PopoverTrigger asChild>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      role="combobox"
-                                      className="rounded-xl h-10 w-full justify-start font-normal text-muted-foreground text-xs"
-                                      data-testid="btn-open-link"
-                                    >
-                                      <Search className="h-4 w-4 mr-2 opacity-60" />
-                                      Add skill, drill, connection or routine...
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent
-                                    container={addDialogContentRef.current}
-                                    className="p-0 w-[--radix-popover-trigger-width]"
-                                    align="start"
-                                  >
-                                    <Command
-                                      filter={(value, search) => {
-                                        const v = value.toLowerCase();
-                                        const s = search.toLowerCase();
-                                        return v.includes(s) ? 1 : 0;
-                                      }}
-                                    >
-                                      <CommandInput
-                                        placeholder="Search by name or code..."
-                                        className="h-10"
-                                      />
+                                <SearchPicker
+                                  open={linkOpen}
+                                  onOpenChange={setLinkOpen}
+                                  placeholder="Add skill, drill, connection or routine..."
+                                  container={addDialogContentRef.current}
+                                  className="h-10 w-full rounded-xl border border-input bg-background focus-within:ring-1 focus-within:ring-ring"
+                                  inputClassName="text-xs"
+                                  inputTestId="btn-open-link"
+                                >
                                       <CommandList className="max-h-[260px]">
                                         <CommandEmpty>No matches.</CommandEmpty>
                                         {linkSkillsList.length > 0 && (
@@ -1000,9 +952,7 @@ export function PointsToFix({
                                           </CommandGroup>
                                         )}
                                       </CommandList>
-                                    </Command>
-                                  </PopoverContent>
-                                </Popover>
+                                </SearchPicker>
                               );
                             })()}
                             {(draftSkillIds.length > 0 || draftRoutineIds.length > 0) && (
