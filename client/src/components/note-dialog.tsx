@@ -873,6 +873,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           Back
                         </Button>
                       )}
+                      {newSkillStep === 1 && (
+                        <Button type="button" variant="outline" onClick={() => setNewSkillStep(2)} data-testid="btn-new-skill-shapes-step">
+                          Shape variants{newSkillShapes.length > 0 ? ` (${newSkillShapes.length})` : ""}
+                        </Button>
+                      )}
                       <Button type="button" className="flex-1" disabled={!newSkillName || !newSkillCode || isCreatingSkill} onClick={async () => {
                         try {
                           const childIsDrill = newSkillIsDrill ? 1 : 0;
@@ -896,11 +901,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); setNewSkillShapes([]); setNewSkillStep(1); setShowNewSkill(false);
                         } catch {}
                       }} data-testid="btn-save-new-skill">Add {newSkillIsDrill ? "Drill" : "Skill"}</Button>
-                      {newSkillStep === 1 && (
-                        <Button type="button" variant="outline" onClick={() => setNewSkillStep(2)} data-testid="btn-new-skill-shapes-step">
-                          Shape variants{newSkillShapes.length > 0 ? ` (${newSkillShapes.length})` : ""}
-                        </Button>
-                      )}
                       </div>
                     </div>
                   </DialogContent>

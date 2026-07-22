@@ -631,14 +631,14 @@ export default function SkillsPage() {
                             Back
                           </Button>
                         )}
-                        <Button type="submit" className="flex-1" disabled={isCreating || isUpdating}>
-                          {editingSkill ? "Update" : "Add Skill"}
-                        </Button>
                         {formStep === 1 && !isEditingShape && (
                           <Button type="button" variant="outline" onClick={() => setFormStep(2)} data-testid="button-skill-shapes-step">
                             Shape variants{shapeDrafts.length > 0 ? ` (${shapeDrafts.length})` : ""}
                           </Button>
                         )}
+                        <Button type="submit" className="flex-1" disabled={isCreating || isUpdating}>
+                          {editingSkill ? "Update" : "Add Skill"}
+                        </Button>
                         {editingSkill && <Button type="button" variant="outline" onClick={cancelEditing}>Cancel</Button>}
                       </div>
                     </form>
@@ -821,14 +821,14 @@ export default function SkillsPage() {
                             Back
                           </Button>
                         )}
-                        <Button type="submit" className="flex-1" disabled={isCreating || isUpdating}>
-                          {editingSkill ? "Update" : "Add Drill"}
-                        </Button>
                         {formStep === 1 && !isEditingShape && (
                           <Button type="button" variant="outline" onClick={() => setFormStep(2)} data-testid="button-drill-shapes-step">
                             Shape variants{shapeDrafts.length > 0 ? ` (${shapeDrafts.length})` : ""}
                           </Button>
                         )}
+                        <Button type="submit" className="flex-1" disabled={isCreating || isUpdating}>
+                          {editingSkill ? "Update" : "Add Drill"}
+                        </Button>
                         {editingSkill && <Button type="button" variant="outline" onClick={cancelEditing}>Cancel</Button>}
                       </div>
                     </form>
