@@ -559,7 +559,7 @@ export default function SkillsPage() {
                             <FormItem>
                               <FormLabel>Code</FormLabel>
                               <div className="flex gap-2">
-                                <FormControl><Input {...field} placeholder="4-" /></FormControl>
+                                <FormControl><Input {...field} placeholder="40" /></FormControl>
                                 {(isEditingShape || shapeDrafts.length === 0) && (
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -764,10 +764,10 @@ export default function SkillsPage() {
                       {formStep === 1 ? (
                         <>
                           <FormField control={drillForm.control} name="name" render={({ field }) => (
-                            <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} placeholder="Tuck Jump" /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} placeholder="3/4 F" /></FormControl><FormMessage /></FormItem>
                           )} />
                           <FormField control={drillForm.control} name="code" render={({ field }) => (
-                            <FormItem><FormLabel>Code</FormLabel><FormControl><Input {...field} placeholder="TJ" /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Code</FormLabel><FormControl><Input {...field} placeholder="30" /></FormControl><FormMessage /></FormItem>
                           )} />
                           {(isEditingShape || shapeDrafts.length === 0) && (
                             <FormField control={drillForm.control} name="difficulty" render={({ field }) => (

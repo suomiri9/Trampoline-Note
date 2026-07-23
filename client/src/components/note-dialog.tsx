@@ -812,12 +812,12 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         <>
                           <div className="space-y-2">
                             <label className="text-sm font-medium leading-none">Name</label>
-                            <Input placeholder={newSkillIsDrill ? "Tuck Jump" : "Back Tuck"} value={newSkillName} onChange={e => setNewSkillName(e.target.value)} data-testid="input-new-skill-name" />
+                            <Input placeholder={newSkillIsDrill ? "3/4 F" : "Bs"} value={newSkillName} onChange={e => setNewSkillName(e.target.value)} data-testid="input-new-skill-name" />
                           </div>
                           <div className="space-y-2">
                             <label className="text-sm font-medium leading-none">Code</label>
                             <div className="flex gap-2">
-                              <Input placeholder={newSkillIsDrill ? "TJ" : "BT"} value={newSkillCode} onChange={e => setNewSkillCode(e.target.value)} data-testid="input-new-skill-code" />
+                              <Input placeholder={newSkillIsDrill ? "30" : "40"} value={newSkillCode} onChange={e => setNewSkillCode(e.target.value)} data-testid="input-new-skill-code" />
                               {newSkillShapes.length === 0 && (
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
