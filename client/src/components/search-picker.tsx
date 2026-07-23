@@ -48,6 +48,23 @@ export function SearchPicker({
   const wrapRef = useRef<HTMLDivElement>(null);
   const internalInputRef = useRef<HTMLInputElement>(null);
   const inputRef = inputRefProp ?? internalInputRef;
+  const commandRef = useRef<HTMLDivElement>(null);
+
+  /** Re-dispatch a navigation key on the cmdk root so its built-in
+   * highlight/selection handling works even though focus stays on the
+   * visible outer input. */
+  const forwardKeyToCommand = (e: React.KeyboardEvent) => {
+    const cmd = commandRef.current;
+    if (!cmd) return;
+    e.preventDefault();
+    cmd.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: e.key,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  };
 
   useEffect(() => {
     if (!open) setSearch("");
@@ -85,10 +102,26 @@ export function SearchPicker({
               if (!open && !disabled) onOpenChange(true);
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter") e.preventDefault();
               if (e.key === "Escape") {
                 onOpenChange(false);
                 inputRef.current?.blur();
+                return;
+              }
+              if (
+                e.key === "ArrowDown" ||
+                e.key === "ArrowUp" ||
+                e.key === "Enter" ||
+                e.key === "Home" ||
+                e.key === "End"
+              ) {
+                if (open) {
+                  forwardKeyToCommand(e);
+                } else if (e.key === "Enter") {
+                  e.preventDefault();
+                } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                  e.preventDefault();
+                  if (!disabled) onOpenChange(true);
+                }
               }
             }}
             data-testid={inputTestId}
@@ -106,6 +139,7 @@ export function SearchPicker({
         }}
       >
         <Command
+          ref={commandRef}
           filter={(value, s) => (value.toLowerCase().includes(s.toLowerCase()) ? 1 : 0)}
         >
           {/* Hidden controlled input keeps cmdk's filter in sync with the outer box. */}
