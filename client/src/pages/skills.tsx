@@ -527,7 +527,7 @@ export default function SkillsPage() {
       />
       <Tabs value={activeTab} className="flex flex-col gap-4 -mt-6" onValueChange={(v) => { setActiveTab(v); cancelEditing(); setReorderMode(false); }}>
         <div
-          className="sticky z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2 bg-background/90 backdrop-blur-md border-b border-border/60"
+          className="sticky z-20 full-bleed-bar py-2 bg-background/90 backdrop-blur-md border-b border-border/60"
           style={{ top: "var(--page-header-h, 96px)" }}
         >
           <TabsList className="inline-flex h-auto flex-wrap justify-start gap-1 rounded-xl bg-secondary/40 p-1 shrink-0 self-start">

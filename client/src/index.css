@@ -333,6 +333,18 @@
     hsl(var(--background));
 }
 
+/* Full-bleed sticky bars: stretch edge-to-edge past the centered column while
+   keeping their content aligned with the column. `50%` resolves against the
+   parent's content width, so `50vw - 50%` is exactly the gap from the column's
+   content edge to the viewport edge at every breakpoint. Any overshoot from a
+   scrollbar is clipped by #root's overflow-x: hidden. */
+.full-bleed-bar {
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding-left: calc(50vw - 50%);
+  padding-right: calc(50vw - 50%);
+}
+
 /* Lock html/body so iOS cannot scroll the viewport — all scroll happens inside #root */
 html, body {
   position: fixed;
