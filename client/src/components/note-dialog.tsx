@@ -632,23 +632,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     </Popover>
                   </FormItem>
                 )} />
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                  <FormField control={form.control} name="startTime" render={({ field }) => (
-                    <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
-                      <FormControl><TimeField ariaLabel="Start time" value={field.value || ""} onChange={field.onChange} testId="input-start-time" /></FormControl>
-                    </FormItem>
-                  )} />
-                  <span className="text-muted-foreground text-sm">→</span>
-                  <FormField control={form.control} name="endTime" render={({ field }) => (
-                    <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
-                      <FormControl><TimeField ariaLabel="End time" value={field.value || ""} onChange={field.onChange} testId="input-end-time" /></FormControl>
-                    </FormItem>
-                  )} />
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Clock className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                    <FormField control={form.control} name="startTime" render={({ field }) => (
+                      <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
+                        <FormControl><TimeField ariaLabel="Start time" value={field.value || ""} onChange={field.onChange} testId="input-start-time" /></FormControl>
+                      </FormItem>
+                    )} />
+                    <span className="text-muted-foreground text-sm">→</span>
+                    <FormField control={form.control} name="endTime" render={({ field }) => (
+                      <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
+                        <FormControl><TimeField ariaLabel="End time" value={field.value || ""} onChange={field.onChange} testId="input-end-time" /></FormControl>
+                      </FormItem>
+                    )} />
+                  </div>
                   <FormField control={form.control} name="rating" render={({ field }) => (
                     <FormItem className="space-y-0 shrink-0">
                       <FormControl>
-                        <div className="h-9 flex items-center bg-secondary/20 rounded-xl px-1.5 border border-border/50">
+                        <div className="h-9 flex items-center justify-center sm:justify-start bg-secondary/20 rounded-xl px-1.5 border border-border/50">
                           <StarRating value={field.value} onChange={field.onChange} />
                         </div>
                       </FormControl>
