@@ -11,9 +11,10 @@ import { useOnline } from "@/hooks/use-online";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { HeartPulse, Unplug, AlertTriangle, RefreshCw } from "lucide-react";
+import { Unplug, AlertTriangle, RefreshCw, ArrowRight } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { format, parseISO } from "date-fns";
+import whoopLogoPath from "@assets/image_1784922999270.png";
 
 type WhoopRange = 7 | 30 | 90 | 180;
 
@@ -121,6 +122,7 @@ export default function WhoopPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whoop/data"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whoop/daily"] });
       toast({ title: "WHOOP disconnected", description: "Your WHOOP account was unlinked." });
     },
   });
@@ -186,13 +188,27 @@ export default function WhoopPage() {
       <PageLayout>
         {header}
         <div className="rounded-2xl card-3d p-8 flex flex-col items-center text-center" data-testid={notConnected ? "card-whoop-not-connected" : "card-whoop-error"}>
-          <div className="w-12 h-12 mb-4 rounded-full bg-secondary/40 flex items-center justify-center">
-            {notConnected ? (
-              <Unplug className="w-6 h-6 text-muted-foreground" />
-            ) : (
+          {notConnected ? (
+            <div className="flex items-center gap-3 mb-4" data-testid="icon-whoop-link">
+              <img
+                src={whoopLogoPath}
+                alt="WHOOP"
+                className="w-14 h-14 rounded-2xl shadow-lg shadow-black/40"
+                data-testid="icon-whoop-logo"
+              />
+              <ArrowRight className="w-6 h-6 text-muted-foreground" />
+              <img
+                src="/icon-192.png"
+                alt="Trampoline Training Log"
+                className="w-14 h-14 rounded-2xl shadow-lg shadow-black/40"
+                data-testid="icon-app-logo"
+              />
+            </div>
+          ) : (
+            <div className="w-12 h-12 mb-4 rounded-full bg-secondary/40 flex items-center justify-center">
               <AlertTriangle className="w-6 h-6 text-amber-400" />
-            )}
-          </div>
+            </div>
+          )}
           {notConnected ? (
             <>
               <p className="font-semibold mb-1">Connect WHOOP to see your dashboard</p>
@@ -227,7 +243,6 @@ export default function WhoopPage() {
                 }}
                 data-testid="button-whoop-signin"
               >
-                <HeartPulse className="w-4 h-4 mr-2" />
                 Sign in with WHOOP
               </Button>
               <Button

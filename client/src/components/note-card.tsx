@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Calendar, MoreVertical, Pencil, Trash2, Clock } from "lucide-react";
+import { Calendar, MoreVertical, Pencil, Trash2, Clock, HeartPulse } from "lucide-react";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { type Note } from "@shared/schema";
 import { parseNoteSkills, calculateTotalDD } from "@/lib/training-utils";
@@ -18,6 +18,7 @@ import { deleteQueuedByTempId } from "@/lib/offline-queue";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
 import { useTimeFormat, formatTime } from "@/hooks/use-time-format";
+import { useWhoopDaily, recoveryColorClass } from "@/hooks/use-whoop-daily";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -38,6 +39,10 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
   const { data: routines } = useRoutines();
   const [timeFormat] = useTimeFormat();
   const { toast } = useToast();
+  const { data: whoopDaily } = useWhoopDaily();
+  const whoopDay = whoopDaily?.connected
+    ? whoopDaily.days[String(note.date).slice(0, 10)]
+    : undefined;
 
   const handleDelete = async () => {
     if (isPending) {
@@ -78,6 +83,25 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
               </span>
               {note.rating ? (
                 <StarRating value={note.rating} onChange={() => {}} readonly size="sm" />
+              ) : null}
+              {whoopDay && (whoopDay.recovery != null || whoopDay.strain != null) ? (
+                <span
+                  className="flex items-center gap-1.5 whitespace-nowrap"
+                  title="WHOOP recovery / day strain"
+                  data-testid={`whoop-day-${note.id}`}
+                >
+                  <HeartPulse className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
+                  {whoopDay.recovery != null && (
+                    <span className={cn("font-bold", recoveryColorClass(whoopDay.recovery))}>
+                      {Math.round(whoopDay.recovery)}%
+                    </span>
+                  )}
+                  {whoopDay.strain != null && (
+                    <span className="text-muted-foreground">
+                      {whoopDay.strain.toFixed(1)} strain
+                    </span>
+                  )}
+                </span>
               ) : null}
             </div>
           </div>

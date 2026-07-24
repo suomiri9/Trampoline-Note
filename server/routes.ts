@@ -14,6 +14,7 @@ import {
   WhoopApiError,
   isWhoopConfigured,
   buildWhoopAuthUrl,
+  isWhoopLinked,
   completeWhoopLink,
   disconnectWhoop,
 } from "./whoop";
@@ -544,6 +545,40 @@ export async function registerRoutes(
         return res.status(502).json({ code: "whoop_error", message: err.message });
       }
       console.error("WHOOP data error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Per-day WHOOP recovery/strain snapshot used to annotate training-note
+  // cards. Unlike /api/whoop/data this is quiet when WHOOP isn't linked —
+  // it returns 200 {connected:false} so the Training tab doesn't log errors
+  // for users who never connected WHOOP.
+  app.get("/api/whoop/daily", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!(await isWhoopLinked(userId))) {
+        return res.json({ connected: false, days: {} });
+      }
+      const data = await getWhoopDashboardDataCached(userId, 180);
+      const days: Record<string, { recovery: number | null; strain: number | null }> = {};
+      const dayOf = (date: string) => days[date] ?? (days[date] = { recovery: null, strain: null });
+      for (const r of data.recovery) {
+        if (r.date && r.recoveryScore != null) dayOf(r.date).recovery = r.recoveryScore;
+      }
+      for (const c of data.cycles) {
+        if (!c.date || c.strain == null) continue;
+        const d = dayOf(c.date);
+        d.strain = Math.max(d.strain ?? 0, c.strain);
+      }
+      res.json({ connected: true, days });
+    } catch (err) {
+      if (err instanceof WhoopNotConnectedError) {
+        return res.json({ connected: false, days: {} });
+      }
+      if (err instanceof WhoopApiError) {
+        return res.status(502).json({ code: "whoop_error", message: err.message });
+      }
+      console.error("WHOOP daily error:", err);
       res.status(500).json({ message: "Internal server error" });
     }
   });
