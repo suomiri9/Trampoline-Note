@@ -301,30 +301,30 @@ export default function StatsPage() {
             </div>
             <span className="text-[11px] text-muted-foreground/70">Totals reflect the selected range</span>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
+          <div className="grid grid-cols-4 gap-2 sm:gap-4">
+            <div className="relative card-3d rounded-2xl p-3 pl-4 sm:p-5 sm:pl-6 overflow-hidden">
               <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-full" aria-hidden="true" />
-              <div className="eyebrow mb-2">Sessions</div>
-              <div className="text-4xl sm:text-5xl font-display font-normal text-primary tracking-tight" data-testid="stat-sessions">{sessionsInPeriod}</div>
-              <div className="text-[11px] leading-tight text-muted-foreground/70 mt-1.5" data-testid="text-sessions-caption">over {activeDays} day{activeDays === 1 ? "" : "s"}</div>
+              <div className="eyebrow eyebrow-compact mb-1.5 sm:mb-2">Sessions</div>
+              <div className="text-2xl sm:text-4xl lg:text-5xl font-display font-normal text-primary tracking-tight" data-testid="stat-sessions">{sessionsInPeriod}</div>
+              <div className="text-[9px] sm:text-[11px] leading-tight text-muted-foreground/70 mt-1 sm:mt-1.5" data-testid="text-sessions-caption">over {activeDays} day{activeDays === 1 ? "" : "s"}</div>
             </div>
-            <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
+            <div className="relative card-3d rounded-2xl p-3 pl-4 sm:p-5 sm:pl-6 overflow-hidden">
               <span className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-full" aria-hidden="true" />
-              <div className="eyebrow mb-2">Total DD</div>
-              <div className="text-4xl sm:text-5xl font-display font-normal text-emerald-400 tracking-tight" data-testid="stat-total-dd">{periodTotalDD.toFixed(1)}</div>
-              <div className="text-[11px] leading-tight text-muted-foreground/70 mt-1.5">total difficulty</div>
+              <div className="eyebrow eyebrow-compact mb-1.5 sm:mb-2">Total DD</div>
+              <div className="text-2xl sm:text-4xl lg:text-5xl font-display font-normal text-emerald-400 tracking-tight" data-testid="stat-total-dd">{periodTotalDD.toFixed(1)}</div>
+              <div className="text-[9px] sm:text-[11px] leading-tight text-muted-foreground/70 mt-1 sm:mt-1.5">total difficulty</div>
             </div>
-            <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
+            <div className="relative card-3d rounded-2xl p-3 pl-4 sm:p-5 sm:pl-6 overflow-hidden">
               <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 rounded-full" aria-hidden="true" />
-              <div className="eyebrow mb-2">Avg DD</div>
-              <div className="text-4xl sm:text-5xl font-display font-normal text-amber-400 tracking-tight" data-testid="stat-avg-dd">{periodAvgDD.toFixed(1)}</div>
-              <div className="text-[11px] leading-tight text-muted-foreground/70 mt-1.5">DD per session</div>
+              <div className="eyebrow eyebrow-compact mb-1.5 sm:mb-2">Avg DD</div>
+              <div className="text-2xl sm:text-4xl lg:text-5xl font-display font-normal text-amber-400 tracking-tight" data-testid="stat-avg-dd">{periodAvgDD.toFixed(1)}</div>
+              <div className="text-[9px] sm:text-[11px] leading-tight text-muted-foreground/70 mt-1 sm:mt-1.5">DD per session</div>
             </div>
-            <div className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden">
+            <div className="relative card-3d rounded-2xl p-3 pl-4 sm:p-5 sm:pl-6 overflow-hidden">
               <span className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500 rounded-full" aria-hidden="true" />
-              <div className="eyebrow mb-2">Best DD</div>
-              <div className="text-4xl sm:text-5xl font-display font-normal text-rose-400 tracking-tight" data-testid="stat-best">{periodBest.toFixed(1)}</div>
-              <div className="text-[11px] leading-tight text-muted-foreground/70 mt-1.5">highest single session</div>
+              <div className="eyebrow eyebrow-compact mb-1.5 sm:mb-2">Best DD</div>
+              <div className="text-2xl sm:text-4xl lg:text-5xl font-display font-normal text-rose-400 tracking-tight" data-testid="stat-best">{periodBest.toFixed(1)}</div>
+              <div className="text-[9px] sm:text-[11px] leading-tight text-muted-foreground/70 mt-1 sm:mt-1.5">highest single session</div>
             </div>
           </div>
         </div>

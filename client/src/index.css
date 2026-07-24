@@ -170,6 +170,19 @@
   color: hsl(var(--muted-foreground));
 }
 
+/* Compact eyebrow for tight cards (e.g. 4-across stat cards on phones):
+   smaller + tighter tracking below the sm breakpoint, normal above. */
+.eyebrow-compact {
+  font-size: 0.55rem;
+  letter-spacing: 0.14em;
+}
+@media (min-width: 640px) {
+  .eyebrow-compact {
+    font-size: 0.7rem;
+    letter-spacing: 0.28em;
+  }
+}
+
 /* Large uppercase page title; the accent last word uses .title-accent */
 .page-title {
   font-family: var(--font-display);
