@@ -44,3 +44,8 @@ integrations = ["javascript_log_in_with_replit:2.0.0", "resend:1.0.0"]
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.production]
+APP_BASE_URL = "https://trampolinenote.com"
