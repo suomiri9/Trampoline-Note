@@ -616,14 +616,52 @@ export async function registerRoutes(
         page: z.string().max(200).optional(),
       });
       const { content, page } = schema.parse(req.body);
-      const { reply } = await coachChat(getUserId(req), content, page);
-      res.json({ reply });
+
+      // Stream the reply as Server-Sent Events so long answers appear
+      // progressively. Events: {delta} chunks, then {done, reply}; a failure
+      // before any output is a normal JSON error, after headers it's an
+      // {error} event.
+      let streaming = false;
+      const sendEvent = (payload: unknown) => {
+        if (!streaming) {
+          streaming = true;
+          res.writeHead(200, {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache, no-transform",
+            Connection: "keep-alive",
+            "X-Accel-Buffering": "no",
+          });
+          res.flushHeaders?.();
+        }
+        res.write(`data: ${JSON.stringify(payload)}\n\n`);
+      };
+
+      try {
+        const { reply } = await coachChat(getUserId(req), content, page, (chunk) =>
+          sendEvent({ delta: chunk }),
+        );
+        sendEvent({ done: true, reply });
+        res.end();
+      } catch (err) {
+        const message =
+          err instanceof CoachUnavailableError
+            ? err.message
+            : "Internal server error";
+        if (!(err instanceof CoachUnavailableError)) {
+          console.error("Coach chat error:", err);
+        }
+        if (streaming) {
+          sendEvent({ error: message });
+          res.end();
+        } else if (err instanceof CoachUnavailableError) {
+          res.status(503).json({ code: "coach_unavailable", message });
+        } else {
+          res.status(500).json({ message });
+        }
+      }
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
-      }
-      if (err instanceof CoachUnavailableError) {
-        return res.status(503).json({ code: "coach_unavailable", message: err.message });
       }
       console.error("Coach chat error:", err);
       res.status(500).json({ message: "Internal server error" });

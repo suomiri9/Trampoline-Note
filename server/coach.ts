@@ -295,7 +295,15 @@ function pageName(path: string | undefined): string | null {
   return null;
 }
 
-export async function coachChat(userId: string, userMessage: string, page?: string): Promise<{ reply: string }> {
+// When `onDelta` is provided the model is streamed and each text chunk is
+// forwarded as it arrives; the full reply is still returned (and persisted)
+// only after the stream completes, so history behavior is unchanged.
+export async function coachChat(
+  userId: string,
+  userMessage: string,
+  page?: string,
+  onDelta?: (chunk: string) => void,
+): Promise<{ reply: string }> {
   const ctx = await buildCoachContext(userId);
   const history = await storage.getCoachMessages(userId);
   const recent = history.slice(-MAX_HISTORY_TURNS);
@@ -322,12 +330,30 @@ export async function coachChat(userId: string, userMessage: string, page?: stri
 
   let reply: string;
   try {
-    const response = await openai.chat.completions.create({
-      model: MODEL,
-      messages,
-      max_completion_tokens: 4096,
-    });
-    reply = (response.choices[0]?.message?.content ?? "").trim();
+    if (onDelta) {
+      const stream = await openai.chat.completions.create({
+        model: MODEL,
+        messages,
+        max_completion_tokens: 4096,
+        stream: true,
+      });
+      let acc = "";
+      for await (const part of stream) {
+        const delta = part.choices[0]?.delta?.content ?? "";
+        if (delta) {
+          acc += delta;
+          onDelta(delta);
+        }
+      }
+      reply = acc.trim();
+    } else {
+      const response = await openai.chat.completions.create({
+        model: MODEL,
+        messages,
+        max_completion_tokens: 4096,
+      });
+      reply = (response.choices[0]?.message?.content ?? "").trim();
+    }
   } catch (err) {
     console.error("[coach] chat failed:", err);
     throw new CoachUnavailableError();

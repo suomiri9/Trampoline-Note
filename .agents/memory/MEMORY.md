@@ -8,3 +8,4 @@
 - [Skill shape-grouping model](skill-shape-grouping-model.md) — base with shapes is a pure grouping (no DD, not loggable); shape code is a dropdown; shapes display combined base+shape everywhere except the library. User-directed override of the original spec; don't "fix" it back to satisfy code review.
 - [Theme toggle (light/dark)](theme-toggle.md) — dark is the default & must stay flash-free; store+hook mirrors offline-mode (not context); index.html class + inline-script + theme.ts defaults must stay in lockstep.
 - [WHOOP per-user OAuth](whoop-oauth.md) — user rejected the Replit WHOOP connector; WHOOP links per app user via in-app sign-in; add prod callback+privacy URLs to the WHOOP dev app at deploy; keep /api/whoop bodies out of logs.
+- [Apply-to-main silent failure = post-merge timeout](post-merge-timeout.md) — if applying a task to main spins then silently fails, check the post-merge script timeout before suspecting code or git.

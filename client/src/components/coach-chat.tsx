@@ -91,6 +91,10 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
   const [location] = useLocation();
   const { toast } = useToast();
   const [input, setInput] = useState("");
+  // The user's message and the coach's partial reply while a send is in
+  // flight — rendered as optimistic bubbles until the history refetch lands.
+  const [pendingUser, setPendingUser] = useState<string | null>(null);
+  const [streamText, setStreamText] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: messages, isLoading: messagesLoading } = useQuery<CoachMessage[]>({
@@ -99,13 +103,59 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
 
   const sendMutation = useMutation({
     mutationFn: async (content: string) => {
-      const res = await apiRequest("POST", "/api/coach/messages", { content, page: location });
-      return (await res.json()) as { reply: string };
+      setPendingUser(content);
+      setStreamText("");
+      const res = await fetch("/api/coach/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content, page: location }),
+        credentials: "include",
+      });
+      if (!res.ok || !res.headers.get("content-type")?.includes("text/event-stream")) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`${res.status}: ${text}`);
+      }
+      // Parse the SSE stream: {delta} chunks build the reply live, {done}
+      // completes it, {error} aborts.
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let acc = "";
+      let done = false;
+      while (true) {
+        const { value, done: eof } = await reader.read();
+        if (eof) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+        for (const evt of events) {
+          const dataLine = evt.split("\n").find((l) => l.startsWith("data: "));
+          if (!dataLine) continue;
+          let payload: { delta?: string; done?: boolean; reply?: string; error?: string };
+          try {
+            payload = JSON.parse(dataLine.slice(6));
+          } catch {
+            continue;
+          }
+          if (payload.error) throw new Error(`503: ${payload.error}`);
+          if (payload.delta) {
+            acc += payload.delta;
+            setStreamText(acc);
+          }
+          if (payload.done) done = true;
+        }
+      }
+      if (!done) throw new Error("503: stream ended unexpectedly");
+      return { reply: acc };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/coach/messages"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/coach/messages"] });
+      setPendingUser(null);
+      setStreamText("");
     },
     onError: (err: Error) => {
+      setPendingUser(null);
+      setStreamText("");
       toast({
         title: "The coach didn't answer",
         description: err.message.includes("503")
@@ -119,7 +169,7 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
   // Keep the newest message in view.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [messages, sendMutation.isPending]);
+  }, [messages, sendMutation.isPending, streamText]);
 
   const send = (text?: string) => {
     const content = (text ?? input).trim();
@@ -130,7 +180,7 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
     });
   };
 
-  const hasMessages = (messages?.length ?? 0) > 0;
+  const hasMessages = (messages?.length ?? 0) > 0 || (sendMutation.isPending && pendingUser != null);
 
   return (
     <>
@@ -186,14 +236,29 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
             </div>
           ))
         )}
-        {sendMutation.isPending && (
-          <div className="flex justify-start" data-testid="indicator-coach-thinking">
-            <div className="bg-secondary rounded-2xl px-4 py-2.5 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Thinking…
+        {sendMutation.isPending && pendingUser != null && (
+          <div className="flex justify-end" data-testid="message-coach-pending-user">
+            <div className="max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap bg-primary/15 text-foreground">
+              {pendingUser}
             </div>
           </div>
         )}
+        {sendMutation.isPending &&
+          (streamText ? (
+            <div className="flex justify-start" data-testid="message-coach-streaming">
+              <div className="max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap bg-secondary text-foreground">
+                {streamText}
+                <span className="inline-block w-2 h-4 ml-0.5 align-text-bottom bg-primary/60 animate-pulse rounded-sm" />
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-start" data-testid="indicator-coach-thinking">
+              <div className="bg-secondary rounded-2xl px-4 py-2.5 flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Thinking…
+              </div>
+            </div>
+          ))}
       </div>
 
       <div className="p-3 border-t border-border/50 flex items-end gap-2 shrink-0">
