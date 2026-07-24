@@ -14,7 +14,9 @@ import {
   type Score,
   type InsertScore,
   whoopTokens,
-  type WhoopToken
+  type WhoopToken,
+  coachMessages,
+  type CoachMessage
 } from "@shared/schema";
 import {
   users,
@@ -77,6 +79,11 @@ export interface IStorage {
   getWhoopToken(userId: string): Promise<WhoopToken | undefined>;
   upsertWhoopToken(userId: string, token: { accessToken: string; refreshToken: string | null; expiresAt: Date; scope: string | null }): Promise<void>;
   deleteWhoopToken(userId: string): Promise<void>;
+
+  // AI coach chat history (per user)
+  getCoachMessages(userId: string): Promise<CoachMessage[]>;
+  createCoachMessage(userId: string, role: "user" | "assistant", content: string): Promise<CoachMessage>;
+  clearCoachMessages(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -466,6 +473,25 @@ export class DatabaseStorage implements IStorage {
 
   async deleteWhoopToken(userId: string): Promise<void> {
     await db.delete(whoopTokens).where(eq(whoopTokens.userId, userId));
+  }
+
+  // ---- AI coach chat history (per user) ----
+
+  async getCoachMessages(userId: string): Promise<CoachMessage[]> {
+    return await db.select().from(coachMessages)
+      .where(eq(coachMessages.userId, userId))
+      .orderBy(coachMessages.createdAt, coachMessages.id);
+  }
+
+  async createCoachMessage(userId: string, role: "user" | "assistant", content: string): Promise<CoachMessage> {
+    const [row] = await db.insert(coachMessages)
+      .values({ userId, role, content })
+      .returning();
+    return row;
+  }
+
+  async clearCoachMessages(userId: string): Promise<void> {
+    await db.delete(coachMessages).where(eq(coachMessages.userId, userId));
   }
 }
 

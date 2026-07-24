@@ -74,6 +74,16 @@ export const scores = pgTable("scores", {
   attemptVol: integer("attempt_vol"), // null = full 10 skills, 1-9 = partial attempt
 });
 
+// AI coach chat history (per user). Read-only advisor; messages persist so
+// the conversation survives reloads.
+export const coachMessages = pgTable("coach_messages", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  role: text("role").notNull(), // "user" | "assistant"
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Per-user WHOOP OAuth tokens ("Sign in with WHOOP"). One row per user;
 // tokens live server-side only and are never sent to the frontend.
 export const whoopTokens = pgTable("whoop_tokens", {
@@ -103,6 +113,8 @@ export type Score = typeof scores.$inferSelect;
 export type InsertScore = z.infer<typeof insertScoreSchema>;
 
 export type WhoopToken = typeof whoopTokens.$inferSelect;
+
+export type CoachMessage = typeof coachMessages.$inferSelect;
 
 export type CreateNoteRequest = InsertNote;
 export type UpdateNoteRequest = Partial<InsertNote>;

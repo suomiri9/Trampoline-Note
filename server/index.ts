@@ -73,6 +73,13 @@ async function runMigrations() {
       ALTER TABLE routines ADD COLUMN IF NOT EXISTS code text;
       ALTER TABLE skills ADD COLUMN IF NOT EXISTS archived integer NOT NULL DEFAULT 0;
       ALTER TABLE routines ADD COLUMN IF NOT EXISTS archived integer NOT NULL DEFAULT 0;
+      CREATE TABLE IF NOT EXISTS coach_messages (
+        id serial PRIMARY KEY,
+        user_id varchar NOT NULL,
+        role text NOT NULL,
+        content text NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now()
+      );
       CREATE TABLE IF NOT EXISTS whoop_tokens (
         user_id varchar PRIMARY KEY,
         access_token text NOT NULL,

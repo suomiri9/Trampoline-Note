@@ -41,6 +41,17 @@ level. Re-run `tsc` to see the current exact list; don't memorize it.
 actually edited and ignore the pre-existing baseline. Don't try to "fix" those
 unless the task is specifically about them.
 
+## Page scrolling happens inside #root, not the window
+`html`/`body` are intentionally `position: fixed; overflow: hidden` (iOS
+viewport-scroll lock in `index.css`); ALL vertical scrolling happens inside the
+`#root` element. `window.scrollY` is always 0 and `body.scrollHeight` equals the
+viewport height — that is NOT a broken-scroll bug.
+
+**How to apply:** in Playwright/e2e scroll checks, drive and measure
+`document.getElementById('root').scrollTop/scrollHeight`, never `window.scrollY`
+or wheel-on-body heuristics. Any fixed bottom-anchored UI must be covered by the
+`.pb-nav-safe` content padding so the last row can scroll clear of it.
+
 ## curl API testing needs an https-proto header
 Session cookies are `secure: true` behind `trust proxy`, so plain
 `curl localhost:5000` logins return 200 but the cookie is never stored/sent.

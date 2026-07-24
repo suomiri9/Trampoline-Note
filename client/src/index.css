@@ -123,9 +123,10 @@
   padding-top: env(safe-area-inset-top, 0px);
 }
 
-/* Reserve space under page content for the floating bottom nav
-   (bottom-4 offset + nav height) PLUS the iOS home-indicator inset,
-   so the nav never covers the last row of content on iPhone. */
+/* Reserve space under page content for the floating bottom nav row
+   (bottom-4 offset + bar height; the coach launcher sits inline in the
+   same row) PLUS the iOS home-indicator inset, so the bar never covers
+   the last row of content on iPhone. */
 .pb-nav-safe {
   padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
 }

@@ -17,14 +17,16 @@ import PrivacyPage from "@/pages/privacy";
 import ScorePage from "@/pages/score";
 import SettingsPage from "@/pages/settings";
 import WhoopPage from "@/pages/whoop";
+import CoachPage from "@/pages/coach";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Target, Layers, BarChart3, Trophy, Loader2, Settings, HeartPulse } from "lucide-react";
+import { LayoutDashboard, Target, Layers, BarChart3, Trophy, Loader2, Settings, HeartPulse, Bot } from "lucide-react";
 import { useEffect } from "react";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { drainQueue } from "@/lib/offline-queue";
 import { useToast } from "@/hooks/use-toast";
 import { OfflineIndicator } from "@/components/offline-indicator";
+import { CoachWidget } from "@/components/coach-widget";
 import { SplashScreen } from "@/components/splash-screen";
 
 function Navigation() {
@@ -37,13 +39,18 @@ function Navigation() {
     { href: "/skills", label: "Skills", icon: Target, lightColor: "text-red-600/55 dark:text-red-400/45", activeColor: "bg-red-500/15 text-red-600 dark:text-red-400" },
     { href: "/routines", label: "Routines", icon: Layers, lightColor: "text-purple-600/55 dark:text-purple-400/45", activeColor: "bg-purple-500/15 text-purple-600 dark:text-purple-400" },
     { href: "/whoop", label: "WHOOP", icon: HeartPulse, lightColor: "text-orange-600/55 dark:text-orange-400/45", activeColor: "bg-orange-500/15 text-orange-600 dark:text-orange-400" },
+    { href: "/coach", label: "Coach", icon: Bot, lightColor: "text-cyan-600/55 dark:text-cyan-400/45", activeColor: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400" },
   ];
 
   const baseItem =
-    "flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-mono uppercase tracking-wider transition-all cursor-pointer";
+    "flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-xl text-[11px] font-mono uppercase tracking-wider transition-all cursor-pointer";
 
+  // z-[60] (above dialog z-50) so the coach launcher beside the bar stays
+  // visible over popups (user request). The wrapper itself is click-through;
+  // only the pill and the launcher accept pointer events.
   return (
-    <nav className="fixed bottom-4 left-0 right-0 mx-auto w-fit glass-surface px-2 pt-2 pb-2 mb-safe rounded-2xl flex items-center gap-1 z-40">
+    <div className="fixed bottom-4 left-0 right-0 z-[60] mb-safe px-1 flex items-center justify-center gap-1.5 pointer-events-none">
+      <nav className="glass-surface px-1.5 sm:px-2 pt-2 pb-2 rounded-2xl flex items-center gap-0.5 sm:gap-1 pointer-events-auto">
       {navItems.map((item) => {
         const active =
           location === item.href ||
@@ -81,7 +88,9 @@ function Navigation() {
           </div>
         </Link>
       )}
-    </nav>
+      </nav>
+      <CoachWidget />
+    </div>
   );
 }
 
@@ -97,6 +106,7 @@ function Router() {
         <Route path="/routines" component={RoutinesPage} />
         <Route path="/routines/:id" component={RoutineDetailPage} />
         <Route path="/whoop" component={WhoopPage} />
+        <Route path="/coach" component={CoachPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/privacy" component={PrivacyPage} />
         <Route path="/forgot-password"><Redirect to="/" /></Route>

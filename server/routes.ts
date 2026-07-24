@@ -4,6 +4,7 @@ import { storage, SkillLinkError } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { isAuthenticated, getUserId, getBaseUrl } from "./auth";
+import { getPushRecommendation, coachChat, CoachUnavailableError } from "./coach";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
@@ -579,6 +580,62 @@ export async function registerRoutes(
         return res.status(502).json({ code: "whoop_error", message: err.message });
       }
       console.error("WHOOP daily error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // ---- AI coach ----
+
+  app.get("/api/coach/push", isAuthenticated, async (req, res) => {
+    try {
+      const rec = await getPushRecommendation(getUserId(req));
+      res.json(rec);
+    } catch (err) {
+      if (err instanceof CoachUnavailableError) {
+        return res.status(503).json({ code: "coach_unavailable", message: err.message });
+      }
+      console.error("Coach push error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/coach/messages", isAuthenticated, async (req, res) => {
+    try {
+      const msgs = await storage.getCoachMessages(getUserId(req));
+      res.json(msgs);
+    } catch (err) {
+      console.error("Coach messages error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/coach/messages", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z.object({
+        content: z.string().trim().min(1).max(4000),
+        page: z.string().max(200).optional(),
+      });
+      const { content, page } = schema.parse(req.body);
+      const { reply } = await coachChat(getUserId(req), content, page);
+      res.json({ reply });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      if (err instanceof CoachUnavailableError) {
+        return res.status(503).json({ code: "coach_unavailable", message: err.message });
+      }
+      console.error("Coach chat error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/coach/messages", isAuthenticated, async (req, res) => {
+    try {
+      await storage.clearCoachMessages(getUserId(req));
+      res.status(204).end();
+    } catch (err) {
+      console.error("Coach clear error:", err);
       res.status(500).json({ message: "Internal server error" });
     }
   });
