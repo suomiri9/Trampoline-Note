@@ -49,3 +49,6 @@ timeoutMs = 20000
 
 [userenv.production]
 APP_BASE_URL = "https://trampolinenote.com"
+
+[userenv.development]
+DEV_AUTO_LOGIN = "1"

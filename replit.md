@@ -232,4 +232,4 @@ Workflow "Start application" runs `npm run dev` which starts Express + Vite on p
 
 ## User Preferences
 
-No explicit user preferences recorded yet. When the user asks to remember a preference or convention, capture it here. Until then, follow the design-system conventions documented above.
+- **Dev preview must always be auto-logged-in to the demo account** (user request 2026-07-25): `server/auth.ts` has a dev-only middleware (gated on `NODE_ENV !== "production"` AND `DEV_AUTO_LOGIN === "1"`, env var set in the development environment only) that signs any session-less `/api` request in as the demo user (id `55504735`). Keep this ON unless the user explicitly asks to test the real login flow — then set `DEV_AUTO_LOGIN=0` and restart, and turn it back ON afterwards. Note: while ON, "Log out" in the dev preview won't stick (next API call re-logs in); production is unaffected.

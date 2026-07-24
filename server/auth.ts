@@ -148,6 +148,24 @@ export async function setupAuth(app: Express) {
 
   await seedDemoUser();
 
+  // Dev-only convenience: automatically sign the preview in as the demo user
+  // so a fresh dev URL never shows the login screen. Double-gated: never runs
+  // in production AND requires DEV_AUTO_LOGIN=1 (set only in the development
+  // environment). Flip DEV_AUTO_LOGIN to 0 to test the real login flow.
+  if (process.env.NODE_ENV !== "production" && process.env.DEV_AUTO_LOGIN === "1") {
+    console.log("Dev auto-login enabled: preview signs in as the demo user automatically");
+    app.use(async (req, _res, next) => {
+      if (!req.session.userId && req.path.startsWith("/api")) {
+        try {
+          await setSessionUser(req, DEMO_USER_ID);
+        } catch (err) {
+          console.error("Dev auto-login failed:", err);
+        }
+      }
+      next();
+    });
+  }
+
   app.post("/api/auth/register", async (req, res) => {
     try {
       const input = registerSchema.parse(req.body);
