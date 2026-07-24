@@ -40,3 +40,11 @@ level. Re-run `tsc` to see the current exact list; don't memorize it.
 **How to apply:** when verifying a change, filter tsc output to the files you
 actually edited and ignore the pre-existing baseline. Don't try to "fix" those
 unless the task is specifically about them.
+
+## curl API testing needs an https-proto header
+Session cookies are `secure: true` behind `trust proxy`, so plain
+`curl localhost:5000` logins return 200 but the cookie is never stored/sent.
+
+**How to apply:** add `-H 'X-Forwarded-Proto: https'` to both the login and the
+subsequent authenticated curl requests (with `-c`/`-b` cookie jar) when testing
+API routes from bash.

@@ -30,3 +30,9 @@ id = "HPGvnXlRNcFO5bxBAJs3Y"
 uri = "file://replit.md"
 type = "text"
 title = "replit.md — project overview & preferences"
+
+[[outputs]]
+id = "0OnJ8MavH_mCA3zRXQgKL"
+uri = "file://client/public/icon-512.png"
+type = "image"
+title = "App logo (512×512 PNG) — upload this in the WHOOP dashboard"

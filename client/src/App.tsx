@@ -13,11 +13,13 @@ import StatsPage from "@/pages/stats";
 import LoginPage from "@/pages/login";
 import ForgotPasswordPage from "@/pages/forgot-password";
 import ResetPasswordPage from "@/pages/reset-password";
+import PrivacyPage from "@/pages/privacy";
 import ScorePage from "@/pages/score";
 import SettingsPage from "@/pages/settings";
+import WhoopPage from "@/pages/whoop";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Target, Layers, BarChart3, Trophy, Loader2, Settings } from "lucide-react";
+import { LayoutDashboard, Target, Layers, BarChart3, Trophy, Loader2, Settings, HeartPulse } from "lucide-react";
 import { useEffect } from "react";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { drainQueue } from "@/lib/offline-queue";
@@ -34,6 +36,7 @@ function Navigation() {
     { href: "/stats", label: "Progress", icon: BarChart3, lightColor: "text-green-600/55 dark:text-green-400/45", activeColor: "bg-green-500/15 text-green-600 dark:text-green-400" },
     { href: "/skills", label: "Skills", icon: Target, lightColor: "text-red-600/55 dark:text-red-400/45", activeColor: "bg-red-500/15 text-red-600 dark:text-red-400" },
     { href: "/routines", label: "Routines", icon: Layers, lightColor: "text-purple-600/55 dark:text-purple-400/45", activeColor: "bg-purple-500/15 text-purple-600 dark:text-purple-400" },
+    { href: "/whoop", label: "WHOOP", icon: HeartPulse, lightColor: "text-orange-600/55 dark:text-orange-400/45", activeColor: "bg-orange-500/15 text-orange-600 dark:text-orange-400" },
   ];
 
   const baseItem =
@@ -93,7 +96,9 @@ function Router() {
         <Route path="/skills/:id" component={SkillDetailPage} />
         <Route path="/routines" component={RoutinesPage} />
         <Route path="/routines/:id" component={RoutineDetailPage} />
+        <Route path="/whoop" component={WhoopPage} />
         <Route path="/settings" component={SettingsPage} />
+        <Route path="/privacy" component={PrivacyPage} />
         <Route path="/forgot-password"><Redirect to="/" /></Route>
         <Route path="/reset-password"><Redirect to="/" /></Route>
         <Route component={NotFound} />
@@ -203,6 +208,7 @@ function AppContent() {
       <Switch>
         <Route path="/forgot-password" component={ForgotPasswordPage} />
         <Route path="/reset-password" component={ResetPasswordPage} />
+        <Route path="/privacy" component={PrivacyPage} />
         <Route component={LoginPage} />
       </Switch>
     );

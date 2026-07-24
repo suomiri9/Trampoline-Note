@@ -74,6 +74,17 @@ export const scores = pgTable("scores", {
   attemptVol: integer("attempt_vol"), // null = full 10 skills, 1-9 = partial attempt
 });
 
+// Per-user WHOOP OAuth tokens ("Sign in with WHOOP"). One row per user;
+// tokens live server-side only and are never sent to the frontend.
+export const whoopTokens = pgTable("whoop_tokens", {
+  userId: varchar("user_id").primaryKey(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"), // present when the "offline" scope was granted
+  expiresAt: timestamp("expires_at").notNull(),
+  scope: text("scope"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const insertNoteSchema = createInsertSchema(notes).omit({ id: true });
 export const insertSkillSchema = createInsertSchema(skills).omit({ id: true });
 export const insertRoutineSchema = createInsertSchema(routines).omit({ id: true, createdAt: true });
@@ -90,6 +101,8 @@ export type InsertRoutine = z.infer<typeof insertRoutineSchema>;
 
 export type Score = typeof scores.$inferSelect;
 export type InsertScore = z.infer<typeof insertScoreSchema>;
+
+export type WhoopToken = typeof whoopTokens.$inferSelect;
 
 export type CreateNoteRequest = InsertNote;
 export type UpdateNoteRequest = Partial<InsertNote>;

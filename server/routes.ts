@@ -3,10 +3,20 @@ import type { Server } from "http";
 import { storage, SkillLinkError } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { isAuthenticated, getUserId } from "./auth";
+import { isAuthenticated, getUserId, getBaseUrl } from "./auth";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
+import crypto from "crypto";
+import {
+  getWhoopDashboardDataCached,
+  WhoopNotConnectedError,
+  WhoopApiError,
+  isWhoopConfigured,
+  buildWhoopAuthUrl,
+  completeWhoopLink,
+  disconnectWhoop,
+} from "./whoop";
 
 interface SkillEntry { id: number; reps?: number }
 
@@ -453,6 +463,87 @@ export async function registerRoutes(
       entries.sort((a, b) => a.date.localeCompare(b.date));
       res.json(entries);
     } catch {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // ---- WHOOP: per-user OAuth ("Sign in with WHOOP") + dashboard data ----
+
+  const whoopRedirectUri = (req: Parameters<typeof getBaseUrl>[0]) =>
+    `${getBaseUrl(req)}/api/whoop/callback`;
+
+  // Kick off the WHOOP OAuth flow: stash a CSRF state in the session and
+  // redirect the browser to WHOOP's login/consent page.
+  app.get("/api/whoop/auth", isAuthenticated, (req, res) => {
+    if (!isWhoopConfigured()) {
+      return res.redirect("/whoop?whoop=not_configured");
+    }
+    const state = crypto.randomBytes(16).toString("hex");
+    req.session.whoopOauthState = { value: state, expiresAt: Date.now() + 10 * 60 * 1000 };
+    req.session.save(() => {
+      res.redirect(buildWhoopAuthUrl(whoopRedirectUri(req), state));
+    });
+  });
+
+  // OAuth callback: verify state, exchange the code, store tokens for the user.
+  app.get("/api/whoop/callback", isAuthenticated, async (req, res) => {
+    const expected = req.session.whoopOauthState;
+    req.session.whoopOauthState = undefined;
+
+    const { code, state, error } = req.query as Record<string, string | undefined>;
+    if (error) {
+      // User hit "deny" (or WHOOP reported an error) — not a server failure.
+      return res.redirect("/whoop?whoop=denied");
+    }
+    if (
+      !code ||
+      !state ||
+      !expected ||
+      expected.value !== state ||
+      Date.now() > expected.expiresAt
+    ) {
+      return res.redirect("/whoop?whoop=state_mismatch");
+    }
+    try {
+      await completeWhoopLink(getUserId(req), code, whoopRedirectUri(req));
+      res.redirect("/whoop?whoop=connected");
+    } catch (err) {
+      console.error("WHOOP link error:", err);
+      res.redirect("/whoop?whoop=link_failed");
+    }
+  });
+
+  // Unlink the signed-in user's WHOOP account.
+  app.post("/api/whoop/disconnect", isAuthenticated, async (req, res) => {
+    try {
+      await disconnectWhoop(getUserId(req));
+      res.status(204).end();
+    } catch (err) {
+      console.error("WHOOP disconnect error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // WHOOP dashboard data (read-only, fetched server-side with the user's token)
+  app.get("/api/whoop/data/:days", isAuthenticated, async (req, res) => {
+    try {
+      const days = Number(req.params.days);
+      if (![7, 30, 90, 180].includes(days)) {
+        return res.status(400).json({ message: "Invalid range" });
+      }
+      const data = await getWhoopDashboardDataCached(getUserId(req), days);
+      res.json(data);
+    } catch (err) {
+      if (err instanceof WhoopNotConnectedError) {
+        return res.status(503).json({
+          code: "not_connected",
+          message: "WHOOP is not connected.",
+        });
+      }
+      if (err instanceof WhoopApiError) {
+        return res.status(502).json({ code: "whoop_error", message: err.message });
+      }
+      console.error("WHOOP data error:", err);
       res.status(500).json({ message: "Internal server error" });
     }
   });

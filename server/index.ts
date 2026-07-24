@@ -50,7 +50,8 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
+      // Don't log WHOOP response bodies — they contain personal health data.
+      if (capturedJsonResponse && !path.startsWith("/api/whoop")) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
@@ -72,6 +73,14 @@ async function runMigrations() {
       ALTER TABLE routines ADD COLUMN IF NOT EXISTS code text;
       ALTER TABLE skills ADD COLUMN IF NOT EXISTS archived integer NOT NULL DEFAULT 0;
       ALTER TABLE routines ADD COLUMN IF NOT EXISTS archived integer NOT NULL DEFAULT 0;
+      CREATE TABLE IF NOT EXISTS whoop_tokens (
+        user_id varchar PRIMARY KEY,
+        access_token text NOT NULL,
+        refresh_token text,
+        expires_at timestamp NOT NULL,
+        scope text,
+        updated_at timestamp NOT NULL DEFAULT now()
+      );
     `);
     console.log("Database migrations applied");
   } catch (err) {

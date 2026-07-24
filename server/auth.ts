@@ -13,6 +13,8 @@ import { sendPasswordResetEmail } from "./email";
 declare module "express-session" {
   interface SessionData {
     userId: string;
+    // CSRF state for the in-flight "Sign in with WHOOP" OAuth redirect.
+    whoopOauthState?: { value: string; expiresAt: number };
   }
 }
 
@@ -83,7 +85,7 @@ function sha256(value: string): string {
 // Base URL for emailed reset links. Prefer an explicit configured origin so a
 // forged Host/Origin header can never poison the link; fall back to the
 // request origin (fine for dev / single-domain deploys).
-function getBaseUrl(req: Request): string {
+export function getBaseUrl(req: Request): string {
   const configured = process.env.APP_BASE_URL;
   if (configured) return configured.replace(/\/+$/, "");
   // Prefer the platform-provided canonical domain over the request Host header

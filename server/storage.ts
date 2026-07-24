@@ -12,7 +12,9 @@ import {
   type Routine,
   type InsertRoutine,
   type Score,
-  type InsertScore
+  type InsertScore,
+  whoopTokens,
+  type WhoopToken
 } from "@shared/schema";
 import {
   users,
@@ -70,6 +72,11 @@ export interface IStorage {
   createPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<void>;
   getValidResetTokenByHash(tokenHash: string): Promise<PasswordResetToken | undefined>;
   completePasswordReset(userId: string, tokenId: string, hashedPassword: string): Promise<boolean>;
+
+  // WHOOP OAuth tokens (per user)
+  getWhoopToken(userId: string): Promise<WhoopToken | undefined>;
+  upsertWhoopToken(userId: string, token: { accessToken: string; refreshToken: string | null; expiresAt: Date; scope: string | null }): Promise<void>;
+  deleteWhoopToken(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -422,6 +429,43 @@ export class DatabaseStorage implements IStorage {
 
       return true;
     });
+  }
+
+  // ---- WHOOP OAuth tokens (per user) ----
+
+  async getWhoopToken(userId: string): Promise<WhoopToken | undefined> {
+    const [row] = await db.select().from(whoopTokens).where(eq(whoopTokens.userId, userId));
+    return row;
+  }
+
+  async upsertWhoopToken(
+    userId: string,
+    token: { accessToken: string; refreshToken: string | null; expiresAt: Date; scope: string | null },
+  ): Promise<void> {
+    await db
+      .insert(whoopTokens)
+      .values({
+        userId,
+        accessToken: token.accessToken,
+        refreshToken: token.refreshToken,
+        expiresAt: token.expiresAt,
+        scope: token.scope,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: whoopTokens.userId,
+        set: {
+          accessToken: token.accessToken,
+          refreshToken: token.refreshToken,
+          expiresAt: token.expiresAt,
+          scope: token.scope,
+          updatedAt: new Date(),
+        },
+      });
+  }
+
+  async deleteWhoopToken(userId: string): Promise<void> {
+    await db.delete(whoopTokens).where(eq(whoopTokens.userId, userId));
   }
 }
 
