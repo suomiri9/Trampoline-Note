@@ -19,6 +19,19 @@ window.addEventListener(
     if (e.message && RESIZE_OBSERVER_RE.test(e.message)) {
       e.stopImmediatePropagation();
       e.preventDefault();
+      return;
+    }
+    // Normalize uncaught non-Error throws (e.g. `throw null` / a plain
+    // object from a third-party script): log a real Error with whatever
+    // detail exists instead of letting an unidentifiable payload surface
+    // as an opaque runtime crash.
+    if (!(e.error instanceof Error)) {
+      e.preventDefault();
+      console.error(
+        new Error(
+          `Uncaught non-Error value: ${safeStringify(e.error)} (message: ${e.message || "n/a"}, source: ${e.filename || "n/a"}:${e.lineno ?? "?"})`,
+        ),
+      );
     }
   },
   true,
@@ -31,10 +44,29 @@ window.addEventListener(
     if (RESIZE_OBSERVER_RE.test(msg)) {
       e.stopImmediatePropagation();
       e.preventDefault();
+      return;
+    }
+    // Normalize promise rejections whose reason is not an Error (null,
+    // string, plain object) into a logged Error so they are diagnosable
+    // rather than reported as "not an error object".
+    if (!(e.reason instanceof Error)) {
+      e.preventDefault();
+      console.error(
+        new Error(`Unhandled rejection with non-Error reason: ${safeStringify(e.reason)}`),
+      );
     }
   },
   true,
 );
+
+function safeStringify(v: unknown): string {
+  if (v === undefined) return "undefined";
+  try {
+    return JSON.stringify(v) ?? String(v);
+  } catch {
+    return String(v);
+  }
+}
 
 const originalConsoleError = console.error;
 console.error = (...args: unknown[]) => {

@@ -384,7 +384,7 @@ export function PointsToFix({
           variant="outline"
           onClick={() => setOpen(true)}
           data-testid="button-points-to-fix"
-          className="rounded-xl h-12 px-4 font-semibold flex items-center gap-2 relative btn-gold border"
+          className="rounded-xl h-12 px-4 font-medium flex items-center gap-2 relative text-muted-foreground hover:text-foreground"
         >
           <Wrench className="w-5 h-5" />
           Points to Fix
@@ -401,7 +401,7 @@ export function PointsToFix({
           setOpen(next);
         }}
       >
-        <DialogContent ref={dialogContentRef} className="sm:max-w-[500px] md:max-w-[680px] w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] max-h-[85dvh] overflow-y-auto overflow-x-hidden p-4 sm:p-6 rounded-2xl">
+        <DialogContent aria-describedby={undefined} ref={dialogContentRef} className="sm:max-w-[500px] md:max-w-[680px] w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] max-h-[85dvh] overflow-y-auto overflow-x-hidden p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -422,16 +422,32 @@ export function PointsToFix({
                 const groupsBySkill = new Map<number, PointToFix[]>();
                 const groupsByRoutine = new Map<number, PointToFix[]>();
                 const unlinked: PointToFix[] = [];
+                // Only group under ids that actually resolve to a loaded
+                // skill/routine — a memo linked to a skill that has since
+                // been deleted would otherwise render a ghost "Unknown
+                // skill" card. Dead-linked points fall back to General so
+                // their text is never hidden. We never rewrite the stored
+                // ids, so a temp id created offline re-links by itself
+                // once the sync queue remaps it and data refetches.
+                // While the lists are still loading, keep the raw grouping
+                // to avoid a flash of everything collapsing into General.
+                const canResolve = skills !== undefined && routines !== undefined;
                 for (const p of points) {
-                  if (p.skillIds.length === 0 && p.routineIds.length === 0) {
+                  const liveSkillIds = canResolve
+                    ? p.skillIds.filter((sid) => !!skillById(sid))
+                    : p.skillIds;
+                  const liveRoutineIds = canResolve
+                    ? p.routineIds.filter((rid) => !!routineById(rid))
+                    : p.routineIds;
+                  if (liveSkillIds.length === 0 && liveRoutineIds.length === 0) {
                     unlinked.push(p);
                   } else {
-                    for (const sid of p.skillIds) {
+                    for (const sid of liveSkillIds) {
                       const arr = groupsBySkill.get(sid) || [];
                       arr.push(p);
                       groupsBySkill.set(sid, arr);
                     }
-                    for (const rid of p.routineIds) {
+                    for (const rid of liveRoutineIds) {
                       const arr = groupsByRoutine.get(rid) || [];
                       arr.push(p);
                       groupsByRoutine.set(rid, arr);
@@ -796,7 +812,7 @@ export function PointsToFix({
                         <Plus className="h-4 w-4" />
                       </Button>
                       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-                        <DialogContent
+                        <DialogContent aria-describedby={undefined}
                           ref={addDialogContentRef}
                           className="sm:max-w-[420px] w-[calc(100vw-32px)] max-w-[calc(100vw-32px)] max-h-[85dvh] overflow-y-auto rounded-2xl p-4 sm:p-5"
                         >

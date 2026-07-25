@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { useDndSensors } from "@/hooks/use-dnd-sensors";
 import { SortableSkillRow } from "@/components/sortable-skill-row";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchPicker } from "@/components/search-picker";
+import { CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Skill } from "@shared/schema";
@@ -37,6 +39,7 @@ export function SkillEditorOverlay({
 }: SkillEditorOverlayProps) {
   const sensors = useDndSensors();
   const uids = skillIds.map((id, i) => `${uidPrefix}-${id}-${i}`);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -50,8 +53,9 @@ export function SkillEditorOverlay({
     onSkillIdsChange(skillIds.filter((_, i) => i !== idx));
   };
 
-  const addSkill = (val: string) => {
-    onSkillIdsChange([...skillIds, parseInt(val)]);
+  const addSkill = (id: number) => {
+    onSkillIdsChange([...skillIds, id]);
+    setPickerOpen(false);
   };
 
   const availableSkills = (filterSkills ? allSkills.filter(filterSkills) : [...allSkills])
@@ -91,28 +95,38 @@ export function SkillEditorOverlay({
           </SortableContext>
         </DndContext>
       </div>
-      <div className="shrink-0 mt-2">
-        <Select key={skillIds.length} onValueChange={addSkill}>
-          <SelectTrigger className="h-9 text-xs rounded-xl border-border bg-background">
-            <SelectValue placeholder="Add skill..." />
-          </SelectTrigger>
-          <SelectContent>
-            {availableSkills.map(s => (
-              <SelectItem key={s.id} value={s.id.toString()}>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className={cn(
-                    "font-mono text-[10px]",
-                    s.isDrill === 3 ? "border-muted-foreground/40 text-muted-foreground" :
-                    s.isDrill === 2 ? "border-red-300 text-red-500" : ""
-                  )}>{skillDisplayCode(s, allSkills)}</Badge>
-                  <span className="text-xs">{skillDisplayName(s, allSkills)}</span>
-                  {s.isDrill === 2 && <span className="text-[10px] text-red-500 font-medium">(Connection)</span>}
-                  {s.isDrill === 3 && <span className="text-[10px] text-muted-foreground font-medium">(Routine Part)</span>}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="shrink-0 mt-2 h-11 rounded-xl border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
+        <SearchPicker
+          open={pickerOpen}
+          onOpenChange={setPickerOpen}
+          placeholder="Add skill..."
+          className="w-full h-full"
+          inputClassName="text-xs"
+        >
+          <CommandList className="max-h-[260px]">
+            <CommandEmpty>No matches.</CommandEmpty>
+            <CommandGroup>
+              {availableSkills.map(s => (
+                <CommandItem
+                  key={s.id}
+                  value={`${skillDisplayCode(s, allSkills)} ${skillDisplayName(s, allSkills)}`}
+                  onSelect={() => addSkill(s.id)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className={cn(
+                      "font-mono text-[10px]",
+                      s.isDrill === 3 ? "border-muted-foreground/40 text-muted-foreground" :
+                      s.isDrill === 2 ? "border-red-300 text-red-500" : ""
+                    )}>{skillDisplayCode(s, allSkills)}</Badge>
+                    <span className="text-xs">{skillDisplayName(s, allSkills)}</span>
+                    {s.isDrill === 2 && <span className="text-[10px] text-red-500 font-medium">(Connection)</span>}
+                    {s.isDrill === 3 && <span className="text-[10px] text-muted-foreground font-medium">(Routine Part)</span>}
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </SearchPicker>
       </div>
     </div>
   );

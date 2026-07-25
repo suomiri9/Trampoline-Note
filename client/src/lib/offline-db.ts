@@ -61,7 +61,13 @@ function withStore<T>(
         const s = t.objectStore(store);
         const req = fn(s);
         req.onsuccess = () => resolve(req.result as T);
-        req.onerror = () => reject(req.error);
+        // req.error is null when the failure comes from the transaction
+        // aborting rather than the request itself — always reject with a
+        // real Error so nothing upstream sees a null rejection reason.
+        req.onerror = () =>
+          reject(req.error ?? new Error(`IndexedDB ${mode} on '${store}' failed`));
+        t.onabort = () =>
+          reject(t.error ?? new Error(`IndexedDB transaction on '${store}' aborted`));
       }),
   );
 }

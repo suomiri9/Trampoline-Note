@@ -63,15 +63,27 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
 
   const skillsData = parseNoteSkills(note.skills);
   const totalDifficulty = calculateTotalDD(skillsData, allItems, routines);
+  const [expandedMath, setExpandedMath] = useState<Set<number>>(new Set());
+  const toggleMath = (idx: number) => {
+    setExpandedMath(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx); else next.add(idx);
+      return next;
+    });
+  };
 
   const staggerClass = `stagger-${Math.min(index + 1, 5)}`;
 
   return (
     <>
-      <div className={`group relative card-3d card-3d-hover p-4 sm:p-5 pl-5 sm:pl-6 rounded-2xl overflow-hidden transition-all animate-fade-in-up opacity-0 ${staggerClass}`}>
+      <div
+        className={`group relative card-3d card-3d-hover p-4 sm:p-5 pl-5 sm:pl-6 rounded-2xl overflow-hidden transition-all animate-fade-in-up opacity-0 cursor-pointer ${staggerClass}`}
+        onClick={() => onEdit(note)}
+        data-testid={`card-note-${note.id}`}
+      >
         <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-full" aria-hidden="true" />
         <div className="flex justify-between items-stretch gap-3 mb-3">
-          <div className="min-w-0 flex flex-col gap-2 pt-0.5">
+          <div className="min-w-0 flex flex-col gap-1 pt-0.5">
             <div className="flex items-center flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] text-muted-foreground">
               <span className="flex items-center gap-1.5 whitespace-nowrap">
                 <Calendar className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
@@ -81,31 +93,35 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                 <Clock className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
                 {formatTime(note.startTime, timeFormat)} - {formatTime(note.endTime, timeFormat)}
               </span>
-              {note.rating ? (
-                <StarRating value={note.rating} onChange={() => {}} readonly size="sm" />
-              ) : null}
-              {whoopDay && (whoopDay.recovery != null || whoopDay.strain != null) ? (
-                <span
-                  className="flex items-center gap-1.5 whitespace-nowrap"
-                  title="WHOOP recovery / day strain"
-                  data-testid={`whoop-day-${note.id}`}
-                >
-                  <HeartPulse className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
-                  {whoopDay.recovery != null && (
-                    <span className={cn("font-bold", recoveryColorClass(whoopDay.recovery))}>
-                      {Math.round(whoopDay.recovery)}%
-                    </span>
-                  )}
-                  {whoopDay.strain != null && (
-                    <span className="text-muted-foreground">
-                      {whoopDay.strain.toFixed(1)} strain
-                    </span>
-                  )}
-                </span>
-              ) : null}
             </div>
+            {(note.rating || (whoopDay && (whoopDay.recovery != null || whoopDay.strain != null))) ? (
+              <div className="flex items-center flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] text-muted-foreground">
+                {note.rating ? (
+                  <StarRating value={note.rating} onChange={() => {}} readonly size="sm" />
+                ) : null}
+                {whoopDay && (whoopDay.recovery != null || whoopDay.strain != null) ? (
+                  <span
+                    className="flex items-center gap-1.5 whitespace-nowrap"
+                    title="WHOOP recovery / day strain"
+                    data-testid={`whoop-day-${note.id}`}
+                  >
+                    <HeartPulse className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
+                    {whoopDay.recovery != null && (
+                      <span className={cn("font-bold", recoveryColorClass(whoopDay.recovery))}>
+                        {Math.round(whoopDay.recovery)}%
+                      </span>
+                    )}
+                    {whoopDay.strain != null && (
+                      <span className="text-muted-foreground">
+                        {whoopDay.strain.toFixed(1)} strain
+                      </span>
+                    )}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
           </div>
-          <div className="flex items-start gap-2 shrink-0">
+          <div className="flex items-start gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
             {isPending && <PendingSyncBadge testId={`badge-pending-sync-${note.id}`} />}
             {skillsData.length > 0 && (
               <div className="text-right leading-none self-center">
@@ -214,10 +230,20 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                                 <span className="text-[11px] font-mono text-muted-foreground">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
                               )}
                             </div>
-                            <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
-                              <span className="text-muted-foreground">{routineDD.toFixed(1)}</span>
-                              {reps > 1 && (<><span className="text-primary/40">×</span><span className="text-primary">{reps}</span><span className="text-primary/40">=</span><span className="text-primary">{(routineDD * reps).toFixed(1)}</span></>)}
-                            </div>
+                            <button
+                              type="button"
+                              className="flex items-center gap-1 text-[10px] font-mono font-bold"
+                              onClick={(e) => { e.stopPropagation(); if (reps > 1) toggleMath(groupIdx); }}
+                              data-testid={`math-toggle-${note.id}-${groupIdx}`}
+                            >
+                              {reps > 1 && expandedMath.has(groupIdx) ? (
+                                <><span className="text-muted-foreground">{routineDD.toFixed(1)}</span><span className="text-primary/40">×</span><span className="text-primary">{reps}</span><span className="text-primary/40">=</span><span className="text-primary">{(routineDD * reps).toFixed(1)}</span></>
+                              ) : reps > 1 ? (
+                                <><span className="text-primary">{(routineDD * reps).toFixed(1)}</span><span className="text-primary/40">×{reps}</span></>
+                              ) : (
+                                <span className="text-muted-foreground">{routineDD.toFixed(1)}</span>
+                              )}
+                            </button>
                           </div>
                           {item.note && <div className="px-3 pb-2"><span className="text-[11px] text-muted-foreground italic">{item.note}</span></div>}
                         </div>
@@ -240,7 +266,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                           <div className="flex items-center justify-between py-2 px-3">
                             <div className="flex items-center gap-2">
                               {fc?.isDrill === 3 ? (
-                                <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-gray-500 text-white border-none">PART</Badge>
+                                <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-secondary text-secondary-foreground border-none">PART</Badge>
                               ) : (
                                 <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-red-500 text-white border-none">CONN</Badge>
                               )}
@@ -249,10 +275,20 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                                 <span className="text-[11px] font-mono text-muted-foreground">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
                               )}
                             </div>
-                            <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
-                              <span className="text-muted-foreground">{fcDD.toFixed(1)}</span>
-                              {reps > 1 && (<><span className="text-red-400/70">×</span><span className="text-red-600 dark:text-red-400">{reps}</span><span className="text-red-400/70">=</span><span className="text-red-600 dark:text-red-400">{(fcDD * reps).toFixed(1)}</span></>)}
-                            </div>
+                            <button
+                              type="button"
+                              className="flex items-center gap-1 text-[10px] font-mono font-bold"
+                              onClick={(e) => { e.stopPropagation(); if (reps > 1) toggleMath(groupIdx); }}
+                              data-testid={`math-toggle-${note.id}-${groupIdx}`}
+                            >
+                              {reps > 1 && expandedMath.has(groupIdx) ? (
+                                <><span className="text-muted-foreground">{fcDD.toFixed(1)}</span><span className="text-red-400/70">×</span><span className="text-red-600 dark:text-red-400">{reps}</span><span className="text-red-400/70">=</span><span className="text-red-600 dark:text-red-400">{(fcDD * reps).toFixed(1)}</span></>
+                              ) : reps > 1 ? (
+                                <><span className="text-red-600 dark:text-red-400">{(fcDD * reps).toFixed(1)}</span><span className="text-red-400/70">×{reps}</span></>
+                              ) : (
+                                <span className="text-muted-foreground">{fcDD.toFixed(1)}</span>
+                              )}
+                            </button>
                           </div>
                           {item.note && <div className="px-3 pb-2"><span className="text-[11px] text-muted-foreground italic">{item.note}</span></div>}
                         </div>
@@ -311,7 +347,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                               const isPart = fc?.isDrill === 3;
                               return (
                                 <div key={skillIdx} className="flex items-center gap-1.5">
-                                  <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] text-white border-none shrink-0", isPart ? "bg-gray-500" : "bg-red-500")}>{isPart ? "PART" : "CONN"}</Badge>
+                                  <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] border-none shrink-0", isPart ? "bg-secondary text-secondary-foreground" : "bg-red-500 text-white")}>{isPart ? "PART" : "CONN"}</Badge>
                                   <span className={cn("text-[11px] font-bold truncate max-w-[120px]", isPart ? "text-gray-700 dark:text-gray-300" : "text-red-600 dark:text-red-400")}>{fc?.name || gItem.fcName}</span>
                                   {sep}
                                 </div>
@@ -322,7 +358,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                             if (skill.isDrill === 3) {
                               return (
                                 <div key={skillIdx} className="flex items-center gap-1.5">
-                                  <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-gray-500 text-white border-none shrink-0">PART</Badge>
+                                  <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-secondary text-secondary-foreground border-none shrink-0">PART</Badge>
                                   <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 truncate max-w-[140px]">{skill.name}</span>
                                   {sep}
                                 </div>
@@ -332,9 +368,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                               <div key={skillIdx} className="flex items-center gap-1.5">
                                 <Badge variant="outline" className={cn(
                                   "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
-                                  skill.isDrill === 1
-                                    ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400"
-                                    : (!isSingle || skill.isDrill === 2)
+                                  (!isSingle || skill.isDrill === 2)
                                     ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
                                     : "border-border/60 text-muted-foreground"
                                 )}>
@@ -345,13 +379,27 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                             );
                           })}
                         </div>
-                        <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
-                          <span className="text-muted-foreground">{lineDD.toFixed(1)}</span>
-                          <span className={isSingle ? "text-muted-foreground/40" : "text-red-400/70"}>×</span>
-                          <span className={isSingle ? "text-foreground" : "text-red-600 dark:text-red-400"}>{reps}</span>
-                          <span className={isSingle ? "text-muted-foreground/40" : "text-red-400/70"}>=</span>
-                          <span className={isSingle ? "text-foreground" : "text-red-600 dark:text-red-400"}>{(lineDD * reps).toFixed(1)}</span>
-                        </div>
+                        <button
+                          type="button"
+                          className="flex items-center gap-1 text-[10px] font-mono font-bold"
+                          onClick={(e) => { e.stopPropagation(); toggleMath(groupIdx); }}
+                          data-testid={`math-toggle-${note.id}-${groupIdx}`}
+                        >
+                          {expandedMath.has(groupIdx) ? (
+                            <>
+                              <span className="text-muted-foreground">{lineDD.toFixed(1)}</span>
+                              <span className={isSingle ? "text-muted-foreground/40" : "text-red-400/70"}>×</span>
+                              <span className={isSingle ? "text-foreground" : "text-red-600 dark:text-red-400"}>{reps}</span>
+                              <span className={isSingle ? "text-muted-foreground/40" : "text-red-400/70"}>=</span>
+                              <span className={isSingle ? "text-foreground" : "text-red-600 dark:text-red-400"}>{(lineDD * reps).toFixed(1)}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className={isSingle ? "text-foreground" : "text-red-600 dark:text-red-400"}>{(lineDD * reps).toFixed(1)}</span>
+                              {reps > 1 && <span className={isSingle ? "text-muted-foreground/40" : "text-red-400/70"}>×{reps}</span>}
+                            </>
+                          )}
+                        </button>
                         {group[0]?.note && (
                           <div className="w-full mt-1">
                             <span className="text-[11px] text-muted-foreground italic">{group[0].note}</span>

@@ -21,7 +21,7 @@ export function ShapeSwapPicker({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xs">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-xs">
         <DialogHeader>
           <DialogTitle>Duplicate w/ shape</DialogTitle>
         </DialogHeader>

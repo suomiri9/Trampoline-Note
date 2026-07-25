@@ -28,7 +28,6 @@ import { Trash2, Plus, Trophy, CalendarIcon, Pencil, MoreVertical, TrendingUp, S
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
 
@@ -671,7 +670,7 @@ function ScoreGraph({
 export default function ScorePage() {
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
-  const [activeTab, setActiveTab] = useState("scores");
+
   const [editingScore, setEditingScore] = useState<Score | null>(null);
   const [deleteScoreId, setDeleteScoreId] = useState<number | null>(null);
   const [deleteCompIds, setDeleteCompIds] = useState<number[] | null>(null);
@@ -1041,18 +1040,8 @@ export default function ScorePage() {
         }
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col gap-4 -mt-6">
-        <div
-          className="sticky z-20 full-bleed-bar py-2 bg-background/90 backdrop-blur-md border-b border-border/60"
-          style={{ top: "var(--page-header-h, 96px)" }}
-        >
-          <TabsList className="inline-flex h-auto flex-wrap justify-start gap-1 rounded-xl bg-secondary/40 p-1 shrink-0 self-start">
-            <TabsTrigger value="scores" data-testid="tab-scores">Scores</TabsTrigger>
-            <TabsTrigger value="graph" data-testid="tab-graph">Graph</TabsTrigger>
-          </TabsList>
-        </div>
-
-        <TabsContent value="scores" forceMount className="mt-0 data-[state=inactive]:hidden">
+      <div className="flex flex-col gap-4">
+        <div className="mt-0 order-2">
 
       {hasComps && (
         <div className="relative card-3d rounded-2xl overflow-hidden mb-6">
@@ -1104,7 +1093,7 @@ export default function ScorePage() {
       )}
 
       <Dialog open={isAdding} onOpenChange={(o) => { if (!o) { setIsAdding(false); setEditingScore(null); } }}>
-        <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingScore ? "Edit Score" : "Add New Score"}</DialogTitle>
           </DialogHeader>
@@ -1223,7 +1212,9 @@ export default function ScorePage() {
                   )} />
                 </div>
 
-                {(form.watch("type") === "competition" || form.watch("type") === "trial") && (
+                {(form.watch("type") === "competition" ||
+                  (form.watch("type") === "trial" && !!editingScore &&
+                    !!(editingScore.competitionName || editingScore.rank != null || editingScore.round))) && (
                   <div className="space-y-4">
                     <FormField control={form.control} name="competitionName" render={({ field }) => (
                       <FormItem><FormLabel>{form.watch("type") === "trial" ? "Name" : "Competition Name"}</FormLabel><FormControl><Input {...field} value={field.value ?? ""} placeholder={form.watch("type") === "trial" ? "e.g. Squad Trial" : "e.g. State Championships"} className="rounded-xl h-11" /></FormControl></FormItem>
@@ -1317,7 +1308,7 @@ export default function ScorePage() {
                       <FormItem>
                         <div className="flex items-center justify-between gap-1">
                           <FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">E2</FormLabel>
-                          {!synchroOn && <button type="button" aria-pressed={!!form.watch("doubleExecution")} onClick={() => form.setValue("doubleExecution", !form.watch("doubleExecution"))} className={cn("rounded px-1 py-0.5 text-[9px] sm:text-[10px] font-mono leading-none border transition-colors", form.watch("doubleExecution") ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground border-border hover:text-foreground")} data-testid="button-double-execution">E1×2</button>}
+                          {!synchroOn && (form.watch("type") === "competition" || !!form.watch("doubleExecution")) && <button type="button" aria-pressed={!!form.watch("doubleExecution")} onClick={() => form.setValue("doubleExecution", !form.watch("doubleExecution"))} className={cn("rounded px-1 py-0.5 text-[9px] sm:text-[10px] font-mono leading-none border transition-colors", form.watch("doubleExecution") ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground border-border hover:text-foreground")} data-testid="button-double-execution">E1×2</button>}
                         </div>
                         <FormControl><Input type="number" step="0.1" placeholder="E2" disabled={!synchroOn && !!form.watch("doubleExecution")} value={(!synchroOn && form.watch("doubleExecution")) ? (form.watch("execution") || "") : (field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value)} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono disabled:opacity-60" data-testid="input-execution-2" /></FormControl>
                       </FormItem>
@@ -1408,7 +1399,7 @@ export default function ScorePage() {
                         <FormItem>
                           <div className="flex items-center justify-between gap-1">
                             <FormLabel className="text-[10px] sm:text-xs h-5 flex items-center">E2</FormLabel>
-                            {!synchroOn && <button type="button" aria-pressed={!!form.watch("doubleExecutionVol")} onClick={() => form.setValue("doubleExecutionVol", !form.watch("doubleExecutionVol"))} className={cn("rounded px-1 py-0.5 text-[9px] sm:text-[10px] font-mono leading-none border transition-colors", form.watch("doubleExecutionVol") ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground border-border hover:text-foreground")} data-testid="button-double-execution-vol">E1×2</button>}
+                            {!synchroOn && (form.watch("type") === "competition" || !!form.watch("doubleExecutionVol")) && <button type="button" aria-pressed={!!form.watch("doubleExecutionVol")} onClick={() => form.setValue("doubleExecutionVol", !form.watch("doubleExecutionVol"))} className={cn("rounded px-1 py-0.5 text-[9px] sm:text-[10px] font-mono leading-none border transition-colors", form.watch("doubleExecutionVol") ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground border-border hover:text-foreground")} data-testid="button-double-execution-vol">E1×2</button>}
                           </div>
                           <FormControl><Input type="number" step="0.1" placeholder="E2" disabled={!synchroOn && !!form.watch("doubleExecutionVol")} value={(!synchroOn && form.watch("doubleExecutionVol")) ? (form.watch("executionVol") || "") : (field.value === 0 || field.value == null || Number.isNaN(field.value) ? "" : field.value)} onChange={e => { const raw = e.target.value; if (raw === "") { field.onChange(0); return; } const n = Number(raw); if (Number.isFinite(n)) field.onChange(n); }} className="rounded-xl h-9 sm:h-11 px-2 text-xs sm:text-sm font-mono disabled:opacity-60" data-testid="input-execution-vol-2" /></FormControl>
                         </FormItem>
@@ -1548,9 +1539,9 @@ export default function ScorePage() {
           </div>
         )}
       </div>
-        </TabsContent>
+        </div>
 
-        <TabsContent value="graph" className="mt-0 space-y-5">
+        <div className="mt-2 space-y-5 order-1">
           {(() => {
             const graphScores = (!offlineModeEnabled || isOnline) ? (scores ?? []) : [];
             const individual = graphScores.filter((s) => !s.synchro);
@@ -1571,8 +1562,8 @@ export default function ScorePage() {
               </>
             );
           })()}
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
 
       <ConfirmDialog
         open={deleteScoreId !== null}

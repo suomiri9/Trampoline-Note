@@ -159,7 +159,7 @@ export function ShapeDraftsEditor({
 
       {assignableSkills && (
         <Dialog open={pickerOpen} onOpenChange={(o) => { if (!o) closePicker(); }}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent aria-describedby={undefined} className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Assign existing as shape</DialogTitle>
             </DialogHeader>

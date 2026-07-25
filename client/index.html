@@ -9,6 +9,50 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#0a0b10" />
+    <!-- MUST stay the first script: "ResizeObserver loop completed with
+         undelivered notifications" is benign browser noise, but it fires as a
+         window error event with NO Error object, so dev tooling (the vite
+         error overlay, the preview log bridge) misreports it as a runtime
+         crash. This classic inline script runs during parse — before any
+         module script can register listeners — so its suppressor always wins.
+         It also wraps ResizeObserver callbacks in requestAnimationFrame so the
+         browser never generates the notification in the first place. -->
+    <script>
+      (function () {
+        var RO_RE = /ResizeObserver loop (completed with undelivered notifications|limit exceeded)/;
+        window.addEventListener(
+          "error",
+          function (e) {
+            if (e.message && RO_RE.test(e.message)) {
+              e.stopImmediatePropagation();
+              e.preventDefault();
+            }
+          },
+          true
+        );
+        if (typeof window.ResizeObserver === "function") {
+          var NativeRO = window.ResizeObserver;
+          var PatchedRO = function (callback) {
+            var raf = null;
+            var pending = new Map();
+            return new NativeRO(function (entries, observer) {
+              for (var i = 0; i < entries.length; i++) {
+                pending.set(entries[i].target, entries[i]);
+              }
+              if (raf !== null) return;
+              raf = requestAnimationFrame(function () {
+                raf = null;
+                var list = Array.from(pending.values());
+                pending.clear();
+                callback(list, observer);
+              });
+            });
+          };
+          PatchedRO.prototype = NativeRO.prototype;
+          window.ResizeObserver = PatchedRO;
+        }
+      })();
+    </script>
     <!-- Apply the saved theme before first paint so the splash never flashes the
          wrong background. Dark is the default; the Settings → Appearance toggle
          switches to light, persisted in localStorage under "theme". -->

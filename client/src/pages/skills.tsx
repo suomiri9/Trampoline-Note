@@ -87,6 +87,7 @@ export default function SkillsPage() {
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   const [reorderMode, setReorderMode] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [expandedBases, setExpandedBases] = useState<Set<number>>(new Set());
   const toggleExpanded = (id: number) => setExpandedBases((prev) => {
@@ -136,10 +137,16 @@ export default function SkillsPage() {
   };
 
   const archivedFilter = (item: Skill) => showArchived ? item.archived === 1 : item.archived !== 1;
-  const skills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 0 && item.parentSkillId == null && archivedFilter(item))) : undefined;
-  const drills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 1 && item.parentSkillId == null && archivedFilter(item))) : undefined;
-  const frequentConnections = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 2 && archivedFilter(item))) : undefined;
-  const routineParts = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 3 && archivedFilter(item))) : undefined;
+  const searchTerm = searchQuery.trim().toLowerCase();
+  const matchesSearch = (item: Skill) => {
+    if (!searchTerm) return true;
+    if (`${item.name} ${item.code ?? ""}`.toLowerCase().includes(searchTerm)) return true;
+    return (allItems || []).some(c => c.parentSkillId === item.id && `${c.name} ${c.code ?? ""} ${c.shape ?? ""}`.toLowerCase().includes(searchTerm));
+  };
+  const skills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 0 && item.parentSkillId == null && archivedFilter(item) && matchesSearch(item))) : undefined;
+  const drills = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 1 && item.parentSkillId == null && archivedFilter(item) && matchesSearch(item))) : undefined;
+  const frequentConnections = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 2 && archivedFilter(item) && matchesSearch(item))) : undefined;
+  const routineParts = allItems ? sortByOrder(allItems.filter(item => item.isDrill === 3 && archivedFilter(item) && matchesSearch(item))) : undefined;
   const archivedCount = allItems ? allItems.filter(i => i.archived === 1).length : 0;
 
   const activeSkills = allItems ? sortByOrder(allItems.filter(i => i.isDrill === 0 && i.archived !== 1)) : [];
@@ -510,10 +517,10 @@ export default function SkillsPage() {
               variant={showArchived ? "default" : "outline"}
               size="sm"
               onClick={() => { setShowArchived(v => !v); cancelEditing(); setReorderMode(false); }}
-              className="gap-1.5 shrink-0 h-12 rounded-xl"
+              className={cn("gap-1.5 shrink-0 h-12 rounded-xl", !showArchived && "text-muted-foreground hover:text-foreground")}
               data-testid="button-toggle-archived"
             >
-              {showArchived ? <><ArchiveRestore className="h-4 w-4" /> Active</> : <><Archive className="h-4 w-4" /> Archived{archivedCount > 0 ? ` (${archivedCount})` : ""}</>}
+              {showArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
             </Button>
             <Button
               className={cn(primaryActionClass, "shrink-0")}
@@ -530,21 +537,33 @@ export default function SkillsPage() {
           className="sticky z-20 full-bleed-bar py-2 bg-background/90 backdrop-blur-md border-b border-border/60"
           style={{ top: "var(--page-header-h, 96px)" }}
         >
-          <TabsList className="inline-flex h-auto flex-wrap justify-start gap-1 rounded-xl bg-secondary/40 p-1 shrink-0 self-start">
-            <TabsTrigger value="skills">Skills</TabsTrigger>
-            <TabsTrigger value="drills">Drills</TabsTrigger>
-            <TabsTrigger value="connections">Connections</TabsTrigger>
-            <TabsTrigger value="parts">
-              <span className="hidden sm:inline">Routine Parts</span>
-              <span className="sm:hidden">Parts</span>
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex flex-wrap items-center gap-2">
+            <TabsList className="inline-flex h-auto flex-wrap justify-start gap-1 rounded-xl bg-secondary/40 p-1 shrink-0 self-start">
+              <TabsTrigger value="skills">Skills</TabsTrigger>
+              <TabsTrigger value="drills">Drills</TabsTrigger>
+              <TabsTrigger value="connections">Connections</TabsTrigger>
+              <TabsTrigger value="parts">
+                <span className="hidden sm:inline">Routine Parts</span>
+                <span className="sm:hidden">Parts</span>
+              </TabsTrigger>
+            </TabsList>
+            <div className="relative flex-1 min-w-[140px] max-w-xs">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60 pointer-events-none" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search..."
+                className="h-9 pl-8 rounded-xl text-xs font-mono"
+                data-testid="input-library-search"
+              />
+            </div>
+          </div>
         </div>
 
         <TabsContent value="skills">
           <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-              <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
+              <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8">
                 <DialogHeader>
                   <DialogTitle>{editingSkill ? "Edit Skill" : "Add New Skill"}</DialogTitle>
                 </DialogHeader>
@@ -712,11 +731,11 @@ export default function SkillsPage() {
                           {!reorderMode && expanded && shapes.map((shape) => (
                             <TableRow
                               key={shape.id}
-                              className={cn("cursor-pointer", editingSkill?.id === shape.id ? "bg-primary/20" : "bg-muted hover:bg-accent")}
+                              className={cn("cursor-pointer border-l-2 border-l-primary/40", editingSkill?.id === shape.id ? "bg-primary/20" : "bg-muted/80 hover:bg-accent")}
                               onClick={() => navigate(`/skills/${shape.id}`)}
                               data-testid={`row-shape-${shape.id}`}
                             >
-                              <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-12">{skillDisplayCode(shape, allItems)}</TableCell>
+                              <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-14">{skillDisplayCode(shape, allItems)}</TableCell>
                               <TableCell className="font-medium text-foreground">
                                 <span className="inline-flex items-center gap-2 flex-wrap">
                                   <span>{skillDisplayName(shape, allItems)}</span>
@@ -755,7 +774,7 @@ export default function SkillsPage() {
         <TabsContent value="drills">
           <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-              <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
+              <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8">
                 <DialogHeader>
                   <DialogTitle>{editingSkill ? "Edit Drill" : "Add New Drill"}</DialogTitle>
                 </DialogHeader>
@@ -902,11 +921,11 @@ export default function SkillsPage() {
                           {!reorderMode && expanded && shapes.map((shape) => (
                             <TableRow
                               key={shape.id}
-                              className={cn("cursor-pointer", editingSkill?.id === shape.id ? "bg-primary/20" : "bg-muted hover:bg-accent")}
+                              className={cn("cursor-pointer border-l-2 border-l-primary/40", editingSkill?.id === shape.id ? "bg-primary/20" : "bg-muted/80 hover:bg-accent")}
                               onClick={() => navigate(`/skills/${shape.id}`)}
                               data-testid={`row-shape-${shape.id}`}
                             >
-                              <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-12">{skillDisplayCode(shape, allItems)}</TableCell>
+                              <TableCell className="font-mono text-sm text-muted-foreground w-24 pl-14">{skillDisplayCode(shape, allItems)}</TableCell>
                               <TableCell className="font-medium text-foreground">
                                 <span className="inline-flex items-center gap-2 flex-wrap">
                                   <span>{skillDisplayName(shape, allItems)}</span>
@@ -945,7 +964,7 @@ export default function SkillsPage() {
         <TabsContent value="connections">
           <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-              <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
+              <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8">
                 <DialogHeader>
                   <DialogTitle>{editingSkill ? "Edit Connection" : "Add New Connection"}</DialogTitle>
                 </DialogHeader>
@@ -1171,7 +1190,7 @@ export default function SkillsPage() {
         <TabsContent value="parts">
           <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-              <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
+              <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8">
                 <DialogHeader>
                   <DialogTitle>{editingSkill ? "Edit Routine Part" : "Add New Routine Part"}</DialogTitle>
                 </DialogHeader>
@@ -1381,7 +1400,7 @@ export default function SkillsPage() {
       />
 
       <Dialog open={!!assignTarget} onOpenChange={(o) => { if (!o) { setAssignTarget(null); setAssignBaseId(""); setAssignShapeLabel(""); } }}>
-        <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Assign as shape</DialogTitle>
           </DialogHeader>

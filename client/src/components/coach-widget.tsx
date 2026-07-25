@@ -24,6 +24,7 @@ export function CoachWidget() {
         <div
           className="fixed right-2 sm:right-4 bottom-20 mb-safe z-[60] w-[min(94vw,380px)] pointer-events-auto"
           data-testid="panel-coach-widget"
+          onPointerDown={(e) => e.stopPropagation()}
         >
           <div className="card-3d rounded-2xl flex flex-col h-[min(65vh,540px)] shadow-2xl overflow-hidden">
             <div className="flex items-center gap-2 px-4 pt-3 pb-2 border-b border-border/50 shrink-0">
@@ -51,6 +52,7 @@ export function CoachWidget() {
 
       <button
         onClick={() => setOpen((o) => !o)}
+        onPointerDown={(e) => e.stopPropagation()}
         aria-label={open ? "Close coach chat" : "Chat with your coach"}
         className="pointer-events-auto shrink-0 h-9 w-9 sm:h-10 sm:w-10 rounded-full glass-surface flex items-center justify-center text-cyan-600 dark:text-cyan-400 hover:scale-105 transition-transform shadow-lg"
         data-testid="button-coach-widget"

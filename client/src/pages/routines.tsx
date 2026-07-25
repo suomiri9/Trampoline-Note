@@ -179,10 +179,10 @@ export default function RoutinesPage() {
               variant={showArchived ? "default" : "outline"}
               size="sm"
               onClick={() => { setShowArchived(v => !v); cancelEditing(); }}
-              className="gap-1.5 shrink-0 h-12 rounded-xl"
+              className={cn("gap-1.5 shrink-0 h-12 rounded-xl", !showArchived && "text-muted-foreground hover:text-foreground")}
               data-testid="button-toggle-archived"
             >
-              {showArchived ? <><ArchiveRestore className="h-4 w-4" /> Active</> : <><Archive className="h-4 w-4" /> Archived{archivedCount > 0 ? ` (${archivedCount})` : ""}</>}
+              {showArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
             </Button>
             <Button onClick={openBuilder} className={primaryActionClass} data-testid="button-new-routine">
               <Plus className="w-5 h-5" /> New Routine
@@ -191,7 +191,7 @@ export default function RoutinesPage() {
         }
       />
       <Dialog open={showBuilder || !!editingRoutine} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-        <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingRoutine ? "Edit Routine" : "Create Routine (10 Skills)"}</DialogTitle>
           </DialogHeader>

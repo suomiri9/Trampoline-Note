@@ -20,7 +20,13 @@ import WhoopPage from "@/pages/whoop";
 import CoachPage from "@/pages/coach";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Target, Layers, BarChart3, Trophy, Loader2, Settings, HeartPulse, Bot } from "lucide-react";
+import { LayoutDashboard, Target, Layers, BarChart3, Trophy, Loader2, Settings, HeartPulse, Bot, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useEffect } from "react";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { drainQueue } from "@/lib/offline-queue";
@@ -38,16 +44,23 @@ function Navigation() {
     { href: "/stats", label: "Progress", icon: BarChart3, lightColor: "text-green-600/55 dark:text-green-400/45", activeColor: "bg-green-500/15 text-green-600 dark:text-green-400" },
     { href: "/skills", label: "Skills", icon: Target, lightColor: "text-red-600/55 dark:text-red-400/45", activeColor: "bg-red-500/15 text-red-600 dark:text-red-400" },
     { href: "/routines", label: "Routines", icon: Layers, lightColor: "text-purple-600/55 dark:text-purple-400/45", activeColor: "bg-purple-500/15 text-purple-600 dark:text-purple-400" },
-    { href: "/whoop", label: "WHOOP", icon: HeartPulse, lightColor: "text-orange-600/55 dark:text-orange-400/45", activeColor: "bg-orange-500/15 text-orange-600 dark:text-orange-400" },
-    { href: "/coach", label: "Coach", icon: Bot, lightColor: "text-cyan-600/55 dark:text-cyan-400/45", activeColor: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400" },
   ];
+
+  const moreItems = [
+    { href: "/whoop", label: "WHOOP", icon: HeartPulse, iconColor: "text-rose-600 dark:text-rose-400" },
+    { href: "/coach", label: "Coach", icon: Bot, iconColor: "text-cyan-600 dark:text-cyan-400" },
+    ...(user ? [{ href: "/settings", label: "Settings", icon: Settings }] : []),
+  ];
+  const moreActive = moreItems.some(
+    (item) => location === item.href || location.startsWith(item.href + "/"),
+  );
 
   const baseItem =
     "flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-xl text-[11px] font-mono uppercase tracking-wider transition-all cursor-pointer";
 
-  // z-[60] (above dialog z-50) so the coach launcher beside the bar stays
-  // visible over popups (user request). The wrapper itself is click-through;
-  // only the pill and the launcher accept pointer events.
+  // z-[60] — above dialogs (z-50) so the coach launcher stays visible over
+  // popups. The wrapper itself is click-through; only the pill and the
+  // launcher accept pointer events.
   return (
     <div className="fixed bottom-4 left-0 right-0 z-[60] mb-safe px-1 flex items-center justify-center gap-1.5 pointer-events-none">
       <nav className="glass-surface px-1.5 sm:px-2 pt-2 pb-2 rounded-2xl flex items-center gap-0.5 sm:gap-1 pointer-events-auto">
@@ -72,22 +85,45 @@ function Navigation() {
         );
       })}
 
-      {user && (
-        <Link href="/settings">
-          <div
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
             className={cn(
               baseItem,
-              location === "/settings"
+              moreActive
                 ? "bg-secondary text-foreground font-semibold"
                 : "text-muted-foreground hover:bg-secondary hover:text-foreground",
             )}
-            data-testid="link-settings"
+            data-testid="button-nav-more"
+            aria-label="More"
           >
-            <Settings className="w-4 h-4" />
-            <span className="hidden sm:inline">Settings</span>
-          </div>
-        </Link>
-      )}
+            <MoreHorizontal className="w-4 h-4" />
+            <span className="hidden sm:inline">More</span>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" side="top" sideOffset={10} className="w-44 rounded-xl z-[70]">
+          {moreItems.map((item) => {
+            const active = location === item.href || location.startsWith(item.href + "/");
+            return (
+              <DropdownMenuItem key={item.href} asChild>
+                <Link href={item.href}>
+                  <div
+                    className={cn(
+                      "flex w-full items-center gap-2 cursor-pointer font-mono uppercase tracking-wider text-[11px]",
+                      active && "text-foreground font-semibold",
+                    )}
+                    data-testid={`link-more-${item.label.toLowerCase()}`}
+                  >
+                    <item.icon className={cn("w-4 h-4", item.iconColor)} />
+                    {item.label}
+                  </div>
+                </Link>
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
       </nav>
       <CoachWidget />
     </div>

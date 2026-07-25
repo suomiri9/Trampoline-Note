@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Clock, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, X, Search, Shapes, ChevronDown } from "lucide-react";
+import { CalendarIcon, Clock, Loader2, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, X, Search, Shapes, ChevronDown, ChevronRight } from "lucide-react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -16,6 +16,7 @@ import { SortableChip } from "@/components/sortable-chip";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
 
+import { useLocation } from "wouter";
 import { useCreateNote, useUpdateNote } from "@/hooks/use-notes";
 import { updateQueuedByTempId } from "@/lib/offline-queue";
 import { useSkills } from "@/hooks/use-skills";
@@ -59,8 +60,10 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import {
+  Command,
   CommandEmpty,
   CommandGroup,
+  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
@@ -118,6 +121,7 @@ function SortablePracticeGroup({ gId, isConnected, children }: { gId: string; is
 
 export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const createNote = useCreateNote();
   const updateNote = useUpdateNote();
   const { data: allItems, createSkill, updateSkill, isCreating: isCreatingSkill } = useSkills();
@@ -128,7 +132,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [selectedSkills, setSelectedSkills] = useState<SkillItem[]>([]);
   const [isConnectMode, setIsConnectMode] = useState(false);
   const [editingRoutineIdx, setEditingRoutineIdx] = useState<number | null>(null);
-  const [editingConnIndices, setEditingConnIndices] = useState<number[] | null>(null);
+  const [editingGroupIndices, setEditingGroupIndices] = useState<number[] | null>(null);
   const [showNewConn, setShowNewConn] = useState(false);
   const [showNewRoutine, setShowNewRoutine] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -158,8 +162,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const pickerInputRef = useRef<HTMLInputElement>(null);
   const connSkillInputRef = useRef<HTMLInputElement>(null);
   const routineSkillInputRef = useRef<HTMLInputElement>(null);
+  const [groupPickerOpen, setGroupPickerOpen] = useState(false);
+  const groupPickerInputRef = useRef<HTMLInputElement>(null);
   useTypeToSearch(
-    open && !showNewConn && !showNewRoutine && !showNewSkill && !showNewPart && editingRoutineIdx === null && editingConnIndices === null,
+    open && !showNewConn && !showNewRoutine && !showNewSkill && !showNewPart && editingRoutineIdx === null && editingGroupIndices === null,
     pickerOpen,
     pickerInputRef,
   );
@@ -562,7 +568,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       });
     } else {
       createNote.mutate(payload as any, {
-        onSuccess: () => { onOpenChange(false); toast({ title: "Session logged!" }); },
+        onSuccess: () => {
+          onOpenChange(false);
+          toast({ title: "Session logged!" });
+        },
         onError: (err) => {
           toast({
             title: "Couldn't log session",
@@ -585,14 +594,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     });
   };
 
-  const [showDiscardAlert, setShowDiscardAlert] = useState(false);
+  const [noteStep, setNoteStep] = useState<1 | 2 | 3>(1);
+  const isSavingRef = useRef(false);
+  useEffect(() => {
+    if (open) { setNoteStep(1); isSavingRef.current = false; }
+  }, [open]);
 
   const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen) {
+    if (!newOpen && !isSavingRef.current) {
       const v = form.getValues();
       const hasContent = !!(v.content || selectedSkills.length > 0 || v.startTime || v.endTime || v.rating);
       if (hasContent || form.formState.isDirty) {
-        setShowDiscardAlert(true);
+        isSavingRef.current = true;
+        form.handleSubmit(onSubmit, () => { isSavingRef.current = false; onOpenChange(false); })();
         return;
       }
     }
@@ -608,12 +622,30 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
             <DialogTitle className="text-3xl">{isEditing ? "Edit Session" : "Log Training Session"}</DialogTitle>
             <DialogDescription>Record your notes and skills practiced.</DialogDescription>
           </DialogHeader>
+          <div className="mt-3 grid grid-cols-3 gap-1 p-1 rounded-xl bg-secondary/40" role="tablist" aria-label="Session form steps">
+            {([1, 2, 3] as const).map((s, i) => (
+              <button
+                key={s}
+                type="button"
+                role="tab"
+                aria-selected={noteStep === s}
+                onClick={() => setNoteStep(s)}
+                className={cn(
+                  "h-8 rounded-lg text-[11px] font-mono uppercase tracking-wider transition-colors",
+                  noteStep === s ? "bg-background text-foreground font-semibold shadow-sm" : "text-muted-foreground",
+                )}
+                data-testid={["tab-note-start","tab-note-skills","tab-note-finish"][i]}
+              >
+                {["1 · Start","2 · Skills","3 · Finish"][i]}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div ref={dialogBodyRef} className="flex-1 overflow-scroll-touch min-h-0 px-6 pb-6 text-foreground">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit, onInvalid as any)} className="space-y-6">
-              <div className="space-y-4">
+              <div className={cn("space-y-4", noteStep !== 1 && "hidden")}>
                 <FormField control={form.control} name="date" render={({ field }) => (
                   <FormItem className="flex-1">
                     <FormLabel>Date</FormLabel>
@@ -632,34 +664,17 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     </Popover>
                   </FormItem>
                 )} />
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Clock className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                    <FormField control={form.control} name="startTime" render={({ field }) => (
-                      <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
-                        <FormControl><TimeField ariaLabel="Start time" value={field.value || ""} onChange={field.onChange} testId="input-start-time" /></FormControl>
-                      </FormItem>
-                    )} />
-                    <span className="text-muted-foreground text-sm">→</span>
-                    <FormField control={form.control} name="endTime" render={({ field }) => (
-                      <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
-                        <FormControl><TimeField ariaLabel="End time" value={field.value || ""} onChange={field.onChange} testId="input-end-time" /></FormControl>
-                      </FormItem>
-                    )} />
-                  </div>
-                  <FormField control={form.control} name="rating" render={({ field }) => (
-                    <FormItem className="space-y-0 shrink-0">
-                      <FormControl>
-                        <div className="h-9 flex items-center justify-center sm:justify-start bg-secondary/20 rounded-xl px-1.5 border border-border/50">
-                          <StarRating value={field.value} onChange={field.onChange} />
-                        </div>
-                      </FormControl>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                  <FormField control={form.control} name="startTime" render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
+                      <FormControl><TimeField ariaLabel="Start time" value={field.value || ""} onChange={field.onChange} testId="input-start-time" /></FormControl>
                     </FormItem>
                   )} />
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className={cn("space-y-3", noteStep !== 2 && "hidden")}>
                 <FormLabel className="text-foreground/80 font-medium">Skills & Drills Practiced</FormLabel>
 
                 <div className="flex gap-2">
@@ -799,13 +814,14 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     )}
                     onClick={() => setIsConnectMode(!isConnectMode)}
                     data-testid="btn-connect-next"
+                    title="Link the next picked skill to the previous one as a connection"
                   >
-                    {isConnectMode ? "Connecting..." : "Connect Next"}
+                    {isConnectMode ? "Linking..." : "+ Link"}
                   </Button>
                 </div>
 
                 <Dialog open={showNewSkill} onOpenChange={(o) => { if (!o) { setShowNewSkill(false); setNewSkillStep(1); } }}>
-                  <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
+                  <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>{newSkillIsDrill ? "Add New Drill" : "Add New Skill"}</DialogTitle>
                     </DialogHeader>
@@ -909,7 +925,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 </Dialog>
 
                 <Dialog open={showNewConn} onOpenChange={(o) => { if (!o) setShowNewConn(false); }}>
-                  <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
+                  <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Add New Connection</DialogTitle>
                     </DialogHeader>
@@ -1051,7 +1067,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 </Dialog>
 
                 <Dialog open={showNewRoutine} onOpenChange={(o) => { if (!o) setShowNewRoutine(false); }}>
-                  <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
+                  <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Create Routine</DialogTitle>
                     </DialogHeader>
@@ -1164,7 +1180,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   const dd = slice.reduce((a, sid) => a + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0);
                   return (
                     <Dialog open={showNewPart} onOpenChange={(o) => { if (!o) { setShowNewPart(false); setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); } }}>
-                      <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
+                      <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>Add New Routine Part</DialogTitle>
                         </DialogHeader>
@@ -1375,22 +1391,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                 <div className="px-3 py-2">
                                   <div className="flex flex-wrap items-center gap-2">
                                     <div
-                                      className={cn("flex flex-wrap items-center gap-1.5 flex-1 min-w-0", group.items.some(it => it.id !== -2 && it.id !== -3) && "cursor-pointer")}
-                                      onClick={() => {
-                                        if (group.items.some(it => it.id !== -2 && it.id !== -3)) {
-                                          setEditingConnIndices(group.indices);
-                                        }
-                                      }}
+                                      className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0 cursor-pointer"
+                                      onClick={() => setEditingGroupIndices(group.indices)}
                                     >
                                       {group.items.map((it, iIdx) => {
                                         const idx = group.indices[iIdx];
-                                        const sep = iIdx < group.items.length - 1 ? <span className="text-red-400/70 font-bold text-xs">+</span> : null;
+                                        const sep = iIdx < group.items.length - 1 ? <span className="text-muted-foreground/60 font-bold text-xs">+</span> : null;
                                         if (it.id === -2) {
                                           const r = routines?.find(rt => rt.id === it.routineId);
                                           return (
-                                            <div key={idx} className="flex items-center gap-1.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); setEditingRoutineIdx(idx); }}>
+                                            <div key={idx} className="flex items-center gap-1.5">
                                               <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none shrink-0">ROUTINE</Badge>
-                                              <span className="text-[11px] font-bold text-primary truncate max-w-[120px]">{r?.name || it.routineName}</span>
+                                              <span className="text-[11px] font-semibold text-primary truncate max-w-[120px]">{r?.name || it.routineName}</span>
                                               {sep}
                                             </div>
                                           );
@@ -1399,9 +1411,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           const fc = allItems?.find(s => s.id === it.fcId);
                                           const isPart = fc?.isDrill === 3;
                                           return (
-                                            <div key={idx} className="flex items-center gap-1.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); setEditingRoutineIdx(idx); }}>
-                                              <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] text-white border-none shrink-0", isPart ? "bg-gray-500" : "bg-red-500")}>{isPart ? "PART" : "CONN"}</Badge>
-                                              <span className={cn("text-[11px] font-bold truncate max-w-[120px]", isPart ? "text-gray-700 dark:text-gray-300" : "text-red-600 dark:text-red-400")}>{fc?.name || it.fcName}</span>
+                                            <div key={idx} className="flex items-center gap-1.5">
+                                              <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] text-white border-none shrink-0", isPart ? "bg-secondary text-secondary-foreground" : "bg-red-500")}>{isPart ? "PART" : "CONN"}</Badge>
+                                              <span className={cn("text-[11px] font-semibold truncate max-w-[120px]", isPart ? "text-muted-foreground" : "text-red-500 dark:text-red-400")}>{fc?.name || it.fcName}</span>
                                               {sep}
                                             </div>
                                           );
@@ -1412,8 +1424,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                             <Badge variant="outline" className={cn(
                                               "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
                                               sk?.isDrill === 1
-                                                ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400"
-                                                : "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
+                                                ? "border-yellow-400/60 text-yellow-600 dark:border-yellow-600/60 dark:text-yellow-400"
+                                                : "border-border/70 text-foreground/70"
                                             )}><SkillCode skill={sk} allSkills={allItems} /></Badge>
                                             {sep}
                                           </div>
@@ -1727,69 +1739,194 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 onPick={(shape) => { if (shapeSwapIndices) duplicateGroupWithShape(shapeSwapIndices, shape); setShapeSwapIndices(null); }}
               />
 
-              <FormField control={form.control} name="content" render={({ field }) => (
-                <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea placeholder="How did the session go?" className="min-h-[100px] rounded-xl" {...field} /></FormControl></FormItem>
-              )} />
-              <Button type="submit" className="w-full h-12 rounded-xl text-lg font-semibold" disabled={createNote.isPending || updateNote.isPending}>
-                {isEditing ? "Update Session" : "Log Session"}
-              </Button>
+              <div className={cn("space-y-4", noteStep !== 3 && "hidden")}>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                  <FormField control={form.control} name="startTime" render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
+                      <FormControl><TimeField ariaLabel="Start time" value={field.value || ""} onChange={field.onChange} testId="input-start-time-3" /></FormControl>
+                    </FormItem>
+                  )} />
+                  <span className="text-muted-foreground text-sm">→</span>
+                  <FormField control={form.control} name="endTime" render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
+                      <FormControl><TimeField ariaLabel="End time" value={field.value || ""} onChange={field.onChange} testId="input-end-time" /></FormControl>
+                    </FormItem>
+                  )} />
+                </div>
+                <FormField control={form.control} name="rating" render={({ field }) => (
+                  <FormItem className="space-y-0">
+                    <FormLabel>Session Rating</FormLabel>
+                    <FormControl>
+                      <div className="h-9 flex items-center bg-secondary/20 rounded-xl px-1.5 border border-border/50 w-fit">
+                        <StarRating value={field.value} onChange={field.onChange} />
+                      </div>
+                    </FormControl>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="content" render={({ field }) => (
+                  <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea placeholder="How did the session go?" className="min-h-[100px] rounded-xl" {...field} /></FormControl></FormItem>
+                )} />
+              </div>
+              {noteStep === 1 ? (
+                <Button type="button" className="w-full h-12 rounded-xl text-lg font-semibold" onClick={() => setNoteStep(2)} data-testid="btn-note-next">
+                  Skills →
+                </Button>
+              ) : noteStep === 2 ? (
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="h-12 px-4 rounded-xl font-semibold" onClick={() => setNoteStep(1)} data-testid="btn-note-back">
+                    ← Start
+                  </Button>
+                  <Button type="button" className="flex-1 h-12 rounded-xl text-lg font-semibold" onClick={() => setNoteStep(3)} data-testid="btn-note-finish">
+                    Finish →
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="h-12 px-4 rounded-xl font-semibold" onClick={() => setNoteStep(2)} data-testid="btn-note-back">
+                    ← Skills
+                  </Button>
+                  <Button
+                    type="button"
+                    className="flex-1 h-12 rounded-xl text-lg font-semibold"
+                    disabled={createNote.isPending || updateNote.isPending}
+                    onClick={() => handleOpenChange(false)}
+                    data-testid="btn-note-done"
+                  >
+                    {(createNote.isPending || updateNote.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : "End Training"}
+                  </Button>
+                </div>
+              )}
             </form>
           </Form>
         </div>
 
-        {editingConnIndices !== null && (() => {
-          const indices = editingConnIndices;
-          const skillIds = indices.map(i => selectedSkills[i]?.id).filter((v): v is number => typeof v === 'number' && v > 0);
+        {editingGroupIndices !== null && editingRoutineIdx === null && (() => {
+          const indices = editingGroupIndices;
           return (
-            <div className="absolute inset-0 z-30 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setEditingConnIndices(null); }}>
-              <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-xl shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
-              <SkillEditorOverlay
-                title="Edit Connection"
-                skillIds={skillIds}
-                allSkills={allItems || []}
-                onSkillIdsChange={(newIds) => {
-                  let combinedLen = newIds.length;
-                  setSelectedSkills(prev => {
-                    const sortedIdx = [...indices].sort((a, b) => a - b);
-                    const minIdx = sortedIdx[0];
-                    const set = new Set(sortedIdx);
-                    const first = prev[minIdx];
-                    const reps = first?.reps;
-                    const note = first?.note;
-                    // Keep any routine/connection members of this group (in order);
-                    // the skill editor only edits plain skills, so we re-attach them.
-                    const preserved = sortedIdx
-                      .map(i => prev[i])
-                      .filter((it): it is SkillItem => !!it && (it.id === -2 || it.id === -3))
-                      .map(it => ({ ...it, reps: undefined, note: undefined }));
-                    const skillItems: SkillItem[] = newIds.map(id => ({ id }));
-                    const combined: SkillItem[] = [...skillItems, ...preserved];
-                    // reps is a group-wide property: every member carries it (matches updateReps),
-                    // since calculateTotalDD multiplies by the LAST member's reps. note stays on the first.
-                    combined.forEach((it, i) => {
-                      if (reps !== undefined) it.reps = reps;
-                      if (note !== undefined && i === 0) it.note = note;
-                    });
-                    combinedLen = combined.length;
-                    const ns: SkillItem[] = [];
-                    for (let i = 0; i < prev.length; i++) {
-                      if (i === minIdx) ns.push(...combined);
-                      if (!set.has(i)) ns.push(prev[i]);
+            <div className="absolute inset-0 z-30 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setEditingGroupIndices(null); }}>
+              <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-xl shadow-black/30 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 shrink-0">
+                  <span className="text-sm font-semibold">Connected Group</span>
+                  <Button type="button" variant="outline" size="sm" className="h-7 px-3 rounded-xl text-xs" onClick={() => setEditingGroupIndices(null)}>Done</Button>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  {indices.map((realIdx) => {
+                    const item = selectedSkills[realIdx];
+                    if (!item) return null;
+                    if (item.id === -2) {
+                      const r = routines?.find(rt => rt.id === item.routineId);
+                      return (
+                        <button type="button" key={realIdx} className="w-full flex items-center justify-between px-4 py-3 border-b border-border/20 hover:bg-muted/30 active:bg-muted/50 text-left" onClick={() => setEditingRoutineIdx(realIdx)}>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none shrink-0">ROUTINE</Badge>
+                            <span className="text-sm font-semibold text-primary">{r?.name || item.routineName}</span>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                        </button>
+                      );
                     }
-                    form.setValue('skills', JSON.stringify(ns));
-                    return ns;
-                  });
-                  if (newIds.length === 0) {
-                    setEditingConnIndices(null);
-                  } else {
-                    const minIdx = Math.min(...indices);
-                    setEditingConnIndices(Array.from({ length: combinedLen }, (_, k) => minIdx + k));
-                  }
-                }}
-                onClose={() => setEditingConnIndices(null)}
-                filterSkills={(s) => s.isDrill === 0}
-                className="flex-1 min-h-0"
-              />
+                    if (item.id === -3) {
+                      const fc = allItems?.find(s => s.id === item.fcId);
+                      const isPart = fc?.isDrill === 3;
+                      return (
+                        <button type="button" key={realIdx} className="w-full flex items-center justify-between px-4 py-3 border-b border-border/20 hover:bg-muted/30 active:bg-muted/50 text-left" onClick={() => setEditingRoutineIdx(realIdx)}>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] border-none shrink-0", isPart ? "bg-secondary text-secondary-foreground" : "bg-red-500 text-white")}>{isPart ? "PART" : "CONN"}</Badge>
+                            <span className={cn("text-sm font-semibold", isPart ? "text-muted-foreground" : "text-red-500 dark:text-red-400")}>{fc?.name || item.fcName}</span>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                        </button>
+                      );
+                    }
+                    const sk = allItems?.find(s => s.id === item.id);
+                    return (
+                      <div key={realIdx} className="flex items-center justify-between px-4 py-3 border-b border-border/20">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm shrink-0", sk?.isDrill === 1 ? "border-yellow-400/60 text-yellow-600 dark:border-yellow-600/60 dark:text-yellow-400" : "border-border/70 text-foreground/70")}>{skillDisplayCode(sk, allItems)}</Badge>
+                          <span className="text-sm truncate">{skillDisplayName(sk, allItems)}</span>
+                        </div>
+                        <button type="button" className="ml-2 text-muted-foreground/50 hover:text-destructive shrink-0" onClick={() => {
+                          setSelectedSkills(prev => {
+                            const ns = prev.filter((_, i) => i !== realIdx);
+                            const newIndices = indices.filter(i => i !== realIdx).map(i => i > realIdx ? i - 1 : i);
+                            form.setValue('skills', JSON.stringify(ns));
+                            if (newIndices.length === 0) setEditingGroupIndices(null);
+                            else setEditingGroupIndices(newIndices);
+                            return ns;
+                          });
+                        }}><X className="h-3.5 w-3.5" /></button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="px-3 py-2 border-t border-border/30 shrink-0">
+                  <div className="h-11 rounded-xl border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
+                    {(() => {
+                      const sortFn = (a: Skill, b: Skill) => {
+                        const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
+                        if (oA !== oB) return oA - oB;
+                        return b.difficulty - a.difficulty;
+                      };
+                      const skillsList = pickableSkills(allItems, 0).slice().sort(sortFn);
+                      const drillsList = pickableSkills(allItems, 1).slice().sort(sortFn);
+                      const addToGroup = (skillId: number) => {
+                        setSelectedSkills(prev => {
+                          const ns = [...prev];
+                          const lastIdx = indices[indices.length - 1];
+                          ns.splice(lastIdx + 1, 0, { id: skillId });
+                          setEditingGroupIndices([...indices, lastIdx + 1]);
+                          form.setValue('skills', JSON.stringify(ns));
+                          return ns;
+                        });
+                        setGroupPickerOpen(false);
+                      };
+                      return (
+                        <SearchPicker
+                          open={groupPickerOpen}
+                          onOpenChange={setGroupPickerOpen}
+                          placeholder="Add skill..."
+                          container={dialogBodyRef.current}
+                          className="w-full h-full"
+                          inputClassName="text-xs"
+                          inputRef={groupPickerInputRef}
+                        >
+                          <CommandList className="max-h-[260px]">
+                            <CommandEmpty>No matches.</CommandEmpty>
+                            {skillsList.length > 0 && (
+                              <CommandGroup heading="Skills">
+                                {skillsList.map(item => (
+                                  <CommandItem
+                                    key={`gs-${item.id}`}
+                                    value={`${skillDisplayCode(item, allItems)} ${skillDisplayName(item, allItems)} skill`}
+                                    onSelect={() => addToGroup(item.id)}
+                                  >
+                                    <span className="font-mono text-xs font-semibold text-foreground mr-2">{skillDisplayCode(item, allItems)}</span>
+                                    <span className="text-muted-foreground">- {skillDisplayName(item, allItems)}</span>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            )}
+                            {drillsList.length > 0 && (
+                              <CommandGroup heading="Drills">
+                                {drillsList.map(item => (
+                                  <CommandItem
+                                    key={`gd-${item.id}`}
+                                    value={`${skillDisplayCode(item, allItems)} ${skillDisplayName(item, allItems)} drill`}
+                                    onSelect={() => addToGroup(item.id)}
+                                  >
+                                    <span className="font-mono text-xs font-semibold text-yellow-600 dark:text-yellow-400 mr-2">{skillDisplayCode(item, allItems)}</span>
+                                    <span className="text-muted-foreground">- {skillDisplayName(item, allItems)}</span>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            )}
+                          </CommandList>
+                        </SearchPicker>
+                      );
+                    })()}
+                  </div>
+                </div>
               </div>
             </div>
           );
@@ -1798,20 +1935,32 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         {editingRoutineIdx !== null && (selectedSkills[editingRoutineIdx]?.id === -2 || selectedSkills[editingRoutineIdx]?.id === -3) && (() => {
           const rItem = selectedSkills[editingRoutineIdx];
           const isFC = rItem.id === -3;
+          const fcSkill = isFC ? allItems?.find(s => s.id === rItem.fcId) : undefined;
+          const isPart = fcSkill?.isDrill === 3;
           const baseSkillIds = isFC
-            ? (allItems?.find(s => s.id === rItem.fcId)?.skillIds ?? [])
+            ? (fcSkill?.skillIds ?? [])
             : (routines?.find(r => r.id === rItem.routineId)?.skillIds ?? []);
           const displaySkillIds = rItem.customSkillIds ?? baseSkillIds;
           const liveName = isFC
-            ? allItems?.find(s => s.id === rItem.fcId)?.name
+            ? fcSkill?.name
             : routines?.find(r => r.id === rItem.routineId)?.name;
           const title = liveName || (isFC ? (rItem.fcName || "Edit Connection") : (rItem.routineName || "Edit Routine"));
+          const typeLabel = isFC ? (isPart ? "PART" : "CONN") : "ROUTINE";
+          const typeColor = isFC
+            ? (isPart ? "bg-secondary text-secondary-foreground" : "bg-red-500 text-white")
+            : "bg-primary text-primary-foreground";
 
           return (
-            <div className="absolute inset-0 z-30 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setEditingRoutineIdx(null); }}>
+            <div className="absolute inset-0 z-40 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setEditingRoutineIdx(null); }}>
               <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-xl shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-border/40">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] border-none shrink-0", typeColor)}>{typeLabel}</Badge>
+                    <span className="text-sm font-bold truncate">{title}</span>
+                  </div>
+                </div>
               <SkillEditorOverlay
-                title={title}
+                title="Session skills"
                 skillIds={displaySkillIds}
                 allSkills={allItems || []}
                 onSkillIdsChange={(newIds) => {
@@ -1833,15 +1982,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       </DialogContent>
     </Dialog>
 
-    <ConfirmDialog
-      open={showDiscardAlert}
-      onOpenChange={setShowDiscardAlert}
-      title="Discard changes?"
-      description="Your unsaved changes will be lost."
-      onConfirm={() => { setShowDiscardAlert(false); onOpenChange(false); }}
-      confirmLabel="Discard"
-      cancelLabel="Keep editing"
-    />
     </>
   );
 }
