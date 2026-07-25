@@ -19,6 +19,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Badge } from "@/components/ui/badge";
 import { Timer, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PendingSyncBadge } from "@/components/pending-sync-badge";
+import { useQueuedTofSessions } from "@/hooks/use-queued-tof-sessions";
+import { tryNetworkOrEnqueue, isQueuedOfflineResult, deleteQueuedByTempId, type OfflineQueuedResult } from "@/lib/offline-queue";
 import type { TofSession, InsertTofSession } from "@shared/schema";
 
 const MAX_DATA_URL_CHARS = 4 * 1024 * 1024;
@@ -149,14 +152,30 @@ export default function TofPage() {
 
   const canSave = !!routineId && !!date && parsedValues.length >= 1 && !trailingEntries;
 
-  const createMutation = useMutation({
+  type CreateTofResult = OfflineQueuedResult | TofSession;
+  const createMutation = useMutation<CreateTofResult, Error, InsertTofSession>({
     mutationFn: async (body: InsertTofSession) => {
-      const res = await apiRequest("POST", api.tofSessions.create.path, body);
-      return res.json();
+      return await tryNetworkOrEnqueue("tofSession", body, async (signal) => {
+        const res = await fetch(api.tofSessions.create.path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          credentials: "include",
+          signal,
+        });
+        if (!res.ok) {
+          const text = (await res.text()) || res.statusText;
+          throw new Error(`${res.status}: ${text}`);
+        }
+        return (await res.json()) as TofSession;
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.tofSessions.list.path] });
-      toast({ title: "ToF session saved" });
+    onSuccess: (result) => {
+      const queued = isQueuedOfflineResult(result);
+      if (!queued) {
+        queryClient.invalidateQueries({ queryKey: [api.tofSessions.list.path] });
+      }
+      toast({ title: queued ? "Saved offline. Will sync when reconnected." : "ToF session saved" });
       closeForm(false);
     },
     onError: (e: Error) => toast({ title: "Failed to save session", description: e.message, variant: "destructive" }),
@@ -258,6 +277,89 @@ export default function TofPage() {
   }, [sessions, routineById]);
 
   const skillOf = (id: number) => allSkills?.find(s => s.id === id);
+
+  const queuedSessions = useQueuedTofSessions();
+
+  const renderSessionCard = (s: TofSession, pending: boolean) => {
+    const routine = routineById.get(s.routineId);
+    const vals = s.tofValues ?? [];
+    const total = vals.reduce((a, b) => a + b, 0);
+    return (
+      <div
+        key={pending ? `pending-${s.id}` : s.id}
+        className={cn("relative card-3d rounded-2xl p-5 pl-6 overflow-hidden", pending && "border-amber-500/40")}
+        data-testid={pending ? `card-tof-pending-${s.id}` : `card-tof-session-${s.id}`}
+      >
+        <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 rounded-full" aria-hidden="true" />
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[10px] font-mono text-muted-foreground">{fmtDate(s.date)}</div>
+            <h3 className="font-semibold text-base leading-tight truncate">{routine?.name ?? "Deleted routine"}</h3>
+            <div className="flex items-center gap-1.5 mt-1">
+              {vals.length < 10 && <Badge variant="secondary" className="text-[10px]">{vals.length}/10 jumps</Badge>}
+              {pending && <PendingSyncBadge size="xs" testId={`badge-pending-tof-${s.id}`} />}
+            </div>
+          </div>
+          <div className="flex items-start gap-1 shrink-0">
+            <div className="text-right leading-none">
+              <div className="text-3xl font-display font-normal text-amber-400 tracking-tight" data-testid={`text-tof-session-total-${s.id}`}>{total.toFixed(2)}</div>
+              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Total s</div>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 -mr-2 text-muted-foreground/50 hover:text-foreground" data-testid={`button-actions-tof-${s.id}`}><MoreVertical className="h-4 w-4" /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                {pending ? (
+                  <DropdownMenuItem
+                    className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive"
+                    onClick={async () => {
+                      const ok = await deleteQueuedByTempId(s.id);
+                      if (ok) toast({ title: "Pending ToF session discarded" });
+                    }}
+                    data-testid={`button-discard-tof-${s.id}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Discard
+                  </DropdownMenuItem>
+                ) : (
+                  <>
+                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEdit(s)} data-testid={`button-edit-tof-${s.id}`}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget(s)} data-testid={`button-delete-tof-${s.id}`}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+        <div className="grid grid-cols-5 gap-1.5 mt-4">
+          {s.preJumpTof != null && (
+            <div className="text-center bg-secondary/20 border border-dashed border-border/50 rounded-md px-1 py-1" title="In-bounce jump before the first skill" data-testid={`cell-tof-prejump-${s.id}`}>
+              <div className="text-[9px] font-mono text-muted-foreground truncate">pre</div>
+              <div className="text-[11px] font-mono font-bold text-muted-foreground">{s.preJumpTof.toFixed(2)}</div>
+            </div>
+          )}
+          {vals.map((v, i) => {
+            const skillId = routine?.skillIds[i];
+            const sk = skillId != null ? skillOf(skillId) : undefined;
+            const prev = i > 0 ? vals[i - 1] : s.preJumpTof;
+            const drop = prev != null ? prev - v : null;
+            return (
+              <div key={i} className="text-center bg-secondary/40 border border-border/50 rounded-md px-1 py-1" title={sk ? skillDisplayName(sk, allSkills) : undefined}>
+                <div className="text-[9px] font-mono text-muted-foreground truncate">{sk ? skillDisplayCode(sk, allSkills) : `#${i + 1}`}</div>
+                <div className="text-[11px] font-mono font-bold text-foreground">{v.toFixed(2)}</div>
+                {drop != null && (
+                  <div className={cn("text-[9px] font-mono", drop > 0 ? "text-red-500" : "text-emerald-500")}>
+                    {drop > 0 ? "-" : "+"}{Math.abs(drop).toFixed(2)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {s.note && <p className="text-xs text-muted-foreground mt-3 whitespace-pre-wrap" data-testid={`text-tof-note-${s.id}`}>{s.note}</p>}
+      </div>
+    );
+  };
 
   return (
     <PageLayout>
@@ -432,65 +534,9 @@ export default function TofPage() {
 
       {/* ---- Session list ---- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {(sessions ?? []).map(s => {
-          const routine = routineById.get(s.routineId);
-          const vals = s.tofValues ?? [];
-          const total = vals.reduce((a, b) => a + b, 0);
-          return (
-            <div key={s.id} className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden" data-testid={`card-tof-session-${s.id}`}>
-              <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 rounded-full" aria-hidden="true" />
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-[10px] font-mono text-muted-foreground">{fmtDate(s.date)}</div>
-                  <h3 className="font-semibold text-base leading-tight truncate">{routine?.name ?? "Deleted routine"}</h3>
-                  {vals.length < 10 && <Badge variant="secondary" className="mt-1 text-[10px]">{vals.length}/10 jumps</Badge>}
-                </div>
-                <div className="flex items-start gap-1 shrink-0">
-                  <div className="text-right leading-none">
-                    <div className="text-3xl font-display font-normal text-amber-400 tracking-tight" data-testid={`text-tof-session-total-${s.id}`}>{total.toFixed(2)}</div>
-                    <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Total s</div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 -mr-2 text-muted-foreground/50 hover:text-foreground" data-testid={`button-actions-tof-${s.id}`}><MoreVertical className="h-4 w-4" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-36 rounded-xl">
-                      <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEdit(s)} data-testid={`button-edit-tof-${s.id}`}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget(s)} data-testid={`button-delete-tof-${s.id}`}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-              <div className="grid grid-cols-5 gap-1.5 mt-4">
-                {s.preJumpTof != null && (
-                  <div className="text-center bg-secondary/20 border border-dashed border-border/50 rounded-md px-1 py-1" title="In-bounce jump before the first skill" data-testid={`cell-tof-prejump-${s.id}`}>
-                    <div className="text-[9px] font-mono text-muted-foreground truncate">pre</div>
-                    <div className="text-[11px] font-mono font-bold text-muted-foreground">{s.preJumpTof.toFixed(2)}</div>
-                  </div>
-                )}
-                {vals.map((v, i) => {
-                  const skillId = routine?.skillIds[i];
-                  const sk = skillId != null ? skillOf(skillId) : undefined;
-                  const prev = i > 0 ? vals[i - 1] : s.preJumpTof;
-                  const drop = prev != null ? prev - v : null;
-                  return (
-                    <div key={i} className="text-center bg-secondary/40 border border-border/50 rounded-md px-1 py-1" title={sk ? skillDisplayName(sk, allSkills) : undefined}>
-                      <div className="text-[9px] font-mono text-muted-foreground truncate">{sk ? skillDisplayCode(sk, allSkills) : `#${i + 1}`}</div>
-                      <div className="text-[11px] font-mono font-bold text-foreground">{v.toFixed(2)}</div>
-                      {drop != null && (
-                        <div className={cn("text-[9px] font-mono", drop > 0 ? "text-red-500" : "text-emerald-500")}>
-                          {drop > 0 ? "-" : "+"}{Math.abs(drop).toFixed(2)}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              {s.note && <p className="text-xs text-muted-foreground mt-3 whitespace-pre-wrap" data-testid={`text-tof-note-${s.id}`}>{s.note}</p>}
-            </div>
-          );
-        })}
-        {!isLoading && (sessions ?? []).length === 0 && (
+        {queuedSessions.map(s => renderSessionCard(s, true))}
+        {(sessions ?? []).map(s => renderSessionCard(s, false))}
+        {!isLoading && (sessions ?? []).length === 0 && queuedSessions.length === 0 && (
           <div className="col-span-full text-center py-20 card-3d rounded-2xl">
             <Timer className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
             <p className="text-muted-foreground font-medium">No ToF sessions yet.</p>

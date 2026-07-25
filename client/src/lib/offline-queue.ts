@@ -60,6 +60,7 @@ function urlForKind(kind: QueueKind): string {
     case 'skill': return '/api/skills';
     case 'routine': return '/api/routines';
     case 'focusMemo': return '/api/auth/focus-memo';
+    case 'tofSession': return '/api/tof-sessions';
   }
 }
 
@@ -350,6 +351,12 @@ function remapBody(kind: QueueKind, body: any, idMap: Map<number, number>): any 
     }
     return next;
   }
+  if (kind === 'tofSession') {
+    if (typeof body.routineId === 'number' && idMap.has(body.routineId)) {
+      return { ...body, routineId: idMap.get(body.routineId) };
+    }
+    return body;
+  }
   if (kind === 'focusMemo') {
     if (typeof body.focusMemo !== 'string') return body;
     try {
@@ -619,6 +626,7 @@ export async function drainQueue(): Promise<DrainResult> {
           typeof k === 'string' &&
           (k === '/api/notes' ||
             k === '/api/scores' ||
+            k === '/api/tof-sessions' ||
             k === '/api/skills' ||
             k === '/api/routines' ||
             k.startsWith('/api/skills/') ||
