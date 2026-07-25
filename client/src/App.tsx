@@ -4,20 +4,22 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
-import Home from "@/pages/home";
-import SkillsPage from "@/pages/skills";
-import SkillDetailPage from "@/pages/skill-detail";
-import RoutinesPage from "@/pages/routines";
-import RoutineDetailPage from "@/pages/routine-detail";
-import StatsPage from "@/pages/stats";
 import LoginPage from "@/pages/login";
-import ForgotPasswordPage from "@/pages/forgot-password";
-import ResetPasswordPage from "@/pages/reset-password";
-import PrivacyPage from "@/pages/privacy";
-import ScorePage from "@/pages/score";
-import SettingsPage from "@/pages/settings";
-import WhoopPage from "@/pages/whoop";
-import CoachPage from "@/pages/coach";
+import { lazy, Suspense } from "react";
+
+const Home = lazy(() => import("@/pages/home"));
+const SkillsPage = lazy(() => import("@/pages/skills"));
+const SkillDetailPage = lazy(() => import("@/pages/skill-detail"));
+const RoutinesPage = lazy(() => import("@/pages/routines"));
+const RoutineDetailPage = lazy(() => import("@/pages/routine-detail"));
+const StatsPage = lazy(() => import("@/pages/stats"));
+const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password"));
+const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
+const PrivacyPage = lazy(() => import("@/pages/privacy"));
+const ScorePage = lazy(() => import("@/pages/score"));
+const SettingsPage = lazy(() => import("@/pages/settings"));
+const WhoopPage = lazy(() => import("@/pages/whoop"));
+const CoachPage = lazy(() => import("@/pages/coach"));
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Target, Layers, BarChart3, Trophy, Loader2, Settings, HeartPulse, Bot, MoreHorizontal } from "lucide-react";
@@ -130,9 +132,18 @@ function Navigation() {
   );
 }
 
+function PageLoader() {
+  return (
+    <div className="min-h-[100svh] flex items-center justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
+
 function Router() {
   return (
     <div className="pt-safe pb-nav-safe bg-mesh min-h-[100dvh]">
+      <Suspense fallback={<PageLoader />}>
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/score" component={ScorePage} />
@@ -149,6 +160,7 @@ function Router() {
         <Route path="/reset-password"><Redirect to="/" /></Route>
         <Route component={NotFound} />
       </Switch>
+      </Suspense>
     </div>
   );
 }
@@ -251,12 +263,14 @@ function AppContent() {
 
   if (!isAuthenticated) {
     return (
-      <Switch>
-        <Route path="/forgot-password" component={ForgotPasswordPage} />
-        <Route path="/reset-password" component={ResetPasswordPage} />
-        <Route path="/privacy" component={PrivacyPage} />
-        <Route component={LoginPage} />
-      </Switch>
+      <Suspense fallback={<PageLoader />}>
+        <Switch>
+          <Route path="/forgot-password" component={ForgotPasswordPage} />
+          <Route path="/reset-password" component={ResetPasswordPage} />
+          <Route path="/privacy" component={PrivacyPage} />
+          <Route component={LoginPage} />
+        </Switch>
+      </Suspense>
     );
   }
 
