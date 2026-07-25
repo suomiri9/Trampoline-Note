@@ -25,6 +25,7 @@ import { useRecentSkills, addRecentSkill, useRecentEntries, addRecentEntry } fro
 import { useTypeToSearch } from "@/hooks/use-type-to-search";
 import { useRoutines } from "@/hooks/use-routines";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -220,17 +221,37 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   type MenuChatMsg = { role: "user" | "assistant"; content: string };
   const [menuMessages, setMenuMessages] = useState<MenuChatMsg[]>([]);
   const [menuInput, setMenuInput] = useState("");
+  // A draft item is plain skills OR a routine (routineId → app item {id:-2})
+  // OR a frequent connection (fcId → app item {id:-3}).
+  type MenuDraftItem = {
+    skills: Array<{ skillId: number; code: string; name: string }>;
+    reps: number;
+    routineId?: number;
+    fcId?: number;
+    customSkillIds?: number[];
+  };
   const [menuDraft, setMenuDraft] = useState<null | {
-    items: Array<{ skills: Array<{ skillId: number; code: string; name: string }>; reps: number }>;
+    items: MenuDraftItem[];
     unmatched: string[];
     noteText: string;
   }>(null);
   const [menuSuggestions, setMenuSuggestions] = useState<string[]>([]);
   // Review dialog (replaces the old /menu-review page)
-  type ReviewItem = { skillIds: number[]; codes: string[]; names: string[]; reps: number };
+  type ReviewItem = {
+    skillIds: number[];
+    codes: string[];
+    names: string[];
+    reps: number;
+    routineId?: number;
+    fcId?: number;
+    customSkillIds?: number[];
+  };
   const [menuReviewOpen, setMenuReviewOpen] = useState(false);
   const [menuReviewItems, setMenuReviewItems] = useState<ReviewItem[]>([]);
   const [menuReviewUnmatched, setMenuReviewUnmatched] = useState<string[]>([]);
+  const [reviewPickerOpen, setReviewPickerOpen] = useState(false);
+  const [reviewConnectMode, setReviewConnectMode] = useState(false);
+  const [reviewEditingIdx, setReviewEditingIdx] = useState<number | null>(null);
   const menuChatEndRef = useRef<HTMLDivElement>(null);
   const menuPhotoRef = useRef<HTMLInputElement>(null);
 
@@ -601,14 +622,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         const err = await res.json().catch(() => ({}));
         throw new Error((err as any).message || "AI unavailable.");
       }
-      const { reply, draft, suggestions } = await res.json() as {
+      const { reply, draft, suggestions, guideUpdated } = await res.json() as {
         reply: string;
-        draft: null | { date: string; items: Array<{ skills: Array<{ skillId: number; code: string; name: string }>; reps: number }>; unmatched: string[]; noteText: string };
+        draft: null | { date: string; items: MenuDraftItem[]; unmatched: string[]; noteText: string };
         suggestions?: string[];
+        guideUpdated?: boolean;
       };
       setMenuMessages(prev => [...prev, { role: "assistant", content: reply }]);
       if (draft) setMenuDraft(draft);
       setMenuSuggestions(draft ? [] : (suggestions ?? []));
+      if (guideUpdated) {
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        toast({ title: "Menu notation saved", description: "I'll remember that next time. Review or edit it in Settings." });
+      }
       setTimeout(() => menuChatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     } catch (err: any) {
       toast({ title: "AI error", description: err?.message || "Something went wrong.", variant: "destructive" });
@@ -631,25 +657,56 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   // Navigate to the review page with the current draft
   const goToReview = () => {
-    if (!menuDraft) return;
-    const items = menuDraft.items.map(it => ({
-      skillIds: it.skills.map(s => s.skillId),
-      codes: it.skills.map(s => s.code),
-      names: it.skills.map(s => s.name),
-      reps: it.reps,
-    }));
-    setMenuReviewItems(items);
-    setMenuReviewUnmatched(menuDraft.unmatched);
+    // Load the AI draft into the review list when one exists; otherwise open
+    // the review with whatever is already there (possibly empty) so the athlete
+    // can always jump in and add items manually.
+    if (menuDraft && menuDraft.items.length > 0) {
+      const items = menuDraft.items.map(it => ({
+        skillIds: it.skills.map(s => s.skillId),
+        codes: it.skills.map(s => s.code),
+        names: it.skills.map(s => s.name),
+        reps: it.reps,
+        routineId: it.routineId,
+        fcId: it.fcId,
+        customSkillIds: it.customSkillIds,
+      }));
+      setMenuReviewItems(items);
+      setMenuReviewUnmatched(menuDraft.unmatched);
+    }
+    setReviewConnectMode(false);
+    setReviewEditingIdx(null);
     setMenuReviewOpen(true);
+  };
+
+  const addReviewEntry = (entry: Omit<ReviewItem, "reps">) => {
+    setMenuReviewItems(prev => [...prev, { ...entry, reps: 1 }]);
+    setReviewPickerOpen(false);
   };
 
   const confirmMenuReview = () => {
     const incoming: SkillItem[] = [];
     menuReviewItems.forEach((it, i) => {
       if (i > 0) incoming.push({ id: -1 });
-      it.skillIds.forEach((sid, j) => {
-        const isLast = j === it.skillIds.length - 1;
-        incoming.push(isLast && it.reps > 1 ? { id: sid, reps: it.reps } : { id: sid });
+      if (it.routineId != null) {
+        incoming.push({
+          id: -2,
+          routineId: it.routineId,
+          customSkillIds: it.customSkillIds ?? [],
+          ...(it.reps > 1 ? { reps: it.reps } : {}),
+        });
+        return;
+      }
+      if (it.fcId != null) {
+        incoming.push({
+          id: -3,
+          fcId: it.fcId,
+          customSkillIds: it.customSkillIds ?? [],
+          ...(it.reps > 1 ? { reps: it.reps } : {}),
+        });
+        return;
+      }
+      it.skillIds.forEach((sid) => {
+        incoming.push(it.reps > 1 ? { id: sid, reps: it.reps } : { id: sid });
       });
     });
     if (incoming.length > 0) {
@@ -817,7 +874,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   const updateSkillNote = (index: number, note: string | undefined) => {
     setSelectedSkills(prev => {
-      const newSkills = prev.map((item, idx) => {
+      const newSkills = prev.map((item, idx): SkillItem => {
         if (idx === index) {
           if (note === undefined) {
             const { note: _, ...rest } = item;
@@ -828,7 +885,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         return item;
       });
       setTimeout(() => {
-        const cleaned = newSkills.map(s => {
+        const cleaned = newSkills.map((s): SkillItem => {
           if (s.note === "") { const { note: _, ...rest } = s; return rest; }
           return s;
         });
@@ -1175,7 +1232,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
                   {/* ── Menu Photo Dialog ── */}
                   <Dialog open={menuPhotoDialogOpen} onOpenChange={(o) => { if (!o && !menuPhotoLoading) setMenuPhotoDialogOpen(false); }}>
-                    <DialogContent aria-describedby={undefined} className="sm:max-w-lg max-h-[90dvh] flex flex-col gap-0 p-0 overflow-hidden">
+                    <DialogContent aria-describedby={undefined} className="sm:max-w-lg max-h-[80dvh] top-[calc(50%-2rem)] flex flex-col gap-0 p-0 overflow-hidden">
                       {/* Header */}
                       <DialogHeader className="px-4 pt-4 pb-2 shrink-0 border-b">
                         <DialogTitle className="flex items-center gap-2 text-sm">
@@ -1289,7 +1346,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               )}
                               <div ref={menuChatEndRef} />
                             </div>
-                            {/* Draft ready banner */}
+                            {/* Draft-ready banner — only when the AI has produced items */}
                             {menuDraft && menuDraft.items.length > 0 && (
                               <div className="mx-4 mb-2 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2 flex items-center justify-between gap-2 shrink-0">
                                 <p className="text-xs font-medium text-primary">{menuDraft.items.length} item{menuDraft.items.length !== 1 ? "s" : ""} ready</p>
@@ -1355,25 +1412,29 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             {cropRects.length > 1 ? `Use ${cropRects.length} areas` : cropRects.length === 1 ? "Use selection" : "Use whole photo"}
                           </Button>
                         )}
+                        {menuStep === "chat" && !(menuDraft && menuDraft.items.length > 0) && (
+                          <Button type="button" variant="outline" size="sm" className="rounded-xl"
+                            onClick={goToReview}
+                            data-testid="btn-menu-review"
+                          >
+                            Do manually
+                          </Button>
+                        )}
                       </div>
                     </DialogContent>
                   </Dialog>
 
                   {/* ── Menu review Dialog ── */}
-                  <Dialog open={menuReviewOpen} onOpenChange={o => !o && setMenuReviewOpen(false)}>
-                    <DialogContent aria-describedby={undefined} className="sm:max-w-2xl max-h-[92dvh] flex flex-col p-0 gap-0">
+                  <Dialog open={menuReviewOpen} onOpenChange={o => { if (!o) { setMenuReviewOpen(false); setReviewConnectMode(false); setReviewEditingIdx(null); } }}>
+                    <DialogContent aria-describedby={undefined} className="sm:max-w-2xl max-h-[80dvh] top-[calc(50%-2rem)] flex flex-col p-0 gap-0" onOpenAutoFocus={e => e.preventDefault()}>
                       <DialogHeader className="px-4 pt-4 pb-3 border-b shrink-0">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center justify-between gap-2 pr-8">
                           <DialogTitle className="text-sm font-bold uppercase tracking-wider font-mono">Review menu</DialogTitle>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
                               {menuReviewItems.length} item{menuReviewItems.length !== 1 ? "s" : ""}
                               {menuReviewUnmatched.length > 0 && ` · ${menuReviewUnmatched.length} unmatched`}
                             </span>
-                            <Button size="sm" className="rounded-xl gap-1.5 h-8" onClick={confirmMenuReview} disabled={menuReviewItems.length === 0} data-testid="btn-menu-review-confirm">
-                              <Check className="h-3.5 w-3.5" />
-                              Add to session
-                            </Button>
                           </div>
                         </div>
                       </DialogHeader>
@@ -1388,38 +1449,204 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
                         {/* Right: editable list */}
                         <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-                          {menuReviewItems.length === 0 && (
-                            <p className="text-sm text-muted-foreground italic">No items — go back to the chat and adjust.</p>
-                          )}
-                          {menuReviewItems.map((it, idx) => (
-                            <div key={idx} className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5" data-testid={`menu-review-item-${idx}`}>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-mono font-semibold truncate">{it.codes.join(" + ")}</p>
-                                <p className="text-xs text-muted-foreground truncate">{it.names.join(" + ")}</p>
-                              </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg"
-                                  onClick={() => setMenuReviewItems(prev => prev.map((r, i) => i === idx ? { ...r, reps: Math.max(1, r.reps - 1) } : r))}
-                                  data-testid={`btn-review-reps-minus-${idx}`}>
-                                  <Minus className="h-3 w-3" />
-                                </Button>
-                                <input type="number" min={1} max={999} value={it.reps}
-                                  onChange={e => { const n = parseInt(e.target.value); if (!isNaN(n) && n >= 1) setMenuReviewItems(prev => prev.map((r, i) => i === idx ? { ...r, reps: Math.min(999, n) } : r)); }}
-                                  className="w-10 text-center text-sm font-mono bg-transparent border-b focus:outline-none focus:border-primary"
-                                  data-testid={`input-review-reps-${idx}`} />
-                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg"
-                                  onClick={() => setMenuReviewItems(prev => prev.map((r, i) => i === idx ? { ...r, reps: Math.min(999, r.reps + 1) } : r))}
-                                  data-testid={`btn-review-reps-plus-${idx}`}>
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive"
-                                  onClick={() => setMenuReviewItems(prev => prev.filter((_, i) => i !== idx))}
-                                  data-testid={`btn-review-remove-${idx}`}>
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
+                          <div className="flex gap-2 shrink-0 items-stretch">
+                          <div className="flex h-11 flex-1 min-w-0 rounded-xl border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
+                            <SearchPicker
+                              open={reviewPickerOpen}
+                              onOpenChange={setReviewPickerOpen}
+                              placeholder="Search skills to add..."
+                              className="flex-1 h-full"
+                              inputClassName="text-xs"
+                              inputTestId="input-review-add-skill"
+                            >
+                              <CommandList className="max-h-[260px]">
+                                <CommandEmpty>No matches.</CommandEmpty>
+                                {(() => {
+                                  const sortFn = (a: Skill, b: Skill) => {
+                                    const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
+                                    if (oA !== oB) return oA - oB;
+                                    return b.difficulty - a.difficulty;
+                                  };
+                                  const skillsList = pickableSkills(allItems, 0).slice().sort(sortFn);
+                                  const drillsList = pickableSkills(allItems, 1).slice().sort(sortFn);
+                                  const connList = (allItems || []).filter(s => s.isDrill === 2 && s.skillIds && s.archived !== 1);
+                                  const partList = (allItems || []).filter(s => s.isDrill === 3 && s.skillIds && s.archived !== 1);
+                                  const routineList = (routines || []).filter(r => r.archived !== 1);
+                                  const pickSkill = (item: Skill) => {
+                                    if (reviewConnectMode) {
+                                      setMenuReviewItems(prev => {
+                                        const last = prev[prev.length - 1];
+                                        if (last && last.fcId == null && last.routineId == null) {
+                                          const merged = {
+                                            ...last,
+                                            skillIds: [...last.skillIds, item.id],
+                                            codes: [...last.codes, skillDisplayCode(item, allItems)],
+                                            names: [...last.names, skillDisplayName(item, allItems)],
+                                          };
+                                          return [...prev.slice(0, -1), merged];
+                                        }
+                                        return [...prev, { skillIds: [item.id], codes: [skillDisplayCode(item, allItems)], names: [skillDisplayName(item, allItems)], reps: 1 }];
+                                      });
+                                      setReviewPickerOpen(false);
+                                      return;
+                                    }
+                                    addReviewEntry({
+                                      skillIds: [item.id],
+                                      codes: [skillDisplayCode(item, allItems)],
+                                      names: [skillDisplayName(item, allItems)],
+                                    });
+                                  };
+                                  const pickFc = (item: Skill) => addReviewEntry({
+                                    skillIds: [],
+                                    codes: [item.name],
+                                    names: [item.name],
+                                    fcId: item.id,
+                                    customSkillIds: item.skillIds ?? [],
+                                  });
+                                  return (
+                                    <>
+                                      {skillsList.length > 0 && (
+                                        <CommandGroup heading="Skills">
+                                          {skillsList.map(item => (
+                                            <CommandItem key={`s-${item.id}`} value={`${skillDisplayCode(item, allItems)} ${skillDisplayName(item, allItems)} skill`}
+                                              onSelect={() => pickSkill(item)} data-testid={`review-pick-skill-${item.id}`}>
+                                              <span className="font-mono text-xs font-semibold text-foreground mr-2">{skillDisplayCode(item, allItems)}</span>
+                                              <span className="text-muted-foreground">- {skillDisplayName(item, allItems)}</span>
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      )}
+                                      {drillsList.length > 0 && (
+                                        <CommandGroup heading="Drills">
+                                          {drillsList.map(item => (
+                                            <CommandItem key={`d-${item.id}`} value={`${skillDisplayCode(item, allItems)} ${skillDisplayName(item, allItems)} drill`}
+                                              onSelect={() => pickSkill(item)} data-testid={`review-pick-drill-${item.id}`}>
+                                              <span className="font-mono text-xs font-semibold text-foreground mr-2">{skillDisplayCode(item, allItems)}</span>
+                                              <span className="text-muted-foreground">- {skillDisplayName(item, allItems)}</span>
+                                              <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-yellow-600 dark:text-yellow-400">Drill</span>
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      )}
+                                      {connList.length > 0 && (
+                                        <CommandGroup heading="Connections">
+                                          {connList.map(item => (
+                                            <CommandItem key={`c-${item.id}`} value={`${item.name} connection`}
+                                              onSelect={() => pickFc(item)} data-testid={`review-pick-conn-${item.id}`}>
+                                              <span className="font-mono text-xs font-semibold text-foreground mr-2">{item.name}</span>
+                                              <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-red-500 dark:text-red-400">Connection</span>
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      )}
+                                      {partList.length > 0 && (
+                                        <CommandGroup heading="Routine Parts">
+                                          {partList.map(item => (
+                                            <CommandItem key={`p-${item.id}`} value={`${item.name} routine part`}
+                                              onSelect={() => pickFc(item)} data-testid={`review-pick-part-${item.id}`}>
+                                              <span className="font-mono text-xs font-semibold text-foreground mr-2">{item.name}</span>
+                                              <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-gray-600 dark:text-gray-300">Part</span>
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      )}
+                                      {routineList.length > 0 && (
+                                        <CommandGroup heading="Routines">
+                                          {routineList.map(r => (
+                                            <CommandItem key={`r-${r.id}`} value={`${r.name} routine`}
+                                              onSelect={() => addReviewEntry({ skillIds: [], codes: [r.name], names: [r.name], routineId: r.id, customSkillIds: r.skillIds ?? [] })}
+                                              data-testid={`review-pick-routine-${r.id}`}>
+                                              <span className="font-mono text-xs font-semibold text-foreground mr-2">{r.name}</span>
+                                              <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-blue-600 dark:text-blue-400">Routine</span>
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      )}
+                                    </>
+                                  );
+                                })()}
+                              </CommandList>
+                            </SearchPicker>
+                          </div>
+                          <Button
+                            type="button"
+                            variant={reviewConnectMode ? "default" : "outline"}
+                            size="sm"
+                            className={cn(
+                              "h-11 shrink-0 px-3 text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all",
+                              reviewConnectMode ? "bg-red-500 text-white shadow-md hover:bg-red-600" : "border-red-300 text-red-500 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
+                            )}
+                            onClick={() => setReviewConnectMode(!reviewConnectMode)}
+                            data-testid="btn-review-connect-next"
+                            title="Link the next picked skill to the previous one as a connection"
+                          >
+                            {reviewConnectMode ? "Linking..." : "+ Link"}
+                          </Button>
+                          </div>
+                          <div className="min-h-[120px] bg-secondary/10 rounded-xl border border-border/50 overflow-hidden">
+                            <div className="bg-secondary/20 px-3 py-1.5 border-b border-border/50">
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Practice List</span>
                             </div>
-                          ))}
+                            {menuReviewItems.length === 0 && (
+                              <p className="text-xs text-muted-foreground italic px-3 py-3">No items — use the search box above to add skills.</p>
+                            )}
+                            {menuReviewItems.map((it, idx) => {
+                              const fc = it.fcId != null ? allItems?.find(s => s.id === it.fcId) : undefined;
+                              const isPart = fc?.isDrill === 3;
+                              const stepper = (
+                                <div className="flex items-center border rounded-md">
+                                  <button type="button" className="px-1.5 text-muted-foreground"
+                                    onClick={() => setMenuReviewItems(prev => prev.map((r, i) => i === idx ? { ...r, reps: Math.max(1, r.reps - 1) } : r))}
+                                    data-testid={`btn-review-reps-minus-${idx}`}>-</button>
+                                  <input type="text" inputMode="numeric" pattern="[0-9]*" value={it.reps}
+                                    onChange={e => { const n = parseInt(e.target.value); if (!isNaN(n) && n >= 1) setMenuReviewItems(prev => prev.map((r, i) => i === idx ? { ...r, reps: Math.min(999, n) } : r)); }}
+                                    className="w-6 text-center text-xs font-bold bg-transparent outline-none"
+                                    data-testid={`input-review-reps-${idx}`} />
+                                  <button type="button" className="px-1.5 text-muted-foreground"
+                                    onClick={() => setMenuReviewItems(prev => prev.map((r, i) => i === idx ? { ...r, reps: Math.min(999, r.reps + 1) } : r))}
+                                    data-testid={`btn-review-reps-plus-${idx}`}>+</button>
+                                </div>
+                              );
+                              const editable = it.routineId != null || it.fcId != null || it.skillIds.length > 1;
+                              return (
+                                <div key={idx} className={cn("px-3 py-2 flex justify-between items-center gap-2", idx > 0 && "border-t border-border/20")} data-testid={`menu-review-item-${idx}`}>
+                                  <div
+                                    className={cn("flex gap-2 items-center min-w-0 flex-wrap flex-1", editable && "cursor-pointer")}
+                                    onClick={editable ? () => setReviewEditingIdx(idx) : undefined}
+                                    data-testid={`btn-review-edit-${idx}`}
+                                  >
+                                    {it.routineId != null ? (
+                                      <>
+                                        <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none shrink-0" data-testid={`badge-menu-review-kind-${idx}`}>ROUTINE</Badge>
+                                        <span className="text-sm font-bold text-primary truncate">{it.names[0]}</span>
+                                      </>
+                                    ) : it.fcId != null ? (
+                                      <>
+                                        <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] text-white border-none shrink-0", isPart ? "bg-gray-500" : "bg-red-500")} data-testid={`badge-menu-review-kind-${idx}`}>{isPart ? "PART" : "CONN"}</Badge>
+                                        <span className={cn("text-sm font-bold truncate", isPart ? "text-gray-700 dark:text-gray-300" : "text-red-600 dark:text-red-400")}>{it.names[0]}</span>
+                                      </>
+                                    ) : (
+                                      it.codes.map((c, j) => (
+                                        <div key={j} className="flex items-center gap-2 min-w-0">
+                                          <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm border-border/70 text-foreground/70 shrink-0">{c}</Badge>
+                                          {it.codes.length === 1 && <span className="text-sm truncate">{it.names[j]}</span>}
+                                          {j < it.codes.length - 1 && <span className="text-muted-foreground/60 font-bold text-xs">+</span>}
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 shrink-0 text-[11px] font-mono font-bold">
+                                    {stepper}
+                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground/50 hover:text-destructive"
+                                      onClick={() => setMenuReviewItems(prev => prev.filter((_, i) => i !== idx))}
+                                      data-testid={`btn-review-remove-${idx}`}>
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                           {menuReviewUnmatched.length > 0 && (
                             <div className="rounded-xl border border-dashed border-muted-foreground/30 px-3 py-2.5">
                               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Not matched</p>
@@ -1433,11 +1660,62 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => setMenuReviewOpen(false)} data-testid="btn-menu-review-back">
                           ← Back to chat
                         </Button>
-                        <Button size="sm" className="rounded-xl gap-1.5" onClick={confirmMenuReview} disabled={menuReviewItems.length === 0} data-testid="btn-menu-review-confirm-footer">
+                        <Button size="sm" className="rounded-xl gap-1.5" onClick={confirmMenuReview} disabled={menuReviewItems.length === 0} data-testid="btn-menu-review-confirm">
                           <Check className="h-3.5 w-3.5" />
                           Add to session
                         </Button>
                       </div>
+
+                      {/* Skill editor overlay for review items (conn/part/routine/linked groups) */}
+                      {reviewEditingIdx !== null && (() => {
+                        const it = menuReviewItems[reviewEditingIdx];
+                        if (!it) return null;
+                        const isRoutine = it.routineId != null;
+                        const isFC = it.fcId != null;
+                        const fc = isFC ? allItems?.find(s => s.id === it.fcId) : undefined;
+                        const isPart = fc?.isDrill === 3;
+                        const typeLabel = isRoutine ? "ROUTINE" : isFC ? (isPart ? "PART" : "CONN") : "LINKED";
+                        const typeColor = isRoutine
+                          ? "bg-primary text-primary-foreground"
+                          : isPart ? "bg-gray-500 text-white" : "bg-red-500 text-white";
+                        const title = isRoutine || isFC ? it.names[0] : it.codes.join(" + ");
+                        const editIds = isRoutine || isFC ? (it.customSkillIds ?? []) : it.skillIds;
+                        return (
+                          <div className="absolute inset-0 z-40 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm rounded-lg" onClick={(e) => { if (e.target === e.currentTarget) setReviewEditingIdx(null); }}>
+                            <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-xl shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-border/40">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] border-none shrink-0", typeColor)}>{typeLabel}</Badge>
+                                  <span className="text-sm font-bold truncate">{title}</span>
+                                </div>
+                              </div>
+                              <SkillEditorOverlay
+                                title="Session skills"
+                                skillIds={editIds}
+                                allSkills={allItems || []}
+                                onSkillIdsChange={(newIds) => {
+                                  if (!isRoutine && !isFC && newIds.length === 0) {
+                                    setMenuReviewItems(prev => prev.filter((_, i) => i !== reviewEditingIdx));
+                                    setReviewEditingIdx(null);
+                                    return;
+                                  }
+                                  setMenuReviewItems(prev => prev.map((r, i) => {
+                                    if (i !== reviewEditingIdx) return r;
+                                    if (r.routineId != null || r.fcId != null) return { ...r, customSkillIds: newIds };
+                                    const codes = newIds.map(id => { const s = allItems?.find(x => x.id === id); return s ? skillDisplayCode(s, allItems) : "?"; });
+                                    const names = newIds.map(id => { const s = allItems?.find(x => x.id === id); return s ? skillDisplayName(s, allItems) : "?"; });
+                                    return { ...r, skillIds: newIds, codes, names };
+                                  }));
+                                }}
+                                onClose={() => setReviewEditingIdx(null)}
+                                filterSkills={isFC ? (s) => s.isDrill === 0 : undefined}
+                                uidPrefix="review-edit"
+                                className="flex-1 min-h-0"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </DialogContent>
                   </Dialog>
                 </div>
@@ -1907,6 +2185,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             disabled={!sel || slice.length === 0 || !finalName || isCreatingSkill}
                             onClick={async () => {
                               try {
+                                if (!sel) return;
                                 const created = await createSkill({ name: finalName, code: finalName, difficulty: dd, isDrill: 3, skillIds: slice, sourceRoutineId: sel.id });
                                 if (created && (created as Skill).id !== undefined) {
                                   addSkill(String((created as Skill).id));

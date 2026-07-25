@@ -758,8 +758,8 @@ export async function registerRoutes(
           .max(40),
       });
       const { cropDataUrl, messages } = schema.parse(req.body);
-      const { reply, draft, suggestions } = await menuChat(getUserId(req), cropDataUrl, messages);
-      res.json({ reply, draft, suggestions });
+      const { reply, draft, suggestions, guideUpdated } = await menuChat(getUserId(req), cropDataUrl, messages);
+      res.json({ reply, draft, suggestions, guideUpdated });
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0]?.message ?? "Invalid request" });

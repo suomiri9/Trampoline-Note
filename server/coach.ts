@@ -317,9 +317,17 @@ export interface CoachDraftSkill {
   name: string;
 }
 
+// A draft row is either plain skills (one-or-more chained), a ROUTINE
+// (routineId set → app item {id:-2, routineId, customSkillIds}) or a
+// frequent CONNECTION (fcId set → app item {id:-3, fcId, customSkillIds}).
+// For routine/connection rows `skills` holds a single display entry
+// (code/name of the routine or connection; skillId is -2/-3 sentinel).
 export interface CoachDraftItem {
   skills: CoachDraftSkill[];
   reps: number;
+  routineId?: number;
+  fcId?: number;
+  customSkillIds?: number[];
 }
 
 export interface CoachDraft {
@@ -358,6 +366,33 @@ interface LoggableSkill {
   isDrill: number;
 }
 
+// Non-archived frequent connections (isDrill 2) — matchable draft rows that
+// become {id:-3, fcId, customSkillIds} app items.
+function loggableConnections(all: Skill[]): Skill[] {
+  return all.filter((s) => s.isDrill === 2 && s.archived !== 1);
+}
+
+// Non-archived routines — matchable draft rows that become
+// {id:-2, routineId, customSkillIds} app items.
+function loggableRoutines(routines: Routine[]): Routine[] {
+  return routines.filter((r) => r.archived !== 1);
+}
+
+// One prompt list of everything the model may reference in a draft: skills,
+// drills, frequent connections, and full routines.
+function loggableLibraryList(all: Skill[], routines: Routine[]): string {
+  const lines = loggableSkills(all).map(
+    (s) => `  ${s.isDrill === 1 ? "[drill]" : "[skill]"} code "${s.code}" — ${s.name}`,
+  );
+  for (const c of loggableConnections(all)) {
+    lines.push(`  [connection] code "${c.code || c.name}" — ${c.name}`);
+  }
+  for (const r of loggableRoutines(routines)) {
+    lines.push(`  [routine] code "${r.code || r.name}" — ${r.name}`);
+  }
+  return lines.join("\n");
+}
+
 // Flat "no parent grouping bases" list, mirroring client pickableSkills +
 // skillDisplayCode: shape children show baseCode+shape, bases owning a
 // non-archived shape child are excluded.
@@ -388,6 +423,7 @@ function normalizeKey(v: string): string {
 export function extractDraft(
   reply: string,
   allSkills: Skill[],
+  routines: Routine[] = [],
 ): { stripped: string; draft: CoachDraft | null } {
   const m = reply.match(DRAFT_BLOCK_RE);
   if (!m) return { stripped: reply, draft: null };
@@ -417,6 +453,48 @@ export function extractDraft(
     if (nameKey && !byName.has(nameKey)) byName.set(nameKey, s);
   }
 
+  // Frequent connections and routines are matchable too (by code or name);
+  // they resolve to the app's routine/connection item formats.
+  const connByKey = new Map<string, Skill>();
+  for (const c of loggableConnections(allSkills)) {
+    for (const key of [normalizeKey(c.code || ""), normalizeKey(c.name)]) {
+      if (key && !connByKey.has(key)) connByKey.set(key, c);
+    }
+  }
+  const routineByKey = new Map<string, Routine>();
+  for (const r of loggableRoutines(routines)) {
+    for (const key of [normalizeKey(r.code || ""), normalizeKey(r.name)]) {
+      if (key && !routineByKey.has(key)) routineByKey.set(key, r);
+    }
+  }
+
+  // Resolve one label (a code or name) to a routine/connection draft item.
+  // Skills take precedence — checked by the caller first — so a name that
+  // collides with a skill still logs the skill.
+  const matchGroup = (label: string, reps: number): CoachDraftItem | null => {
+    const key = normalizeKey(label);
+    if (!key) return null;
+    const conn = connByKey.get(key);
+    if (conn) {
+      return {
+        skills: [{ skillId: -3, code: conn.code || conn.name, name: conn.name }],
+        reps,
+        fcId: conn.id,
+        customSkillIds: conn.skillIds ?? [],
+      };
+    }
+    const routine = routineByKey.get(key);
+    if (routine) {
+      return {
+        skills: [{ skillId: -2, code: routine.code || routine.name, name: routine.name }],
+        reps,
+        routineId: routine.id,
+        customSkillIds: routine.skillIds ?? [],
+      };
+    }
+    return null;
+  };
+
   const items: CoachDraftItem[] = [];
   const unmatched: string[] = [];
   const rawItems = Array.isArray(parsed.items) ? parsed.items : [];
@@ -437,11 +515,28 @@ export function extractDraft(
       const hit = name ? byName.get(normalizeKey(name)) : undefined;
       if (hit) {
         items.push({ skills: [{ skillId: hit.id, code: hit.code, name: hit.name }], reps });
+        continue;
+      }
+      const group = name ? matchGroup(name, reps) : null;
+      if (group) {
+        items.push(group);
       } else {
         const label = name || "(unknown item)";
         unmatched.push(reps > 1 ? `${label} x${reps}` : label);
       }
       continue;
+    }
+
+    // A single-code row may be a routine or frequent connection (matched by
+    // its code or name); multi-code rows stay skill-only (chained skills).
+    if (codes.length === 1 && !byCode.get(normalizeKey(codes[0]))) {
+      const group =
+        matchGroup(codes[0], reps) ||
+        (name && !byName.get(normalizeKey(name)) ? matchGroup(name, reps) : null);
+      if (group) {
+        items.push(group);
+        continue;
+      }
     }
 
     const matched: CoachDraftSkill[] = [];
@@ -486,16 +581,15 @@ export async function coachChat(
   onDelta?: (chunk: string) => void,
 ): Promise<{ reply: string; draft: CoachDraft | null; guideUpdated: boolean }> {
   const ctx = await buildCoachContext(userId);
-  const [history, allSkills, user] = await Promise.all([
+  const [history, allSkills, routines, user] = await Promise.all([
     storage.getCoachMessages(userId),
     storage.getSkills(userId),
+    storage.getRoutines(userId),
     storage.getUser(userId),
   ]);
   const recent = history.slice(-MAX_HISTORY_TURNS);
 
-  const skillList = loggableSkills(allSkills)
-    .map((s) => `  ${s.isDrill === 1 ? "[drill]" : "[skill]"} code "${s.code}" — ${s.name}`)
-    .join("\n");
+  const skillList = loggableLibraryList(allSkills, routines);
 
   const currentPage = pageName(page);
   const system = [
@@ -506,6 +600,7 @@ export async function coachChat(
     "You cannot modify their log directly, but when the athlete sends a training menu/plan (as a photo or pasted text) and asks to add or log it, you PROPOSE a draft log entry that they confirm in the app. To do that, reply with a one-or-two sentence summary and then append EXACTLY ONE fenced code block tagged draft_entry containing ONLY JSON of this shape:",
     '```draft_entry\n{"date": "YYYY-MM-DD", "items": [{"code": "<exact code from the skill library below>", "name": "<library name>", "reps": <number>}], "notes": "<any menu lines that do not match a library skill, plus other free text>"}\n```',
     'When one menu row lists SEVERAL skills performed in sequence (a connection), emit ONE item for that row with a "codes" array instead of "code": {"codes": ["<code 1>", "<code 2>", ...], "reps": <number>} — the codes in the order performed, each an exact library code.',
+    'The library below also lists the athlete\'s [routine] and [connection] entries. When a menu line names a whole routine or a saved frequent connection (by its code or name), emit ONE item with that single "code" (the routine/connection code from the library) instead of listing its member skills.',
     `For "date" use the date written on the menu if there is one, otherwise today's date. Match menu lines against the athlete's skill library below and use its EXACT codes/names; NEVER invent skills — anything you cannot confidently match goes into "notes" verbatim so nothing is lost. Only produce a draft_entry block when the athlete asks to log/add a menu; if the menu is unreadable or you cannot parse it, say so plainly instead of guessing.`,
     user?.menuRowConnections
       ? 'The athlete has set "one menu row = one connection": treat EVERY menu row that contains more than one skill as a single connection item (one item with a "codes" array per row), never as separate items.'
@@ -569,7 +664,7 @@ export async function coachChat(
 
   // Pull any draft_entry block out of the reply and match it against the
   // athlete's real loggable skills; the visible reply has the block stripped.
-  const { stripped, draft } = extractDraft(reply, allSkills);
+  const { stripped, draft } = extractDraft(reply, allSkills, routines);
   // Pull any menu_guide block (the coach updating the athlete's notation
   // guide) and apply it before persisting the visible reply.
   const guideResult = extractMenuGuideUpdate(stripped || reply);
@@ -665,16 +760,14 @@ export async function menuChat(
   userId: string,
   cropDataUrl: string,
   messages: MenuChatMessage[],
-): Promise<{ reply: string; draft: CoachDraft | null; suggestions: string[] }> {
-  const [allSkills, user] = await Promise.all([
+): Promise<{ reply: string; draft: CoachDraft | null; suggestions: string[]; guideUpdated: boolean }> {
+  const [allSkills, routines, user] = await Promise.all([
     storage.getSkills(userId),
+    storage.getRoutines(userId),
     storage.getUser(userId),
   ]);
 
-  const pool = loggableSkills(allSkills);
-  const skillList = pool
-    .map((s) => `  ${s.isDrill === 1 ? "[drill]" : "[skill]"} code "${s.code}" — ${s.name}`)
-    .join("\n");
+  const skillList = loggableLibraryList(allSkills, routines);
 
   const today = new Date().toISOString().substring(0, 10);
 
@@ -684,17 +777,19 @@ export async function menuChat(
     "When you have enough information to produce a complete list, end your reply with a fenced draft_entry block in this exact JSON shape:",
     '```draft_entry\n{"date":"YYYY-MM-DD","items":[{"code":"<exact library code>","reps":<number>}],"notes":"<unmatched lines verbatim, comma-separated>"}\n```',
     'For connections (skills chained in sequence) use a "codes" array: {"codes":["<code1>","<code2>"],"reps":<number>}.',
+    'The library also lists the athlete\'s [routine] and [connection] entries — when a menu line names a whole routine or saved frequent connection, emit ONE item with that single "code" instead of listing its member skills.',
     `For "date" use the date on the menu if visible, otherwise today's date (${today}).`,
     "NEVER invent skills. Only use codes that appear exactly in the athlete's skill library below.",
     "Ask questions one at a time; keep replies short and conversational.",
-    "After every conversational reply (but NOT when you output a draft_entry block), append a suggestions block with 2–4 short answers the athlete is most likely to tap — the most probable answers to your question, common clarifications, or useful shortcuts. Each suggestion must be under 50 characters. Format:",
+    "EVERY conversational reply (any reply that does NOT contain a draft_entry block) MUST end with a suggestions block — never omit it — with 2–4 short answers the athlete is most likely to tap — the most probable answers to your question, common clarifications, or useful shortcuts. Each suggestion must be under 50 characters. Format:",
     '```suggestions\n["answer 1","answer 2","answer 3"]\n```',
     user?.menuRowConnections
       ? 'The athlete has set "one menu row = one connection": treat every row containing more than one skill as a single connection item.'
       : "",
+    'The athlete keeps a "menu notation guide" — their own notes on what their menu abbreviations and shorthand mean. TAKE NOTES from this chat: whenever the athlete tells you or confirms what a menu abbreviation means (e.g. clarifies "BS means back tuck" or "Bar = Barani"), UPDATE the guide so you never have to ask again on a future scan. To update it, append EXACTLY ONE fenced code block tagged menu_guide containing the COMPLETE new guide as plain text — it REPLACES the whole guide, so carry over everything still valid and add or correct the new fact. Alias lines MUST use the exact one-per-line format `alias = CODE (Skill Name)` where CODE and Skill Name come from the skill library below (e.g. `BS = 4-o (Back Somersault)`); other notation notes are free-form lines. Briefly say in your visible reply when you saved a note. A menu_guide block may appear alongside your draft_entry or suggestions block. Never emit a menu_guide block unless you actually learned or changed something.',
     user?.menuGuide?.trim()
-      ? `Menu notation guide (follow this when reading the menu):\n${user.menuGuide.trim()}`
-      : "",
+      ? `Current menu notation guide (follow this when reading the menu):\n${user.menuGuide.trim()}`
+      : "The menu notation guide is currently empty.",
     skillList ? `Athlete's skill library:\n${skillList}` : "The athlete's skill library is empty — list all menu items as unmatched.",
   ]
     .filter(Boolean)
@@ -738,11 +833,27 @@ export async function menuChat(
     throw new CoachUnavailableError();
   }
 
-  const { draft } = extractDraft(reply, allSkills);
-  const { cleaned, suggestions } = extractSuggestions(reply);
+  // Pull any menu_guide block (the AI taking notes on the athlete's notation)
+  // and apply it before stripping the rest of the reply, so learned notation
+  // persists to Settings and is followed on the next scan.
+  const guideResult = extractMenuGuideUpdate(reply);
+  let guideUpdated = false;
+  if (guideResult.guide !== null) {
+    await storage.updateUserMenuGuide(userId, guideResult.guide);
+    guideUpdated = true;
+  }
+  const base = guideResult.stripped || reply;
+  const { draft } = extractDraft(base, allSkills, routines);
+  const { cleaned, suggestions } = extractSuggestions(base);
   // Use cleaned reply (suggestions block stripped) unless it was a draft turn
-  const finalReply = draft ? reply : cleaned;
-  return { reply: finalReply, draft, suggestions: draft ? [] : suggestions };
+  const finalReply = draft ? base : cleaned;
+  // Guarantee tappable choices on every conversational turn: if the model
+  // forgot its suggestions block, generate quick replies as a fallback.
+  let finalSuggestions = draft ? [] : suggestions;
+  if (!draft && finalSuggestions.length === 0) {
+    finalSuggestions = await generateSuggestions(cleaned, false);
+  }
+  return { reply: finalReply, draft, suggestions: finalSuggestions, guideUpdated };
 }
 
 // ---- Direct menu-photo parsing (no chat history, no streaming) ----
@@ -755,15 +866,13 @@ export async function parseMenuPhoto(
   images: string[],
   note?: string,
 ): Promise<{ draft: CoachDraft | null }> {
-  const [allSkills, user] = await Promise.all([
+  const [allSkills, routines, user] = await Promise.all([
     storage.getSkills(userId),
+    storage.getRoutines(userId),
     storage.getUser(userId),
   ]);
 
-  const pool = loggableSkills(allSkills);
-  const skillList = pool
-    .map((s) => `  ${s.isDrill === 1 ? "[drill]" : "[skill]"} code "${s.code}" — ${s.name}`)
-    .join("\n");
+  const skillList = loggableLibraryList(allSkills, routines);
 
   const today = new Date().toISOString().substring(0, 10);
 
@@ -773,6 +882,7 @@ export async function parseMenuPhoto(
     "Respond with ONLY a fenced draft_entry code block (no other text) containing JSON of this shape:",
     '```draft_entry\n{"date":"YYYY-MM-DD","items":[{"code":"<exact library code>","name":"<library name>","reps":<number>}],"notes":"<unmatched lines verbatim, comma-separated>"}\n```',
     'When a menu row lists several skills in sequence (a connection), emit ONE item for that row with a "codes" array: {"codes":["<code1>","<code2>"],"reps":<number>}.',
+    'The library also lists the athlete\'s [routine] and [connection] entries — when a menu line names a whole routine or saved frequent connection, emit ONE item with that single "code" instead of listing its member skills.',
     `For "date" use the date written on the menu if present, otherwise today's date (${today}).`,
     user?.menuRowConnections
       ? 'The athlete has set "one menu row = one connection": treat every row containing more than one skill as a single connection item.'
@@ -807,6 +917,6 @@ export async function parseMenuPhoto(
     throw new CoachUnavailableError();
   }
 
-  const { draft } = extractDraft(reply, allSkills);
+  const { draft } = extractDraft(reply, allSkills, routines);
   return { draft };
 }

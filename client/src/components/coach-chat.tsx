@@ -40,9 +40,15 @@ interface CoachDraftSkill {
   name: string;
 }
 
+// A row is plain skills, a routine (routineId → app item {id:-2}) or a
+// frequent connection (fcId → app item {id:-3}); routine/connection rows
+// carry one display entry in `skills` plus their member customSkillIds.
 interface CoachDraftItem {
   skills: CoachDraftSkill[];
   reps: number;
+  routineId?: number;
+  fcId?: number;
+  customSkillIds?: number[];
 }
 
 interface CoachDraft {
@@ -115,7 +121,14 @@ function normalizeDraftItem(it: any): CoachDraftItem | null {
     const skills = it.skills.filter(
       (s: any) => s && typeof s === "object" && typeof s.skillId === "number",
     );
-    return skills.length > 0 ? { skills, reps } : null;
+    if (skills.length === 0) return null;
+    const item: CoachDraftItem = { skills, reps };
+    if (typeof it.routineId === "number") item.routineId = it.routineId;
+    if (typeof it.fcId === "number") item.fcId = it.fcId;
+    if (Array.isArray(it.customSkillIds)) {
+      item.customSkillIds = it.customSkillIds.filter((v: any) => typeof v === "number");
+    }
+    return item;
   }
   if (typeof it.skillId === "number") {
     return { skills: [{ skillId: it.skillId, code: it.code ?? "", name: it.name ?? "" }], reps };
@@ -199,9 +212,35 @@ function DraftEntryCard({
     // App skills-JSON format: groups separated by {id: -1}. A row's skills
     // share one group (a connection sums DD); the LAST item's reps set the
     // whole group's reps, matching how the app computes group totals.
-    const skillItems: { id: number; reps?: number }[] = [];
+    // Routine/connection rows become the app's routine ({id:-2, routineId,
+    // customSkillIds}) and connection ({id:-3, fcId, customSkillIds}) items.
+    const skillItems: {
+      id: number;
+      reps?: number;
+      routineId?: number;
+      fcId?: number;
+      customSkillIds?: number[];
+    }[] = [];
     items.forEach((it, i) => {
       if (i > 0) skillItems.push({ id: -1 });
+      if (it.routineId != null) {
+        skillItems.push({
+          id: -2,
+          routineId: it.routineId,
+          customSkillIds: it.customSkillIds ?? [],
+          ...(it.reps > 1 ? { reps: it.reps } : {}),
+        });
+        return;
+      }
+      if (it.fcId != null) {
+        skillItems.push({
+          id: -3,
+          fcId: it.fcId,
+          customSkillIds: it.customSkillIds ?? [],
+          ...(it.reps > 1 ? { reps: it.reps } : {}),
+        });
+        return;
+      }
       it.skills.forEach((s, j) => {
         const isLast = j === it.skills.length - 1;
         skillItems.push(isLast && it.reps > 1 ? { id: s.skillId, reps: it.reps } : { id: s.skillId });
@@ -258,6 +297,14 @@ function DraftEntryCard({
                 {it.skills.map((s) => s.code).join(" + ")}
               </span>
               <span className="truncate">{it.skills.map((s) => s.name).join(" + ")}</span>
+              {(it.routineId != null || it.fcId != null) && (
+                <span
+                  className="shrink-0 rounded bg-primary/10 px-1 py-0.5 font-mono text-[10px] uppercase tracking-wider text-primary"
+                  data-testid={`badge-draft-kind-${messageId}-${i}`}
+                >
+                  {it.routineId != null ? "routine" : "conn"}
+                </span>
+              )}
               <span className="ml-auto flex items-center gap-1 shrink-0">
                 <span className="font-mono text-xs text-muted-foreground">x</span>
                 <Input
@@ -496,7 +543,7 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
         for (const evt of events) {
           const dataLine = evt.split("\n").find((l) => l.startsWith("data: "));
           if (!dataLine) continue;
-          let payload: { delta?: string; done?: boolean; reply?: string; error?: string; guideUpdated?: boolean };
+          let payload: { delta?: string; done?: boolean; reply?: string; error?: string; guideUpdated?: boolean; suggestions?: string[] };
           try {
             payload = JSON.parse(dataLine.slice(6));
           } catch {
