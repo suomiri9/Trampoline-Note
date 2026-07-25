@@ -59,3 +59,5 @@ Session cookies are `secure: true` behind `trust proxy`, so plain
 **How to apply:** add `-H 'X-Forwarded-Proto: https'` to both the login and the
 subsequent authenticated curl requests (with `-c`/`-b` cookie jar) when testing
 API routes from bash.
+
+- Coach chat vision: the model denies seeing a 1×1 test pixel ("no photo attached"); use a real ≥64px image when verifying image sends.

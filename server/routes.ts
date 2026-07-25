@@ -4,7 +4,7 @@ import { storage, SkillLinkError } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { isAuthenticated, getUserId, getBaseUrl } from "./auth";
-import { getPushRecommendation, coachChat, CoachUnavailableError } from "./coach";
+import { getPushRecommendation, coachChat, parseMenuPhoto, menuChat, generateSuggestions, CoachUnavailableError } from "./coach";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
@@ -612,10 +612,23 @@ export async function registerRoutes(
   app.post("/api/coach/messages", isAuthenticated, async (req, res) => {
     try {
       const schema = z.object({
-        content: z.string().trim().min(1).max(4000),
+        content: z.string().trim().max(4000).default(""),
         page: z.string().max(200).optional(),
+        // Client-compressed JPEG data URLs, max 3, ~4MB of base64 each.
+        images: z
+          .array(
+            z
+              .string()
+              .regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, "Unsupported image format")
+              .max(4 * 1024 * 1024, "Image too large"),
+          )
+          .max(3)
+          .optional(),
       });
-      const { content, page } = schema.parse(req.body);
+      const { content, page, images } = schema.parse(req.body);
+      if (!content && (!images || images.length === 0)) {
+        return res.status(400).json({ message: "Message is empty" });
+      }
 
       // Stream the reply as Server-Sent Events so long answers appear
       // progressively. Events: {delta} chunks, then {done, reply}; a failure
@@ -637,10 +650,11 @@ export async function registerRoutes(
       };
 
       try {
-        const { reply } = await coachChat(getUserId(req), content, page, (chunk) =>
+        const { reply, draft, guideUpdated } = await coachChat(getUserId(req), content, page, images, (chunk) =>
           sendEvent({ delta: chunk }),
         );
-        sendEvent({ done: true, reply });
+        const suggestions = await generateSuggestions(reply, !!draft);
+        sendEvent({ done: true, reply, draft, guideUpdated, suggestions });
         res.end();
       } catch (err) {
         const message =
@@ -675,6 +689,103 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Coach clear error:", err);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Conversational menu-chat: multi-turn back-and-forth where the AI reads
+  // a cropped menu photo and asks clarifying questions before emitting a
+  // final draft_entry block.
+  app.post("/api/coach/menu-chat", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z.object({
+        cropDataUrl: z
+          .string()
+          .regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, "Unsupported image format")
+          .max(4 * 1024 * 1024, "Image too large"),
+        messages: z
+          .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(2000) }))
+          .min(1)
+          .max(40),
+      });
+      const { cropDataUrl, messages } = schema.parse(req.body);
+      const { reply, draft, suggestions } = await menuChat(getUserId(req), cropDataUrl, messages);
+      res.json({ reply, draft, suggestions });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message ?? "Invalid request" });
+      }
+      if (err instanceof CoachUnavailableError) {
+        return res.status(503).json({ code: "coach_unavailable", message: err.message });
+      }
+      console.error("menu-chat error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Direct menu-photo → practice-list parsing. No chat history or streaming;
+  // returns the matched draft JSON so the note-dialog can apply it inline.
+  app.post("/api/coach/parse-menu", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z.object({
+        images: z
+          .array(
+            z
+              .string()
+              .regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, "Unsupported image format")
+              .max(4 * 1024 * 1024, "Image too large"),
+          )
+          .min(1)
+          .max(3),
+        note: z.string().max(500).optional(),
+      });
+      const { images, note } = schema.parse(req.body);
+      const { draft } = await parseMenuPhoto(getUserId(req), images, note);
+      res.json({ draft });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message ?? "Invalid request" });
+      }
+      if (err instanceof CoachUnavailableError) {
+        return res.status(503).json({ code: "coach_unavailable", message: err.message });
+      }
+      console.error("parse-menu error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Per-user AI menu-reading settings: a free-text notation guide (what the
+  // athlete's abbreviations mean) and the "one menu row = one connection"
+  // toggle. Both feed into the coach's draft_entry instructions.
+  app.patch("/api/auth/menu-settings", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z
+        .object({
+          menuGuide: z.string().max(10000).optional(),
+          menuRowConnections: z.boolean().optional(),
+        })
+        .refine((v) => v.menuGuide !== undefined || v.menuRowConnections !== undefined, {
+          message: "Nothing to update",
+        });
+      const body = schema.parse(req.body);
+      const userId = getUserId(req);
+      const updates: Partial<{ menuGuide: string; menuRowConnections: boolean }> = {};
+      if (body.menuGuide !== undefined) updates.menuGuide = body.menuGuide;
+      if (body.menuRowConnections !== undefined) updates.menuRowConnections = body.menuRowConnections;
+      const [updated] = await db
+        .update(users)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(users.id, userId))
+        .returning();
+      if (!updated) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const { password: _, ...safeUser } = updated;
+      res.json(safeUser);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to update menu settings" });
     }
   });
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   LogOut,
   Loader2,
@@ -6,10 +6,27 @@ import {
   AlertTriangle,
   CheckCircle2,
   CircleDashed,
+  X,
 } from "lucide-react";
 import { version as appVersion } from "../../../package.json";
 import { cacheGet } from "@/lib/offline-db";
 import { useAuth } from "@/hooks/use-auth";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { api } from "@shared/routes";
+import type { Skill } from "@shared/schema";
+import { pickableSkills, skillDisplayCode } from "@/lib/training-utils";
 import { PageLayout } from "@/components/page-layout";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -63,6 +80,78 @@ export default function SettingsPage() {
   const [confirmDiscardAll, setConfirmDiscardAll] = useState(false);
   const [storageBytes, setStorageBytes] = useState<number | null>(null);
   const [estimateBytes, setEstimateBytes] = useState<number | null>(null);
+  // AI menu-reading settings (stored on the user, fed to the coach prompt).
+  const [menuGuideDraft, setMenuGuideDraft] = useState<string | null>(null);
+  const menuSettingsMutation = useMutation({
+    mutationFn: async (body: { menuGuide?: string; menuRowConnections?: boolean }) => {
+      const res = await apiRequest("PATCH", "/api/auth/menu-settings", body);
+      return res.json();
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["/api/auth/user"], updated);
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Couldn't save",
+        description: err.message || "Something went wrong saving the menu settings.",
+        variant: "destructive",
+      });
+    },
+  });
+  const savedMenuGuide = user?.menuGuide ?? "";
+  const menuGuideValue = menuGuideDraft ?? savedMenuGuide;
+  const menuGuideDirty = menuGuideDraft !== null && menuGuideDraft !== savedMenuGuide;
+  // Alias builder: pick a skill/drill from the library, type what the menu
+  // calls it, and the pair is appended to the guide text (still hand-editable).
+  const { data: allSkills } = useQuery<Skill[]>({ queryKey: [api.skills.list.path] });
+  const [aliasSkillId, setAliasSkillId] = useState<string>("");
+  const [aliasText, setAliasText] = useState("");
+  const aliasableSkills = pickableSkills(allSkills ?? [], 0);
+  const aliasableDrills = pickableSkills(allSkills ?? [], 1);
+  const addAlias = () => {
+    const skill = (allSkills ?? []).find((s) => String(s.id) === aliasSkillId);
+    const alias = aliasText.trim();
+    if (!skill || !alias) return;
+    const code = skillDisplayCode(skill, allSkills ?? []);
+    const line = `${alias} = ${code} (${skill.name})`;
+    setMenuGuideDraft((menuGuideValue ? `${menuGuideValue.replace(/\s+$/, "")}\n` : "") + line);
+    setAliasSkillId("");
+    setAliasText("");
+  };
+  // The guide stays ONE text field, but lines in the canonical alias format
+  // "alias = CODE (Name)" (written by the Add button above or by the AI coach)
+  // are lifted out and rendered as rows with a skill tag; everything else
+  // stays free text in the textarea below. Removing a row / editing the notes
+  // rebuilds the combined guide string, so the dirty Save/Cancel flow and the
+  // AI full-replace semantics are unchanged.
+  const parsedGuide = useMemo(() => {
+    const lines = menuGuideValue.split("\n");
+    const aliasEntries: { index: number; line: string; alias: string; code: string; name: string }[] = [];
+    const noteLines: { index: number; line: string }[] = [];
+    lines.forEach((line, index) => {
+      const m = line.match(/^\s*(.+?)\s*=\s*(\S+)\s*\((.+)\)\s*$/);
+      if (m) aliasEntries.push({ index, line, alias: m[1], code: m[2], name: m[3] });
+      else noteLines.push({ index, line });
+    });
+    // Group entries by skill code so the same skill shows as one row with
+    // multiple alias tags.
+    const groupMap = new Map<string, { code: string; name: string; aliases: { index: number; alias: string }[] }>();
+    for (const e of aliasEntries) {
+      if (!groupMap.has(e.code)) groupMap.set(e.code, { code: e.code, name: e.name, aliases: [] });
+      groupMap.get(e.code)!.aliases.push({ index: e.index, alias: e.alias });
+    }
+    return { lines, aliasRows: aliasEntries, aliasGroups: Array.from(groupMap.values()), notes: noteLines.map((l) => l.line).join("\n") };
+  }, [menuGuideValue]);
+  const removeAlias = (lineIndex: number) => {
+    setMenuGuideDraft(parsedGuide.lines.filter((_, i) => i !== lineIndex).join("\n").trim());
+  };
+  const setGuideNotes = (notesText: string) => {
+    const aliasLines = parsedGuide.aliasRows.map((r) => r.line);
+    setMenuGuideDraft([...aliasLines, notesText].join("\n").replace(/^\n+|\n+$/g, ""));
+  };
+  const skillByCode = (code: string) =>
+    (allSkills ?? []).find((s) => skillDisplayCode(s, allSkills ?? []) === code);
   const [downloadStatus, setDownloadStatus] = useState<{
     sw: boolean;
     accountReady: boolean;
@@ -356,23 +445,80 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div>
+            <div className="space-y-5">
               <div className="eyebrow mb-3">Preferences</div>
-              <div className="rounded-2xl card-3d divide-y divide-border/60 overflow-hidden">
-                <div id="appearance" className="p-5 scroll-mt-4">
-                  <div className="flex items-start justify-between gap-3">
+
+              {/* ── Appearance ── */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 px-1 mb-2">Appearance</p>
+                <div className="rounded-2xl card-3d divide-y divide-border/60 overflow-hidden">
+                  <div id="appearance" className="p-5 scroll-mt-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">Dark Mode</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{theme === "dark" ? "On — the near-black theme." : "Off — using the light theme."}</p>
+                      </div>
+                      <Switch
+                        checked={theme === "dark"}
+                        onCheckedChange={(v) => setTheme(v ? "dark" : "light")}
+                        data-testid="toggle-theme"
+                      />
+                    </div>
+                  </div>
+                  <div className="p-5 flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium">Dark Mode</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{theme === "dark" ? "On — the near-black theme." : "Off — using the light theme."}</p>
+                      <p className="text-sm font-medium">Show Skill Names</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{showSkillNames ? "On — skill chips show full names." : "Off — skill chips show short codes."}</p>
                     </div>
                     <Switch
-                      checked={theme === "dark"}
-                      onCheckedChange={(v) => setTheme(v ? "dark" : "light")}
-                      data-testid="toggle-theme"
+                      checked={showSkillNames}
+                      onCheckedChange={setShowSkillNames}
+                      data-testid="toggle-skill-names"
                     />
                   </div>
+                  <div className="p-5 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Time Format</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">How times are displayed.</p>
+                    </div>
+                    <div className="inline-flex p-1 rounded-xl bg-secondary/50 border border-border/50 shrink-0">
+                      {(["12h", "24h"] as const).map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setTimeFormat(opt)}
+                          className={cn(
+                            "px-4 h-8 rounded-lg text-xs font-semibold transition-all",
+                            timeFormat === opt
+                              ? "bg-background shadow-sm text-foreground"
+                              : "text-muted-foreground hover:text-foreground",
+                          )}
+                          data-testid={`btn-time-format-${opt}`}
+                        >
+                          {opt === "12h" ? "12h" : "24h"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div id="offline" className="p-5 scroll-mt-4">
+              </div>
+
+              {/* ── Sync & Offline ── */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 px-1 mb-2">Sync &amp; Offline</p>
+                <div className="rounded-2xl card-3d divide-y divide-border/60 overflow-hidden">
+                  <div className="p-5 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Archive Parts &amp; Connections With Routine</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{archiveCascade ? "On — archiving a routine also archives its routine parts and tagged connections." : "Off — routine parts and connections keep their own archived state."}</p>
+                    </div>
+                    <Switch
+                      checked={archiveCascade}
+                      onCheckedChange={setArchiveCascade}
+                      data-testid="toggle-archive-cascade"
+                    />
+                  </div>
+                  <div id="offline" className="p-5 scroll-mt-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-medium">Offline Mode</p>
@@ -543,58 +689,173 @@ export default function SettingsPage() {
                   </Button>
                 </div>
               )}
-                </div>
+                </div>{/* closes id="offline" */}
+              </div>{/* closes Sync & Offline card */}
+            </div>{/* closes Sync & Offline category */}
 
-                <div className="p-5 flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">Archive Parts &amp; Connections With Routine</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{archiveCascade ? "On — archiving a routine also archives its routine parts and tagged connections." : "Off — routine parts and connections keep their own archived state."}</p>
+              {/* ── AI Coach ── */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 px-1 mb-2">AI Coach</p>
+                <div className="rounded-2xl card-3d divide-y divide-border/60 overflow-hidden">
+                  <div className="p-5 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Rows Are Connections</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {user?.menuRowConnections
+                          ? "On — when the AI coach reads a training menu, each row with several skills becomes one connection."
+                          : "Off — the AI coach logs menu skills as separate items unless a row clearly chains them."}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={!!user?.menuRowConnections}
+                      onCheckedChange={(v) => menuSettingsMutation.mutate({ menuRowConnections: v })}
+                      disabled={menuSettingsMutation.isPending}
+                      data-testid="toggle-menu-row-connections"
+                    />
                   </div>
-                  <Switch
-                    checked={archiveCascade}
-                    onCheckedChange={setArchiveCascade}
-                    data-testid="toggle-archive-cascade"
-                  />
-                </div>
-
-                <div className="p-5 flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">Show Skill Names</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{showSkillNames ? "On — skill chips show full names." : "Off — skill chips show short codes."}</p>
-                  </div>
-                  <Switch
-                    checked={showSkillNames}
-                    onCheckedChange={setShowSkillNames}
-                    data-testid="toggle-skill-names"
-                  />
-                </div>
-
-                <div className="p-5 flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">Time Format</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">How times are displayed.</p>
-                  </div>
-                  <div className="inline-flex p-1 rounded-xl bg-secondary/50 border border-border/50 shrink-0">
-                    {(["12h", "24h"] as const).map((opt) => (
-                      <button
-                        key={opt}
+                  <div className="p-5">
+                    <p className="text-sm font-medium">Menu Notation Guide</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Tell the AI coach what your menu abbreviations mean so photo menus turn into accurate draft entries.
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Select value={aliasSkillId} onValueChange={setAliasSkillId}>
+                        <SelectTrigger
+                          className="h-9 w-full sm:w-[220px] rounded-lg text-sm"
+                          data-testid="select-alias-skill"
+                        >
+                          <SelectValue placeholder="Pick a skill or drill…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {aliasableSkills.length > 0 && (
+                            <SelectGroup>
+                              <SelectLabel>Skills</SelectLabel>
+                              {aliasableSkills.map((s) => (
+                                <SelectItem key={s.id} value={String(s.id)} data-testid={`option-alias-skill-${s.id}`}>
+                                  <span className="font-mono">{skillDisplayCode(s, allSkills ?? [])}</span> — {s.name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )}
+                          {aliasableDrills.length > 0 && (
+                            <SelectGroup>
+                              <SelectLabel>Drills</SelectLabel>
+                              {aliasableDrills.map((s) => (
+                                <SelectItem key={s.id} value={String(s.id)} data-testid={`option-alias-drill-${s.id}`}>
+                                  <span className="font-mono">{skillDisplayCode(s, allSkills ?? [])}</span> — {s.name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        value={aliasText}
+                        onChange={(e) => setAliasText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); addAlias(); }
+                        }}
+                        placeholder="What your menu calls it, e.g. cr"
+                        maxLength={100}
+                        className="h-9 flex-1 min-w-[140px] rounded-lg text-sm"
+                        data-testid="input-alias-name"
+                      />
+                      <Button
                         type="button"
-                        onClick={() => setTimeFormat(opt)}
-                        className={cn(
-                          "px-4 h-8 rounded-lg text-xs font-semibold transition-all",
-                          timeFormat === opt
-                            ? "bg-background shadow-sm text-foreground"
-                            : "text-muted-foreground hover:text-foreground",
-                        )}
-                        data-testid={`btn-time-format-${opt}`}
+                        variant="outline"
+                        size="sm"
+                        className="h-9 rounded-lg"
+                        onClick={addAlias}
+                        disabled={!aliasSkillId || !aliasText.trim()}
+                        data-testid="btn-alias-add"
                       >
-                        {opt === "12h" ? "12h" : "24h"}
-                      </button>
-                    ))}
+                        Add
+                      </Button>
+                    </div>
+                    {parsedGuide.aliasGroups.length > 0 && (
+                      <div className="mt-2 rounded-lg border border-border/50 divide-y divide-border/50">
+                        {parsedGuide.aliasGroups.map((g) => {
+                          const skill = skillByCode(g.code);
+                          return (
+                            <div
+                              key={g.code}
+                              className="flex items-center gap-2 px-3 py-2.5 min-w-0 flex-wrap"
+                              data-testid={`row-alias-group-${g.code}`}
+                            >
+                              <span className="inline-flex items-center justify-center h-6 px-2 rounded-full border border-border font-mono text-xs shrink-0">
+                                {g.code}
+                              </span>
+                              <span className="text-sm shrink-0">{skill?.name ?? g.name}</span>
+                              <span className="text-xs text-muted-foreground shrink-0">called</span>
+                              <div className="flex flex-wrap gap-1.5 items-center">
+                                {g.aliases.map(({ index, alias }: { index: number; alias: string }) => (
+                                  <span
+                                    key={index}
+                                    className="inline-flex items-center gap-1 rounded-md bg-secondary/60 border border-border/50 px-2 h-6 text-sm font-medium"
+                                    data-testid={`text-alias-${index}`}
+                                  >
+                                    {alias}
+                                    <button
+                                      type="button"
+                                      onClick={() => removeAlias(index)}
+                                      className="text-muted-foreground hover:text-destructive"
+                                      aria-label={`Remove alias ${alias}`}
+                                      data-testid={`btn-alias-remove-${index}`}
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <Textarea
+                      value={parsedGuide.notes}
+                      onChange={(e) => setGuideNotes(e.target.value)}
+                      placeholder="Other notation notes — e.g. a number alone means that skill from my library…"
+                      rows={3}
+                      maxLength={10000}
+                      className="mt-2 text-sm"
+                      data-testid="textarea-menu-guide"
+                    />
+                    {menuGuideDirty && (
+                      <div className="mt-2 flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 rounded-lg"
+                          onClick={() => setMenuGuideDraft(null)}
+                          disabled={menuSettingsMutation.isPending}
+                          data-testid="btn-menu-guide-cancel"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-8 rounded-lg gap-1.5"
+                          onClick={() =>
+                            menuSettingsMutation.mutate(
+                              { menuGuide: menuGuideValue },
+                              { onSuccess: () => setMenuGuideDraft(null) },
+                            )
+                          }
+                          disabled={menuSettingsMutation.isPending}
+                          data-testid="btn-menu-guide-save"
+                        >
+                          {menuSettingsMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                          Save
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
+            </div>{/* closes space-y-5 */}
           </div>
 
           <div className="space-y-6">

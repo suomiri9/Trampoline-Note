@@ -298,34 +298,240 @@ function pageName(path: string | undefined): string | null {
 // When `onDelta` is provided the model is streamed and each text chunk is
 // forwarded as it arrives; the full reply is still returned (and persisted)
 // only after the stream completes, so history behavior is unchanged.
+// ---- Draft training-log entries proposed from a menu photo/text ----
+
+// The model appends a fenced ```draft_entry block when the athlete asks to
+// turn a training menu into a log entry. We parse it out of the reply, match
+// its items against the athlete's LOGGABLE skills (shape children + non-shape
+// skills — never a parent grouping base, same rule as the app's pickers) and
+// hand the structured draft to the client, which creates the note only after
+// the athlete confirms.
+// One draft row = one or more skills performed together. A single skill is a
+// one-element `skills` array; a connection (skills chained in sequence, e.g.
+// when the athlete's "one menu row = one connection" setting is on) has
+// several. Reps apply to the whole row.
+export interface CoachDraftSkill {
+  skillId: number;
+  code: string;
+  name: string;
+}
+
+export interface CoachDraftItem {
+  skills: CoachDraftSkill[];
+  reps: number;
+}
+
+export interface CoachDraft {
+  date: string; // YYYY-MM-DD
+  items: CoachDraftItem[];
+  unmatched: string[]; // menu lines that couldn't be matched to a skill
+  noteText: string; // leftover free text for the note content
+}
+
+const DRAFT_BLOCK_RE = /```draft_entry\s*\n([\s\S]*?)```/;
+
+// The coach may also update the athlete's menu notation guide (users.menuGuide)
+// when taught new notation — it emits the COMPLETE replacement text in a
+// fenced menu_guide block. Same 10k cap as the settings PATCH route.
+const MENU_GUIDE_BLOCK_RE = /```menu_guide\s*\n([\s\S]*?)```/;
+const MENU_GUIDE_MAX_CHARS = 10000;
+
+// Pulls a menu_guide block out of the reply. Returns the reply with the block
+// stripped plus the new guide text (null when there is no block or it is
+// empty — an empty block never wipes the guide).
+export function extractMenuGuideUpdate(reply: string): {
+  stripped: string;
+  guide: string | null;
+} {
+  const m = reply.match(MENU_GUIDE_BLOCK_RE);
+  if (!m) return { stripped: reply, guide: null };
+  const stripped = reply.replace(MENU_GUIDE_BLOCK_RE, "").trim();
+  const guide = m[1].trim().slice(0, MENU_GUIDE_MAX_CHARS);
+  return { stripped, guide: guide.length > 0 ? guide : null };
+}
+
+interface LoggableSkill {
+  id: number;
+  code: string; // combined display code for shape children
+  name: string;
+  isDrill: number;
+}
+
+// Flat "no parent grouping bases" list, mirroring client pickableSkills +
+// skillDisplayCode: shape children show baseCode+shape, bases owning a
+// non-archived shape child are excluded.
+function loggableSkills(all: Skill[]): LoggableSkill[] {
+  const hasShapeChildren = (id: number) =>
+    all.some((s) => s.parentSkillId === id && s.archived !== 1);
+  return all
+    .filter(
+      (s) =>
+        (s.isDrill === 0 || s.isDrill === 1) &&
+        s.archived !== 1 &&
+        !hasShapeChildren(s.id),
+    )
+    .map((s) => {
+      const parent = s.parentSkillId != null ? all.find((p) => p.id === s.parentSkillId) : undefined;
+      const code = parent ? `${parent.code}${s.shape || s.code}` : s.code;
+      return { id: s.id, code, name: s.name, isDrill: s.isDrill };
+    });
+}
+
+function normalizeKey(v: string): string {
+  return v.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+// Parse the model's draft block (if any) into a matched CoachDraft. Returns
+// null when there is no block or it is unusable. `stripped` is the reply
+// text with the block removed.
+export function extractDraft(
+  reply: string,
+  allSkills: Skill[],
+): { stripped: string; draft: CoachDraft | null } {
+  const m = reply.match(DRAFT_BLOCK_RE);
+  if (!m) return { stripped: reply, draft: null };
+  const stripped = reply.replace(DRAFT_BLOCK_RE, "").trim();
+
+  let parsed: any;
+  try {
+    parsed = JSON.parse(m[1]);
+  } catch {
+    return { stripped, draft: null };
+  }
+  if (!parsed || typeof parsed !== "object") return { stripped, draft: null };
+
+  const today = new Date().toISOString().substring(0, 10);
+  const date =
+    typeof parsed.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)
+      ? parsed.date
+      : today;
+
+  const pool = loggableSkills(allSkills);
+  const byCode = new Map<string, LoggableSkill>();
+  const byName = new Map<string, LoggableSkill>();
+  for (const s of pool) {
+    const codeKey = normalizeKey(s.code);
+    if (codeKey && !byCode.has(codeKey)) byCode.set(codeKey, s);
+    const nameKey = normalizeKey(s.name);
+    if (nameKey && !byName.has(nameKey)) byName.set(nameKey, s);
+  }
+
+  const items: CoachDraftItem[] = [];
+  const unmatched: string[] = [];
+  const rawItems = Array.isArray(parsed.items) ? parsed.items : [];
+  for (const it of rawItems) {
+    if (!it || typeof it !== "object") continue;
+    // A row is either a single "code" or a "codes" array (a connection —
+    // several skills performed in sequence).
+    const codes: string[] = Array.isArray(it.codes)
+      ? it.codes.filter((c: unknown) => typeof c === "string" && (c as string).trim() !== "")
+      : typeof it.code === "string" && it.code.trim() !== ""
+        ? [it.code]
+        : [];
+    const name = typeof it.name === "string" ? it.name : "";
+    const repsRaw = Number(it.reps);
+    const reps = Number.isFinite(repsRaw) && repsRaw >= 1 ? Math.min(Math.trunc(repsRaw), 999) : 1;
+
+    if (codes.length === 0) {
+      const hit = name ? byName.get(normalizeKey(name)) : undefined;
+      if (hit) {
+        items.push({ skills: [{ skillId: hit.id, code: hit.code, name: hit.name }], reps });
+      } else {
+        const label = name || "(unknown item)";
+        unmatched.push(reps > 1 ? `${label} x${reps}` : label);
+      }
+      continue;
+    }
+
+    const matched: CoachDraftSkill[] = [];
+    let allMatched = true;
+    for (const code of codes) {
+      const hit =
+        byCode.get(normalizeKey(code)) ||
+        (codes.length === 1 && name ? byName.get(normalizeKey(name)) : undefined);
+      if (hit) {
+        matched.push({ skillId: hit.id, code: hit.code, name: hit.name });
+      } else {
+        allMatched = false;
+      }
+    }
+    if (allMatched && matched.length > 0) {
+      items.push({ skills: matched, reps });
+    } else {
+      // Never log a mutilated connection: if ANY member of a row can't be
+      // matched, the whole row is preserved verbatim in unmatched.
+      const label =
+        codes.join(" + ") + (name && codes.length === 1 ? ` ${name}` : "") || "(unknown item)";
+      unmatched.push(reps > 1 ? `${label} x${reps}` : label);
+    }
+  }
+
+  const noteText = typeof parsed.notes === "string" ? parsed.notes.trim() : "";
+  if (items.length === 0 && unmatched.length === 0 && !noteText) {
+    return { stripped, draft: null };
+  }
+  return { stripped, draft: { date, items, unmatched, noteText } };
+}
+
+type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
 export async function coachChat(
   userId: string,
   userMessage: string,
   page?: string,
+  images?: string[],
   onDelta?: (chunk: string) => void,
-): Promise<{ reply: string }> {
+): Promise<{ reply: string; draft: CoachDraft | null; guideUpdated: boolean }> {
   const ctx = await buildCoachContext(userId);
-  const history = await storage.getCoachMessages(userId);
+  const [history, allSkills, user] = await Promise.all([
+    storage.getCoachMessages(userId),
+    storage.getSkills(userId),
+    storage.getUser(userId),
+  ]);
   const recent = history.slice(-MAX_HISTORY_TURNS);
+
+  const skillList = loggableSkills(allSkills)
+    .map((s) => `  ${s.isDrill === 1 ? "[drill]" : "[skill]"} code "${s.code}" — ${s.name}`)
+    .join("\n");
 
   const currentPage = pageName(page);
   const system = [
     "You are the athlete's personal trampoline coach inside their training log app.",
     "You help with two things: (1) training advice grounded ONLY in the athlete's actual data below — their training sessions with DD (degree of difficulty) totals, session ratings, notes, competition/practice scores, and WHOOP recovery/HRV/sleep/strain when available; and (2) using the app itself — explain features and where to find things using the app guide below, e.g. how to log a session, record a score, or link WHOOP.",
     "Cite concrete numbers and dates from the data when relevant. If the data doesn't cover a question, say so plainly instead of inventing details.",
-    "You are a read-only advisor: you cannot modify their log yourself, but you can walk them through doing it in the app. Keep answers concise (a few sentences, or a short list) and practical.",
+    "The athlete can attach photos to their messages — you can see them. Describe or answer questions about them when asked.",
+    "You cannot modify their log directly, but when the athlete sends a training menu/plan (as a photo or pasted text) and asks to add or log it, you PROPOSE a draft log entry that they confirm in the app. To do that, reply with a one-or-two sentence summary and then append EXACTLY ONE fenced code block tagged draft_entry containing ONLY JSON of this shape:",
+    '```draft_entry\n{"date": "YYYY-MM-DD", "items": [{"code": "<exact code from the skill library below>", "name": "<library name>", "reps": <number>}], "notes": "<any menu lines that do not match a library skill, plus other free text>"}\n```',
+    'When one menu row lists SEVERAL skills performed in sequence (a connection), emit ONE item for that row with a "codes" array instead of "code": {"codes": ["<code 1>", "<code 2>", ...], "reps": <number>} — the codes in the order performed, each an exact library code.',
+    `For "date" use the date written on the menu if there is one, otherwise today's date. Match menu lines against the athlete's skill library below and use its EXACT codes/names; NEVER invent skills — anything you cannot confidently match goes into "notes" verbatim so nothing is lost. Only produce a draft_entry block when the athlete asks to log/add a menu; if the menu is unreadable or you cannot parse it, say so plainly instead of guessing.`,
+    user?.menuRowConnections
+      ? 'The athlete has set "one menu row = one connection": treat EVERY menu row that contains more than one skill as a single connection item (one item with a "codes" array per row), never as separate items.'
+      : "",
+    'The athlete keeps a "menu notation guide" — their own notes on what their menu abbreviations and notation mean. FOLLOW it when reading menus (it overrides your own guesses about what abbreviations mean, but codes/names in a draft must still come from the skill library). You can UPDATE this guide when the athlete teaches you notation (e.g. "cr means crash dive") or asks you to remember how their menus are written: append EXACTLY ONE fenced code block tagged menu_guide containing the COMPLETE new guide as plain text — it REPLACES the whole guide, so carry over everything still valid and add or correct the new fact. Alias lines MUST use the exact one-per-line format `alias = CODE (Skill Name)` where CODE and Skill Name come from the skill library (e.g. `cr = TJ (Tuck Jump)`) — the app displays these as skill rows in Settings; other notes are free-form lines. When you update the guide, ALWAYS say plainly in your visible reply that you updated their menu notation guide and what changed — they can review and edit it in Settings. Never emit a menu_guide block otherwise.',
+    user?.menuGuide?.trim()
+      ? `Current menu notation guide:\n${user.menuGuide.trim()}`
+      : "The menu notation guide is currently empty.",
+    skillList ? `\nAthlete's loggable skill library:\n${skillList}` : "\nThe athlete's skill library is empty — any menu items go into notes.",
     currentPage ? `The athlete is currently on the ${currentPage} page of the app.` : "",
     `\n${APP_GUIDE}`,
     `\nAthlete data:\n${ctx.text}`,
   ].filter(Boolean).join(" ");
 
-  const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
+  const userParts: ContentPart[] = [];
+  if (userMessage) userParts.push({ type: "text", text: userMessage });
+  for (const url of images ?? []) {
+    userParts.push({ type: "image_url", image_url: { url } });
+  }
+
+  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: "system", content: system },
     ...recent.map((m) => ({
       role: (m.role === "assistant" ? "assistant" : "user") as "assistant" | "user",
       content: m.content,
     })),
-    { role: "user", content: userMessage },
+    { role: "user", content: userParts.length === 1 && userMessage ? userMessage : userParts },
   ];
 
   let reply: string;
@@ -360,10 +566,235 @@ export async function coachChat(
   }
   if (!reply) throw new CoachUnavailableError();
 
+  // Pull any draft_entry block out of the reply and match it against the
+  // athlete's real loggable skills; the visible reply has the block stripped.
+  const { stripped, draft } = extractDraft(reply, allSkills);
+  // Pull any menu_guide block (the coach updating the athlete's notation
+  // guide) and apply it before persisting the visible reply.
+  const guideResult = extractMenuGuideUpdate(stripped || reply);
+  let guideUpdated = false;
+  if (guideResult.guide !== null) {
+    await storage.updateUserMenuGuide(userId, guideResult.guide);
+    guideUpdated = true;
+  }
+  const finalReply = guideResult.stripped || stripped || reply;
+
   // Persist both turns only after a successful model reply so a failed send
   // can simply be retried without duplicate user messages in history.
-  await storage.createCoachMessage(userId, "user", userMessage);
-  await storage.createCoachMessage(userId, "assistant", reply);
+  await storage.createCoachMessage(userId, "user", userMessage, {
+    images: images && images.length > 0 ? JSON.stringify(images) : null,
+  });
+  await storage.createCoachMessage(userId, "assistant", finalReply, {
+    draft: draft ? JSON.stringify(draft) : null,
+  });
 
-  return { reply };
+  return { reply: finalReply, draft, guideUpdated };
+}
+
+// ---- Conversational menu-chat (multi-turn, image-scoped, no streaming) ----
+// Used by the menu popup: the athlete uploads a cropped menu photo and chats
+// with the AI to clarify unmatched items, rep counts, etc. The AI replies in
+// plain text until it is ready to produce a final draft_entry block.
+
+export interface MenuChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+const SUGGESTIONS_BLOCK_RE = /```suggestions\s*\n([\s\S]*?)```/;
+
+function extractSuggestions(raw: string): { cleaned: string; suggestions: string[] } {
+  const m = raw.match(SUGGESTIONS_BLOCK_RE);
+  if (!m) return { cleaned: raw, suggestions: [] };
+  const cleaned = raw.replace(SUGGESTIONS_BLOCK_RE, "").trim();
+  try {
+    const parsed = JSON.parse(m[1].trim());
+    if (Array.isArray(parsed)) {
+      return { cleaned, suggestions: parsed.filter((s): s is string => typeof s === "string").slice(0, 6) };
+    }
+  } catch {}
+  return { cleaned, suggestions: [] };
+}
+
+// Generate 2-4 quick-reply chip suggestions from the last assistant reply.
+// Runs as a lightweight parallel call after the main stream finishes.
+export async function generateSuggestions(reply: string, hasDraft: boolean): Promise<string[]> {
+  if (hasDraft || !reply.trim()) return [];
+  try {
+    const res = await openai.chat.completions.create({
+      model: MODEL,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You generate 2–4 short quick-reply suggestions for an athlete chatting with their trampoline coach AI. Output ONLY a JSON array of strings, each under 50 characters. No other text.",
+        },
+        {
+          role: "user",
+          content: `Coach just said:\n"${reply.slice(0, 600)}"\n\nSuggest 2–4 likely short replies the athlete would tap:`,
+        },
+      ],
+      max_completion_tokens: 120,
+    });
+    const raw = (res.choices[0]?.message?.content ?? "").trim();
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+    const parsed = JSON.parse(match[0]);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((s): s is string => typeof s === "string" && s.trim().length > 0 && s.length <= 50)
+      .slice(0, 4);
+  } catch {
+    return [];
+  }
+}
+
+export async function menuChat(
+  userId: string,
+  cropDataUrl: string,
+  messages: MenuChatMessage[],
+): Promise<{ reply: string; draft: CoachDraft | null; suggestions: string[] }> {
+  const [allSkills, user] = await Promise.all([
+    storage.getSkills(userId),
+    storage.getUser(userId),
+  ]);
+
+  const pool = loggableSkills(allSkills);
+  const skillList = pool
+    .map((s) => `  ${s.isDrill === 1 ? "[drill]" : "[skill]"} code "${s.code}" — ${s.name}`)
+    .join("\n");
+
+  const today = new Date().toISOString().substring(0, 10);
+
+  const system = [
+    "You are helping an athlete turn a photo of their training menu into a structured practice list.",
+    "Your job is conversational: read the menu photo (already cropped to the relevant area), then ask the athlete short clarifying questions for anything you are unsure about — skills that are not in their library, ambiguous rep counts, shorthand you don't recognise, etc.",
+    "When you have enough information to produce a complete list, end your reply with a fenced draft_entry block in this exact JSON shape:",
+    '```draft_entry\n{"date":"YYYY-MM-DD","items":[{"code":"<exact library code>","reps":<number>}],"notes":"<unmatched lines verbatim, comma-separated>"}\n```',
+    'For connections (skills chained in sequence) use a "codes" array: {"codes":["<code1>","<code2>"],"reps":<number>}.',
+    `For "date" use the date on the menu if visible, otherwise today's date (${today}).`,
+    "NEVER invent skills. Only use codes that appear exactly in the athlete's skill library below.",
+    "Ask questions one at a time; keep replies short and conversational.",
+    "After every conversational reply (but NOT when you output a draft_entry block), append a suggestions block with 2–4 short answers the athlete is most likely to tap — the most probable answers to your question, common clarifications, or useful shortcuts. Each suggestion must be under 50 characters. Format:",
+    '```suggestions\n["answer 1","answer 2","answer 3"]\n```',
+    user?.menuRowConnections
+      ? 'The athlete has set "one menu row = one connection": treat every row containing more than one skill as a single connection item.'
+      : "",
+    user?.menuGuide?.trim()
+      ? `Menu notation guide (follow this when reading the menu):\n${user.menuGuide.trim()}`
+      : "",
+    skillList ? `Athlete's skill library:\n${skillList}` : "The athlete's skill library is empty — list all menu items as unmatched.",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  // First user turn includes the image; subsequent turns are text-only.
+  const isFirstTurn = messages.length === 1 && messages[0].role === "user";
+
+  type OAIMessage =
+    | { role: "system"; content: string }
+    | { role: "user"; content: string | ContentPart[] }
+    | { role: "assistant"; content: string };
+
+  const oaiMessages: OAIMessage[] = [{ role: "system", content: system }];
+
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i];
+    if (i === 0 && m.role === "user") {
+      oaiMessages.push({
+        role: "user",
+        content: [
+          { type: "image_url" as const, image_url: { url: cropDataUrl } },
+          { type: "text" as const, text: m.content || "Please read this training menu and help me turn it into a practice list." },
+        ],
+      });
+    } else {
+      oaiMessages.push({ role: m.role, content: m.content });
+    }
+  }
+
+  let reply: string;
+  try {
+    const response = await openai.chat.completions.create({
+      model: MODEL,
+      messages: oaiMessages,
+      max_completion_tokens: 1024,
+    });
+    reply = (response.choices[0]?.message?.content ?? "").trim();
+  } catch (err) {
+    console.error("[coach] menu-chat failed:", err);
+    throw new CoachUnavailableError();
+  }
+
+  const { draft } = extractDraft(reply, allSkills);
+  const { cleaned, suggestions } = extractSuggestions(reply);
+  // Use cleaned reply (suggestions block stripped) unless it was a draft turn
+  const finalReply = draft ? reply : cleaned;
+  return { reply: finalReply, draft, suggestions: draft ? [] : suggestions };
+}
+
+// ---- Direct menu-photo parsing (no chat history, no streaming) ----
+// Used by the note-dialog "read menu photo" button to turn a photo of the
+// athlete's training menu directly into practice-list items without going
+// through the coach chat. Returns the matched draft (or null).
+
+export async function parseMenuPhoto(
+  userId: string,
+  images: string[],
+  note?: string,
+): Promise<{ draft: CoachDraft | null }> {
+  const [allSkills, user] = await Promise.all([
+    storage.getSkills(userId),
+    storage.getUser(userId),
+  ]);
+
+  const pool = loggableSkills(allSkills);
+  const skillList = pool
+    .map((s) => `  ${s.isDrill === 1 ? "[drill]" : "[skill]"} code "${s.code}" — ${s.name}`)
+    .join("\n");
+
+  const today = new Date().toISOString().substring(0, 10);
+
+  const system = [
+    "You are reading an athlete's training menu photo and extracting a structured practice list.",
+    "Match every item you see against the athlete's skill library below using EXACT codes and names. NEVER invent skills.",
+    "Respond with ONLY a fenced draft_entry code block (no other text) containing JSON of this shape:",
+    '```draft_entry\n{"date":"YYYY-MM-DD","items":[{"code":"<exact library code>","name":"<library name>","reps":<number>}],"notes":"<unmatched lines verbatim, comma-separated>"}\n```',
+    'When a menu row lists several skills in sequence (a connection), emit ONE item for that row with a "codes" array: {"codes":["<code1>","<code2>"],"reps":<number>}.',
+    `For "date" use the date written on the menu if present, otherwise today's date (${today}).`,
+    user?.menuRowConnections
+      ? 'The athlete has set "one menu row = one connection": treat every row containing more than one skill as a single connection item.'
+      : "",
+    user?.menuGuide?.trim()
+      ? `Menu notation guide (follow this when reading the menu):\n${user.menuGuide.trim()}`
+      : "",
+    skillList ? `Athlete's skill library:\n${skillList}` : "The athlete's skill library is empty — put all menu items in notes.",
+    note?.trim() ? `Athlete's extra note about this menu:\n${note.trim()}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  const userParts: ContentPart[] = [
+    { type: "text", text: "Read this training menu photo and extract a draft practice list." },
+    ...images.map((url) => ({ type: "image_url" as const, image_url: { url } })),
+  ];
+
+  let reply: string;
+  try {
+    const response = await openai.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: userParts },
+      ],
+      max_completion_tokens: 2048,
+    });
+    reply = (response.choices[0]?.message?.content ?? "").trim();
+  } catch (err) {
+    console.error("[coach] parse-menu failed:", err);
+    throw new CoachUnavailableError();
+  }
+
+  const { draft } = extractDraft(reply, allSkills);
+  return { draft };
 }

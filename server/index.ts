@@ -14,13 +14,26 @@ declare module "http" {
   }
 }
 
-app.use(
-  express.json({
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
-);
+// The coach chat route accepts base64 photo attachments, so it alone gets a
+// raised JSON body limit; every other route keeps the express default.
+const defaultJson = express.json({
+  verify: (req, _res, buf) => {
+    req.rawBody = buf;
+  },
+});
+const coachJson = express.json({
+  limit: "20mb",
+  verify: (req, _res, buf) => {
+    req.rawBody = buf;
+  },
+});
+const LARGE_BODY_ROUTES = new Set(["/api/coach/messages", "/api/coach/parse-menu", "/api/coach/menu-chat"]);
+app.use((req, res, next) => {
+  if (req.method === "POST" && LARGE_BODY_ROUTES.has(req.path)) {
+    return coachJson(req, res, next);
+  }
+  return defaultJson(req, res, next);
+});
 
 app.use(express.urlencoded({ extended: false }));
 
@@ -69,6 +82,10 @@ async function runMigrations() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS password varchar;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name varchar;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS focus_memo text;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS menu_guide text;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS menu_row_connections boolean DEFAULT true;
+      ALTER TABLE users ALTER COLUMN menu_row_connections SET DEFAULT true;
+      UPDATE users SET menu_row_connections = true WHERE menu_row_connections IS NULL;
       ALTER TABLE skills ADD COLUMN IF NOT EXISTS sort_order integer;
       ALTER TABLE routines ADD COLUMN IF NOT EXISTS code text;
       ALTER TABLE skills ADD COLUMN IF NOT EXISTS archived integer NOT NULL DEFAULT 0;
@@ -80,6 +97,8 @@ async function runMigrations() {
         content text NOT NULL,
         created_at timestamp NOT NULL DEFAULT now()
       );
+      ALTER TABLE coach_messages ADD COLUMN IF NOT EXISTS images text;
+      ALTER TABLE coach_messages ADD COLUMN IF NOT EXISTS draft text;
       CREATE TABLE IF NOT EXISTS whoop_tokens (
         user_id varchar PRIMARY KEY,
         access_token text NOT NULL,

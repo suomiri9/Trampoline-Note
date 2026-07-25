@@ -4,10 +4,12 @@ import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, Send, Loader2, Trash2 } from "lucide-react";
+import { useCreateNote } from "@/hooks/use-notes";
+import { Bot, Send, Loader2, Trash2, ImagePlus, X, CalendarPlus, Check } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +26,30 @@ export interface CoachMessage {
   id: number;
   role: string;
   content: string;
+  images?: string | null;
+  draft?: string | null;
   createdAt: string;
+}
+
+// One draft row = one or more skills performed together (several = a
+// connection, e.g. with the "one menu row = one connection" setting on).
+// Reps apply to the whole row.
+interface CoachDraftSkill {
+  skillId: number;
+  code: string;
+  name: string;
+}
+
+interface CoachDraftItem {
+  skills: CoachDraftSkill[];
+  reps: number;
+}
+
+interface CoachDraft {
+  date: string;
+  items: CoachDraftItem[];
+  unmatched: string[];
+  noteText: string;
 }
 
 const SUGGESTIONS = [
@@ -32,6 +57,336 @@ const SUGGESTIONS = [
   "Am I recovering enough for my current load?",
   "How do I log a session with skills and reps?",
 ];
+
+const MAX_IMAGES = 3;
+// Server rejects data URLs above 4MB of characters; stay safely below.
+const MAX_DATA_URL_CHARS = 3_900_000;
+
+// Downscale + JPEG-compress an image file client-side so photo sends stay
+// fast. Longest side capped at 1280px, quality stepped down until the data
+// URL fits the server's size cap. Throws on unreadable files.
+async function compressImage(file: File): Promise<string> {
+  const dataUrl: string = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("read failed"));
+    reader.readAsDataURL(file);
+  });
+  const img: HTMLImageElement = await new Promise((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error("not a readable image"));
+    el.src = dataUrl;
+  });
+  const maxSide = 1280;
+  const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+  const w = Math.max(1, Math.round(img.width * scale));
+  const h = Math.max(1, Math.round(img.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas unavailable");
+  ctx.drawImage(img, 0, 0, w, h);
+  for (const quality of [0.8, 0.6, 0.4]) {
+    const out = canvas.toDataURL("image/jpeg", quality);
+    if (out.length <= MAX_DATA_URL_CHARS) return out;
+  }
+  throw new Error("image too large even after compression");
+}
+
+function parseMessageImages(images: string | null | undefined): string[] {
+  if (!images) return [];
+  try {
+    const parsed = JSON.parse(images);
+    return Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+// Normalizes a stored draft item to the current { skills: [...], reps } shape.
+// Legacy drafts (saved before connection rows) stored flat
+// { skillId, code, name, reps } items.
+function normalizeDraftItem(it: any): CoachDraftItem | null {
+  if (!it || typeof it !== "object") return null;
+  const reps = typeof it.reps === "number" && it.reps >= 1 ? Math.trunc(it.reps) : 1;
+  if (Array.isArray(it.skills)) {
+    const skills = it.skills.filter(
+      (s: any) => s && typeof s === "object" && typeof s.skillId === "number",
+    );
+    return skills.length > 0 ? { skills, reps } : null;
+  }
+  if (typeof it.skillId === "number") {
+    return { skills: [{ skillId: it.skillId, code: it.code ?? "", name: it.name ?? "" }], reps };
+  }
+  return null;
+}
+
+function parseMessageDraft(draft: string | null | undefined): CoachDraft | null {
+  if (!draft) return null;
+  try {
+    const parsed = JSON.parse(draft);
+    if (!parsed || typeof parsed !== "object") return null;
+    return {
+      date: typeof parsed.date === "string" ? parsed.date : "",
+      items: Array.isArray(parsed.items)
+        ? parsed.items.map(normalizeDraftItem).filter((it: CoachDraftItem | null): it is CoachDraftItem => it !== null)
+        : [],
+      unmatched: Array.isArray(parsed.unmatched) ? parsed.unmatched : [],
+      noteText: typeof parsed.noteText === "string" ? parsed.noteText : "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Which draft cards have already been added to the log (persists across
+// reloads so a saved draft can't be double-submitted).
+const ADDED_KEY = "coach-drafts-added";
+function getAddedDraftIds(): number[] {
+  try {
+    const raw = localStorage.getItem(ADDED_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((v) => typeof v === "number") : [];
+  } catch {
+    return [];
+  }
+}
+function markDraftAdded(messageId: number) {
+  const ids = getAddedDraftIds();
+  if (!ids.includes(messageId)) {
+    try {
+      localStorage.setItem(ADDED_KEY, JSON.stringify([...ids, messageId].slice(-100)));
+    } catch {}
+  }
+}
+
+// Draft training-log entry proposed by the coach, shown side-by-side with the
+// source photo (when the triggering message had one) so the athlete can check
+// the AI's reading against the menu and EDIT it — date, reps, removing items,
+// dropping unmatched lines, and the notes text — before confirming. Nothing
+// is written without the "Add to log" tap.
+function DraftEntryCard({
+  messageId,
+  draft,
+  images,
+  compact,
+}: {
+  messageId: number;
+  draft: CoachDraft;
+  images: string[];
+  compact: boolean;
+}) {
+  const { toast } = useToast();
+  const createNote = useCreateNote();
+  const [added, setAdded] = useState(() => getAddedDraftIds().includes(messageId));
+  // Editable copy of the draft; local until "Add to log".
+  const [date, setDate] = useState(draft.date);
+  const [items, setItems] = useState<CoachDraftItem[]>(draft.items);
+  const [unmatched, setUnmatched] = useState<string[]>(draft.unmatched);
+  const [noteText, setNoteText] = useState(draft.noteText);
+
+  const setReps = (i: number, raw: string) => {
+    const n = raw === "" ? 1 : Math.max(1, Math.min(999, Math.trunc(Number(raw)) || 1));
+    setItems((prev) => prev.map((it, j) => (j === i ? { ...it, reps: n } : it)));
+  };
+
+  const isEmpty = items.length === 0 && unmatched.length === 0 && !noteText.trim();
+
+  const addToLog = () => {
+    if (added || createNote.isPending || isEmpty) return;
+    // App skills-JSON format: groups separated by {id: -1}. A row's skills
+    // share one group (a connection sums DD); the LAST item's reps set the
+    // whole group's reps, matching how the app computes group totals.
+    const skillItems: { id: number; reps?: number }[] = [];
+    items.forEach((it, i) => {
+      if (i > 0) skillItems.push({ id: -1 });
+      it.skills.forEach((s, j) => {
+        const isLast = j === it.skills.length - 1;
+        skillItems.push(isLast && it.reps > 1 ? { id: s.skillId, reps: it.reps } : { id: s.skillId });
+      });
+    });
+    const contentParts: string[] = [];
+    if (noteText.trim()) contentParts.push(noteText.trim());
+    if (unmatched.length > 0) {
+      contentParts.push(`Unmatched from menu:\n${unmatched.map((u) => `- ${u}`).join("\n")}`);
+    }
+    createNote.mutate(
+      {
+        date,
+        content: contentParts.join("\n\n"),
+        skills: skillItems.length > 0 ? JSON.stringify(skillItems) : null,
+      },
+      {
+        onSuccess: () => {
+          markDraftAdded(messageId);
+          setAdded(true);
+          toast({ title: "Added to log", description: `Training entry created for ${date}.` });
+        },
+        onError: (err: Error) => {
+          toast({
+            title: "Couldn't add to log",
+            description: err.message || "Something went wrong creating the entry.",
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
+
+  const editor = (
+    <div className="space-y-2 min-w-0">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono uppercase tracking-wider text-[11px] font-semibold text-primary">
+          Draft log entry
+        </span>
+        <Input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          disabled={added}
+          className="h-7 w-auto px-2 font-mono text-[11px] text-muted-foreground"
+          data-testid={`input-draft-date-${messageId}`}
+        />
+      </div>
+      {items.length > 0 && (
+        <ul className="space-y-1">
+          {items.map((it, i) => (
+            <li key={i} className="flex items-center gap-2" data-testid={`row-draft-item-${messageId}-${i}`}>
+              <span className="font-mono text-xs text-primary shrink-0">
+                {it.skills.map((s) => s.code).join(" + ")}
+              </span>
+              <span className="truncate">{it.skills.map((s) => s.name).join(" + ")}</span>
+              <span className="ml-auto flex items-center gap-1 shrink-0">
+                <span className="font-mono text-xs text-muted-foreground">x</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={999}
+                  value={it.reps}
+                  onChange={(e) => setReps(i, e.target.value)}
+                  disabled={added}
+                  className="h-7 w-14 px-1.5 font-mono text-xs text-right"
+                  data-testid={`input-draft-reps-${messageId}-${i}`}
+                />
+                {!added && (
+                  <button
+                    onClick={() => setItems((prev) => prev.filter((_, j) => j !== i))}
+                    className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive"
+                    aria-label={`Remove ${it.skills.map((s) => s.name).join(" + ")}`}
+                    data-testid={`button-remove-draft-item-${messageId}-${i}`}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {unmatched.length > 0 && (
+        <div className="text-xs text-muted-foreground space-y-0.5" data-testid={`text-draft-unmatched-${messageId}`}>
+          <span className="font-semibold">Not matched (kept as notes):</span>
+          {unmatched.map((u, i) => (
+            <div key={i} className="flex items-center gap-1.5" data-testid={`row-draft-unmatched-${messageId}-${i}`}>
+              <span className="truncate">– {u}</span>
+              {!added && (
+                <button
+                  onClick={() => setUnmatched((prev) => prev.filter((_, j) => j !== i))}
+                  className="h-5 w-5 rounded flex items-center justify-center shrink-0 text-muted-foreground hover:text-destructive"
+                  aria-label={`Remove ${u}`}
+                  data-testid={`button-remove-unmatched-${messageId}-${i}`}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      <Textarea
+        value={noteText}
+        onChange={(e) => setNoteText(e.target.value)}
+        disabled={added}
+        placeholder="Notes…"
+        rows={2}
+        className="min-h-[40px] text-xs resize-none"
+        data-testid={`textarea-draft-notes-${messageId}`}
+      />
+      <Button
+        size="sm"
+        className="w-full"
+        variant={added ? "secondary" : "default"}
+        disabled={added || createNote.isPending || isEmpty}
+        onClick={addToLog}
+        data-testid={`button-add-draft-${messageId}`}
+      >
+        {createNote.isPending ? (
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        ) : added ? (
+          <Check className="w-4 h-4 mr-2" />
+        ) : (
+          <CalendarPlus className="w-4 h-4 mr-2" />
+        )}
+        {added ? "Added to log" : "Add to log"}
+      </Button>
+    </div>
+  );
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm",
+        images.length > 0 && !compact
+          ? "grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]"
+          : "space-y-3",
+      )}
+      data-testid={`card-coach-draft-${messageId}`}
+    >
+      {images.length > 0 && (
+        <div className="space-y-2 min-w-0">
+          {images.map((src, i) => (
+            <img
+              key={i}
+              src={src}
+              alt={`menu photo ${i + 1}`}
+              className="w-full rounded-lg object-contain max-h-72 bg-background/40"
+              data-testid={`img-draft-photo-${messageId}-${i}`}
+            />
+          ))}
+        </div>
+      )}
+      {editor}
+    </div>
+  );
+}
+
+// Photos attached to the user turn that produced a draft: walk back from the
+// assistant message to the nearest preceding user message and take its images.
+function draftSourceImages(messages: CoachMessage[], assistantIndex: number): string[] {
+  for (let i = assistantIndex - 1; i >= 0; i--) {
+    if (messages[i].role === "user") return parseMessageImages(messages[i].images);
+  }
+  return [];
+}
+
+function ImageBubbles({ images, testId }: { images: string[]; testId: string }) {
+  if (images.length === 0) return null;
+  return (
+    <div className={cn("flex gap-1.5 mb-1.5", images.length > 1 && "flex-wrap")}>
+      {images.map((src, i) => (
+        <img
+          key={i}
+          src={src}
+          alt={`attachment ${i + 1}`}
+          className="rounded-lg max-h-40 max-w-[160px] object-cover"
+          data-testid={`${testId}-${i}`}
+        />
+      ))}
+    </div>
+  );
+}
 
 // Clear-history button with confirm dialog. Renders nothing while the chat is
 // empty. Shared by the Coach page header and the floating widget header.
@@ -86,29 +441,38 @@ export function ClearChatButton() {
 // The coach chat itself: message list + input. `compact` makes the list fill
 // its flex parent (floating widget); otherwise it uses page-card sizing.
 // Sends the current route with each message so the coach knows what page the
-// athlete is looking at.
+// athlete is looking at. Supports 1-3 photo attachments per message (menu
+// photos, technique shots) which the coach can see.
 export function CoachChat({ compact = false }: { compact?: boolean }) {
   const [location] = useLocation();
   const { toast } = useToast();
   const [input, setInput] = useState("");
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const [compressing, setCompressing] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   // The user's message and the coach's partial reply while a send is in
   // flight — rendered as optimistic bubbles until the history refetch lands.
-  const [pendingUser, setPendingUser] = useState<string | null>(null);
+  const [pendingUser, setPendingUser] = useState<{ content: string; images: string[] } | null>(null);
   const [streamText, setStreamText] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: messages, isLoading: messagesLoading } = useQuery<CoachMessage[]>({
     queryKey: ["/api/coach/messages"],
   });
 
   const sendMutation = useMutation({
-    mutationFn: async (content: string) => {
-      setPendingUser(content);
+    mutationFn: async ({ content, images }: { content: string; images: string[] }) => {
+      setPendingUser({ content, images });
       setStreamText("");
       const res = await fetch("/api/coach/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, page: location }),
+        body: JSON.stringify({
+          content,
+          page: location,
+          ...(images.length > 0 ? { images } : {}),
+        }),
         credentials: "include",
       });
       if (!res.ok || !res.headers.get("content-type")?.includes("text/event-stream")) {
@@ -122,6 +486,7 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
       let buffer = "";
       let acc = "";
       let done = false;
+      let guideUpdated = false;
       while (true) {
         const { value, done: eof } = await reader.read();
         if (eof) break;
@@ -131,7 +496,7 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
         for (const evt of events) {
           const dataLine = evt.split("\n").find((l) => l.startsWith("data: "));
           if (!dataLine) continue;
-          let payload: { delta?: string; done?: boolean; reply?: string; error?: string };
+          let payload: { delta?: string; done?: boolean; reply?: string; error?: string; guideUpdated?: boolean };
           try {
             payload = JSON.parse(dataLine.slice(6));
           } catch {
@@ -142,16 +507,29 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
             acc += payload.delta;
             setStreamText(acc);
           }
-          if (payload.done) done = true;
+          if (payload.done) {
+            done = true;
+            if (Array.isArray(payload.suggestions)) setSuggestions(payload.suggestions as string[]);
+            if (payload.guideUpdated) guideUpdated = true;
+          }
         }
       }
       if (!done) throw new Error("503: stream ended unexpectedly");
-      return { reply: acc };
+      return { reply: acc, guideUpdated };
     },
-    onSuccess: async () => {
+    onSuccess: async ({ guideUpdated }) => {
       await queryClient.invalidateQueries({ queryKey: ["/api/coach/messages"] });
       setPendingUser(null);
       setStreamText("");
+      if (guideUpdated) {
+        // The coach rewrote the menu notation guide — refresh the cached user
+        // and point the athlete at Settings where it stays text-editable.
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        toast({
+          title: "Menu notation guide updated",
+          description: "The coach updated your guide. Review or edit it in Settings.",
+        });
+      }
     },
     onError: (err: Error) => {
       setPendingUser(null);
@@ -171,16 +549,66 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages, sendMutation.isPending, streamText]);
 
+  const addFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const room = MAX_IMAGES - attachments.length;
+    if (room <= 0) {
+      toast({ title: "Photo limit", description: `You can attach up to ${MAX_IMAGES} photos.` });
+      return;
+    }
+    const list = Array.from(files);
+    if (list.length > room) {
+      toast({ title: "Photo limit", description: `Only the first ${room} photo${room > 1 ? "s" : ""} will be attached.` });
+    }
+    setCompressing(true);
+    try {
+      for (const file of list.slice(0, room)) {
+        if (!file.type.startsWith("image/")) {
+          toast({
+            title: "Unsupported file",
+            description: `"${file.name}" isn't an image. Only photos can be attached.`,
+            variant: "destructive",
+          });
+          continue;
+        }
+        try {
+          const dataUrl = await compressImage(file);
+          setAttachments((prev) => (prev.length < MAX_IMAGES ? [...prev, dataUrl] : prev));
+        } catch {
+          toast({
+            title: "Couldn't attach photo",
+            description: `"${file.name}" couldn't be read or is too large.`,
+            variant: "destructive",
+          });
+        }
+      }
+    } finally {
+      setCompressing(false);
+    }
+  };
+
   const send = (text?: string) => {
     const content = (text ?? input).trim();
-    if (!content || sendMutation.isPending) return;
+    const images = text != null ? [] : attachments;
+    if ((!content && images.length === 0) || sendMutation.isPending || compressing) return;
     setInput("");
-    sendMutation.mutate(content, {
-      onError: () => setInput(content),
-    });
+    setAttachments([]);
+    setSuggestions([]);
+    sendMutation.mutate(
+      { content, images },
+      {
+        onError: () => {
+          setInput(content);
+          setAttachments(images);
+        },
+      },
+    );
   };
 
   const hasMessages = (messages?.length ?? 0) > 0 || (sendMutation.isPending && pendingUser != null);
+  // Hide partially-streamed draft_entry / menu_guide blocks; the parsed card
+  // (or the guide-updated toast) replaces them.
+  const visibleStream = streamText.split("```draft_entry")[0].split("```menu_guide")[0].trimEnd();
 
   return (
     <>
@@ -217,37 +645,59 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
             </div>
           </div>
         ) : (
-          messages!.map((m) => (
-            <div
-              key={m.id}
-              className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}
-              data-testid={`message-coach-${m.id}`}
-            >
+          messages!.map((m, idx) => {
+            const msgImages = parseMessageImages(m.images);
+            const msgDraft = m.role === "assistant" ? parseMessageDraft(m.draft) : null;
+            // Photos from the user turn that triggered this draft, shown
+            // beside the editable draft for easy comparison.
+            const draftImages = msgDraft ? draftSourceImages(messages!, idx) : [];
+            return (
               <div
+                key={m.id}
                 className={cn(
-                  "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
-                  m.role === "user"
-                    ? "bg-primary/15 text-foreground"
-                    : "bg-secondary text-foreground",
+                  "flex flex-col gap-2",
+                  m.role === "user" ? "items-end" : "items-start",
                 )}
+                data-testid={`message-coach-${m.id}`}
               >
-                {m.content}
+                <div
+                  className={cn(
+                    "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
+                    m.role === "user"
+                      ? "bg-primary/15 text-foreground"
+                      : "bg-secondary text-foreground",
+                  )}
+                >
+                  <ImageBubbles images={msgImages} testId={`img-coach-message-${m.id}`} />
+                  {m.content}
+                </div>
+                {msgDraft && (
+                  <div className="w-full">
+                    <DraftEntryCard
+                      messageId={m.id}
+                      draft={msgDraft}
+                      images={draftImages}
+                      compact={compact}
+                    />
+                  </div>
+                )}
               </div>
-            </div>
-          ))
+            );
+          })
         )}
         {sendMutation.isPending && pendingUser != null && (
           <div className="flex justify-end" data-testid="message-coach-pending-user">
             <div className="max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap bg-primary/15 text-foreground">
-              {pendingUser}
+              <ImageBubbles images={pendingUser.images} testId="img-coach-pending" />
+              {pendingUser.content}
             </div>
           </div>
         )}
         {sendMutation.isPending &&
-          (streamText ? (
+          (visibleStream ? (
             <div className="flex justify-start" data-testid="message-coach-streaming">
               <div className="max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap bg-secondary text-foreground">
-                {streamText}
+                {visibleStream}
                 <span className="inline-block w-2 h-4 ml-0.5 align-text-bottom bg-primary/60 animate-pulse rounded-sm" />
               </div>
             </div>
@@ -261,7 +711,68 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
           ))}
       </div>
 
+      {suggestions.length > 0 && !sendMutation.isPending && (
+        <div className="px-3 pt-2 pb-1 flex flex-wrap gap-2 shrink-0" data-testid="row-coach-suggestions">
+          {suggestions.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => send(s)}
+              className="text-sm px-4 py-2 rounded-full border border-border bg-secondary/50 hover:bg-secondary text-foreground transition-colors"
+              data-testid={`button-reply-suggestion-${i}`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {attachments.length > 0 && (
+        <div className="px-3 pt-2 flex gap-2 shrink-0" data-testid="row-coach-attachments">
+          {attachments.map((src, i) => (
+            <div key={i} className="relative">
+              <img
+                src={src}
+                alt={`photo ${i + 1}`}
+                className="h-14 w-14 rounded-lg object-cover border border-border/60"
+                data-testid={`img-attachment-preview-${i}`}
+              />
+              <button
+                onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+                className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-background border border-border flex items-center justify-center text-muted-foreground hover:text-foreground"
+                aria-label="Remove photo"
+                data-testid={`button-remove-attachment-${i}`}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="p-3 border-t border-border/50 flex items-end gap-2 shrink-0">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            addFiles(e.target.files);
+            e.target.value = "";
+          }}
+          data-testid="input-coach-photos"
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-[44px] w-[44px] shrink-0 text-muted-foreground"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={compressing || attachments.length >= MAX_IMAGES || sendMutation.isPending}
+          aria-label="Attach photos"
+          data-testid="button-attach-photo"
+        >
+          {compressing ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-5 h-5" />}
+        </Button>
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -280,7 +791,7 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
           size="icon"
           className="h-[44px] w-[44px] shrink-0"
           onClick={() => send()}
-          disabled={!input.trim() || sendMutation.isPending}
+          disabled={(!input.trim() && attachments.length === 0) || sendMutation.isPending || compressing}
           data-testid="button-send-message"
         >
           {sendMutation.isPending ? (

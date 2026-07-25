@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
-import { index, jsonb, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import { boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
 export const sessions = pgTable(
@@ -22,6 +22,12 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   focusMemo: text("focus_memo"),
+  // Per-user guide for the AI coach's menu reading: what the athlete's
+  // abbreviations/notation mean. Free text, injected into the coach prompt.
+  menuGuide: text("menu_guide"),
+  // When true, the coach treats each menu row as ONE connection (skills
+  // performed in sequence) instead of separate skills.
+  menuRowConnections: boolean("menu_row_connections").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

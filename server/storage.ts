@@ -69,6 +69,10 @@ export interface IStorage {
   // Data migration
   claimLegacyData(userId: string): Promise<void>;
 
+  // Users
+  getUser(id: string): Promise<User | undefined>;
+  updateUserMenuGuide(id: string, menuGuide: string): Promise<void>;
+
   // Password reset
   getUserByEmail(email: string): Promise<User | undefined>;
   createPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<void>;
@@ -82,7 +86,7 @@ export interface IStorage {
 
   // AI coach chat history (per user)
   getCoachMessages(userId: string): Promise<CoachMessage[]>;
-  createCoachMessage(userId: string, role: "user" | "assistant", content: string): Promise<CoachMessage>;
+  createCoachMessage(userId: string, role: "user" | "assistant", content: string, extras?: { images?: string | null; draft?: string | null }): Promise<CoachMessage>;
   clearCoachMessages(userId: string): Promise<void>;
 }
 
@@ -355,6 +359,15 @@ export class DatabaseStorage implements IStorage {
     ]);
   }
 
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async updateUserMenuGuide(id: string, menuGuide: string): Promise<void> {
+    await db.update(users).set({ menuGuide, updatedAt: new Date() }).where(eq(users.id, id));
+  }
+
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
@@ -483,9 +496,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(coachMessages.createdAt, coachMessages.id);
   }
 
-  async createCoachMessage(userId: string, role: "user" | "assistant", content: string): Promise<CoachMessage> {
+  async createCoachMessage(
+    userId: string,
+    role: "user" | "assistant",
+    content: string,
+    extras?: { images?: string | null; draft?: string | null },
+  ): Promise<CoachMessage> {
     const [row] = await db.insert(coachMessages)
-      .values({ userId, role, content })
+      .values({ userId, role, content, images: extras?.images ?? null, draft: extras?.draft ?? null })
       .returning();
     return row;
   }

@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Clock, Loader2, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, X, Search, Shapes, ChevronDown, ChevronRight } from "lucide-react";
+import { CalendarIcon, Clock, Loader2, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, Minus, X, Search, Shapes, ChevronDown, ChevronRight, Camera, Check } from "lucide-react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -75,6 +75,48 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StarRating } from "./star-rating";
+
+// Compress any image (File or existing data-url) before sending to the server.
+// Max long-side 1280px, max output length 3.5 MB (base64 string, not binary),
+// so that the full JSON body stays well within the server's 20 MB limit.
+const MAX_MENU_DATA_URL = 3.5 * 1024 * 1024;
+
+async function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((res, rej) => {
+    const el = new Image();
+    el.onload = () => res(el);
+    el.onerror = () => rej(new Error("not a readable image"));
+    el.src = src;
+  });
+}
+
+async function compressMenuImage(file: File): Promise<string> {
+  const dataUrl: string = await new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = () => res(String(reader.result));
+    reader.onerror = () => rej(new Error("read failed"));
+    reader.readAsDataURL(file);
+  });
+  return compressDataUrl(dataUrl);
+}
+
+async function compressDataUrl(dataUrl: string): Promise<string> {
+  const img = await loadImage(dataUrl);
+  const scale = Math.min(1, 1280 / Math.max(img.width, img.height, 1));
+  const w = Math.max(1, Math.round(img.width * scale));
+  const h = Math.max(1, Math.round(img.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas unavailable");
+  ctx.drawImage(img, 0, 0, w, h);
+  for (const q of [0.82, 0.65, 0.48, 0.35]) {
+    const out = canvas.toDataURL("image/jpeg", q);
+    if (out.length <= MAX_MENU_DATA_URL) return out;
+  }
+  throw new Error("image too large even after compression — try a smaller photo");
+}
 
 const formSchema = z.object({
   date: z.date({
@@ -158,6 +200,39 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [newPartStart, setNewPartStart] = useState(1);
   const [newPartEnd, setNewPartEnd] = useState(10);
   const [newPartNameOverride, setNewPartNameOverride] = useState<string | null>(null);
+
+  // ── Menu popup state ──────────────────────────────────────────────────────
+  // step: "upload" → "crop" → "chat"
+  const [menuPhotoDialogOpen, setMenuPhotoDialogOpen] = useState(false);
+  const [menuStep, setMenuStep] = useState<"upload" | "crop" | "chat">("upload");
+  const [menuPhotoLoading, setMenuPhotoLoading] = useState(false);
+  const [menuPhotoFile, setMenuPhotoFile] = useState<File | null>(null);
+  const [menuPhotoDataUrl, setMenuPhotoDataUrl] = useState<string | null>(null);
+  const [menuCropDataUrl, setMenuCropDataUrl] = useState<string | null>(null);
+  // crop rect as fraction of natural image size (0–1)
+  type CropRect = { x: number; y: number; w: number; h: number };
+  const [cropRects, setCropRects] = useState<CropRect[]>([]);
+  const [currentCropRect, setCurrentCropRect] = useState<CropRect | null>(null);
+  const [isDraggingCrop, setIsDraggingCrop] = useState(false);
+  const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
+  const cropCanvasRef = useRef<HTMLCanvasElement>(null);
+  const cropImgRef = useRef<HTMLImageElement>(null);
+  type MenuChatMsg = { role: "user" | "assistant"; content: string };
+  const [menuMessages, setMenuMessages] = useState<MenuChatMsg[]>([]);
+  const [menuInput, setMenuInput] = useState("");
+  const [menuDraft, setMenuDraft] = useState<null | {
+    items: Array<{ skills: Array<{ skillId: number; code: string; name: string }>; reps: number }>;
+    unmatched: string[];
+    noteText: string;
+  }>(null);
+  const [menuSuggestions, setMenuSuggestions] = useState<string[]>([]);
+  // Review dialog (replaces the old /menu-review page)
+  type ReviewItem = { skillIds: number[]; codes: string[]; names: string[]; reps: number };
+  const [menuReviewOpen, setMenuReviewOpen] = useState(false);
+  const [menuReviewItems, setMenuReviewItems] = useState<ReviewItem[]>([]);
+  const [menuReviewUnmatched, setMenuReviewUnmatched] = useState<string[]>([]);
+  const menuChatEndRef = useRef<HTMLDivElement>(null);
+  const menuPhotoRef = useRef<HTMLInputElement>(null);
 
   const pickerInputRef = useRef<HTMLInputElement>(null);
   const connSkillInputRef = useRef<HTMLInputElement>(null);
@@ -386,6 +461,273 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       return newSkills;
     });
   };
+
+  const openMenuPhotoDialog = () => {
+    setMenuPhotoFile(null);
+    setMenuPhotoDataUrl(null);
+    setMenuCropDataUrl(null);
+    setCropRects([]);
+    setCurrentCropRect(null);
+    setMenuMessages([]);
+    setMenuInput("");
+    setMenuDraft(null);
+    setMenuStep("upload");
+    setMenuPhotoDialogOpen(true);
+  };
+
+  const pickMenuPhotoFile = (file: File) => {
+    setMenuPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setMenuPhotoDataUrl(String(reader.result));
+      setCropRects([]);
+      setCurrentCropRect(null);
+      setMenuStep("crop");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Crop helpers — coords are relative to the displayed canvas element
+  const getCropEventPos = (
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>,
+    canvas: HTMLCanvasElement,
+  ) => {
+    const rect = canvas.getBoundingClientRect();
+    const src = "touches" in e ? e.touches[0] : (e as React.MouseEvent);
+    return {
+      x: Math.max(0, Math.min(1, (src.clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (src.clientY - rect.top) / rect.height)),
+    };
+  };
+
+  const onCropPointerDown = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = cropCanvasRef.current;
+    if (!canvas) return;
+    e.preventDefault();
+    const pos = getCropEventPos(e, canvas);
+    setCropStart(pos);
+    setCurrentCropRect({ x: pos.x, y: pos.y, w: 0, h: 0 });
+    setIsDraggingCrop(true);
+  };
+
+  const onCropPointerMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDraggingCrop || !cropStart) return;
+    const canvas = cropCanvasRef.current;
+    if (!canvas) return;
+    e.preventDefault();
+    const pos = getCropEventPos(e, canvas);
+    const x = Math.min(cropStart.x, pos.x);
+    const y = Math.min(cropStart.y, pos.y);
+    const w = Math.abs(pos.x - cropStart.x);
+    const h = Math.abs(pos.y - cropStart.y);
+    setCurrentCropRect({ x, y, w, h });
+  };
+
+  const onCropPointerUp = () => {
+    setIsDraggingCrop(false);
+    setCropStart(null);
+    // Commit the current rect if it's big enough
+    setCurrentCropRect(prev => {
+      if (prev && prev.w > 0.01 && prev.h > 0.01) {
+        setCropRects(rs => [...rs, prev]);
+      }
+      return null;
+    });
+  };
+
+  // Stitches all selected regions vertically into a single canvas data-url.
+  // Falls back to the full photo if no regions are selected.
+  const buildCropDataUrl = (): string | null => {
+    const img = cropImgRef.current;
+    if (!img) return menuPhotoDataUrl;
+    const valid = cropRects.filter(r => r.w > 0.01 && r.h > 0.01);
+    if (valid.length === 0) return menuPhotoDataUrl;
+    const nw = img.naturalWidth;
+    const nh = img.naturalHeight;
+    const GAP = 4;
+    const outW = Math.max(...valid.map(r => Math.round(r.w * nw)));
+    const outH = valid.reduce((sum, r) => sum + Math.round(r.h * nh), 0) + GAP * (valid.length - 1);
+    const c = document.createElement("canvas");
+    c.width = outW;
+    c.height = outH;
+    const ctx = c.getContext("2d");
+    if (!ctx) return menuPhotoDataUrl;
+    let y = 0;
+    for (const r of valid) {
+      const sx = Math.round(r.x * nw);
+      const sy = Math.round(r.y * nh);
+      const sw = Math.round(r.w * nw);
+      const sh = Math.round(r.h * nh);
+      ctx.drawImage(img, sx, sy, sw, sh, 0, y, sw, sh);
+      y += sh + GAP;
+    }
+    return c.toDataURL("image/jpeg", 0.9);
+  };
+
+  const proceedToChat = async () => {
+    const raw = buildCropDataUrl();
+    if (!raw) return;
+    setMenuPhotoLoading(true);
+    let cropUrl: string;
+    try {
+      cropUrl = await compressDataUrl(raw);
+    } catch (e: any) {
+      toast({ title: "Image error", description: e.message, variant: "destructive" });
+      setMenuPhotoLoading(false);
+      return;
+    }
+    setMenuCropDataUrl(cropUrl);
+    setMenuMessages([]);
+    setMenuInput("");
+    setMenuDraft(null);
+    setMenuStep("chat");
+    // Fire first AI turn immediately (loading stays true until sendMenuChat finishes)
+    sendMenuChat(cropUrl, [{ role: "user", content: "Please read this training menu and help me turn it into a practice list." }]);
+  };
+
+  const sendMenuChat = async (
+    cropUrl: string,
+    msgs: Array<{ role: "user" | "assistant"; content: string }>,
+  ) => {
+    setMenuPhotoLoading(true);
+    try {
+      const res = await fetch("/api/coach/menu-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cropDataUrl: cropUrl, messages: msgs }),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).message || "AI unavailable.");
+      }
+      const { reply, draft, suggestions } = await res.json() as {
+        reply: string;
+        draft: null | { date: string; items: Array<{ skills: Array<{ skillId: number; code: string; name: string }>; reps: number }>; unmatched: string[]; noteText: string };
+        suggestions?: string[];
+      };
+      setMenuMessages(prev => [...prev, { role: "assistant", content: reply }]);
+      if (draft) setMenuDraft(draft);
+      setMenuSuggestions(draft ? [] : (suggestions ?? []));
+      setTimeout(() => menuChatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    } catch (err: any) {
+      toast({ title: "AI error", description: err?.message || "Something went wrong.", variant: "destructive" });
+    } finally {
+      setMenuPhotoLoading(false);
+    }
+  };
+
+  const submitMenuMessage = (overrideText?: string) => {
+    const text = (overrideText ?? menuInput).trim();
+    if (!text || menuPhotoLoading || !menuCropDataUrl) return;
+    const newMsg: { role: "user" | "assistant"; content: string } = { role: "user", content: text };
+    const updated = [...menuMessages, newMsg];
+    setMenuMessages(updated);
+    setMenuInput("");
+    setMenuSuggestions([]);
+    setTimeout(() => menuChatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 20);
+    sendMenuChat(menuCropDataUrl, updated);
+  };
+
+  // Navigate to the review page with the current draft
+  const goToReview = () => {
+    if (!menuDraft) return;
+    const items = menuDraft.items.map(it => ({
+      skillIds: it.skills.map(s => s.skillId),
+      codes: it.skills.map(s => s.code),
+      names: it.skills.map(s => s.name),
+      reps: it.reps,
+    }));
+    setMenuReviewItems(items);
+    setMenuReviewUnmatched(menuDraft.unmatched);
+    setMenuReviewOpen(true);
+  };
+
+  const confirmMenuReview = () => {
+    const incoming: SkillItem[] = [];
+    menuReviewItems.forEach((it, i) => {
+      if (i > 0) incoming.push({ id: -1 });
+      it.skillIds.forEach((sid, j) => {
+        const isLast = j === it.skillIds.length - 1;
+        incoming.push(isLast && it.reps > 1 ? { id: sid, reps: it.reps } : { id: sid });
+      });
+    });
+    if (incoming.length > 0) {
+      setSelectedSkills(prev => {
+        const newSkills = [...prev];
+        if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) newSkills.push({ id: -1 });
+        newSkills.push(...incoming);
+        form.setValue("skills", JSON.stringify(newSkills));
+        return newSkills;
+      });
+      toast({ title: `Added ${menuReviewItems.length} item${menuReviewItems.length !== 1 ? "s" : ""} from menu` });
+    }
+    setMenuReviewOpen(false);
+    setMenuPhotoDialogOpen(false);
+  };
+
+  // Draw the photo + crop overlays onto the canvas whenever state changes
+  useEffect(() => {
+    const canvas = cropCanvasRef.current;
+    const img = cropImgRef.current;
+    if (!canvas || !img || menuStep !== "crop" || !menuPhotoDataUrl) return;
+    const COLORS = ["#6366f1", "#f59e0b", "#10b981", "#ef4444", "#3b82f6"];
+    const drawFrame = () => {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      const displayW = canvas.offsetWidth || 320;
+      const scale = displayW / img.naturalWidth;
+      const displayH = Math.round(img.naturalHeight * scale);
+      canvas.width = displayW;
+      canvas.height = displayH;
+      // Draw base image
+      ctx.drawImage(img, 0, 0, displayW, displayH);
+      // Collect all rects to display (committed + current in-progress)
+      const allRects = [
+        ...cropRects,
+        ...(currentCropRect && currentCropRect.w > 0.005 && currentCropRect.h > 0.005 ? [currentCropRect] : []),
+      ];
+      if (allRects.length > 0) {
+        // Dim the whole image
+        ctx.fillStyle = "rgba(0,0,0,0.45)";
+        ctx.fillRect(0, 0, displayW, displayH);
+        // For each rect: restore the image underneath, then draw border + number
+        allRects.forEach((r, i) => {
+          const rx = r.x * displayW;
+          const ry = r.y * displayH;
+          const rw = r.w * displayW;
+          const rh = r.h * displayH;
+          // Re-draw just the selected region from the source image
+          ctx.drawImage(img, r.x * img.naturalWidth, r.y * img.naturalHeight,
+            r.w * img.naturalWidth, r.h * img.naturalHeight,
+            rx, ry, rw, rh);
+          const color = COLORS[i % COLORS.length];
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.strokeRect(rx, ry, rw, rh);
+          // Number badge
+          if (allRects.length > 1) {
+            const label = String(i + 1);
+            const pad = 4;
+            const fontSize = 11;
+            ctx.font = `bold ${fontSize}px sans-serif`;
+            const tw = ctx.measureText(label).width;
+            const bw = tw + pad * 2;
+            const bh = fontSize + pad * 2;
+            ctx.fillStyle = color;
+            ctx.fillRect(rx + 1, ry + 1, bw, bh);
+            ctx.fillStyle = "#fff";
+            ctx.fillText(label, rx + 1 + pad, ry + 1 + pad + fontSize - 2);
+          }
+        });
+      }
+    };
+    if (img.complete && img.naturalWidth > 0) {
+      drawFrame();
+    } else {
+      img.onload = drawFrame;
+    }
+  }, [menuStep, menuPhotoDataUrl, cropRects, currentCropRect]);
 
   const removeSkill = (index: number) => {
     setSelectedSkills(prev => {
@@ -818,6 +1160,286 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   >
                     {isConnectMode ? "Linking..." : "+ Link"}
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-11 shrink-0 px-3 rounded-xl gap-1.5 text-[10px] font-bold uppercase tracking-wider border-primary/40 text-primary hover:bg-primary/10 hover:border-primary dark:border-primary/40 dark:text-primary dark:hover:bg-primary/10"
+                    onClick={openMenuPhotoDialog}
+                    data-testid="btn-menu-photo"
+                    title="Read a training menu photo and add skills to the practice list"
+                  >
+                    <Camera className="h-3.5 w-3.5" />
+                    Scan menu
+                  </Button>
+
+                  {/* ── Menu Photo Dialog ── */}
+                  <Dialog open={menuPhotoDialogOpen} onOpenChange={(o) => { if (!o && !menuPhotoLoading) setMenuPhotoDialogOpen(false); }}>
+                    <DialogContent aria-describedby={undefined} className="sm:max-w-lg max-h-[90dvh] flex flex-col gap-0 p-0 overflow-hidden">
+                      {/* Header */}
+                      <DialogHeader className="px-4 pt-4 pb-2 shrink-0 border-b">
+                        <DialogTitle className="flex items-center gap-2 text-sm">
+                          <Camera className="h-4 w-4 text-primary" />
+                          {menuStep === "upload" && "Pick a menu photo"}
+                          {menuStep === "crop" && "Select the area to read"}
+                          {menuStep === "chat" && "Review with AI"}
+                        </DialogTitle>
+                      </DialogHeader>
+
+                      <div className="flex-1 overflow-y-auto flex flex-col">
+
+                        {/* ── Step 1: Upload ── */}
+                        {menuStep === "upload" && (
+                          <div className="p-4 flex flex-col gap-4">
+                            <div
+                              className="relative rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer select-none"
+                              onClick={() => menuPhotoRef.current?.click()}
+                              onDragOver={(e) => e.preventDefault()}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                const f = e.dataTransfer.files?.[0];
+                                if (f && f.type.startsWith("image/")) pickMenuPhotoFile(f);
+                              }}
+                              data-testid="menu-photo-dropzone"
+                            >
+                              <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
+                                <Camera className="h-10 w-10 opacity-30" />
+                                <p className="text-sm font-medium">Tap to pick a photo</p>
+                                <p className="text-xs opacity-60">or drag one in · jpg, png, webp</p>
+                              </div>
+                            </div>
+                            <input ref={menuPhotoRef} type="file" accept="image/*" className="hidden" aria-hidden="true"
+                              onChange={(e) => { const f = e.target.files?.[0]; if (f) pickMenuPhotoFile(f); }}
+                              data-testid="input-menu-photo" />
+                          </div>
+                        )}
+
+                        {/* ── Step 2: Crop ── */}
+                        {menuStep === "crop" && menuPhotoDataUrl && (
+                          <div className="p-4 flex flex-col gap-3">
+                            <p className="text-xs text-muted-foreground">Draw a rectangle over the part of the menu you want the AI to read. Skip to use the whole photo.</p>
+                            <div className="relative select-none touch-none">
+                              {/* Hidden natural-size img for dimension reference */}
+                              <img ref={cropImgRef} src={menuPhotoDataUrl} alt="" className="hidden" />
+                              <canvas
+                                ref={cropCanvasRef}
+                                className="w-full rounded-xl border cursor-crosshair"
+                                style={{ touchAction: "none" }}
+                                onMouseDown={onCropPointerDown}
+                                onMouseMove={onCropPointerMove}
+                                onMouseUp={onCropPointerUp}
+                                onMouseLeave={onCropPointerUp}
+                                onTouchStart={onCropPointerDown}
+                                onTouchMove={onCropPointerMove}
+                                onTouchEnd={onCropPointerUp}
+                                data-testid="menu-crop-canvas"
+                              />
+                              {/* We draw the image + overlay rect onto the canvas via useEffect below */}
+                            </div>
+                            {cropRects.length > 0 && (
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-xs text-primary font-medium">
+                                  {cropRects.length} area{cropRects.length !== 1 ? "s" : ""} selected — draw more or proceed
+                                </p>
+                                <button
+                                  type="button"
+                                  className="text-xs text-muted-foreground hover:text-destructive underline"
+                                  onClick={() => setCropRects([])}
+                                  data-testid="btn-menu-crop-clear"
+                                >
+                                  Clear all
+                                </button>
+                              </div>
+                            )}
+                            {cropRects.length === 0 && (
+                              <p className="text-xs text-muted-foreground">Draw rectangles on the photo to select the areas you want the AI to read. You can select multiple.</p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* ── Step 3: Chat ── */}
+                        {menuStep === "chat" && (
+                          <div className="flex flex-col flex-1 min-h-0">
+                            {/* Crop thumbnail */}
+                            {menuCropDataUrl && (
+                              <div className="px-4 pt-3 pb-2 shrink-0">
+                                <img src={menuCropDataUrl} alt="Crop" className="max-h-28 rounded-lg border object-contain" />
+                              </div>
+                            )}
+                            {/* Messages */}
+                            <div className="flex-1 overflow-y-auto px-4 pb-2 flex flex-col gap-2" style={{ minHeight: 120 }}>
+                              {menuMessages.map((m, i) => (
+                                <div key={i} className={cn("rounded-xl px-3 py-2 text-sm max-w-[85%]",
+                                  m.role === "user"
+                                    ? "self-end bg-primary text-primary-foreground ml-auto"
+                                    : "self-start bg-muted text-foreground"
+                                )}>
+                                  {/* Strip the draft_entry block from assistant messages */}
+                                  {m.role === "assistant"
+                                    ? m.content.replace(/```draft_entry[\s\S]*?```/g, "").trim() || "(Draft ready — see below)"
+                                    : m.content
+                                  }
+                                </div>
+                              ))}
+                              {menuPhotoLoading && (
+                                <div className="self-start bg-muted rounded-xl px-3 py-2 flex items-center gap-2">
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground">Reading…</span>
+                                </div>
+                              )}
+                              <div ref={menuChatEndRef} />
+                            </div>
+                            {/* Draft ready banner */}
+                            {menuDraft && menuDraft.items.length > 0 && (
+                              <div className="mx-4 mb-2 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2 flex items-center justify-between gap-2 shrink-0">
+                                <p className="text-xs font-medium text-primary">{menuDraft.items.length} item{menuDraft.items.length !== 1 ? "s" : ""} ready</p>
+                                <Button size="sm" className="h-7 rounded-lg text-xs" onClick={goToReview} data-testid="btn-menu-review">
+                                  Review &amp; add →
+                                </Button>
+                              </div>
+                            )}
+                            {/* Quick-reply suggestions */}
+                            {menuSuggestions.length > 0 && !menuPhotoLoading && (
+                              <div className="px-4 pb-2 shrink-0 flex flex-wrap gap-1.5">
+                                {menuSuggestions.map((s, i) => (
+                                  <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() => submitMenuMessage(s)}
+                                    className="rounded-xl border border-primary/40 bg-primary/5 text-primary px-3 py-1.5 text-xs font-medium hover:bg-primary/15 transition-colors"
+                                    data-testid={`btn-menu-suggestion-${i}`}
+                                  >
+                                    {s}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {/* Input */}
+                            <div className="px-4 py-3 border-t shrink-0 flex gap-2">
+                              <input
+                                className="flex-1 rounded-xl border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 placeholder:text-muted-foreground/50"
+                                placeholder="Reply to the AI…"
+                                value={menuInput}
+                                onChange={(e) => setMenuInput(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitMenuMessage(); } }}
+                                disabled={menuPhotoLoading}
+                                data-testid="input-menu-chat"
+                              />
+                              <Button size="sm" className="rounded-xl shrink-0" onClick={() => submitMenuMessage()} disabled={!menuInput.trim() || menuPhotoLoading} data-testid="btn-menu-chat-send">
+                                Send
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Footer */}
+                      <div className="shrink-0 flex justify-between gap-2 px-4 py-3 border-t">
+                        <Button type="button" variant="outline" size="sm" className="rounded-xl"
+                          onClick={() => {
+                            if (menuStep === "crop") { setMenuStep("upload"); }
+                            else if (menuStep === "chat") { setMenuStep("crop"); }
+                            else { setMenuPhotoDialogOpen(false); }
+                          }}
+                          disabled={menuPhotoLoading}
+                          data-testid="btn-menu-back"
+                        >
+                          {menuStep === "upload" ? "Cancel" : "← Back"}
+                        </Button>
+                        {menuStep === "crop" && (
+                          <Button type="button" size="sm" className="rounded-xl gap-1.5"
+                            onClick={proceedToChat}
+                            data-testid="btn-menu-proceed"
+                          >
+                            <Camera className="h-3.5 w-3.5" />
+                            {cropRects.length > 1 ? `Use ${cropRects.length} areas` : cropRects.length === 1 ? "Use selection" : "Use whole photo"}
+                          </Button>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  {/* ── Menu review Dialog ── */}
+                  <Dialog open={menuReviewOpen} onOpenChange={o => !o && setMenuReviewOpen(false)}>
+                    <DialogContent aria-describedby={undefined} className="sm:max-w-2xl max-h-[92dvh] flex flex-col p-0 gap-0">
+                      <DialogHeader className="px-4 pt-4 pb-3 border-b shrink-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <DialogTitle className="text-sm font-bold uppercase tracking-wider font-mono">Review menu</DialogTitle>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {menuReviewItems.length} item{menuReviewItems.length !== 1 ? "s" : ""}
+                              {menuReviewUnmatched.length > 0 && ` · ${menuReviewUnmatched.length} unmatched`}
+                            </span>
+                            <Button size="sm" className="rounded-xl gap-1.5 h-8" onClick={confirmMenuReview} disabled={menuReviewItems.length === 0} data-testid="btn-menu-review-confirm">
+                              <Check className="h-3.5 w-3.5" />
+                              Add to session
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogHeader>
+
+                      <div className="flex-1 flex flex-col sm:flex-row overflow-hidden min-h-0">
+                        {/* Left: crop photo */}
+                        {menuCropDataUrl && (
+                          <div className="sm:w-2/5 sm:border-r border-b sm:border-b-0 p-3 flex items-start justify-center overflow-y-auto shrink-0">
+                            <img src={menuCropDataUrl} alt="Menu" className="w-full rounded-lg border object-contain max-h-48 sm:max-h-none" />
+                          </div>
+                        )}
+
+                        {/* Right: editable list */}
+                        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+                          {menuReviewItems.length === 0 && (
+                            <p className="text-sm text-muted-foreground italic">No items — go back to the chat and adjust.</p>
+                          )}
+                          {menuReviewItems.map((it, idx) => (
+                            <div key={idx} className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5" data-testid={`menu-review-item-${idx}`}>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-mono font-semibold truncate">{it.codes.join(" + ")}</p>
+                                <p className="text-xs text-muted-foreground truncate">{it.names.join(" + ")}</p>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg"
+                                  onClick={() => setMenuReviewItems(prev => prev.map((r, i) => i === idx ? { ...r, reps: Math.max(1, r.reps - 1) } : r))}
+                                  data-testid={`btn-review-reps-minus-${idx}`}>
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                <input type="number" min={1} max={999} value={it.reps}
+                                  onChange={e => { const n = parseInt(e.target.value); if (!isNaN(n) && n >= 1) setMenuReviewItems(prev => prev.map((r, i) => i === idx ? { ...r, reps: Math.min(999, n) } : r)); }}
+                                  className="w-10 text-center text-sm font-mono bg-transparent border-b focus:outline-none focus:border-primary"
+                                  data-testid={`input-review-reps-${idx}`} />
+                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg"
+                                  onClick={() => setMenuReviewItems(prev => prev.map((r, i) => i === idx ? { ...r, reps: Math.min(999, r.reps + 1) } : r))}
+                                  data-testid={`btn-review-reps-plus-${idx}`}>
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive"
+                                  onClick={() => setMenuReviewItems(prev => prev.filter((_, i) => i !== idx))}
+                                  data-testid={`btn-review-remove-${idx}`}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                          {menuReviewUnmatched.length > 0 && (
+                            <div className="rounded-xl border border-dashed border-muted-foreground/30 px-3 py-2.5">
+                              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Not matched</p>
+                              {menuReviewUnmatched.map((u, i) => <p key={i} className="text-xs text-muted-foreground font-mono">{u}</p>)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 flex justify-between gap-2 px-4 py-3 border-t">
+                        <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => setMenuReviewOpen(false)} data-testid="btn-menu-review-back">
+                          ← Back to chat
+                        </Button>
+                        <Button size="sm" className="rounded-xl gap-1.5" onClick={confirmMenuReview} disabled={menuReviewItems.length === 0} data-testid="btn-menu-review-confirm-footer">
+                          <Check className="h-3.5 w-3.5" />
+                          Add to session
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
 
                 <Dialog open={showNewSkill} onOpenChange={(o) => { if (!o) { setShowNewSkill(false); setNewSkillStep(1); } }}>
