@@ -5,6 +5,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { isAuthenticated, getUserId, getBaseUrl } from "./auth";
 import { getPushRecommendation, coachChat, parseMenuPhoto, menuChat, generateSuggestions, CoachUnavailableError } from "./coach";
+import { serveCoachImage } from "./coach-images";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
@@ -645,19 +646,16 @@ export async function registerRoutes(
       } catch {
         return res.status(404).json({ message: "Not found" });
       }
-      const dataUrl = Array.isArray(images) ? images[idx] : undefined;
-      const match =
-        typeof dataUrl === "string"
-          ? dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/)
-          : null;
-      if (!match) return res.status(404).json({ message: "Not found" });
-      const buf = Buffer.from(match[2], "base64");
-      res.setHeader("Content-Type", match[1]);
-      res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
-      res.send(buf);
+      const entry = Array.isArray(images) ? images[idx] : undefined;
+      const served = await serveCoachImage(getUserId(req), entry, res);
+      if (!served) return res.status(404).json({ message: "Not found" });
     } catch (err) {
       console.error("Coach message image error:", err);
-      res.status(500).json({ message: "Internal server error" });
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Internal server error" });
+      } else {
+        res.end();
+      }
     }
   });
 

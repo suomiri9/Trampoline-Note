@@ -81,7 +81,7 @@ export const coachMessages = pgTable("coach_messages", {
   userId: varchar("user_id").notNull(),
   role: text("role").notNull(), // "user" | "assistant"
   content: text("content").notNull(),
-  images: text("images"), // JSON array of data-URL images attached to a user message; null when none
+  images: text("images"), // JSON array of images attached to a user message; entries are object-storage refs {key, contentType} (new) or legacy base64 data URLs; null when none
   draft: text("draft"), // JSON draft training-log entry proposed by the assistant; null when none
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

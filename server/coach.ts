@@ -7,6 +7,7 @@
 
 import OpenAI from "openai";
 import { storage } from "./storage";
+import { storeCoachImages } from "./coach-images";
 import { getWhoopDashboardDataCached, WhoopNotConnectedError } from "./whoop";
 import type { Skill, Routine, NoteResponse } from "@shared/schema";
 
@@ -581,8 +582,19 @@ export async function coachChat(
 
   // Persist both turns only after a successful model reply so a failed send
   // can simply be retried without duplicate user messages in history.
+  // Photos go to object storage (DB keeps only refs); if the upload fails we
+  // fall back to the legacy inline data-URL storage so the chat isn't lost.
+  let storedImages: string | null = null;
+  if (images && images.length > 0) {
+    try {
+      storedImages = JSON.stringify(await storeCoachImages(userId, images));
+    } catch (err) {
+      console.error("[coach] image upload to object storage failed, storing inline:", err);
+      storedImages = JSON.stringify(images);
+    }
+  }
   await storage.createCoachMessage(userId, "user", userMessage, {
-    images: images && images.length > 0 ? JSON.stringify(images) : null,
+    images: storedImages,
   });
   await storage.createCoachMessage(userId, "assistant", finalReply, {
     draft: draft ? JSON.stringify(draft) : null,
