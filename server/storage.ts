@@ -86,6 +86,7 @@ export interface IStorage {
 
   // AI coach chat history (per user)
   getCoachMessages(userId: string): Promise<CoachMessage[]>;
+  getCoachMessage(userId: string, id: number): Promise<CoachMessage | undefined>;
   createCoachMessage(userId: string, role: "user" | "assistant", content: string, extras?: { images?: string | null; draft?: string | null }): Promise<CoachMessage>;
   clearCoachMessages(userId: string): Promise<void>;
 }
@@ -494,6 +495,12 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(coachMessages)
       .where(eq(coachMessages.userId, userId))
       .orderBy(coachMessages.createdAt, coachMessages.id);
+  }
+
+  async getCoachMessage(userId: string, id: number): Promise<CoachMessage | undefined> {
+    const [row] = await db.select().from(coachMessages)
+      .where(and(eq(coachMessages.userId, userId), eq(coachMessages.id, id)));
+    return row;
   }
 
   async createCoachMessage(

@@ -61,3 +61,4 @@ subsequent authenticated curl requests (with `-c`/`-b` cookie jar) when testing
 API routes from bash.
 
 - Coach chat vision: the model denies seeing a 1×1 test pixel ("no photo attached"); use a real ≥64px image when verifying image sends.
+- Dev auto-login (`DEV_AUTO_LOGIN=1`, non-prod) signs any cookieless `/api` request in as the demo user, so unauthenticated curl returning 200 in dev is NOT a missing-auth bug; `isAuthenticated` still enforces 401 in production.

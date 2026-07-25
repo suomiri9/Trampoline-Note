@@ -599,12 +599,64 @@ export async function registerRoutes(
     }
   });
 
+  // History list: base64 images are stripped and replaced with per-image
+  // URLs so the payload stays small as photo history grows. The images
+  // column still holds a JSON string array, just of URLs instead of data
+  // URLs, so existing clients parse it unchanged.
   app.get("/api/coach/messages", isAuthenticated, async (req, res) => {
     try {
       const msgs = await storage.getCoachMessages(getUserId(req));
-      res.json(msgs);
+      const light = msgs.map((m) => {
+        if (!m.images) return m;
+        let count = 0;
+        try {
+          const parsed = JSON.parse(m.images);
+          count = Array.isArray(parsed) ? parsed.length : 0;
+        } catch {}
+        if (count === 0) return { ...m, images: null };
+        const urls = Array.from(
+          { length: count },
+          (_, i) => `/api/coach/messages/${m.id}/images/${i}`,
+        );
+        return { ...m, images: JSON.stringify(urls) };
+      });
+      res.json(light);
     } catch (err) {
       console.error("Coach messages error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Serves one stored chat image (decoded from its data URL) so the history
+  // list doesn't have to embed multi-megabyte base64 blobs. Messages are
+  // immutable, so the response is cacheable per user.
+  app.get("/api/coach/messages/:id/images/:idx", isAuthenticated, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const idx = Number(req.params.idx);
+      if (!Number.isInteger(id) || !Number.isInteger(idx) || idx < 0) {
+        return res.status(400).json({ message: "Bad request" });
+      }
+      const msg = await storage.getCoachMessage(getUserId(req), id);
+      if (!msg?.images) return res.status(404).json({ message: "Not found" });
+      let images: unknown;
+      try {
+        images = JSON.parse(msg.images);
+      } catch {
+        return res.status(404).json({ message: "Not found" });
+      }
+      const dataUrl = Array.isArray(images) ? images[idx] : undefined;
+      const match =
+        typeof dataUrl === "string"
+          ? dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/)
+          : null;
+      if (!match) return res.status(404).json({ message: "Not found" });
+      const buf = Buffer.from(match[2], "base64");
+      res.setHeader("Content-Type", match[1]);
+      res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
+      res.send(buf);
+    } catch (err) {
+      console.error("Coach message image error:", err);
       res.status(500).json({ message: "Internal server error" });
     }
   });
