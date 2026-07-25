@@ -199,7 +199,7 @@ export default function WhoopPage() {
               <ArrowRight className="w-6 h-6 text-muted-foreground" />
               <img
                 src="/icon-192.png"
-                alt="Trampoline Training Log"
+                alt="Trampoline Note"
                 className="w-14 h-14 rounded-2xl shadow-lg shadow-black/40"
                 data-testid="icon-app-logo"
               />

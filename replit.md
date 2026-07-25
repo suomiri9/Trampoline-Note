@@ -1,4 +1,4 @@
-# Trampoline Training Log
+# Trampoline Note
 
 A full-stack trampoline training note app built with React, Express, Drizzle ORM, and PostgreSQL.
 
@@ -205,7 +205,7 @@ Centralizes page titles.
 
 ## Splash screen
 
-In-app splash overlay (`client/src/components/splash-screen.tsx`, `SplashScreen`) rendered at the App root (`App.tsx`, above `AppContent`) so it covers login + app. Shows on EVERY page load (not localStorage-gated — that is the "every time opened" requirement), then auto-fades after ~1.5s (`VISIBLE_MS`/`FADE_MS`, opacity transition then unmounts). On-brand: dark `bg-mesh` background, app icon (`/icon-512.png`) with a trampoline `animate-splash-bounce` (keyframes in `index.css`, disabled under `prefers-reduced-motion`), `page-title` "Trampoline **Log**" (accent on Log), and a mono `.eyebrow` "Jump · Log · Progress". This is the macOS/desktop splash — native iOS `apple-touch-startup-image` launch images (in `index.html`) only apply to installed iOS PWAs, so the in-app splash is SKIPPED only there to avoid double-splash. NOTE: `navigator.standalone === true` is true for BOTH iOS home-screen PWAs AND macOS "Add to Dock" web apps, so the skip is gated on `standalone === true && isIosDevice` (UA `iPad|iPhone|iPod`, or iPadOS-as-desktop `platform === "MacIntel" && maxTouchPoints > 1`) — a MacBook dock app is NOT an iOS device, so it still shows the splash (the apple-touch-startup-image media queries never match a Mac, so there is no native splash to double up). Shows everywhere else (macOS dock/browser, desktop PWA, browser tabs).
+In-app splash overlay (`client/src/components/splash-screen.tsx`, `SplashScreen`) rendered at the App root (`App.tsx`, above `AppContent`) so it covers login + app. Shows on EVERY page load (not localStorage-gated — that is the "every time opened" requirement), then auto-fades after ~1.5s (`VISIBLE_MS`/`FADE_MS`, opacity transition then unmounts). On-brand: dark `bg-mesh` background, app icon (`/icon-512.png`) with a trampoline `animate-splash-bounce` (keyframes in `index.css`, disabled under `prefers-reduced-motion`), `page-title` "Trampoline **Note**" (accent on Note), and a mono `.eyebrow` "Jump · Log · Progress". This is the macOS/desktop splash — native iOS `apple-touch-startup-image` launch images (in `index.html`) only apply to installed iOS PWAs, so the in-app splash is SKIPPED only there to avoid double-splash. NOTE: `navigator.standalone === true` is true for BOTH iOS home-screen PWAs AND macOS "Add to Dock" web apps, so the skip is gated on `standalone === true && isIosDevice` (UA `iPad|iPhone|iPod`, or iPadOS-as-desktop `platform === "MacIntel" && maxTouchPoints > 1`) — a MacBook dock app is NOT an iOS device, so it still shows the splash (the apple-touch-startup-image media queries never match a Mac, so there is no native splash to double up). Shows everywhere else (macOS dock/browser, desktop PWA, browser tabs).
 
 ## Offline Mode (PWA + sync queue)
 

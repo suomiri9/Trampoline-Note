@@ -1,4 +1,4 @@
-/* Trampoline Log offline service worker.
+/* Trampoline Note offline service worker.
  * Pre-caches the navigation shell and lazily caches built JS/CSS/fonts/icons
  * so an installed PWA can launch with zero network. API requests are NOT
  * intercepted — offline behaviour for data is handled at the React layer. */

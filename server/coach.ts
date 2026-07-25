@@ -265,7 +265,7 @@ const MAX_HISTORY_TURNS = 20;
 // Short guide to the app so the coach can also help the athlete USE the app
 // (finding features, logging sessions, etc.) — not just interpret their data.
 const APP_GUIDE = `
-App guide (Trampoline Training Log):
+App guide (Trampoline Note):
 - Training ("/", bottom-nav "Training"): the main log. Tap the "Start Training" button to log a session with date, start/end time, a star rating (1-5), free-text notes, and a practice list of skills/drills/routines/connections (with reps). The "Recent" row offers quick re-adds. Sessions show their total DD (degree of difficulty).
 - Score ("/score"): record practice/trial/competition scores with E (execution), D (difficulty), HD (horizontal displacement) and T (time of flight); supports Set/Vol routines, prelims+final rounds, synchro mode, partial attempts ("skills done"), and shows a Competition Personal Best card.
 - Progress ("/stats"): charts of training load (DD per session), ratings, score trends and WHOOP overlays.

@@ -5,7 +5,7 @@ const SECTIONS: Array<{ title: string; body: string[] }> = [
   {
     title: "What this app is",
     body: [
-      "Trampoline Training Log is a personal training diary for trampoline athletes. You create an account with an email address and password and log your own training sessions, skills, routines and competition scores.",
+      "Trampoline Note is a personal training diary for trampoline athletes. You create an account with an email address and password and log your own training sessions, skills, routines and competition scores.",
     ],
   },
   {
@@ -54,7 +54,7 @@ export default function PrivacyPage() {
     <div className="min-h-[100svh] bg-mesh px-5 py-10 flex justify-center">
       <div className="w-full max-w-2xl">
         <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-1" data-testid="text-privacy-eyebrow">
-          Trampoline Training Log
+          Trampoline Note
         </p>
         <h1 className="text-2xl font-bold mb-2" data-testid="text-privacy-title">
           Privacy Policy

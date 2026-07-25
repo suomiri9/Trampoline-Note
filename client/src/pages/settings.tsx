@@ -860,7 +860,7 @@ export default function SettingsPage() {
 
           <div className="space-y-6">
             <div className="rounded-2xl card-3d p-4 text-center">
-              <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60">Trampoline Log · v{appVersion}</span>
+              <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60">Trampoline Note · v{appVersion}</span>
             </div>
           </div>
         </div>

@@ -51,7 +51,7 @@ export function SplashScreen() {
         />
         <div className="flex flex-col items-center gap-2.5">
           <h1 className="page-title text-5xl">
-            Trampoline <span className="title-accent">Log</span>
+            Trampoline <span className="title-accent">Note</span>
           </h1>
           <p className="eyebrow text-[11px] text-muted-foreground/70">
             Jump · Log · Progress
