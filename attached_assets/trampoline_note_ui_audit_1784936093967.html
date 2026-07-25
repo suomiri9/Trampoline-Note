@@ -1,0 +1,150 @@
+
+<style>
+  body { margin: 0; padding: 0; }
+  .wrap { font-family: var(--font-sans); padding: 1.5rem; max-width: 720px; }
+  h1 { font-family: var(--font-display, 'Bebas Neue', sans-serif); font-size: 32px; letter-spacing: 0.04em; margin: 0 0 4px; color: var(--color-text-primary); }
+  .sub { font-size: 12px; color: var(--color-text-secondary); font-family: var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 28px; }
+  .section { margin-bottom: 28px; }
+  .section-title { font-size: 10px; font-family: var(--font-mono); letter-spacing: 0.15em; text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--color-border); }
+  .issue { display: flex; gap: 12px; padding: 12px 14px; border-radius: 12px; margin-bottom: 8px; border: 1px solid; }
+  .issue-high { background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.2); }
+  .issue-mid  { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.2); }
+  .issue-low  { background: rgba(79,110,247,0.06); border-color: rgba(79,110,247,0.2); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .dot-high { background: #ef4444; }
+  .dot-mid  { background: #f59e0b; }
+  .dot-low  { background: #4f6ef7; }
+  .issue-body { flex: 1; }
+  .issue-label { font-size: 13px; font-weight: 600; margin-bottom: 3px; color: var(--color-text-primary); }
+  .issue-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; }
+  .issue-fix { font-size: 11px; font-family: var(--font-mono); color: #4f6ef7; margin-top: 5px; }
+  .page-tag { font-size: 9px; font-family: var(--font-mono); letter-spacing: 0.1em; padding: 1px 6px; border-radius: 4px; background: var(--color-surface-raised); color: var(--color-text-secondary); border: 1px solid var(--color-border); margin-left: 6px; vertical-align: middle; }
+  .legend { display: flex; gap: 16px; margin-bottom: 20px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--color-text-secondary); }
+</style>
+<div class="wrap">
+  <h1>UI Audit</h1>
+  <div class="sub">// trampolinenote.com · july 2026</div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="dot dot-high"></div> High priority</div>
+    <div class="legend-item"><div class="dot dot-mid"></div> Medium</div>
+    <div class="legend-item"><div class="dot dot-low"></div> Polish</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Note Card (Training Log)</div>
+    <div class="issue issue-high">
+      <div class="dot dot-high"></div>
+      <div class="issue-body">
+        <div class="issue-label">Too much crammed into one line of metadata</div>
+        <div class="issue-desc">Date, time range, star rating, and WHOOP recovery/strain all sit in a single wrapping flex row in 10px mono text. On mobile it wraps unpredictably and the stars get mixed in with timestamps.</div>
+        <div class="issue-fix">→ Split into two rows: date/time on top, ratings/WHOOP on a second row. Give stars their own visual space.</div>
+      </div>
+    </div>
+    <div class="issue issue-high">
+      <div class="dot dot-high"></div>
+      <div class="issue-body">
+        <div class="issue-label">Skill grouping logic is visually complex</div>
+        <div class="issue-desc">The card renders singles, connections (red), routines (blue badge), FC groups, and PART items all with different colours, badges, and ×reps=total maths inline. It's hard to scan at a glance.</div>
+        <div class="issue-fix">→ Use a consistent row format: icon/badge · name · DD×reps. Collapse connection maths behind a tap. Limit badge colours to 2–3 max.</div>
+      </div>
+    </div>
+    <div class="issue issue-mid">
+      <div class="dot dot-mid"></div>
+      <div class="issue-body">
+        <div class="issue-label">The ⋮ menu is the only way to edit</div>
+        <div class="issue-desc">Tapping the card body does nothing — you have to find the tiny MoreVertical button. On mobile this is easy to miss.</div>
+        <div class="issue-fix">→ Make the whole card tappable to open the edit dialog, keep ⋮ for delete only.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Note Dialog (Log Training Session)</div>
+    <div class="issue issue-high">
+      <div class="dot dot-high"></div>
+      <div class="issue-body">
+        <div class="issue-label">Single tall form with too many sections</div>
+        <div class="issue-desc">Date, time range, sleep, rating, skills search, practice list, connect-next, focus memo, and notes are all in one scrolling sheet. The note-dialog.tsx is 120KB — the largest file in the whole codebase.</div>
+        <div class="issue-fix">→ Break into 2 steps: Step 1 = date/time/rating/sleep (quick). Step 2 = skills + notes (detail). Or use a tab strip inside the dialog.</div>
+      </div>
+    </div>
+    <div class="issue issue-mid">
+      <div class="dot dot-mid"></div>
+      <div class="issue-body">
+        <div class="issue-label">CONNECT NEXT button is unclear</div>
+        <div class="issue-desc">The red-outlined "CONNECT NEXT" button sits next to the search field with no tooltip or explanation. New users won't know what it does.</div>
+        <div class="issue-fix">→ Rename to "+ Link" or "Chain" with a tooltip. Or move it inline after a skill is added (contextual rather than always visible).</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Skills Page</div>
+    <div class="issue issue-high">
+      <div class="dot dot-high"></div>
+      <div class="issue-body">
+        <div class="issue-label">Table + tabs + reorder mode + form + shape editor = too many modes</div>
+        <div class="issue-desc">The skills page has: tab switcher (Skills/Drills/Connections/Archived), a reorder mode toggle, an add form, inline shape editing, a shape drafts editor, and a skill detail drill-down. All in one page.</div>
+        <div class="issue-fix">→ Move Add/Edit into a bottom sheet. Move Archived into a separate route or a hidden section. Keep the main view as just the list + search.</div>
+      </div>
+    </div>
+    <div class="issue issue-mid">
+      <div class="dot dot-mid"></div>
+      <div class="issue-body">
+        <div class="issue-label">Shape hierarchy not visually obvious</div>
+        <div class="issue-desc">Parent skills and their shapes appear in the same flat table rows, differentiated only by indentation and a small chevron. Easy to lose track of nesting.</div>
+        <div class="issue-fix">→ The dropdown tree you're already building is the right fix. Make sure the indent + colour contrast between parent and child is strong enough.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Score Page</div>
+    <div class="issue issue-mid">
+      <div class="dot dot-mid"></div>
+      <div class="issue-body">
+        <div class="issue-label">Score form has too many optional fields visible at once</div>
+        <div class="issue-desc">Fields like competitionId, round, synchro, doubleExecution, executionTwo are shown even for practice entries. The form feels like a tax return.</div>
+        <div class="issue-fix">→ Show only: date, type (practice/comp), routine, E/DD/H/ToF, total. Reveal competition-specific fields only when type = competition.</div>
+      </div>
+    </div>
+    <div class="issue issue-low">
+      <div class="dot dot-low"></div>
+      <div class="issue-body">
+        <div class="issue-label">Chart tab and list tab feel disconnected</div>
+        <div class="issue-desc">The score history chart and the score list are on separate tabs, so you can't see a score in context while viewing the trend.</div>
+        <div class="issue-fix">→ Put the chart at the top, list below it on the same scroll. Or make clicking a chart point highlight that score in the list.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Navigation & Global</div>
+    <div class="issue issue-high">
+      <div class="dot dot-high"></div>
+      <div class="issue-body">
+        <div class="issue-label">Bottom nav has 6 items — too many for mobile</div>
+        <div class="issue-desc">Training, Score, Stats, Skills, Routines, Settings all need to fit in the nav bar. Labels get tiny and mis-taps are common.</div>
+        <div class="issue-fix">→ Reduce to 4 primary tabs (Log, Score, Skills, More). Put Routines and Settings under "More". This also frees up label width.</div>
+      </div>
+    </div>
+    <div class="issue issue-mid">
+      <div class="dot dot-mid"></div>
+      <div class="issue-body">
+        <div class="issue-label">Points to Fix competes with Start Training</div>
+        <div class="issue-desc">Both are primary-looking buttons in the header. "Points to Fix" is important but it's not the main action — it shouldn't fight Start Training for attention.</div>
+        <div class="issue-fix">→ Make "Points to Fix" a ghost/secondary style, or move it to a persistent banner/widget below the header instead of next to the primary CTA.</div>
+      </div>
+    </div>
+    <div class="issue issue-low">
+      <div class="dot dot-low"></div>
+      <div class="issue-body">
+        <div class="issue-label">Inconsistent border-radius across components</div>
+        <div class="issue-desc">Cards use rounded-2xl, dialogs use various radii, badges use rounded-full or rounded-xl. The --radius token is 0.75rem but not applied consistently.</div>
+        <div class="issue-fix">→ Pick one radius scale (sm=6px, md=12px, lg=18px, xl=24px) and apply it everywhere. Cards=lg, dialogs=xl, badges=sm.</div>
+      </div>
+    </div>
+  </div>
+</div>
