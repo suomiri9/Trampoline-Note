@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertNoteSchema, notes, skills, routines, scores, insertSkillSchema, insertRoutineSchema, insertScoreSchema } from './schema';
+import { insertNoteSchema, notes, skills, routines, scores, tofSessions, insertSkillSchema, insertRoutineSchema, insertScoreSchema, insertTofSessionSchema } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -127,6 +127,42 @@ export const api = {
       responses: {
         200: z.custom<typeof routines.$inferSelect>(),
         400: errorSchemas.validation,
+        404: errorSchemas.notFound,
+      },
+    },
+  },
+  tofSessions: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/tof-sessions' as const,
+      responses: {
+        200: z.array(z.custom<typeof tofSessions.$inferSelect>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/tof-sessions' as const,
+      input: insertTofSessionSchema,
+      responses: {
+        201: z.custom<typeof tofSessions.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/tof-sessions/:id' as const,
+      input: insertTofSessionSchema.partial(),
+      responses: {
+        200: z.custom<typeof tofSessions.$inferSelect>(),
+        400: errorSchemas.validation,
+        404: errorSchemas.notFound,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/tof-sessions/:id' as const,
+      responses: {
+        204: z.void(),
         404: errorSchemas.notFound,
       },
     },

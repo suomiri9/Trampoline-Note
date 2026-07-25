@@ -20,9 +20,11 @@ const ScorePage = lazy(() => import("@/pages/score"));
 const SettingsPage = lazy(() => import("@/pages/settings"));
 const WhoopPage = lazy(() => import("@/pages/whoop"));
 const CoachPage = lazy(() => import("@/pages/coach"));
+const TofPage = lazy(() => import("@/pages/tof"));
+const TofSkillPage = lazy(() => import("@/pages/tof-skill"));
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Target, Layers, BarChart3, Trophy, Loader2, Settings, HeartPulse, Bot, MoreHorizontal } from "lucide-react";
+import { LayoutDashboard, Target, Layers, BarChart3, Trophy, Loader2, Settings, HeartPulse, Bot, MoreHorizontal, Timer } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,6 +53,7 @@ function Navigation() {
   const moreItems = [
     { href: "/whoop", label: "WHOOP", icon: HeartPulse, iconColor: "text-rose-600 dark:text-rose-400" },
     { href: "/coach", label: "Coach", icon: Bot, iconColor: "text-cyan-600 dark:text-cyan-400" },
+    { href: "/tof", label: "ToF", icon: Timer, iconColor: "text-amber-600 dark:text-amber-400" },
     ...(user ? [{ href: "/settings", label: "Settings", icon: Settings }] : []),
   ];
   const moreActive = moreItems.some(
@@ -154,6 +157,8 @@ function Router() {
         <Route path="/routines/:id" component={RoutineDetailPage} />
         <Route path="/whoop" component={WhoopPage} />
         <Route path="/coach" component={CoachPage} />
+        <Route path="/tof" component={TofPage} />
+        <Route path="/tof/skill/:id" component={TofSkillPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/privacy" component={PrivacyPage} />
         <Route path="/forgot-password"><Redirect to="/" /></Route>

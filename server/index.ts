@@ -14,8 +14,8 @@ declare module "http" {
   }
 }
 
-// The coach chat route accepts base64 photo attachments, so it alone gets a
-// raised JSON body limit; every other route keeps the express default.
+// Routes that accept base64 photo attachments get a raised JSON body limit;
+// every other route keeps the express default.
 const defaultJson = express.json({
   verify: (req, _res, buf) => {
     req.rawBody = buf;
@@ -27,7 +27,12 @@ const coachJson = express.json({
     req.rawBody = buf;
   },
 });
-const LARGE_BODY_ROUTES = new Set(["/api/coach/messages", "/api/coach/parse-menu", "/api/coach/menu-chat"]);
+const LARGE_BODY_ROUTES = new Set([
+  "/api/coach/messages",
+  "/api/coach/parse-menu",
+  "/api/coach/menu-chat",
+  "/api/tof-sessions/parse-screenshot",
+]);
 app.use((req, res, next) => {
   if (req.method === "POST" && LARGE_BODY_ROUTES.has(req.path)) {
     return coachJson(req, res, next);

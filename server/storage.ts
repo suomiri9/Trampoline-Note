@@ -13,6 +13,9 @@ import {
   type InsertRoutine,
   type Score,
   type InsertScore,
+  tofSessions,
+  type TofSession,
+  type InsertTofSession,
   whoopTokens,
   type WhoopToken,
   coachMessages,
@@ -33,6 +36,15 @@ export class SkillLinkError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "SkillLinkError";
+  }
+}
+
+// Thrown when a ToF session references a routine the user doesn't own.
+// Routes map this to a 400.
+export class TofRoutineError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TofRoutineError";
   }
 }
 
@@ -62,6 +74,12 @@ export interface IStorage {
   createScore(userId: string, score: InsertScore): Promise<Score>;
   updateScore(id: number, userId: string, updates: Partial<InsertScore>): Promise<Score | undefined>;
   deleteScore(id: number, userId: string): Promise<void>;
+
+  // ToF sessions
+  getTofSessions(userId: string): Promise<TofSession[]>;
+  createTofSession(userId: string, session: InsertTofSession): Promise<TofSession>;
+  updateTofSession(id: number, userId: string, updates: Partial<InsertTofSession>): Promise<TofSession | undefined>;
+  deleteTofSession(id: number, userId: string): Promise<void>;
 
   // Reorder
   reorderSkills(userId: string, orderedIds: number[]): Promise<void>;
@@ -340,6 +358,38 @@ export class DatabaseStorage implements IStorage {
 
   async deleteScore(id: number, userId: string): Promise<void> {
     await db.delete(scores).where(and(eq(scores.id, id), eq(scores.userId, userId)));
+  }
+
+  async getTofSessions(userId: string): Promise<TofSession[]> {
+    return await db.select().from(tofSessions)
+      .where(eq(tofSessions.userId, userId))
+      .orderBy(desc(tofSessions.date), desc(tofSessions.id));
+  }
+
+  // A ToF session may only reference a routine owned by the same user.
+  private async assertOwnRoutine(userId: string, routineId: number): Promise<void> {
+    const [routine] = await db.select({ id: routines.id }).from(routines)
+      .where(and(eq(routines.id, routineId), eq(routines.userId, userId)));
+    if (!routine) throw new TofRoutineError("Routine not found");
+  }
+
+  async createTofSession(userId: string, session: InsertTofSession): Promise<TofSession> {
+    await this.assertOwnRoutine(userId, session.routineId);
+    const [row] = await db.insert(tofSessions).values({ ...session, userId }).returning();
+    return row;
+  }
+
+  async updateTofSession(id: number, userId: string, updates: Partial<InsertTofSession>): Promise<TofSession | undefined> {
+    if (updates.routineId != null) await this.assertOwnRoutine(userId, updates.routineId);
+    const [updated] = await db.update(tofSessions)
+      .set(updates)
+      .where(and(eq(tofSessions.id, id), eq(tofSessions.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteTofSession(id: number, userId: string): Promise<void> {
+    await db.delete(tofSessions).where(and(eq(tofSessions.id, id), eq(tofSessions.userId, userId)));
   }
 
   async reorderSkills(userId: string, orderedIds: number[]): Promise<void> {

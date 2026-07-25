@@ -1,0 +1,514 @@
+import { useMemo, useRef, useState } from "react";
+import { useLocation } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { api, buildUrl } from "@shared/routes";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useRoutines } from "@/hooks/use-routines";
+import { useSkills } from "@/hooks/use-skills";
+import { skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
+import { PageLayout } from "@/components/page-layout";
+import { PageHeader, primaryActionClass } from "@/components/page-header";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Timer, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDown, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { TofSession, InsertTofSession } from "@shared/schema";
+
+const MAX_DATA_URL_CHARS = 4 * 1024 * 1024;
+
+// Compress an image file to a JPEG data URL small enough for the parse API.
+async function fileToDataUrl(file: File): Promise<string> {
+  const rawUrl: string = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("could not read file"));
+    reader.readAsDataURL(file);
+  });
+  if (rawUrl.length <= MAX_DATA_URL_CHARS && /^data:image\/(jpeg|png|webp);base64,/.test(rawUrl)) {
+    return rawUrl;
+  }
+  const img: HTMLImageElement = await new Promise((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error("not a readable image"));
+    el.src = rawUrl;
+  });
+  const maxSide = 1600;
+  const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+  const w = Math.max(1, Math.round(img.width * scale));
+  const h = Math.max(1, Math.round(img.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas unavailable");
+  ctx.drawImage(img, 0, 0, w, h);
+  for (const quality of [0.85, 0.7, 0.5]) {
+    const out = canvas.toDataURL("image/jpeg", quality);
+    if (out.length <= MAX_DATA_URL_CHARS) return out;
+  }
+  throw new Error("image too large even after compression");
+}
+
+function fmtDate(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return `${d}-${m}-${y}`;
+}
+
+const emptyValues = () => Array.from({ length: 10 }, () => "");
+
+export default function TofPage() {
+  const { toast } = useToast();
+  const [, navigate] = useLocation();
+  const { data: routines } = useRoutines();
+  const { data: allSkills } = useSkills();
+
+  const { data: sessions, isLoading } = useQuery<TofSession[]>({
+    queryKey: [api.tofSessions.list.path],
+  });
+
+  const activeRoutines = (routines ?? []).filter(r => r.archived !== 1);
+  const routineById = useMemo(() => new Map((routines ?? []).map(r => [r.id, r])), [routines]);
+
+  // ---- Form state ----
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<TofSession | null>(null);
+  const [date, setDate] = useState(() => new Date().toISOString().substring(0, 10));
+  const [routineId, setRoutineId] = useState<string>("");
+  const [values, setValues] = useState<string[]>(emptyValues());
+  const [preJump, setPreJump] = useState("");
+  const [note, setNote] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<TofSession | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const resetForm = () => {
+    setEditing(null);
+    setDate(new Date().toISOString().substring(0, 10));
+    setRoutineId("");
+    setValues(emptyValues());
+    setPreJump("");
+    setNote("");
+  };
+
+  const openNew = () => { resetForm(); setShowForm(true); };
+
+  const startEdit = (s: TofSession) => {
+    setEditing(s);
+    setDate(s.date);
+    setRoutineId(String(s.routineId));
+    const vals = emptyValues();
+    (s.tofValues ?? []).forEach((v, i) => { if (i < 10) vals[i] = String(v); });
+    setValues(vals);
+    setPreJump(s.preJumpTof != null ? String(s.preJumpTof) : "");
+    setNote(s.note ?? "");
+    setShowForm(true);
+  };
+
+  const closeForm = (open: boolean) => {
+    if (!open) { setShowForm(false); resetForm(); }
+  };
+
+  // Entered values must be contiguous from jump 1 (partial routines allowed).
+  const parsedValues = useMemo(() => {
+    const out: number[] = [];
+    for (const v of values) {
+      const t = v.trim();
+      if (t === "") break;
+      const n = Number(t);
+      if (!Number.isFinite(n) || n <= 0) break;
+      out.push(n);
+    }
+    return out;
+  }, [values]);
+
+  const trailingEntries = useMemo(() => {
+    const firstEmpty = values.findIndex(v => v.trim() === "");
+    if (firstEmpty === -1) return false;
+    return values.slice(firstEmpty).some(v => v.trim() !== "");
+  }, [values]);
+
+  const totalTof = parsedValues.reduce((a, b) => a + b, 0);
+
+  // Optional in-bounce jump before skill 1 (not part of the routine total).
+  const parsedPreJump = useMemo(() => {
+    const t = preJump.trim();
+    if (t === "") return null;
+    const n = Number(t);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, [preJump]);
+
+  const selectedRoutine = routineId ? routineById.get(Number(routineId)) : undefined;
+
+  const canSave = !!routineId && !!date && parsedValues.length >= 1 && !trailingEntries;
+
+  const createMutation = useMutation({
+    mutationFn: async (body: InsertTofSession) => {
+      const res = await apiRequest("POST", api.tofSessions.create.path, body);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.tofSessions.list.path] });
+      toast({ title: "ToF session saved" });
+      closeForm(false);
+    },
+    onError: (e: Error) => toast({ title: "Failed to save session", description: e.message, variant: "destructive" }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, ...body }: { id: number } & Partial<InsertTofSession>) => {
+      const res = await apiRequest("PUT", buildUrl(api.tofSessions.update.path, { id }), body);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.tofSessions.list.path] });
+      toast({ title: "ToF session updated" });
+      closeForm(false);
+    },
+    onError: (e: Error) => toast({ title: "Failed to update session", description: e.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", buildUrl(api.tofSessions.delete.path, { id }));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.tofSessions.list.path] });
+      toast({ title: "ToF session deleted" });
+    },
+  });
+
+  const handleSave = () => {
+    if (!canSave) return;
+    const body = {
+      date,
+      routineId: Number(routineId),
+      tofValues: parsedValues,
+      preJumpTof: parsedPreJump,
+      note: note.trim() || null,
+    };
+    if (editing) updateMutation.mutate({ id: editing.id, ...body });
+    else createMutation.mutate(body as InsertTofSession);
+  };
+
+  const handleScreenshot = async (file: File) => {
+    setParsing(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const res = await apiRequest("POST", "/api/tof-sessions/parse-screenshot", { images: [dataUrl] });
+      const { tofValues, preJumpTof, date: parsedDate } = await res.json();
+      if (!tofValues || tofValues.length === 0) {
+        toast({ title: "No ToF values found", description: "Couldn't read per-jump values from that screenshot. Try a clearer crop or enter them manually.", variant: "destructive" });
+        return;
+      }
+      const vals = emptyValues();
+      (tofValues as number[]).forEach((v, i) => { if (i < 10) vals[i] = String(v); });
+      setValues(vals);
+      setPreJump(preJumpTof != null ? String(preJumpTof) : "");
+      if (parsedDate) setDate(parsedDate);
+      toast({ title: `Read ${tofValues.length} jump${tofValues.length === 1 ? "" : "s"} from screenshot`, description: "Review the values below before saving." });
+    } catch (e) {
+      toast({ title: "Screenshot reading failed", description: e instanceof Error ? e.message : "Try again or enter values manually.", variant: "destructive" });
+    } finally {
+      setParsing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  // ---- Per-skill analysis across all sessions ----
+  const analysis = useMemo(() => {
+    type Acc = { skillId: number; tofSum: number; tofCount: number; dropSum: number; dropCount: number };
+    const bySkill = new Map<number, Acc>();
+    for (const s of sessions ?? []) {
+      const routine = routineById.get(s.routineId);
+      if (!routine) continue;
+      const vals = s.tofValues ?? [];
+      for (let i = 0; i < vals.length && i < routine.skillIds.length; i++) {
+        const skillId = routine.skillIds[i];
+        if (skillId == null) continue;
+        let acc = bySkill.get(skillId);
+        if (!acc) { acc = { skillId, tofSum: 0, tofCount: 0, dropSum: 0, dropCount: 0 }; bySkill.set(skillId, acc); }
+        acc.tofSum += vals[i];
+        acc.tofCount += 1;
+        // Drop vs the previous jump; for jump 1 the optional pre-jump
+        // (in-bounce) value serves as "previous" when recorded.
+        const prev = i > 0 ? vals[i - 1] : s.preJumpTof;
+        if (prev != null) {
+          acc.dropSum += prev - vals[i];
+          acc.dropCount += 1;
+        }
+      }
+    }
+    return Array.from(bySkill.values())
+      .map(a => ({
+        skillId: a.skillId,
+        avgTof: a.tofSum / a.tofCount,
+        samples: a.tofCount,
+        avgDrop: a.dropCount > 0 ? a.dropSum / a.dropCount : null,
+        dropSamples: a.dropCount,
+      }))
+      .sort((a, b) => (b.avgDrop ?? -Infinity) - (a.avgDrop ?? -Infinity));
+  }, [sessions, routineById]);
+
+  const skillOf = (id: number) => allSkills?.find(s => s.id === id);
+
+  return (
+    <PageLayout>
+      <PageHeader
+        eyebrow="Time of Flight"
+        title="ToF Tracker"
+        accent="ToF"
+        subtitle="Log per-jump time-of-flight from Veriflite screenshots or by hand, and see which skills cost you the most height."
+        actions={
+          <Button onClick={openNew} className={primaryActionClass} data-testid="button-new-tof-session">
+            <Plus className="w-5 h-5" /> New Session
+          </Button>
+        }
+      />
+
+      {/* ---- Session form dialog ---- */}
+      <Dialog open={showForm} onOpenChange={closeForm}>
+        <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Edit ToF Session" : "New ToF Session"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
+                <Input type="date" value={date} onChange={e => setDate(e.target.value)} data-testid="input-tof-date" />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Routine</label>
+                <Select value={routineId} onValueChange={setRoutineId}>
+                  <SelectTrigger data-testid="select-tof-routine"><SelectValue placeholder="Pick routine..." /></SelectTrigger>
+                  <SelectContent>
+                    {activeRoutines.map(r => (
+                      <SelectItem key={r.id} value={String(r.id)} data-testid={`option-tof-routine-${r.id}`}>{r.name}</SelectItem>
+                    ))}
+                    {editing && !activeRoutines.some(r => r.id === editing.routineId) && routineById.get(editing.routineId) && (
+                      <SelectItem value={String(editing.routineId)}>{routineById.get(editing.routineId)!.name} (archived)</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleScreenshot(f); }}
+                data-testid="input-tof-screenshot"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full gap-2 rounded-xl"
+                disabled={parsing}
+                onClick={() => fileInputRef.current?.click()}
+                data-testid="button-upload-tof-screenshot"
+              >
+                {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageUp className="h-4 w-4" />}
+                {parsing ? "Reading screenshot..." : "Read from Veriflite screenshot"}
+              </Button>
+              <p className="text-[10px] text-muted-foreground mt-1">Values are filled in below for you to review — nothing is saved until you press Save.</p>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Per-jump ToF (seconds, jump order)</label>
+              <div className="grid grid-cols-5 gap-1.5">
+                <div className="space-y-0.5">
+                  <div className="text-[9px] font-mono text-muted-foreground text-center truncate" title="Optional: the in-bounce jump right before skill 1, so the first skill gets a drop value too. On a Veriflite screenshot it's jump 1's ToF minus its Difference.">
+                    0 · pre
+                  </div>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    min="0"
+                    placeholder="—"
+                    value={preJump}
+                    onChange={e => setPreJump(e.target.value)}
+                    className="h-9 px-1 text-center font-mono text-xs border-dashed text-muted-foreground focus:text-foreground"
+                    data-testid="input-tof-prejump"
+                  />
+                </div>
+                {values.map((v, i) => {
+                  const skillId = selectedRoutine?.skillIds[i];
+                  const sk = skillId != null ? skillOf(skillId) : undefined;
+                  return (
+                    <div key={i} className="space-y-0.5">
+                      <div className="text-[9px] font-mono text-muted-foreground text-center truncate" title={sk ? skillDisplayName(sk, allSkills) : undefined}>
+                        {i + 1}{sk ? ` · ${skillDisplayCode(sk, allSkills)}` : ""}
+                      </div>
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        step="0.01"
+                        min="0"
+                        placeholder="—"
+                        value={v}
+                        onChange={e => setValues(prev => prev.map((p, j) => (j === i ? e.target.value : p)))}
+                        className="h-9 px-1 text-center font-mono text-xs"
+                        data-testid={`input-tof-value-${i}`}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              {trailingEntries && (
+                <p className="text-[10px] text-red-500 mt-1" data-testid="text-tof-gap-warning">Fill jumps in order without gaps — a partial routine stops at the last jump performed.</p>
+              )}
+              <div className="flex justify-between items-center mt-2 text-xs font-mono">
+                <span className="text-muted-foreground">{parsedValues.length} jump{parsedValues.length === 1 ? "" : "s"}</span>
+                <span className="text-foreground font-bold" data-testid="text-tof-total">Total {totalTof.toFixed(2)}s</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Note (optional)</label>
+              <Textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="e.g. tight in the middle, opened early on 8" data-testid="input-tof-note" />
+            </div>
+
+            <Button
+              className="w-full h-11"
+              onClick={handleSave}
+              disabled={!canSave || createMutation.isPending || updateMutation.isPending}
+              data-testid="button-save-tof-session"
+            >
+              {createMutation.isPending || updateMutation.isPending ? "Saving..." : editing ? "Update Session" : "Save Session"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---- Per-skill analysis ---- */}
+      {analysis.length > 0 && (
+        <div className="card-3d rounded-2xl p-5 mb-6">
+          <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+            <TrendingDown className="h-4 w-4 text-amber-500" /> Skill analysis
+            <span className="text-[10px] font-mono font-normal text-muted-foreground">ranked by avg ToF drop vs previous jump</span>
+          </h3>
+          <div className="space-y-1.5">
+            {analysis.map(a => {
+              const sk = skillOf(a.skillId);
+              return (
+                <div
+                  key={a.skillId}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/tof/skill/${a.skillId}`)}
+                  onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/tof/skill/${a.skillId}`); } }}
+                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-secondary/30 border border-border/50 px-3 py-2 cursor-pointer transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  data-testid={`row-tof-analysis-${a.skillId}`}
+                >
+                  <span className="font-bold text-foreground w-16 truncate shrink-0">{sk ? skillDisplayCode(sk, allSkills) : "?"}</span>
+                  <span className="text-muted-foreground flex-1 truncate">{sk ? skillDisplayName(sk, allSkills) : "Unknown skill"}</span>
+                  <span className="text-muted-foreground shrink-0" title="Average ToF on this skill">avg <span className="text-foreground font-bold">{a.avgTof.toFixed(2)}s</span></span>
+                  <span
+                    className={cn("shrink-0 w-24 text-right", a.avgDrop != null && a.avgDrop > 0 ? "text-red-500" : "text-emerald-500")}
+                    title="Average change vs the previous jump (positive = losing height)"
+                  >
+                    {a.avgDrop == null ? "—" : `${a.avgDrop > 0 ? "-" : "+"}${Math.abs(a.avgDrop).toFixed(3)}s`}
+                  </span>
+                  <span className="text-muted-foreground/60 shrink-0 w-10 text-right" title="Recorded jumps this is based on">n={a.samples}</span>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ---- Session list ---- */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {(sessions ?? []).map(s => {
+          const routine = routineById.get(s.routineId);
+          const vals = s.tofValues ?? [];
+          const total = vals.reduce((a, b) => a + b, 0);
+          return (
+            <div key={s.id} className="relative card-3d rounded-2xl p-5 pl-6 overflow-hidden" data-testid={`card-tof-session-${s.id}`}>
+              <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 rounded-full" aria-hidden="true" />
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-mono text-muted-foreground">{fmtDate(s.date)}</div>
+                  <h3 className="font-semibold text-base leading-tight truncate">{routine?.name ?? "Deleted routine"}</h3>
+                  {vals.length < 10 && <Badge variant="secondary" className="mt-1 text-[10px]">{vals.length}/10 jumps</Badge>}
+                </div>
+                <div className="flex items-start gap-1 shrink-0">
+                  <div className="text-right leading-none">
+                    <div className="text-3xl font-display font-normal text-amber-400 tracking-tight" data-testid={`text-tof-session-total-${s.id}`}>{total.toFixed(2)}</div>
+                    <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Total s</div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 -mr-2 text-muted-foreground/50 hover:text-foreground" data-testid={`button-actions-tof-${s.id}`}><MoreVertical className="h-4 w-4" /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                      <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEdit(s)} data-testid={`button-edit-tof-${s.id}`}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget(s)} data-testid={`button-delete-tof-${s.id}`}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+              <div className="grid grid-cols-5 gap-1.5 mt-4">
+                {s.preJumpTof != null && (
+                  <div className="text-center bg-secondary/20 border border-dashed border-border/50 rounded-md px-1 py-1" title="In-bounce jump before the first skill" data-testid={`cell-tof-prejump-${s.id}`}>
+                    <div className="text-[9px] font-mono text-muted-foreground truncate">pre</div>
+                    <div className="text-[11px] font-mono font-bold text-muted-foreground">{s.preJumpTof.toFixed(2)}</div>
+                  </div>
+                )}
+                {vals.map((v, i) => {
+                  const skillId = routine?.skillIds[i];
+                  const sk = skillId != null ? skillOf(skillId) : undefined;
+                  const prev = i > 0 ? vals[i - 1] : s.preJumpTof;
+                  const drop = prev != null ? prev - v : null;
+                  return (
+                    <div key={i} className="text-center bg-secondary/40 border border-border/50 rounded-md px-1 py-1" title={sk ? skillDisplayName(sk, allSkills) : undefined}>
+                      <div className="text-[9px] font-mono text-muted-foreground truncate">{sk ? skillDisplayCode(sk, allSkills) : `#${i + 1}`}</div>
+                      <div className="text-[11px] font-mono font-bold text-foreground">{v.toFixed(2)}</div>
+                      {drop != null && (
+                        <div className={cn("text-[9px] font-mono", drop > 0 ? "text-red-500" : "text-emerald-500")}>
+                          {drop > 0 ? "-" : "+"}{Math.abs(drop).toFixed(2)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {s.note && <p className="text-xs text-muted-foreground mt-3 whitespace-pre-wrap" data-testid={`text-tof-note-${s.id}`}>{s.note}</p>}
+            </div>
+          );
+        })}
+        {!isLoading && (sessions ?? []).length === 0 && (
+          <div className="col-span-full text-center py-20 card-3d rounded-2xl">
+            <Timer className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+            <p className="text-muted-foreground font-medium">No ToF sessions yet.</p>
+            <Button onClick={openNew} variant="outline" className="mt-4 rounded-xl" data-testid="button-new-tof-empty">
+              <Plus className="w-4 h-4 mr-1" /> New Session
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title={`Delete this ToF session?`}
+        description="This action cannot be undone."
+        onConfirm={() => { if (deleteTarget) { deleteMutation.mutate(deleteTarget.id); setDeleteTarget(null); } }}
+        confirmLabel="Delete"
+      />
+    </PageLayout>
+  );
+}

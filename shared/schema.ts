@@ -74,6 +74,23 @@ export const scores = pgTable("scores", {
   attemptVol: integer("attempt_vol"), // null = full 10 skills, 1-9 = partial attempt
 });
 
+// Time-of-Flight tracker sessions (per user). Each session records the
+// per-jump ToF values (in seconds, in jump order) for one routine attempt —
+// entered manually or parsed from a Veriflite screenshot. The routine defines
+// which skill was performed at each position, so values map to skills.
+export const tofSessions = pgTable("tof_sessions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id"),
+  date: date("date").notNull(),
+  routineId: integer("routine_id").notNull().references(() => routines.id),
+  tofValues: real("tof_values").array().notNull(), // 1-10 per-jump ToF seconds, jump order
+  // Optional in-bounce jump ToF right before skill 1, so the first skill also
+  // gets a drop-vs-previous value. Derivable from a Veriflite screenshot as
+  // jump1 ToF minus jump1's "Difference".
+  preJumpTof: real("pre_jump_tof"),
+  note: text("note"),
+});
+
 // AI coach chat history (per user). Read-only advisor; messages persist so
 // the conversation survives reloads.
 export const coachMessages = pgTable("coach_messages", {
@@ -101,6 +118,12 @@ export const insertNoteSchema = createInsertSchema(notes).omit({ id: true });
 export const insertSkillSchema = createInsertSchema(skills).omit({ id: true });
 export const insertRoutineSchema = createInsertSchema(routines).omit({ id: true, createdAt: true });
 export const insertScoreSchema = createInsertSchema(scores).omit({ id: true });
+export const insertTofSessionSchema = createInsertSchema(tofSessions)
+  .omit({ id: true })
+  .extend({
+    tofValues: z.array(z.number().gt(0).max(30)).min(1).max(10),
+    preJumpTof: z.number().gt(0).max(30).nullable().optional(),
+  });
 
 export type InsertNote = z.infer<typeof insertNoteSchema>;
 export type Note = typeof notes.$inferSelect;
@@ -113,6 +136,9 @@ export type InsertRoutine = z.infer<typeof insertRoutineSchema>;
 
 export type Score = typeof scores.$inferSelect;
 export type InsertScore = z.infer<typeof insertScoreSchema>;
+
+export type TofSession = typeof tofSessions.$inferSelect;
+export type InsertTofSession = z.infer<typeof insertTofSessionSchema>;
 
 export type WhoopToken = typeof whoopTokens.$inferSelect;
 

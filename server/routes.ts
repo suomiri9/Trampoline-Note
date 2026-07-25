@@ -1,10 +1,10 @@
 import type { Express } from "express";
 import type { Server } from "http";
-import { storage, SkillLinkError } from "./storage";
+import { storage, SkillLinkError, TofRoutineError } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { isAuthenticated, getUserId, getBaseUrl } from "./auth";
-import { getPushRecommendation, coachChat, parseMenuPhoto, menuChat, generateSuggestions, CoachUnavailableError } from "./coach";
+import { getPushRecommendation, coachChat, parseMenuPhoto, parseTofScreenshot, menuChat, generateSuggestions, CoachUnavailableError } from "./coach";
 import { serveCoachImage } from "./coach-images";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
@@ -276,6 +276,83 @@ export async function registerRoutes(
   app.delete(api.scores.delete.path, isAuthenticated, async (req, res) => {
     await storage.deleteScore(Number(req.params.id), getUserId(req));
     res.status(204).send();
+  });
+
+  // ToF sessions (time-of-flight tracker)
+  app.get(api.tofSessions.list.path, isAuthenticated, async (req, res) => {
+    const sessions = await storage.getTofSessions(getUserId(req));
+    res.json(sessions);
+  });
+
+  app.post(api.tofSessions.create.path, isAuthenticated, async (req, res) => {
+    try {
+      const input = api.tofSessions.create.input.parse(req.body);
+      const session = await storage.createTofSession(getUserId(req), input);
+      res.status(201).json(session);
+    } catch (err) {
+      if (err instanceof TofRoutineError) {
+        return res.status(400).json({ message: err.message });
+      }
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put(api.tofSessions.update.path, isAuthenticated, async (req, res) => {
+    try {
+      const input = api.tofSessions.update.input.parse(req.body);
+      const session = await storage.updateTofSession(Number(req.params.id), getUserId(req), input);
+      if (!session) return res.status(404).json({ message: "Session not found" });
+      res.json(session);
+    } catch (err) {
+      if (err instanceof TofRoutineError) {
+        return res.status(400).json({ message: err.message });
+      }
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete(api.tofSessions.delete.path, isAuthenticated, async (req, res) => {
+    await storage.deleteTofSession(Number(req.params.id), getUserId(req));
+    res.status(204).send();
+  });
+
+  // Veriflite screenshot → per-jump ToF values. Returns the parsed values
+  // for user review; nothing is saved here.
+  app.post("/api/tof-sessions/parse-screenshot", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z.object({
+        images: z
+          .array(
+            z
+              .string()
+              .regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, "Unsupported image format")
+              .max(4 * 1024 * 1024, "Image too large"),
+          )
+          .min(1)
+          .max(3),
+      });
+      const { images } = schema.parse(req.body);
+      const result = await parseTofScreenshot(images);
+      res.json(result);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message ?? "Invalid request" });
+      }
+      if (err instanceof CoachUnavailableError) {
+        return res.status(503).json({ code: "coach_unavailable", message: err.message });
+      }
+      console.error("parse-tof-screenshot error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   app.get("/api/skills/:id/history", isAuthenticated, async (req, res) => {

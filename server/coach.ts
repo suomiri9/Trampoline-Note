@@ -861,6 +861,68 @@ export async function menuChat(
 // athlete's training menu directly into practice-list items without going
 // through the coach chat. Returns the matched draft (or null).
 
+// ---- Veriflite ToF screenshot parsing ----
+
+// Reads a Veriflite screenshot and extracts the per-jump time-of-flight
+// values (in seconds, jump order). Returns the values for user review —
+// nothing is saved here.
+export async function parseTofScreenshot(
+  images: string[],
+): Promise<{ tofValues: number[]; preJumpTof: number | null; date: string | null }> {
+  const system = [
+    "You are reading a screenshot from the Veriflite trampoline app (or a similar time-of-flight measuring app).",
+    "Extract the per-jump time-of-flight values for ONE routine, in jump order (jump 1 first). Values are in seconds, typically between 0.8 and 2.5 (e.g. 1.52). There are at most 10 jumps.",
+    "If the screenshot shows a total plus individual jumps, return only the individual jump values, NOT the total.",
+    "Veriflite screenshots often include a 'Difference' column: each row's ToF minus the previous jump's ToF. Row 1's difference is relative to the in-bounce jump taken right BEFORE the routine, so that pre-jump's ToF = (row 1 ToF) - (row 1 difference); e.g. ToF 1.595 with difference -0.115 means preJump = 1.710. Compute it (3 decimals) and return it as preJump. If there is no difference value for row 1, return preJump null.",
+    "Also extract the session date if visible in the screenshot.",
+    'Respond with JSON only: {"tofValues":[<numbers in jump order>],"preJump":<number or null>,"date":"YYYY-MM-DD" or null}. If you cannot find any per-jump values, return {"tofValues":[],"preJump":null,"date":null}.',
+  ].join(" ");
+
+  const userParts: ContentPart[] = [
+    { type: "text", text: "Extract the per-jump time-of-flight values from this screenshot." },
+    ...images.map((url) => ({ type: "image_url" as const, image_url: { url } })),
+  ];
+
+  let raw: string;
+  try {
+    const response = await openai.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: userParts },
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 2048,
+    });
+    raw = response.choices[0]?.message?.content ?? "";
+  } catch (err) {
+    console.error("[tof] parse-screenshot failed:", err);
+    throw new CoachUnavailableError("Screenshot reading is unavailable right now.");
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    const values = Array.isArray(parsed.tofValues)
+      ? parsed.tofValues
+          .map((v: unknown) => Number(v))
+          .filter((v: number) => Number.isFinite(v) && v > 0 && v <= 30)
+          .slice(0, 10)
+      : [];
+    const preRaw = Number(parsed.preJump);
+    const preJumpTof =
+      Number.isFinite(preRaw) && preRaw > 0 && preRaw <= 30
+        ? Math.round(preRaw * 1000) / 1000
+        : null;
+    const date =
+      typeof parsed.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)
+        ? parsed.date
+        : null;
+    return { tofValues: values, preJumpTof, date };
+  } catch {
+    throw new CoachUnavailableError("Could not read the screenshot.");
+  }
+}
+
 export async function parseMenuPhoto(
   userId: string,
   images: string[],
