@@ -169,7 +169,14 @@ export async function buildCoachContext(userId: string): Promise<CoachContext> {
         `  ${date} · recovery ${d.rec != null ? Math.round(d.rec) + "%" : "-"} · HRV ${d.hrv != null ? Math.round(d.hrv) + "ms" : "-"} · sleep ${d.sleep != null ? d.sleep.toFixed(1) + "h" : "-"} · strain ${d.strain != null ? d.strain.toFixed(1) : "-"}`,
       );
     }
-    const todayRow = byDate.get(todayKey);
+    let todayRow = byDate.get(todayKey);
+    if (!todayRow && days.length) {
+      // Recovery days are the athlete's LOCAL wake days, which can run ahead
+      // of the server's UTC date (east of UTC around midnight) — accept the
+      // newest day when it is later than the UTC "today".
+      const [newestDate, newestRow] = days[days.length - 1];
+      if (newestDate > todayKey) todayRow = newestRow;
+    }
     todayRecovery = todayRow?.rec ?? null;
   } catch (err) {
     if (!(err instanceof WhoopNotConnectedError)) {

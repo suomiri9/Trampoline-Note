@@ -228,22 +228,57 @@ function dayKey(iso: string): string {
   return typeof iso === "string" ? iso.substring(0, 10) : "";
 }
 
+// Local calendar day of a UTC timestamp, using a WHOOP timezone_offset like
+// "+03:00" / "-05:30". Falls back to the raw UTC day when unparseable.
+function localDayKey(iso: string, tz?: string | null): string {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return dayKey(iso);
+  let offMs = 0;
+  if (typeof tz === "string") {
+    const m = /^([+-])(\d{2}):(\d{2})/.exec(tz);
+    if (m) offMs = (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) * 60000;
+  }
+  return new Date(t + offMs).toISOString().substring(0, 10);
+}
+
 export async function getWhoopDashboardData(userId: string, days: number): Promise<WhoopDashboardData> {
   const token = await getWhoopAccessToken(userId);
   const end = new Date();
   const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
+  // Sleep is fetched with extra lead time so the earliest recovery in the
+  // window can still resolve to its (slightly earlier) night sleep.
+  const sleepStart = new Date(start.getTime() - 36 * 60 * 60 * 1000);
 
   const [recoveryRaw, sleepRaw, cyclesRaw, workoutsRaw] = await Promise.all([
     fetchCollection(token, "/recovery", start, end),
-    fetchCollection(token, "/activity/sleep", start, end),
+    fetchCollection(token, "/activity/sleep", sleepStart, end),
     fetchCollection(token, "/cycle", start, end),
     fetchCollection(token, "/activity/workout", start, end),
   ]);
 
+  // Day attribution: a WHOOP cycle runs fall-asleep → fall-asleep, so raw
+  // record timestamps (recovery created_at, cycle start) land on the BEDTIME
+  // day — one day EARLY. The WHOOP app shows recovery + day strain on the
+  // WAKE-UP day, so mirror that: resolve recovery (via sleep_id) and cycles
+  // (via their recovery) to the night sleep's local end-of-sleep day.
+  const sleepWakeDay = new Map<string, string>();
+  for (const s of sleepRaw) {
+    if (s?.id != null && s?.end && !s.nap) {
+      sleepWakeDay.set(String(s.id), localDayKey(s.end, s.timezone_offset));
+    }
+  }
+  const cycleDay = new Map<string, string>();
+  for (const r of recoveryRaw) {
+    const wake = r?.sleep_id != null ? sleepWakeDay.get(String(r.sleep_id)) : undefined;
+    if (wake && r?.cycle_id != null) cycleDay.set(String(r.cycle_id), wake);
+  }
+
   const recovery = recoveryRaw
     .filter((r) => r?.created_at)
     .map((r) => ({
-      date: dayKey(r.created_at),
+      date:
+        (r.sleep_id != null ? sleepWakeDay.get(String(r.sleep_id)) : undefined) ??
+        dayKey(r.created_at),
       recoveryScore: r.score?.recovery_score ?? null,
       restingHeartRate: r.score?.resting_heart_rate ?? null,
       hrvMs: r.score?.hrv_rmssd_milli ?? null,
@@ -261,8 +296,8 @@ export async function getWhoopDashboardData(userId: string, days: number): Promi
             (st.total_rem_sleep_time_milli ?? 0)
           : null;
       return {
-        // Attribute the sleep to the wake-up day so it lines up with recovery.
-        date: dayKey(s.end),
+        // Attribute the sleep to the LOCAL wake-up day so it lines up with recovery.
+        date: localDayKey(s.end, s.timezone_offset),
         start: s.start,
         end: s.end,
         nap: !!s.nap,
@@ -275,7 +310,14 @@ export async function getWhoopDashboardData(userId: string, days: number): Promi
   const cycles = cyclesRaw
     .filter((c) => c?.start)
     .map((c) => ({
-      date: dayKey(c.start),
+      // Wake day from the cycle's recovery sleep; for a cycle without one
+      // (e.g. still unscored) fall back to the local day of its end — or,
+      // while the cycle is ongoing (end null), the current local day.
+      date:
+        (c.id != null ? cycleDay.get(String(c.id)) : undefined) ??
+        (c.end
+          ? localDayKey(c.end, c.timezone_offset)
+          : localDayKey(new Date().toISOString(), c.timezone_offset)),
       strain: c.score?.strain ?? null,
       avgHeartRate: c.score?.average_heart_rate ?? null,
       maxHeartRate: c.score?.max_heart_rate ?? null,
