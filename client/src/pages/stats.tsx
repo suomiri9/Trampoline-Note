@@ -605,7 +605,19 @@ export default function StatsPage() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              <div className="text-center mt-2 text-xs font-mono text-muted-foreground">{periodLabel}</div>
+              {navigable ? (
+                <div className="flex items-center justify-between mt-1">
+                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => setOffset(w => w - 1)} data-testid="button-prev-period-turns">
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xs font-mono text-muted-foreground text-center" data-testid="text-period-label-turns">{periodLabel}</span>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" disabled={isCurrentPeriod} onClick={() => setOffset(w => w + 1)} data-testid="button-next-period-turns">
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center mt-2 text-xs font-mono text-muted-foreground" data-testid="text-period-label-turns">{periodLabel}</div>
+              )}
             </div>
 
             <div className="card-3d rounded-2xl p-5 lg:col-span-1">
