@@ -11,4 +11,4 @@
 - [Apply-to-main silent failure = post-merge timeout](post-merge-timeout.md) — if applying a task to main spins then silently fails, check the post-merge script timeout before suspecting code or git.
 - [Stale dev server after task merges](stale-dev-server-after-merge.md) — merges don't restart the Express process; if runtime contradicts current server source, restart the workflow first.
 - [ResizeObserver crash noise](resizeobserver-crash-noise.md) — the "not an error object" preview crash is the benign RO-loop error; only the first-in-head inline script + RO rAF patch can silence it.
-- [iOS PWA splash handoff](ios-splash-handoff.md) — launch-image→live-splash seams: status-bar viewport offset (shift up bar/2), icon preload+hold, no entrance fade on iOS, paint splash pre-React.
+- [iOS PWA splash handoff](ios-splash-handoff.md) — don't pixel-match designed launch images to a live overlay; use plain solid launch images + a pre-React spinner that reveals the splash when assets load.

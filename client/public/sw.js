@@ -3,7 +3,7 @@
  * so an installed PWA can launch with zero network. API requests are NOT
  * intercepted — offline behaviour for data is handled at the React layer. */
 
-const CACHE = 'tn-shell-v8';
+const CACHE = 'tn-shell-v9';
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',

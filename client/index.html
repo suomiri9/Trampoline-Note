@@ -74,8 +74,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="Trampoline Note" />
 
-    <!-- iOS launch / splash screens. Match the in-app splash: dark mesh background,
-         app icon, TRAMPOLINE NOTE title, "Jump · Log · Progress" tagline. -->
+    <!-- iOS launch / splash screens. PLAIN solid dark (#0a0b10) on purpose:
+         designed launch images can never pixel-match the live overlay across
+         devices, so the sequence is plain dark → spinner → animated splash. -->
 
     <!-- iPhone (portrait only; the manifest locks orientation to portrait). -->
     <link rel="apple-touch-startup-image" href="/splash/launch-640x1136.png"
@@ -166,8 +167,14 @@
          index.css is not loaded yet at this point. React's <SplashScreen> does
          NOT render its own copy — it only times the fade-out and removes this
          node, so it is the same DOM the whole time and there is no handoff snap
-         mid-bounce. Design must stay in lockstep with the generated
-         /splash/launch-*.png images and the index.css splash keyframes. -->
+         mid-bounce.
+         Loading phase (user request): the /splash/launch-*.png images are now
+         PLAIN solid dark (#0a0b10) and this overlay first shows only a spinner
+         (#boot-splash-loader); the icon+title content stays hidden until the
+         icon image and the display fonts are actually loaded (inline script
+         adds .ready, 2.5s safety timeout). Black + loading circle on every
+         device until the real splash can render — no static/live content
+         matching, so there is nothing to visually "stick" or jump. -->
     <style>
       #boot-splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;
         background:radial-gradient(ellipse 70% 45% at 15% -5%,hsl(230 92% 67% / .08) 0%,transparent 60%),
@@ -177,7 +184,13 @@
         background:radial-gradient(ellipse 70% 45% at 15% -5%,hsl(230 92% 60% / .10) 0%,transparent 60%),
                    radial-gradient(ellipse 50% 40% at 90% 0%,hsl(265 75% 60% / .07) 0%,transparent 55%),
                    hsl(220 24% 97%)}
-      #boot-splash-group{display:flex;flex-direction:column;align-items:center;gap:1.75rem;animation:boot-fade-in-up .4s ease-out}
+      #boot-splash-loader{position:absolute;left:50%;top:50%;width:2.25rem;height:2.25rem;margin:-1.125rem 0 0 -1.125rem;
+        border-radius:9999px;border:3px solid hsl(230 92% 67% / .2);border-top-color:hsl(230 92% 67%);
+        animation:boot-spin .8s linear infinite}
+      html:not(.dark) #boot-splash-loader{border-color:hsl(230 84% 56% / .2);border-top-color:hsl(230 84% 56%)}
+      #boot-splash.ready #boot-splash-loader{display:none}
+      #boot-splash-group{display:flex;flex-direction:column;align-items:center;gap:1.75rem;visibility:hidden}
+      #boot-splash.ready #boot-splash-group{visibility:visible;animation:boot-fade-in-up .4s ease-out}
       #boot-splash-icon{width:6rem;height:6rem;border-radius:1.5rem;-webkit-user-select:none;user-select:none;
         box-shadow:0 0 0 1px hsl(0 0% 100% / .1),0 25px 50px -12px hsl(230 92% 67% / .25);
         animation:boot-splash-bounce .95s infinite;transform-origin:center bottom}
@@ -192,14 +205,16 @@
         letter-spacing:.28em;text-transform:uppercase;color:hsl(225 9% 62% / .7);
         font-feature-settings:"liga" 0,"calt" 0;font-variant-ligatures:none}
       html:not(.dark) #boot-splash-tagline{color:hsl(228 12% 40% / .7)}
+      @keyframes boot-spin{to{transform:rotate(360deg)}}
       @keyframes boot-fade-in-up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
       @keyframes boot-splash-bounce{
         0%,100%{transform:translateY(0) scaleX(1) scaleY(1);animation-timing-function:cubic-bezier(.33,0,.4,1)}
         45%{transform:translateY(-26px) scaleX(.97) scaleY(1.03);animation-timing-function:cubic-bezier(.6,0,.67,1)}
         90%{transform:translateY(0) scaleX(1.05) scaleY(.95)}}
-      @media (prefers-reduced-motion:reduce){#boot-splash-icon,#boot-splash-group{animation:none}}
+      @media (prefers-reduced-motion:reduce){#boot-splash-icon{animation:none}#boot-splash.ready #boot-splash-group{animation:none}}
     </style>
     <div id="boot-splash" data-testid="splash-screen" aria-hidden="true">
+      <div id="boot-splash-loader"></div>
       <div id="boot-splash-group">
         <img id="boot-splash-icon" src="/icon-512.png" alt="" draggable="false" />
         <div id="boot-splash-text">
@@ -208,45 +223,51 @@
         </div>
       </div>
     </div>
-    <!-- iOS-standalone splash tweaks, run during parse:
-         1. skip the entrance animation (the native launch image already showed
-            this exact content — an opacity-from-0 entrance would blank it);
-         2. with status-bar-style "black" the standalone viewport starts BELOW
-            the status bar while the launch image is centered on the FULL
-            screen, so shift the content up by bar/2 to land exactly on it;
-         3. hold the content invisible until the icon is decoded so it never
-            paints with a blank hole where the icon belongs (preload in <head>
-            makes this near-instant; 600ms safety timeout so it can't stick). -->
+    <!-- Splash loading gate, runs during parse (all devices): keep the spinner
+         until the icon image AND the display fonts are actually loaded, then
+         add .ready to swap spinner → animated splash content. 2.5s safety
+         timeout so a stalled asset can never hold the spinner forever, and a
+         15s dead-man fade in case the app bundle itself never boots. -->
     <script>
       (function () {
-        var group = document.getElementById("boot-splash-group");
+        var splash = document.getElementById("boot-splash");
         var icon = document.getElementById("boot-splash-icon");
-        if (!group || !icon) return;
+        if (!splash || !icon) return;
+        var revealed = false;
+        function reveal() {
+          if (revealed) return;
+          revealed = true;
+          splash.classList.add("ready");
+        }
+        var iconDone = icon.complete && icon.naturalWidth > 0;
+        var fontsDone = false;
+        function check() { if (iconDone && fontsDone) reveal(); }
+        if (!iconDone) {
+          var onIcon = function () { iconDone = true; check(); };
+          icon.addEventListener("load", onIcon);
+          icon.addEventListener("error", onIcon);
+        }
+        if (document.fonts && document.fonts.load) {
+          var fontsOk = function () { fontsDone = true; check(); };
+          Promise.all([
+            document.fonts.load("1em 'Bebas Neue'"),
+            document.fonts.load("500 1em 'JetBrains Mono'"),
+          ]).then(fontsOk, fontsOk);
+        } else {
+          fontsDone = true;
+        }
+        check();
+        setTimeout(reveal, 2500);
         // Dead-man fallback: if the app bundle never boots (network failure,
-        // crash before mount), don't bounce forever — self-fade after 15s.
+        // crash before mount), don't spin/bounce forever — self-fade after 15s.
         // Harmless no-op when React has already removed the node.
         setTimeout(function () {
-          var el = document.getElementById("boot-splash");
-          if (!el) return;
-          el.style.transition = "opacity .5s ease-out";
-          el.style.opacity = "0";
-          el.style.pointerEvents = "none";
-          setTimeout(function () { el.remove(); }, 500);
+          if (!document.getElementById("boot-splash")) return;
+          splash.style.transition = "opacity .5s ease-out";
+          splash.style.opacity = "0";
+          splash.style.pointerEvents = "none";
+          setTimeout(function () { splash.remove(); }, 500);
         }, 15000);
-        var isIos =
-          /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-        if (navigator.standalone !== true || !isIos) return;
-        group.style.animation = "none";
-        var bar = (window.screen && window.screen.height ? window.screen.height : 0) - window.innerHeight;
-        if (bar > 0 && bar < 120) group.style.transform = "translateY(-" + bar / 2 + "px)";
-        if (!(icon.complete && icon.naturalWidth > 0)) {
-          group.style.visibility = "hidden";
-          var reveal = function () { group.style.visibility = ""; };
-          icon.addEventListener("load", reveal);
-          icon.addEventListener("error", reveal);
-          setTimeout(reveal, 600);
-        }
       })();
     </script>
     <div id="root"></div>

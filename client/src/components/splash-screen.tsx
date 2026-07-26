@@ -9,8 +9,8 @@ const FADE_MS = 500;
 // the static iOS launch image for ~1s). This component renders NOTHING — it
 // only times the fade-out and removes that node once the app is mounted, so
 // the splash is the same DOM element the whole time and there is no handoff
-// snap mid-bounce. iOS-standalone tweaks (skip entrance, status-bar offset,
-// hold-until-icon-ready) are handled by the inline script in index.html.
+// snap mid-bounce. The loading gate (spinner until the icon + fonts are
+// ready) is handled by the inline script in index.html.
 export function SplashScreen() {
   useEffect(() => {
     const el = document.getElementById("boot-splash");
