@@ -159,6 +159,96 @@
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
+    <!-- Boot splash: painted straight from HTML so the trampoline bounce starts
+         the moment the page renders — long before the React bundle downloads
+         and boots (on a cold PWA launch the static iOS launch image used to sit
+         frozen for ~1s while the app loaded). Styles are self-contained because
+         index.css is not loaded yet at this point. React's <SplashScreen> does
+         NOT render its own copy — it only times the fade-out and removes this
+         node, so it is the same DOM the whole time and there is no handoff snap
+         mid-bounce. Design must stay in lockstep with the generated
+         /splash/launch-*.png images and the index.css splash keyframes. -->
+    <style>
+      #boot-splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;
+        background:radial-gradient(ellipse 70% 45% at 15% -5%,hsl(230 92% 67% / .08) 0%,transparent 60%),
+                   radial-gradient(ellipse 50% 40% at 90% 0%,hsl(265 80% 60% / .05) 0%,transparent 55%),
+                   hsl(228 18% 5%)}
+      html:not(.dark) #boot-splash{
+        background:radial-gradient(ellipse 70% 45% at 15% -5%,hsl(230 92% 60% / .10) 0%,transparent 60%),
+                   radial-gradient(ellipse 50% 40% at 90% 0%,hsl(265 75% 60% / .07) 0%,transparent 55%),
+                   hsl(220 24% 97%)}
+      #boot-splash-group{display:flex;flex-direction:column;align-items:center;gap:1.75rem;animation:boot-fade-in-up .4s ease-out}
+      #boot-splash-icon{width:6rem;height:6rem;border-radius:1.5rem;-webkit-user-select:none;user-select:none;
+        box-shadow:0 0 0 1px hsl(0 0% 100% / .1),0 25px 50px -12px hsl(230 92% 67% / .25);
+        animation:boot-splash-bounce .95s infinite;transform-origin:center bottom}
+      html:not(.dark) #boot-splash-icon{box-shadow:0 0 0 1px hsl(0 0% 0% / .05),0 25px 50px -12px hsl(230 84% 56% / .25)}
+      #boot-splash-text{display:flex;flex-direction:column;align-items:center;gap:.625rem}
+      #boot-splash-title{margin:0;font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:3rem;line-height:.92;
+        letter-spacing:.01em;text-transform:uppercase;color:hsl(210 20% 96%)}
+      html:not(.dark) #boot-splash-title{color:hsl(228 28% 12%)}
+      #boot-splash-title span{color:hsl(230 92% 67%)}
+      html:not(.dark) #boot-splash-title span{color:hsl(230 84% 56%)}
+      #boot-splash-tagline{margin:0;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:500;
+        letter-spacing:.28em;text-transform:uppercase;color:hsl(225 9% 62% / .7);
+        font-feature-settings:"liga" 0,"calt" 0;font-variant-ligatures:none}
+      html:not(.dark) #boot-splash-tagline{color:hsl(228 12% 40% / .7)}
+      @keyframes boot-fade-in-up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes boot-splash-bounce{
+        0%,100%{transform:translateY(0) scaleX(1) scaleY(1);animation-timing-function:cubic-bezier(.33,0,.4,1)}
+        45%{transform:translateY(-26px) scaleX(.97) scaleY(1.03);animation-timing-function:cubic-bezier(.6,0,.67,1)}
+        90%{transform:translateY(0) scaleX(1.05) scaleY(.95)}}
+      @media (prefers-reduced-motion:reduce){#boot-splash-icon,#boot-splash-group{animation:none}}
+    </style>
+    <div id="boot-splash" data-testid="splash-screen" aria-hidden="true">
+      <div id="boot-splash-group">
+        <img id="boot-splash-icon" src="/icon-512.png" alt="" draggable="false" />
+        <div id="boot-splash-text">
+          <h1 id="boot-splash-title">Trampoline <span>Note</span></h1>
+          <p id="boot-splash-tagline">Jump · Log · Progress</p>
+        </div>
+      </div>
+    </div>
+    <!-- iOS-standalone splash tweaks, run during parse:
+         1. skip the entrance animation (the native launch image already showed
+            this exact content — an opacity-from-0 entrance would blank it);
+         2. with status-bar-style "black" the standalone viewport starts BELOW
+            the status bar while the launch image is centered on the FULL
+            screen, so shift the content up by bar/2 to land exactly on it;
+         3. hold the content invisible until the icon is decoded so it never
+            paints with a blank hole where the icon belongs (preload in <head>
+            makes this near-instant; 600ms safety timeout so it can't stick). -->
+    <script>
+      (function () {
+        var group = document.getElementById("boot-splash-group");
+        var icon = document.getElementById("boot-splash-icon");
+        if (!group || !icon) return;
+        // Dead-man fallback: if the app bundle never boots (network failure,
+        // crash before mount), don't bounce forever — self-fade after 15s.
+        // Harmless no-op when React has already removed the node.
+        setTimeout(function () {
+          var el = document.getElementById("boot-splash");
+          if (!el) return;
+          el.style.transition = "opacity .5s ease-out";
+          el.style.opacity = "0";
+          el.style.pointerEvents = "none";
+          setTimeout(function () { el.remove(); }, 500);
+        }, 15000);
+        var isIos =
+          /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        if (navigator.standalone !== true || !isIos) return;
+        group.style.animation = "none";
+        var bar = (window.screen && window.screen.height ? window.screen.height : 0) - window.innerHeight;
+        if (bar > 0 && bar < 120) group.style.transform = "translateY(-" + bar / 2 + "px)";
+        if (!(icon.complete && icon.naturalWidth > 0)) {
+          group.style.visibility = "hidden";
+          var reveal = function () { group.style.visibility = ""; };
+          icon.addEventListener("load", reveal);
+          icon.addEventListener("error", reveal);
+          setTimeout(reveal, 600);
+        }
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
