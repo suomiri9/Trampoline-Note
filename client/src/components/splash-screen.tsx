@@ -29,6 +29,18 @@ export function SplashScreen() {
   // icon belongs (the gap the native launch image hands off into). The icon is
   // preloaded from index.html, so this is normally instant.
   const [iconReady, setIconReady] = useState(!isIosStandalone());
+  // iOS standalone geometry fix: the static launch image is centered on the
+  // FULL screen, but with status-bar-style "black" the web viewport starts
+  // BELOW the status bar — so viewport-centered content sits statusBar/2 lower
+  // than the static image and visibly jumps at handoff (worst on notched
+  // iPhones, invisible on iPads with their thin bar). Measure the bar
+  // (screen.height − innerHeight) and shift the content up by half of it so
+  // the live splash lands exactly on the static image.
+  const [standaloneShift] = useState(() => {
+    if (!isIosStandalone()) return 0;
+    const bar = (window.screen?.height ?? 0) - window.innerHeight;
+    return bar > 0 && bar < 120 ? bar / 2 : 0;
+  });
   const [done, setDone] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
@@ -64,6 +76,7 @@ export function SplashScreen() {
         className={`flex flex-col items-center gap-7 ${
           iconReady ? "" : "invisible"
         } ${skipEntrance ? "" : "animate-fade-in-up"}`}
+        style={standaloneShift > 0 ? { transform: `translateY(-${standaloneShift}px)` } : undefined}
       >
         <img
           src="/icon-512.png"
