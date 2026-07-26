@@ -3,14 +3,16 @@ import { useEffect, useState } from "react";
 const VISIBLE_MS = 1500;
 const FADE_MS = 500;
 
+// Shown on EVERY platform, including installed iOS PWAs: the native
+// apple-touch-startup-image launch images are generated to look identical to
+// this splash, so on iOS the static image hands off seamlessly to this live
+// overlay — which then plays the icon bounce animation.
 function isIosStandalone() {
   if (typeof navigator === "undefined") return false;
   const nav = navigator as Navigator & { standalone?: boolean };
   // navigator.standalone is true for BOTH iOS home-screen PWAs and macOS
-  // "Add to Dock" web apps. We only want to skip our in-app splash where Apple
-  // already shows a NATIVE launch image — that's iOS/iPadOS only (the
-  // apple-touch-startup-image media queries match iPhone/iPad sizes, never a Mac).
-  // So on a MacBook dock app we still show the splash.
+  // "Add to Dock" web apps; only iOS/iPadOS shows a native launch image
+  // (the apple-touch-startup-image media queries never match a Mac).
   const isIosDevice =
     /iPad|iPhone|iPod/.test(nav.userAgent) ||
     (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);
@@ -18,7 +20,11 @@ function isIosStandalone() {
 }
 
 export function SplashScreen() {
-  const [done, setDone] = useState(isIosStandalone);
+  // On installed iOS PWAs the native launch image is already on screen when we
+  // mount, so skip the fade-in-up entrance (it would blank the content for a
+  // frame) and let the bounce play immediately.
+  const [skipEntrance] = useState(isIosStandalone);
+  const [done, setDone] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
@@ -42,7 +48,7 @@ export function SplashScreen() {
       }`}
       style={{ transitionDuration: `${FADE_MS}ms` }}
     >
-      <div className="flex flex-col items-center gap-7 animate-fade-in-up">
+      <div className={`flex flex-col items-center gap-7 ${skipEntrance ? "" : "animate-fade-in-up"}`}>
         <img
           src="/icon-512.png"
           alt=""
