@@ -541,12 +541,12 @@ function ScoreGraph({
 
   return (
     <div className="card-3d rounded-2xl p-5" data-testid={`card-score-graph${idSuffix}`}>
-      <div className="flex items-start justify-between gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
         <div className="min-w-0">
           <div className="eyebrow mb-1.5">{eyebrow} <span className="text-amber-400">{eyebrowAccent}</span></div>
           <p className="text-xs text-muted-foreground">{subtitle}</p>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+        <div className="flex flex-wrap items-center sm:justify-end gap-2 sm:shrink-0">
           <Select value={catFilter} onValueChange={setCatFilter}>
             <SelectTrigger className="w-[110px] h-8 rounded-xl text-xs border-border/50 font-mono shrink-0" data-testid={`select-graph-category${idSuffix}`}><SelectValue /></SelectTrigger>
             <SelectContent className="font-mono">
