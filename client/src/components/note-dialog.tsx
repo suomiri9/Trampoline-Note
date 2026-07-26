@@ -1144,8 +1144,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
               <div className={cn("space-y-3", noteStep !== 2 && "hidden")}>
                 <FormLabel className="text-foreground/80 font-medium">Skills & Drills Practiced</FormLabel>
 
-                <div className="flex gap-2">
-                  <div className="flex flex-1 min-w-0 basis-0 h-11 rounded-xl border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
+                <div className="flex flex-wrap gap-2">
+                  <div className="flex w-full sm:w-auto sm:flex-1 min-w-0 sm:basis-0 h-11 rounded-xl border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
                   <SearchPicker
                     open={pickerOpen}
                     onOpenChange={setPickerOpen}
