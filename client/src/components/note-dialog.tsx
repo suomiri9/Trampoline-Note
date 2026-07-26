@@ -3,12 +3,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Clock, Loader2, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, Minus, X, Search, Shapes, ChevronDown, ChevronRight, Camera, Check } from "lucide-react";
+import { CalendarIcon, Clock, Loader2, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, Minus, X, Search, Shapes, ChevronDown, ChevronRight, Camera, Check, Merge, Split, Repeat } from "lucide-react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { type Note, type Skill } from "@shared/schema";
-import { parseNoteSkills, calculateTotalDD, suggestRoutinePartName, skillDisplayCode, skillDisplayName, swapSkillIdToShape, swapSkillIdsToShape, shapeSwapInfo, isShapeableSkill, pickableSkills, type SkillItem } from "@/lib/training-utils";
+import { parseNoteSkills, calculateTotalDD, suggestRoutinePartName, skillDisplayCode, skillDisplayName, swapSkillIdToShape, swapSkillIdsToShape, shapeSwapInfo, isShapeableSkill, pickableSkills, buildRowsWithIndices, computeTurns, type SkillItem } from "@/lib/training-utils";
+import { useTrackTurns } from "@/hooks/use-track-turns";
 import { SkillCode } from "@/components/skill-code";
 import { ShapeSwapPicker } from "@/components/shape-swap-picker";
 import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
@@ -344,6 +345,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   };
 
   const isEditing = !!noteToEdit;
+  const [trackTurns] = useTrackTurns();
+  const turnInfo = computeTurns(selectedSkills);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -839,6 +842,71 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       });
       const toInsert = [{ id: -1 } as SkillItem, ...groupItems];
       newSkills.splice(lastIdx + 1, 0, ...toInsert);
+      form.setValue('skills', JSON.stringify(newSkills));
+      return newSkills;
+    });
+  };
+
+  // ---- Turn grouping (rows joined into the same trampoline turn) ----
+  const nextTurnMarker = (items: SkillItem[]) =>
+    items.reduce((m, it) => (typeof it.turn === "number" && it.turn >= m ? it.turn + 1 : m), 1);
+
+  // Join row `rowIdx` to the previous row's turn.
+  const joinTurnWithPrevious = (rowIdx: number) => {
+    setSelectedSkills(prev => {
+      const rows = buildRowsWithIndices(prev);
+      if (rowIdx <= 0 || rowIdx >= rows.length) return prev;
+      const newSkills = prev.map(it => ({ ...it }));
+      const prevRowFirst = rows[rowIdx - 1].indices[0];
+      let marker = newSkills[prevRowFirst].turn;
+      if (typeof marker !== "number") {
+        marker = nextTurnMarker(prev);
+        newSkills[prevRowFirst].turn = marker;
+      }
+      newSkills[rows[rowIdx].indices[0]].turn = marker;
+      form.setValue('skills', JSON.stringify(newSkills));
+      return newSkills;
+    });
+  };
+
+  // Split row `rowIdx` back out into its own turn.
+  const splitTurnFromPrevious = (rowIdx: number) => {
+    setSelectedSkills(prev => {
+      const rows = buildRowsWithIndices(prev);
+      if (rowIdx < 0 || rowIdx >= rows.length) return prev;
+      const newSkills = prev.map((it, idx) => {
+        if (idx === rows[rowIdx].indices[0] && it.turn !== undefined) {
+          const { turn: _t, ...rest } = it;
+          return rest as SkillItem;
+        }
+        return { ...it };
+      });
+      form.setValue('skills', JSON.stringify(newSkills));
+      return newSkills;
+    });
+  };
+
+  // Copy every row of the LAST turn as a brand-new turn appended at the end.
+  const duplicateLastTurn = () => {
+    setSelectedSkills(prev => {
+      const rows = buildRowsWithIndices(prev);
+      if (rows.length === 0) return prev;
+      const { rowTurns, totalTurns } = computeTurns(prev);
+      const lastTurnRows = rows.filter((_, i) => rowTurns[i] === totalTurns);
+      if (lastTurnRows.length === 0) return prev;
+      const marker = lastTurnRows.length > 1 ? nextTurnMarker(prev) : undefined;
+      const newSkills = [...prev];
+      lastTurnRows.forEach((row) => {
+        if (newSkills.length > 0 && newSkills[newSkills.length - 1].id !== -1) {
+          newSkills.push({ id: -1 });
+        }
+        row.items.forEach((it, i) => {
+          const copy: SkillItem = { ...it };
+          delete copy.turn;
+          if (i === 0 && marker !== undefined) copy.turn = marker;
+          newSkills.push(copy);
+        });
+      });
       form.setValue('skills', JSON.stringify(newSkills));
       return newSkills;
     });
@@ -2242,6 +2310,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   <div className="bg-secondary/20 px-3 py-1.5 border-b border-border/50 flex justify-between items-center">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Practice List</span>
                     <div className="flex items-center gap-2">
+                      {trackTurns && turnInfo.totalTurns > 0 && (
+                        <>
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Turns:</span>
+                          <span className="text-xs font-mono font-bold text-foreground" data-testid="text-turn-count">{turnInfo.totalTurns}</span>
+                          <span className="text-muted-foreground/40">·</span>
+                        </>
+                      )}
                       <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total DD:</span>
                       <span className="text-xs font-mono font-bold text-primary">{totalDifficulty.toFixed(1)}</span>
                     </div>
@@ -2268,8 +2343,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         <SortableContext items={nonEmpty.map((_, i) => `group-${i}`)} strategy={verticalListSortingStrategy}>
                           {nonEmpty.map((group, gIdx) => {
                             const isConnected = group.items.length > 1;
-                            return (
-                              <SortablePracticeGroup key={`group-${gIdx}`} gId={`group-${gIdx}`} isConnected={isConnected}>
+                            const rowTurn = turnInfo.rowTurns[gIdx];
+                            const isFirstOfTurn = gIdx === 0 || turnInfo.rowTurns[gIdx - 1] !== rowTurn;
+                            const joinedWithPrev = gIdx > 0 && turnInfo.rowTurns[gIdx - 1] === rowTurn;
+                            const turnMenuItems = trackTurns && gIdx > 0 ? (
+                              joinedWithPrev ? (
+                                <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => splitTurnFromPrevious(gIdx)} data-testid={`menu-split-turn-${gIdx}`}><Split className="h-3.5 w-3.5" /> Split into own turn</DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => joinTurnWithPrevious(gIdx)} data-testid={`menu-join-turn-${gIdx}`}><Merge className="h-3.5 w-3.5" /> Same turn as above</DropdownMenuItem>
+                              )
+                            ) : null;
+                            const rowContent = (
+                              <>
                             {isConnected ? (() => {
                               const grpReps = group.items[0]?.reps ?? 1;
                               const grpNote = group.items[0]?.note;
@@ -2366,6 +2451,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           {canShapeSwapGroup(group.indices) && (
                                             <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => setShapeSwapIndices(group.indices)}><Shapes className="h-3.5 w-3.5" /> Duplicate w/ shape</DropdownMenuItem>
                                           )}
+                                          {turnMenuItems}
                                           <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeGroup(group.indices)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                         </DropdownMenuContent>
                                       </DropdownMenu>
@@ -2444,6 +2530,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                             <DropdownMenuContent align="end" className="w-36 rounded-xl" onCloseAutoFocus={(e) => e.preventDefault()}>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { addNoteAndFocus(idx); } }}><MessageSquare className="h-3.5 w-3.5" /> {item.note !== undefined && item.note !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                                              {turnMenuItems}
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                             </DropdownMenuContent>
                                           </DropdownMenu>
@@ -2513,6 +2600,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                             <DropdownMenuContent align="end" className="w-36 rounded-xl" onCloseAutoFocus={(e) => e.preventDefault()}>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { addNoteAndFocus(idx); } }}><MessageSquare className="h-3.5 w-3.5" /> {item.note !== undefined && item.note !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                                              {turnMenuItems}
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                             </DropdownMenuContent>
                                           </DropdownMenu>
@@ -2598,6 +2686,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                             {canShapeSwapGroup(group.indices) && (
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => setShapeSwapIndices(group.indices)}><Shapes className="h-3.5 w-3.5" /> Duplicate w/ shape</DropdownMenuItem>
                                             )}
+                                            {turnMenuItems}
                                             <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => removeSkill(idx)}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                           </DropdownMenuContent>
                                         </DropdownMenu>
@@ -2621,6 +2710,28 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                 </div>
                               );
                             })}
+                              </>
+                            );
+                            return (
+                              <SortablePracticeGroup key={`group-${gIdx}`} gId={`group-${gIdx}`} isConnected={isConnected}>
+                                {trackTurns ? (
+                                  <div className="flex items-stretch">
+                                    <div
+                                      className={cn(
+                                        "w-6 shrink-0 flex items-center justify-center border-r border-border/30",
+                                        !isFirstOfTurn && "border-t-0"
+                                      )}
+                                      data-testid={`turn-gutter-${gIdx}`}
+                                    >
+                                      {isFirstOfTurn ? (
+                                        <span className="text-[11px] font-mono font-bold text-muted-foreground" data-testid={`text-turn-number-${gIdx}`}>{rowTurn}</span>
+                                      ) : (
+                                        <span className="w-px self-stretch bg-border/60 mx-auto" aria-hidden="true" />
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">{rowContent}</div>
+                                  </div>
+                                ) : rowContent}
                               </SortablePracticeGroup>
                             );
                           })}
@@ -2629,6 +2740,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     })()}
                   </div>
                   </DndContext>
+                  {trackTurns && turnInfo.totalTurns > 0 && (
+                    <div className="border-t border-border/50 bg-secondary/10">
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary/30 transition-colors"
+                        onClick={duplicateLastTurn}
+                        data-testid="button-duplicate-last-turn"
+                      >
+                        <Repeat className="h-3 w-3" /> Duplicate last turn
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 

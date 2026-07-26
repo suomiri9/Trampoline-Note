@@ -10,6 +10,54 @@ export interface SkillItem {
   attempt?: number;
   fcId?: number;
   fcName?: string;
+  // Optional turn marker: rows (groups split by {id:-1}) whose FIRST item
+  // carries the same non-null `turn` value AND are consecutive belong to the
+  // same trampoline turn. Rows without a marker each count as their own turn
+  // (legacy fallback). Reps/skill counts never multiply turns.
+  turn?: number;
+}
+
+// Split a practice list into rows (groups) with their original indices.
+export function buildRowsWithIndices(items: SkillItem[]): { items: SkillItem[]; indices: number[] }[] {
+  const rows: { items: SkillItem[]; indices: number[] }[] = [];
+  let cur: SkillItem[] = [];
+  let curIdx: number[] = [];
+  items.forEach((item, idx) => {
+    if (item.id === -1) {
+      if (cur.length > 0) rows.push({ items: cur, indices: curIdx });
+      cur = []; curIdx = [];
+    } else {
+      cur.push(item); curIdx.push(idx);
+    }
+  });
+  if (cur.length > 0) rows.push({ items: cur, indices: curIdx });
+  return rows;
+}
+
+// Single source of truth for turn numbering: returns the 1-based turn number
+// of each row and the total turn count. Consecutive rows sharing the same
+// non-null `turn` marker (on the row's first item) form one turn; unmarked
+// rows are each their own turn.
+export function computeTurns(items: SkillItem[]): { rowTurns: number[]; totalTurns: number } {
+  const rows = buildRowsWithIndices(items);
+  const rowTurns: number[] = [];
+  let turnNo = 0;
+  let prevMarker: number | null = null;
+  rows.forEach((row) => {
+    const marker = typeof row.items[0]?.turn === "number" ? row.items[0].turn! : null;
+    if (marker !== null && prevMarker !== null && marker === prevMarker) {
+      rowTurns.push(turnNo);
+    } else {
+      turnNo += 1;
+      rowTurns.push(turnNo);
+    }
+    prevMarker = marker;
+  });
+  return { rowTurns, totalTurns: turnNo };
+}
+
+export function noteTurnCount(items: SkillItem[]): number {
+  return computeTurns(items).totalTurns;
 }
 
 export function parseNoteSkills(skillsString: string | null | undefined): SkillItem[] {

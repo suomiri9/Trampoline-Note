@@ -2,7 +2,8 @@ import { format } from "date-fns";
 import { Calendar, MoreVertical, Pencil, Trash2, Clock, HeartPulse } from "lucide-react";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { type Note } from "@shared/schema";
-import { parseNoteSkills, calculateTotalDD } from "@/lib/training-utils";
+import { parseNoteSkills, calculateTotalDD, computeTurns } from "@/lib/training-utils";
+import { useTrackTurns } from "@/hooks/use-track-turns";
 import { SkillCode } from "@/components/skill-code";
 import { StarRating } from "./star-rating";
 import { 
@@ -63,6 +64,8 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
 
   const skillsData = parseNoteSkills(note.skills);
   const totalDifficulty = calculateTotalDD(skillsData, allItems, routines);
+  const [trackTurns] = useTrackTurns();
+  const turnInfo = computeTurns(skillsData);
   const [expandedMath, setExpandedMath] = useState<Set<number>>(new Set());
   const toggleMath = (idx: number) => {
     setExpandedMath(prev => {
@@ -124,9 +127,17 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
           <div className="flex items-start gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
             {isPending && <PendingSyncBadge testId={`badge-pending-sync-${note.id}`} />}
             {skillsData.length > 0 && (
-              <div className="text-right leading-none self-center">
-                <div className="text-[28px] font-display font-normal text-primary tracking-tight leading-none">{totalDifficulty.toFixed(1)}</div>
-                <div className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60 mt-1.5">Total DD</div>
+              <div className="flex items-center gap-3 self-center">
+                {trackTurns && turnInfo.totalTurns > 0 && (
+                  <div className="text-right leading-none">
+                    <div className="text-[28px] font-display font-normal text-foreground/80 tracking-tight leading-none" data-testid={`text-turns-${note.id}`}>{turnInfo.totalTurns}</div>
+                    <div className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60 mt-1.5">Turns</div>
+                  </div>
+                )}
+                <div className="text-right leading-none">
+                  <div className="text-[28px] font-display font-normal text-primary tracking-tight leading-none">{totalDifficulty.toFixed(1)}</div>
+                  <div className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60 mt-1.5">Total DD</div>
+                </div>
               </div>
             )}
             {isPending ? (
@@ -203,8 +214,25 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                   });
                   if (currentGroup.length > 0) groups.push(currentGroup);
 
+                  let rowCounter = -1;
                   return groups.map((group, groupIdx) => {
                     if (!Array.isArray(group)) return null;
+                    rowCounter++;
+                    const rowIdx = rowCounter;
+                    const rowTurn = turnInfo.rowTurns[rowIdx];
+                    const isFirstOfTurn = rowIdx === 0 || turnInfo.rowTurns[rowIdx - 1] !== rowTurn;
+                    const wrapRow = (el: React.ReactNode) => trackTurns ? (
+                      <div key={`turnrow-${groupIdx}`} className="flex items-stretch gap-1.5">
+                        <div className="w-5 shrink-0 flex items-center justify-center">
+                          {isFirstOfTurn ? (
+                            <span className="text-[11px] font-mono font-bold text-muted-foreground/70" data-testid={`text-note-turn-${note.id}-${rowIdx}`}>{rowTurn}</span>
+                          ) : (
+                            <span className="w-px self-stretch bg-border/50 mx-auto" aria-hidden="true" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">{el}</div>
+                      </div>
+                    ) : el;
 
                     if (group.length === 1 && (group[0] as any).id === -2) {
                       const item = group[0] as any;
@@ -217,7 +245,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                       }, 0);
                       const reps = item.reps || 1;
 
-                      return (
+                      return wrapRow(
                         <div key={`routine-${groupIdx}`} className="rounded-xl bg-primary/5">
                           <div className="flex items-center justify-between py-2 px-3">
                             <div className="flex items-center gap-2">
@@ -261,7 +289,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                       }, 0);
                       const reps = item.reps || 1;
 
-                      return (
+                      return wrapRow(
                         <div key={`fc-${groupIdx}`} className={cn("rounded-xl", fc?.isDrill === 3 ? "bg-gray-100/60 dark:bg-gray-900/10" : "bg-red-50/60 dark:bg-red-900/10")}>
                           <div className="flex items-center justify-between py-2 px-3">
                             <div className="flex items-center gap-2">
@@ -320,7 +348,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                       return acc + (skill?.difficulty || 0);
                     }, 0);
 
-                    return (
+                    return wrapRow(
                       <div key={`group-${groupIdx}`} className={cn(
                         "flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl",
                         isSingle

@@ -43,6 +43,7 @@ import {
 import { useTimeFormat } from "@/hooks/use-time-format";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { useArchiveCascade } from "@/hooks/use-archive-cascade";
+import { useTrackTurns } from "@/hooks/use-track-turns";
 import { useTheme } from "@/hooks/use-theme";
 import { useShowSkillNames } from "@/hooks/use-skill-label-mode";
 import { useOnline } from "@/hooks/use-online";
@@ -68,6 +69,7 @@ export default function SettingsPage() {
   const [timeFormat, setTimeFormat] = useTimeFormat();
   const [offlineModeEnabled, setOfflineModeEnabled] = useOfflineMode();
   const [archiveCascade, setArchiveCascade] = useArchiveCascade();
+  const [trackTurns, setTrackTurns] = useTrackTurns();
   const { theme, setTheme } = useTheme();
   const [showSkillNames, setShowSkillNames] = useShowSkillNames();
   const isOnline = useOnline();
@@ -474,6 +476,17 @@ export default function SettingsPage() {
                       checked={showSkillNames}
                       onCheckedChange={setShowSkillNames}
                       data-testid="toggle-skill-names"
+                    />
+                  </div>
+                  <div className="p-5 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Track Turns</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{trackTurns ? "On — sessions show turn numbers, counts and efficiency stats." : "Off — no turn numbers, counts or efficiency stats."}</p>
+                    </div>
+                    <Switch
+                      checked={trackTurns}
+                      onCheckedChange={setTrackTurns}
+                      data-testid="toggle-track-turns"
                     />
                   </div>
                   <div className="p-5 flex items-start justify-between gap-3">

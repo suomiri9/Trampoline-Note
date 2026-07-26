@@ -2,14 +2,15 @@ import { useState, useRef } from "react";
 import { useNotes } from "@/hooks/use-notes";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
-import { parseNoteSkills, calculateTotalDD } from "@/lib/training-utils";
+import { parseNoteSkills, calculateTotalDD, computeTurns } from "@/lib/training-utils";
+import { useTrackTurns } from "@/hooks/use-track-turns";
 import { PageLayout } from "@/components/page-layout";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Loader2, TrendingUp, ChevronLeft, ChevronRight, ArrowUp, ArrowDown } from "lucide-react";
-import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { cn } from "@/lib/utils";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
@@ -54,6 +55,7 @@ export default function StatsPage() {
   const { data: notes, isLoading: notesLoading } = useNotes();
   const { data: allItems, isLoading: skillsLoading } = useSkills();
   const { data: routines, isLoading: routinesLoading } = useRoutines();
+  const [trackTurns] = useTrackTurns();
 
   if (offlineView) {
     return (
@@ -83,23 +85,44 @@ export default function StatsPage() {
     );
   }
 
+  const parseHM = (t: string | null | undefined): number | null => {
+    const m = /^(\d{1,2}):(\d{2})/.exec(t ?? "");
+    if (!m) return null;
+    const h = Number(m[1]), min = Number(m[2]);
+    if (h > 23 || min > 59) return null;
+    return h * 60 + min;
+  };
+
   // Compute DD per note keyed by raw date string (YYYY-MM-DD)
-  const ddByDate: Record<string, { difficulty: number; sessions: number }> = {};
+  const ddByDate: Record<string, { difficulty: number; sessions: number; turns: number; timedTurns: number; timedMinutes: number }> = {};
 
   notes?.forEach(note => {
     const skillsData = parseNoteSkills(note.skills);
     const noteDD = calculateTotalDD(skillsData, allItems, routines);
 
     const key = note.date.substring(0, 10);
-    if (!ddByDate[key]) ddByDate[key] = { difficulty: 0, sessions: 0 };
+    if (!ddByDate[key]) ddByDate[key] = { difficulty: 0, sessions: 0, turns: 0, timedTurns: 0, timedMinutes: 0 };
     ddByDate[key].difficulty += noteDD;
     ddByDate[key].sessions += 1;
+    const noteTurns = computeTurns(skillsData).totalTurns;
+    ddByDate[key].turns += noteTurns;
+    const start = parseHM(note.startTime);
+    const end = parseHM(note.endTime);
+    if (start != null && end != null && end > start && noteTurns > 0) {
+      ddByDate[key].timedTurns += noteTurns;
+      ddByDate[key].timedMinutes += end - start;
+    }
   });
+
+  const tphOf = (found: { timedTurns: number; timedMinutes: number } | undefined): number | null =>
+    found && found.timedMinutes > 0
+      ? Math.round((found.timedTurns / (found.timedMinutes / 60)) * 10) / 10
+      : null;
 
   const today = startOfDay(new Date());
 
   // Build chart data based on selected range
-  type ChartPoint = { date: string; difficulty: number | null; sessions: number };
+  type ChartPoint = { date: string; difficulty: number | null; sessions: number; turns: number | null; tph: number | null };
   let chartData: ChartPoint[] = [];
   let xTickInterval: number | "preserveStartEnd" = 0;
   let xTicks: string[] | undefined;
@@ -124,6 +147,8 @@ export default function StatsPage() {
         date: format(day, "EEEEE"),
         difficulty: found?.difficulty ?? null,
         sessions: found?.sessions ?? 0,
+        turns: found?.turns ?? null,
+        tph: tphOf(found),
         isFuture,
       };
     });
@@ -138,7 +163,7 @@ export default function StatsPage() {
       const key = format(day, "yyyy-MM-dd");
       const found = ddByDate[key];
       const isFuture = day > today;
-      return { date: format(day, "d MMM"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, isFuture };
+      return { date: format(day, "d MMM"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, turns: found?.turns ?? null, tph: tphOf(found), isFuture };
     });
   } else if (range === "year") {
     const refDay = addYears(today, offset);
@@ -150,7 +175,7 @@ export default function StatsPage() {
       const key = format(day, "yyyy-MM-dd");
       const found = ddByDate[key];
       const isFuture = day > today;
-      return { date: key, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, isFuture };
+      return { date: key, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, turns: found?.turns ?? null, tph: tphOf(found), isFuture };
     });
     // Force a tick on the first of every month so all 12 month labels render.
     xTicks = days
@@ -169,7 +194,7 @@ export default function StatsPage() {
       chartData = days.map(day => {
         const key = format(day, "yyyy-MM-dd");
         const found = ddByDate[key];
-        return { date: key, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0 };
+        return { date: key, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, turns: found?.turns ?? null, tph: tphOf(found) };
       });
       // Adaptive month/year ticks: denser labels for short spans, yearly for long ones.
       const monthsSpan =
@@ -239,6 +264,23 @@ export default function StatsPage() {
   const periodAvgDD = sessionsInPeriod > 0 ? periodTotalDD / sessionsInPeriod : 0;
   const periodBest = notesInPeriod.reduce((m, n) => Math.max(m, calculateTotalDD(parseNoteSkills(n.skills), allItems, routines)), 0);
 
+  // ---- Turn efficiency (period-scoped, gated by the Track Turns preference) ----
+  let periodTurns = 0;
+  let timedTurns = 0;
+  let timedMinutes = 0;
+  notesInPeriod.forEach(n => {
+    const t = computeTurns(parseNoteSkills(n.skills)).totalTurns;
+    periodTurns += t;
+    const start = parseHM(n.startTime);
+    const end = parseHM(n.endTime);
+    if (start != null && end != null && end > start && t > 0) {
+      timedTurns += t;
+      timedMinutes += end - start;
+    }
+  });
+  const turnsPerHour = timedMinutes > 0 ? timedTurns / (timedMinutes / 60) : null;
+  const avgDDPerTurn = periodTurns > 0 ? periodTotalDD / periodTurns : null;
+
   // ---- All-time overview (not period-scoped) ----
   const allNotes = notes ?? [];
   const allTimeTotalDD = allNotes.reduce((sum, n) => sum + calculateTotalDD(parseNoteSkills(n.skills), allItems, routines), 0);
@@ -251,7 +293,7 @@ export default function StatsPage() {
   const skillsInLibrary = (allItems ?? []).filter(i => i.isDrill === 0 && i.archived !== 1).length;
 
   // ---- Period delta (current vs previous comparable period) ----
-  const periodTotalFor = (off: number): number => {
+  const periodSumFor = (off: number, pick: (v: (typeof ddByDate)[string]) => number): number => {
     let start: Date, end: Date;
     if (range === "week") {
       const ws = addWeeks(startOfWeek(today, { weekStartsOn: 1 }), off);
@@ -265,11 +307,11 @@ export default function StatsPage() {
     }
     let sum = 0;
     for (const [k, v] of Object.entries(ddByDate)) {
-      if (isWithinInterval(parseISO(k), { start, end })) sum += v.difficulty;
+      if (isWithinInterval(parseISO(k), { start, end })) sum += pick(v);
     }
     return sum;
   };
-  const prevPeriodTotal = navigable ? periodTotalFor(offset - 1) : 0;
+  const prevPeriodTotal = navigable ? periodSumFor(offset - 1, v => v.difficulty) : 0;
   const deltaPct = prevPeriodTotal > 0
     ? ((totalDDInRange - prevPeriodTotal) / prevPeriodTotal) * 100
     : (totalDDInRange > 0 ? 100 : 0);
@@ -282,6 +324,12 @@ export default function StatsPage() {
         ? (offset === 0 ? "This Month" : offset === -1 ? "Last Month" : "Month")
         : (offset === 0 ? "This Year" : offset === -1 ? "Last Year" : "Year");
   const prevLabel = range === "week" ? "vs last week" : range === "month" ? "vs last month" : range === "year" ? "vs last year" : "";
+
+  const prevPeriodTurns = navigable ? periodSumFor(offset - 1, v => v.turns) : 0;
+  const turnsDeltaPct = prevPeriodTurns > 0
+    ? ((periodTurns - prevPeriodTurns) / prevPeriodTurns) * 100
+    : (periodTurns > 0 ? 100 : 0);
+  const showTurnsDelta = navigable && (prevPeriodTurns > 0 || periodTurns > 0);
 
   return (
     <PageLayout>
@@ -446,6 +494,140 @@ export default function StatsPage() {
           </div>
 
         </div>
+
+        {trackTurns && (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+            <div className="card-3d rounded-2xl p-5 lg:col-span-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="eyebrow mb-2">{periodTitle} <span className="text-sky-400">/ Turns</span></div>
+                  <div className="text-4xl font-display font-normal tracking-tight" data-testid="text-period-turns">{periodTurns}</div>
+                  <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground mt-1.5" data-testid="legend-turns-chart">
+                    <span className="flex items-center gap-1.5">
+                      <span className="inline-block w-4 border-t-2" style={{ borderColor: 'hsl(200 90% 60%)' }} />
+                      turns
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: 'hsl(150 70% 55%)' }} />
+                      turns/hr
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2 shrink-0">
+                  {showTurnsDelta && (
+                    <div className="text-right">
+                      <div className={cn("flex items-center justify-end gap-0.5 text-sm font-semibold", turnsDeltaPct >= 0 ? "text-emerald-400" : "text-rose-400")} data-testid="text-turns-delta">
+                        {turnsDeltaPct >= 0 ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+                        {turnsDeltaPct >= 0 ? "+" : ""}{Math.round(turnsDeltaPct)}%
+                      </div>
+                      {prevLabel && <div className="text-[11px] text-muted-foreground mt-0.5">{prevLabel}</div>}
+                    </div>
+                  )}
+                  <Select value={range} onValueChange={(v) => { setRange(v as Range); setOffset(0); }}>
+                    <SelectTrigger className="w-[120px] h-8 rounded-xl text-xs border-border/50 font-mono" data-testid="select-range-turns"><SelectValue /></SelectTrigger>
+                    <SelectContent className="font-mono">
+                      <SelectItem value="week">Week</SelectItem>
+                      <SelectItem value="month">Month</SelectItem>
+                      <SelectItem value="year">Year</SelectItem>
+                      <SelectItem value="all">All Time</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div
+                className="h-[200px] w-full mt-4"
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+                    <XAxis
+                      dataKey="date"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={<AxisTick formatter={xTickFormatter} />}
+                      interval={xTickInterval}
+                      ticks={xTicks}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: '12px',
+                        border: '1px solid hsl(var(--border))',
+                        background: 'hsl(var(--card))',
+                        color: 'hsl(var(--foreground))',
+                        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '12px'
+                      }}
+                      itemStyle={{ color: 'hsl(var(--foreground))' }}
+                      labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                      formatter={(value: any, _n: any, item: any) => {
+                        if (value === null || value === undefined) return ["Rest day", ""];
+                        if (item?.dataKey === "tph") {
+                          return [`${Number(value).toFixed(1)} turns/hr`, ""];
+                        }
+                        const s = item?.payload?.sessions ?? 0;
+                        const sessionPart = s > 1 ? ` · ${s} sessions` : "";
+                        return [`${Number(value)} turn${Number(value) === 1 ? "" : "s"}${sessionPart}`, ""];
+                      }}
+                      labelFormatter={
+                        range === "all"
+                          ? (v: string) => { try { return format(parseISO(v), "d MMM yyyy"); } catch { return v; } }
+                          : range === "year"
+                          ? (v: string) => { try { return format(parseISO(v), "d MMM"); } catch { return v; } }
+                          : undefined
+                      }
+                      cursor={{ stroke: 'hsl(200 90% 60% / 0.3)', strokeWidth: 1 }}
+                    />
+                    <YAxis yAxisId="turns" hide />
+                    <YAxis yAxisId="tph" hide />
+                    <Line
+                      yAxisId="turns"
+                      type="linear"
+                      dataKey="turns"
+                      stroke="hsl(200 90% 60%)"
+                      strokeWidth={2}
+                      connectNulls
+                      dot={{ r: chartData.length > 60 ? 2 : 3, fill: 'hsl(200 90% 60%)', strokeWidth: 0 }}
+                      activeDot={{ r: 5, fill: 'hsl(200 90% 60%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+                    />
+                    <Line
+                      yAxisId="tph"
+                      type="linear"
+                      dataKey="tph"
+                      stroke="hsl(150 70% 55%)"
+                      strokeWidth={1.5}
+                      strokeDasharray="4 3"
+                      connectNulls
+                      dot={{ r: chartData.length > 60 ? 1.5 : 2.5, fill: 'hsl(150 70% 55%)', strokeWidth: 0 }}
+                      activeDot={{ r: 4, fill: 'hsl(150 70% 55%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="text-center mt-2 text-xs font-mono text-muted-foreground">{periodLabel}</div>
+            </div>
+
+            <div className="card-3d rounded-2xl p-5 lg:col-span-1">
+              <div className="eyebrow mb-2">Efficiency</div>
+              <div className="divide-y divide-border/50">
+                {[
+                  { label: "Turns", value: String(periodTurns), testId: "stat-turns" },
+                  { label: "Turns / Hour", value: turnsPerHour != null ? turnsPerHour.toFixed(1) : "—", testId: "stat-turns-per-hour" },
+                  { label: "Avg DD / Turn", value: avgDDPerTurn != null ? avgDDPerTurn.toFixed(1) : "—", testId: "stat-avg-dd-per-turn" },
+                ].map((row) => (
+                  <div key={row.label} className="flex items-center justify-between py-3.5">
+                    <span className="text-sm text-muted-foreground">{row.label}</span>
+                    <span className="font-mono text-base text-foreground" data-testid={row.testId}>{row.value}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground/70 mt-3 leading-snug">
+                Turns/hour counts only sessions with start and end times.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </PageLayout>
   );
