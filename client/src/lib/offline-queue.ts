@@ -319,7 +319,7 @@ function remapNoteSkillsString(s: unknown, idMap: Map<number, number>): unknown 
   }
 }
 
-function remapBody(kind: QueueKind, body: any, idMap: Map<number, number>): any {
+export function remapBody(kind: QueueKind, body: any, idMap: Map<number, number>): any {
   if (idMap.size === 0 || !body || typeof body !== 'object') return body;
   if (kind === 'note') {
     return { ...body, skills: remapNoteSkillsString(body.skills, idMap) };
