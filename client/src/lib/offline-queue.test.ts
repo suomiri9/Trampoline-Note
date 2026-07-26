@@ -114,3 +114,100 @@ describe("remapBody('note', ...) preserves turn markers through id remapping", (
     expect(out.skills).toBe("not json");
   });
 });
+
+describe("remapBody('skill', ...) remaps linked ids for offline-created skills", () => {
+  it("remaps temp ids inside a connection's skillIds, leaving real ids alone", () => {
+    const body = {
+      name: "Conn",
+      code: "C1",
+      isDrill: 2,
+      difficulty: 1.2,
+      skillIds: [-101, 42, -102],
+    };
+    const out = remapBody("skill", body, idMap);
+    expect(out.skillIds).toEqual([501, 42, 502]);
+    expect(out.name).toBe("Conn");
+    expect(out.code).toBe("C1");
+    expect(out.isDrill).toBe(2);
+    expect(out.difficulty).toBe(1.2);
+  });
+
+  it("remaps a shape variant's parentSkillId to the synced base id", () => {
+    const body = { name: "T", code: "o", shape: "o", difficulty: 0.5, parentSkillId: -101 };
+    const out = remapBody("skill", body, idMap);
+    expect(out.parentSkillId).toBe(501);
+    expect(out.shape).toBe("o");
+    expect(out.name).toBe("T");
+  });
+
+  it("leaves a real parentSkillId untouched when not in the idMap", () => {
+    const body = { name: "T", code: "o", parentSkillId: 42 };
+    const out = remapBody("skill", body, idMap);
+    expect(out.parentSkillId).toBe(42);
+  });
+
+  it("remaps a routine part's sourceRoutineId to the synced routine id", () => {
+    const body = {
+      name: "Last 5 of Vol",
+      code: "L5",
+      isDrill: 3,
+      skillIds: [-101, 42],
+      sourceRoutineId: -201,
+    };
+    const out = remapBody("skill", body, idMap);
+    expect(out.sourceRoutineId).toBe(601);
+    expect(out.skillIds).toEqual([501, 42]);
+    expect(out.isDrill).toBe(3);
+  });
+
+  it("leaves a real sourceRoutineId untouched when not in the idMap", () => {
+    const body = { name: "Part", isDrill: 3, sourceRoutineId: 9 };
+    const out = remapBody("skill", body, idMap);
+    expect(out.sourceRoutineId).toBe(9);
+  });
+
+  it("does not add link fields to a body that lacks them", () => {
+    const body = { name: "Bs", code: "40", difficulty: 0.5 };
+    const out = remapBody("skill", body, idMap);
+    expect(out).toEqual(body);
+    expect("parentSkillId" in out).toBe(false);
+    expect("sourceRoutineId" in out).toBe(false);
+    expect("skillIds" in out).toBe(false);
+  });
+
+  it("ignores null parentSkillId/sourceRoutineId (no crash, unchanged)", () => {
+    const body = { name: "Bs", parentSkillId: null, sourceRoutineId: null };
+    const out = remapBody("skill", body, idMap);
+    expect(out.parentSkillId).toBeNull();
+    expect(out.sourceRoutineId).toBeNull();
+  });
+});
+
+describe("remapBody('routine', ...) remaps skillIds for offline-created routines", () => {
+  it("remaps temp skill ids in a routine's skillIds and keeps other fields", () => {
+    const body = { name: "Vol", skillIds: [-101, -102, 42, 7], archived: false };
+    const out = remapBody("routine", body, idMap);
+    expect(out.skillIds).toEqual([501, 502, 42, 7]);
+    expect(out.name).toBe("Vol");
+    expect(out.archived).toBe(false);
+  });
+
+  it("does not remap parentSkillId/sourceRoutineId on routine bodies (skill-only fields)", () => {
+    const body = { name: "Vol", skillIds: [42], parentSkillId: -101, sourceRoutineId: -201 };
+    const out = remapBody("routine", body, idMap);
+    expect(out.parentSkillId).toBe(-101);
+    expect(out.sourceRoutineId).toBe(-201);
+  });
+
+  it("returns the body unchanged when idMap is empty", () => {
+    const body = { name: "Vol", skillIds: [-101, 42] };
+    const out = remapBody("routine", body, new Map());
+    expect(out).toBe(body);
+  });
+
+  it("leaves a routine without skillIds untouched", () => {
+    const body = { name: "Vol" };
+    const out = remapBody("routine", body, idMap);
+    expect(out).toEqual({ name: "Vol" });
+  });
+});
