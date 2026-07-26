@@ -24,6 +24,11 @@ export function SplashScreen() {
   // mount, so skip the fade-in-up entrance (it would blank the content for a
   // frame) and let the bounce play immediately.
   const [skipEntrance] = useState(isIosStandalone);
+  // iOS only: hold the content invisible until the icon image is actually
+  // decoded, so the splash never paints the title with a blank hole where the
+  // icon belongs (the gap the native launch image hands off into). The icon is
+  // preloaded from index.html, so this is normally instant.
+  const [iconReady, setIconReady] = useState(!isIosStandalone());
   const [done, setDone] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
@@ -37,6 +42,13 @@ export function SplashScreen() {
     };
   }, [done]);
 
+  // Safety net: never stay invisible if the icon load stalls or errors.
+  useEffect(() => {
+    if (iconReady) return;
+    const t = setTimeout(() => setIconReady(true), 600);
+    return () => clearTimeout(t);
+  }, [iconReady]);
+
   if (done) return null;
 
   return (
@@ -48,11 +60,20 @@ export function SplashScreen() {
       }`}
       style={{ transitionDuration: `${FADE_MS}ms` }}
     >
-      <div className={`flex flex-col items-center gap-7 ${skipEntrance ? "" : "animate-fade-in-up"}`}>
+      <div
+        className={`flex flex-col items-center gap-7 ${
+          iconReady ? "" : "invisible"
+        } ${skipEntrance ? "" : "animate-fade-in-up"}`}
+      >
         <img
           src="/icon-512.png"
           alt=""
           draggable={false}
+          ref={(el) => {
+            if (el && el.complete) setIconReady(true);
+          }}
+          onLoad={() => setIconReady(true)}
+          onError={() => setIconReady(true)}
           className="h-24 w-24 select-none rounded-3xl shadow-2xl shadow-primary/25 ring-1 ring-black/5 dark:ring-white/10 animate-splash-bounce"
         />
         <div className="flex flex-col items-center gap-2.5">
