@@ -31,6 +31,7 @@ export interface CoachMessage {
   images?: string | null;
   draft?: string | null;
   proposals?: string | null;
+  suggestions?: string | null;
   createdAt: string;
 }
 
@@ -226,6 +227,19 @@ function parseMessageDraft(draft: string | null | undefined): CoachDraft | null 
     };
   } catch {
     return null;
+  }
+}
+
+// Parse the quick-reply suggestions JSON stored on an assistant message.
+function parseMessageSuggestions(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+      : [];
+  } catch {
+    return [];
   }
 }
 
@@ -866,7 +880,6 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<string[]>([]);
   const [compressing, setCompressing] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   // The user's message and the coach's partial reply while a send is in
   // flight — rendered as optimistic bubbles until the history refetch lands.
   const [pendingUser, setPendingUser] = useState<{ content: string; images: string[] } | null>(null);
@@ -877,6 +890,14 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
   const { data: messages, isLoading: messagesLoading } = useQuery<CoachMessage[]>({
     queryKey: ["/api/coach/messages"],
   });
+
+  // Quick-reply chips are stored on the assistant message row, so they come
+  // straight from history — closing and reopening the chat keeps them
+  // visible. Only the newest message's chips are offered (older ones are
+  // stale by definition), and the send refetch swaps them for the new ones.
+  const lastMessage = messages?.[messages.length - 1];
+  const suggestions =
+    lastMessage?.role === "assistant" ? parseMessageSuggestions(lastMessage.suggestions) : [];
 
   const sendMutation = useMutation({
     mutationFn: async ({ content, images }: { content: string; images: string[] }) => {
@@ -913,7 +934,7 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
         for (const evt of events) {
           const dataLine = evt.split("\n").find((l) => l.startsWith("data: "));
           if (!dataLine) continue;
-          let payload: { delta?: string; done?: boolean; reply?: string; error?: string; guideUpdated?: boolean; suggestions?: string[] };
+          let payload: { delta?: string; done?: boolean; reply?: string; error?: string; guideUpdated?: boolean };
           try {
             payload = JSON.parse(dataLine.slice(6));
           } catch {
@@ -926,7 +947,6 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
           }
           if (payload.done) {
             done = true;
-            if (Array.isArray(payload.suggestions)) setSuggestions(payload.suggestions as string[]);
             if (payload.guideUpdated) guideUpdated = true;
           }
         }
@@ -1010,7 +1030,6 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
     if ((!content && images.length === 0) || sendMutation.isPending || compressing) return;
     setInput("");
     setAttachments([]);
-    setSuggestions([]);
     sendMutation.mutate(
       { content, images },
       {

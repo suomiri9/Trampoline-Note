@@ -1,4 +1,5 @@
 - [Trampoline repl verification quirks](trampoline-verification.md) — auth gate makes app_preview screenshots show the login page; some pre-existing TS errors are esbuild-safe, don't chase them.
+- [Schema changes need three touchpoints](schema-migration-touchpoints.md) — drizzle schema + startup ALTER block (prod migrates at boot, not db:push) + any client-local row interfaces.
 - [Follow-up task cancellation is irreversible](followup-task-irreversible.md) — markFollowUpTaskObsolete is terminal; verify a follow-up's real title/content before retracting it.
 - [Tailwind font-display utility must be registered](tailwind-font-display-utility.md) — `font-*` custom families silently no-op unless added to tailwind.config fontFamily; config needs a workflow restart.
 - [SkillEditorOverlay top-anchoring](skill-editor-overlay-anchoring.md) — note-dialog skill editor uses items-start (not items-center) so deleting rows doesn't re-center and shift the ✕ off the cursor.

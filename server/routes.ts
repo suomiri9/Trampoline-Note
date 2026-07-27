@@ -4,7 +4,7 @@ import { storage, SkillLinkError, TofRoutineError } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { isAuthenticated, getUserId, getBaseUrl } from "./auth";
-import { getPushRecommendation, coachChat, parseMenuPhoto, parseTofScreenshot, menuChat, generateSuggestions, CoachUnavailableError } from "./coach";
+import { getPushRecommendation, coachChat, parseMenuPhoto, parseTofScreenshot, menuChat, CoachUnavailableError } from "./coach";
 import { serveCoachImage } from "./coach-images";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
@@ -780,16 +780,15 @@ export async function registerRoutes(
       };
 
       try {
-        const { reply, draft, guideUpdated, skillProposal, pointProposal } = await coachChat(
+        const { reply, draft, guideUpdated, skillProposal, pointProposal, suggestions } = await coachChat(
           getUserId(req),
           content,
           page,
           images,
           (chunk) => sendEvent({ delta: chunk }),
         );
-        // Quick-reply chips are skipped whenever a card (draft or proposal)
-        // is shown — the card's confirm/dismiss IS the next action.
-        const suggestions = await generateSuggestions(reply, !!draft || !!skillProposal || !!pointProposal);
+        // Chips are persisted on the assistant message row inside coachChat,
+        // so reopening the chat later re-shows them.
         sendEvent({ done: true, reply, draft, guideUpdated, suggestions, skillProposal, pointProposal });
         res.end();
       } catch (err) {

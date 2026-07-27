@@ -585,6 +585,7 @@ export async function coachChat(
   guideUpdated: boolean;
   skillProposal: CoachSkillProposal | null;
   pointProposal: CoachPointProposal | null;
+  suggestions: string[];
 }> {
   const ctx = await buildCoachContext(userId);
   const [history, allSkills, routines, user] = await Promise.all([
@@ -728,9 +729,18 @@ export async function coachChat(
           ...(pointRes.proposal ? { point: pointRes.proposal } : {}),
         })
       : null;
+  // Quick-reply chips are generated before the save so they persist on the
+  // message row — reopening the chat re-shows them (they used to live only in
+  // the client's memory). Card turns (draft/proposal) skip chips because the
+  // card's confirm/dismiss IS the next action. generateSuggestions never throws.
+  const suggestions = await generateSuggestions(
+    finalReply,
+    !!draft || !!skillRes.proposal || !!pointRes.proposal,
+  );
   await storage.createCoachMessage(userId, "assistant", finalReply, {
     draft: draft ? JSON.stringify(draft) : null,
     proposals,
+    suggestions: suggestions.length > 0 ? JSON.stringify(suggestions) : null,
   });
 
   return {
@@ -739,6 +749,7 @@ export async function coachChat(
     guideUpdated,
     skillProposal: skillRes.proposal,
     pointProposal: pointRes.proposal,
+    suggestions,
   };
 }
 
