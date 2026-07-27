@@ -65,7 +65,7 @@ export function parseTenthsRow(cells: string[], maxSkills: number = EXECUTION_SK
 
 export function tenthsRowToInsert(
   cells: string[],
-  base: { date: string; routineId: number | null; skillId: number | null; category: "set" | "vol"; note: string | null },
+  base: { date: string; routineId: number | null; skillId: number | null; skillIds?: number[] | null; category: "set" | "vol"; note: string | null },
   maxSkills: number = EXECUTION_SKILL_COUNT,
 ): InsertExecutionSession {
   const p = parseTenthsRow(cells, maxSkills);
@@ -73,6 +73,9 @@ export function tenthsRowToInsert(
     date: base.date,
     routineId: base.routineId,
     skillId: base.skillId,
+    // Explicit null (not undefined) so updates that switch away from an
+    // ad-hoc "connect skills" target clear the old sequence.
+    skillIds: base.skillIds ?? null,
     category: base.category,
     deductions: p.skills.map(tenthsToPoints),
     landingDeduction: p.landing != null ? tenthsToPoints(p.landing) : null,

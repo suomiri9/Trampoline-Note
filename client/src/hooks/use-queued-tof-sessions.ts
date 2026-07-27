@@ -31,6 +31,7 @@ export function useQueuedTofSessions(): PendingTofSession[] {
               date: body.date ?? new Date().toISOString().split("T")[0],
               routineId: body.routineId ?? null,
               skillId: body.skillId ?? null,
+              skillIds: body.skillIds ?? null,
               tofValues: body.tofValues ?? [],
               preJumpTof: body.preJumpTof ?? null,
               note: body.note ?? null,

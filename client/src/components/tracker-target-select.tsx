@@ -14,13 +14,15 @@ import { encodeTarget } from "@/lib/tracker-target";
 
 // Grouped target picker shared by the ToF and Execution trackers: pick a
 // routine OR any loggable library item (skill, drill, connection, routine
-// part). Values are encoded "r:<routineId>" / "s:<skillId>".
+// part). Values are encoded "r:<routineId>" / "s:<skillId>"; with allowAdhoc
+// the special value "adhoc" offers an inline "connect skills" sequence.
 export function TrackerTargetSelect({
   value,
   onValueChange,
   routines,
   allSkills,
   currentFallback,
+  allowAdhoc,
   testId,
   placeholder = "Pick target...",
 }: {
@@ -30,6 +32,8 @@ export function TrackerTargetSelect({
   allSkills: Skill[] | undefined;
   /** Keeps an archived/deleted current selection visible while editing. */
   currentFallback?: { value: string; label: string } | null;
+  /** Adds a "Connect skills…" option (value "adhoc") for ad-hoc sequences. */
+  allowAdhoc?: boolean;
   testId?: string;
   placeholder?: string;
 }) {
@@ -79,6 +83,12 @@ export function TrackerTargetSelect({
             ))}
           </SelectGroup>
         ))}
+        {allowAdhoc && (
+          <SelectGroup>
+            <SelectLabel>Custom</SelectLabel>
+            <SelectItem value="adhoc" data-testid="option-target-adhoc">Connect skills…</SelectItem>
+          </SelectGroup>
+        )}
         {currentFallback && !known && currentFallback.value === value && (
           <SelectItem value={currentFallback.value}>{currentFallback.label}</SelectItem>
         )}

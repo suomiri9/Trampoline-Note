@@ -88,6 +88,9 @@ export const tofSessions = pgTable("tof_sessions", {
   date: date("date").notNull(),
   routineId: integer("routine_id").references(() => routines.id),
   skillId: integer("skill_id").references(() => skills.id),
+  // Ad-hoc "connect skills" target: 2-10 skill ids in performed order, stored
+  // inline (no library item). Exactly one of routineId/skillId/skillIds is set.
+  skillIds: integer("skill_ids").array(),
   tofValues: real("tof_values").array().notNull(), // 1-10 per-jump ToF seconds, jump order
   // Optional in-bounce jump ToF right before skill 1, so the first skill also
   // gets a drop-vs-previous value. Derivable from a Veriflite screenshot as
@@ -108,7 +111,10 @@ export const executionSessions = pgTable("execution_sessions", {
   userId: varchar("user_id"),
   date: date("date").notNull(),
   routineId: integer("routine_id").references(() => routines.id),
-  skillId: integer("skill_id").references(() => skills.id), // library-item target; exactly one of routineId/skillId is set
+  skillId: integer("skill_id").references(() => skills.id), // library-item target
+  // Ad-hoc "connect skills" target: 2-10 skill ids in performed order, stored
+  // inline (no library item). Exactly one of routineId/skillId/skillIds is set.
+  skillIds: integer("skill_ids").array(),
   category: text("category").notNull().default("vol"), // "set" (compulsory) or "vol" (voluntary); only meaningful for routine targets
   deductions: real("deductions").array().notNull(), // 1-10 per-skill deductions in points, skill order (0 = perfect skill)
   // Landing deduction in points; 0 = clean landing as printed, null = not
@@ -151,6 +157,7 @@ export const insertTofSessionSchema = createInsertSchema(tofSessions)
   .extend({
     tofValues: z.array(z.number().gt(0).max(30)).min(1).max(10),
     preJumpTof: z.number().gt(0).max(30).nullable().optional(),
+    skillIds: z.array(z.number().int().positive()).min(2).max(10).nullable().optional(),
   });
 
 // Deductions are in points (a printed "2" is stored as 0.2). A skill can have
@@ -163,6 +170,7 @@ export const insertExecutionSessionSchema = createInsertSchema(executionSessions
     category: z.enum(["set", "vol"]),
     deductions: z.array(z.number().min(0).max(3)).min(1).max(10),
     landingDeduction: z.number().min(0).max(3).nullable().optional(),
+    skillIds: z.array(z.number().int().positive()).min(2).max(10).nullable().optional(),
   });
 
 export type InsertNote = z.infer<typeof insertNoteSchema>;

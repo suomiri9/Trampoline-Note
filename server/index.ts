@@ -139,6 +139,8 @@ async function runMigrations() {
       ALTER TABLE tof_sessions ALTER COLUMN routine_id DROP NOT NULL;
       ALTER TABLE execution_sessions ADD COLUMN IF NOT EXISTS skill_id integer;
       ALTER TABLE execution_sessions ALTER COLUMN routine_id DROP NOT NULL;
+      ALTER TABLE tof_sessions ADD COLUMN IF NOT EXISTS skill_ids integer[];
+      ALTER TABLE execution_sessions ADD COLUMN IF NOT EXISTS skill_ids integer[];
     `);
     console.log("Database migrations applied");
   } catch (err) {

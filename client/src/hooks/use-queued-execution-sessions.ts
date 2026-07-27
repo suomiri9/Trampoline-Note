@@ -31,6 +31,7 @@ export function useQueuedExecutionSessions(): PendingExecutionSession[] {
               date: body.date ?? new Date().toISOString().split("T")[0],
               routineId: body.routineId ?? null,
               skillId: body.skillId ?? null,
+              skillIds: body.skillIds ?? null,
               category: body.category ?? "vol",
               deductions: body.deductions ?? [],
               landingDeduction: body.landingDeduction ?? null,

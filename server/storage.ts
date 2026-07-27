@@ -31,7 +31,7 @@ import {
   type User,
   type PasswordResetToken,
 } from "@shared/models/auth";
-import { eq, desc, and, isNull, sql, gte, gt } from "drizzle-orm";
+import { eq, desc, and, isNull, sql, gte, gt, inArray } from "drizzle-orm";
 
 // Thrown when a shape grouping link (parentSkillId) is invalid. Routes map this
 // to a 400 so bad links never silently persist.
@@ -379,27 +379,41 @@ export class DatabaseStorage implements IStorage {
   // (skill / drill / connection / routine part); exactly one of
   // routineId/skillId must be set and it must belong to the same user.
   // Returns the target's sequence length, or null for a single skill/drill
-  // (whose values are repeated attempts of the same skill).
+  // (whose values are repeated attempts of the same skill). The target is
+  // exactly one of: a routine, a library skill, or an ad-hoc "connect skills"
+  // sequence (2-10 skill ids stored inline on the session row).
   private async assertSessionTarget(
     userId: string,
     routineId: number | null | undefined,
     skillId: number | null | undefined,
+    adhocSkillIds: number[] | null | undefined,
   ): Promise<number | null> {
-    const hasRoutine = routineId != null;
-    const hasSkill = skillId != null;
-    if (hasRoutine === hasSkill) {
-      throw new TofRoutineError("Pick exactly one target: a routine or a library skill");
+    const hasAdhoc = adhocSkillIds != null && adhocSkillIds.length > 0;
+    const picked = [routineId != null, skillId != null, hasAdhoc].filter(Boolean).length;
+    if (picked !== 1) {
+      throw new TofRoutineError("Pick exactly one target: a routine, a library skill, or a custom skill connection");
     }
-    if (hasRoutine) {
+    if (routineId != null) {
       const [routine] = await db.select({ skillIds: routines.skillIds }).from(routines)
-        .where(and(eq(routines.id, routineId!), eq(routines.userId, userId)));
+        .where(and(eq(routines.id, routineId), eq(routines.userId, userId)));
       if (!routine) throw new TofRoutineError("Routine not found");
       return routine.skillIds.length;
     }
-    const [skill] = await db.select({ skillIds: skills.skillIds }).from(skills)
-      .where(and(eq(skills.id, skillId!), eq(skills.userId, userId)));
-    if (!skill) throw new TofRoutineError("Skill not found");
-    return skill.skillIds && skill.skillIds.length > 0 ? skill.skillIds.length : null;
+    if (skillId != null) {
+      const [skill] = await db.select({ skillIds: skills.skillIds }).from(skills)
+        .where(and(eq(skills.id, skillId), eq(skills.userId, userId)));
+      if (!skill) throw new TofRoutineError("Skill not found");
+      return skill.skillIds && skill.skillIds.length > 0 ? skill.skillIds.length : null;
+    }
+    const ids = adhocSkillIds!;
+    if (ids.length < 2 || ids.length > 10) {
+      throw new TofRoutineError("A custom skill connection needs 2-10 skills");
+    }
+    const found = await db.select({ id: skills.id }).from(skills)
+      .where(and(inArray(skills.id, Array.from(new Set(ids))), eq(skills.userId, userId)));
+    const foundIds = new Set(found.map(r => r.id));
+    if (ids.some(id => !foundIds.has(id))) throw new TofRoutineError("Skill not found");
+    return ids.length;
   }
 
   // Values beyond the target's sequence length can't be attributed to any
@@ -412,15 +426,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTofSession(userId: string, session: InsertTofSession): Promise<TofSession> {
-    const seqLen = await this.assertSessionTarget(userId, session.routineId, session.skillId);
+    const seqLen = await this.assertSessionTarget(userId, session.routineId, session.skillId, session.skillIds);
     this.assertValuesFitTarget(session.tofValues.length, seqLen);
     const [row] = await db.insert(tofSessions).values({ ...session, userId }).returning();
     return row;
   }
 
   async updateTofSession(id: number, userId: string, updates: Partial<InsertTofSession>): Promise<TofSession | undefined> {
-    if (updates.routineId !== undefined || updates.skillId !== undefined || updates.tofValues !== undefined) {
-      const [existing] = await db.select({ routineId: tofSessions.routineId, skillId: tofSessions.skillId, tofValues: tofSessions.tofValues })
+    if (updates.routineId !== undefined || updates.skillId !== undefined || updates.skillIds !== undefined || updates.tofValues !== undefined) {
+      const [existing] = await db.select({ routineId: tofSessions.routineId, skillId: tofSessions.skillId, skillIds: tofSessions.skillIds, tofValues: tofSessions.tofValues })
         .from(tofSessions)
         .where(and(eq(tofSessions.id, id), eq(tofSessions.userId, userId)));
       if (!existing) return undefined;
@@ -428,6 +442,7 @@ export class DatabaseStorage implements IStorage {
         userId,
         updates.routineId !== undefined ? updates.routineId : existing.routineId,
         updates.skillId !== undefined ? updates.skillId : existing.skillId,
+        updates.skillIds !== undefined ? updates.skillIds : existing.skillIds,
       );
       const values = updates.tofValues !== undefined ? updates.tofValues : existing.tofValues;
       this.assertValuesFitTarget(values?.length ?? 0, seqLen);
@@ -446,15 +461,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createExecutionSession(userId: string, session: InsertExecutionSession): Promise<ExecutionSession> {
-    const seqLen = await this.assertSessionTarget(userId, session.routineId, session.skillId);
+    const seqLen = await this.assertSessionTarget(userId, session.routineId, session.skillId, session.skillIds);
     this.assertValuesFitTarget(session.deductions.length, seqLen);
     const [row] = await db.insert(executionSessions).values({ ...session, userId }).returning();
     return row;
   }
 
   async updateExecutionSession(id: number, userId: string, updates: Partial<InsertExecutionSession>): Promise<ExecutionSession | undefined> {
-    if (updates.routineId !== undefined || updates.skillId !== undefined || updates.deductions !== undefined) {
-      const [existing] = await db.select({ routineId: executionSessions.routineId, skillId: executionSessions.skillId, deductions: executionSessions.deductions })
+    if (updates.routineId !== undefined || updates.skillId !== undefined || updates.skillIds !== undefined || updates.deductions !== undefined) {
+      const [existing] = await db.select({ routineId: executionSessions.routineId, skillId: executionSessions.skillId, skillIds: executionSessions.skillIds, deductions: executionSessions.deductions })
         .from(executionSessions)
         .where(and(eq(executionSessions.id, id), eq(executionSessions.userId, userId)));
       if (!existing) return undefined;
@@ -462,6 +477,7 @@ export class DatabaseStorage implements IStorage {
         userId,
         updates.routineId !== undefined ? updates.routineId : existing.routineId,
         updates.skillId !== undefined ? updates.skillId : existing.skillId,
+        updates.skillIds !== undefined ? updates.skillIds : existing.skillIds,
       );
       const values = updates.deductions !== undefined ? updates.deductions : existing.deductions;
       this.assertValuesFitTarget(values?.length ?? 0, seqLen);

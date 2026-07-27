@@ -17,6 +17,7 @@ import {
   type TrackerTarget,
 } from "@/lib/tracker-target";
 import { TrackerTargetSelect } from "@/components/tracker-target-select";
+import { AdhocSkillsBuilder } from "@/components/adhoc-skills-builder";
 import { PageLayout } from "@/components/page-layout";
 import { PageHeader, primaryActionClass } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -92,7 +93,8 @@ export default function ExecutionPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ExecutionSession | null>(null);
   const [date, setDate] = useState(() => new Date().toISOString().substring(0, 10));
-  const [targetValue, setTargetValue] = useState<string>(""); // "r:<routineId>" | "s:<skillId>"
+  const [targetValue, setTargetValue] = useState<string>(""); // "r:<routineId>" | "s:<skillId>" | "adhoc"
+  const [adhocIds, setAdhocIds] = useState<number[]>([]); // "connect skills" sequence when targetValue === "adhoc"
   const [category, setCategory] = useState<"set" | "vol">("vol");
   const [tenths, setTenths] = useState<string[]>(emptyTenths());
   const [note, setNote] = useState("");
@@ -112,6 +114,7 @@ export default function ExecutionPage() {
     setEditing(null);
     setDate(new Date().toISOString().substring(0, 10));
     setTargetValue("");
+    setAdhocIds([]);
     setCategory("vol");
     setTenths(emptyTenths());
     setNote("");
@@ -122,7 +125,8 @@ export default function ExecutionPage() {
   const startEdit = (s: ExecutionSession) => {
     setEditing(s);
     setDate(s.date);
-    setTargetValue(s.routineId != null ? encodeTarget("routine", s.routineId) : s.skillId != null ? encodeTarget("skill", s.skillId) : "");
+    setTargetValue(s.routineId != null ? encodeTarget("routine", s.routineId) : s.skillId != null ? encodeTarget("skill", s.skillId) : s.skillIds && s.skillIds.length > 0 ? "adhoc" : "");
+    setAdhocIds(s.skillIds ?? []);
     setCategory(s.category === "set" ? "set" : "vol");
     const cells = emptyTenths();
     (s.deductions ?? []).forEach((v, i) => {
@@ -138,10 +142,13 @@ export default function ExecutionPage() {
     if (!open) { setShowForm(false); resetForm(); }
   };
 
-  const selectedTarget = useMemo<TrackerTarget | undefined>(
-    () => (targetValue ? resolveTarget(decodeTarget(targetValue), routineById, allSkills) : undefined),
-    [targetValue, routineById, allSkills],
-  );
+  const selectedTarget = useMemo<TrackerTarget | undefined>(() => {
+    if (targetValue === "adhoc") {
+      // Needs at least 2 connected skills before it counts as a valid target.
+      return adhocIds.length >= 2 ? { kind: "adhoc", skillIds: adhocIds } : undefined;
+    }
+    return targetValue ? resolveTarget(decodeTarget(targetValue), routineById, allSkills) : undefined;
+  }, [targetValue, adhocIds, routineById, allSkills]);
   // Skill cells this target can take (its sequence length, or up to 10
   // attempts for a single skill/drill). Cells beyond this are hidden and
   // ignored, so switching targets can't leave stale trailing values.
@@ -222,11 +229,13 @@ export default function ExecutionPage() {
 
   const handleSave = () => {
     if (!canSave) return;
-    const decoded = decodeTarget(targetValue);
+    const adhoc = targetValue === "adhoc";
+    const decoded = decodeTarget(adhoc ? "" : targetValue);
     const body = tenthsRowToInsert(tenths, {
       date,
       routineId: decoded.routineId,
       skillId: decoded.skillId,
+      skillIds: adhoc ? adhocIds : null,
       // Set/voluntary only applies to full routine attempts.
       category: decoded.routineId != null ? category : "vol",
       note: note.trim() || null,
@@ -422,13 +431,13 @@ export default function ExecutionPage() {
                 >
                   {s.category === "set" ? "SET" : "VOL"}
                 </Badge>
-              ) : target?.kind === "skill" ? (
+              ) : target?.kind === "skill" || target?.kind === "adhoc" ? (
                 <Badge
                   variant="outline"
                   className="text-[9px] font-mono px-1.5 py-0 h-4 border-transparent bg-amber-500/15 text-amber-600 dark:text-amber-400"
                   data-testid={`badge-execution-kind-${s.id}`}
                 >
-                  {skillKindLabel(target.skill).toUpperCase()}
+                  {target.kind === "adhoc" ? "CUSTOM" : skillKindLabel(target.skill).toUpperCase()}
                 </Badge>
               ) : null}
               {e != null && (
@@ -609,12 +618,17 @@ export default function ExecutionPage() {
                   routines={routines}
                   allSkills={allSkills}
                   currentFallback={editingFallback}
+                  allowAdhoc
                   testId="select-exec-target"
                 />
               </div>
             </div>
 
-            {selectedTarget?.kind !== "skill" && (
+            {targetValue === "adhoc" && (
+              <AdhocSkillsBuilder skillIds={adhocIds} onChange={setAdhocIds} allSkills={allSkills} testPrefix="exec" />
+            )}
+
+            {targetValue !== "adhoc" && (!selectedTarget || selectedTarget.kind === "routine") && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Set routine or voluntary?</label>
                 <Select value={category} onValueChange={v => setCategory(v === "set" ? "set" : "vol")}>

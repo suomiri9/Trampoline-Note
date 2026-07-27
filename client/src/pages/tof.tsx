@@ -18,6 +18,7 @@ import {
   type TrackerTarget,
 } from "@/lib/tracker-target";
 import { TrackerTargetSelect } from "@/components/tracker-target-select";
+import { AdhocSkillsBuilder } from "@/components/adhoc-skills-builder";
 import { PageLayout } from "@/components/page-layout";
 import { PageHeader, primaryActionClass } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -58,7 +59,8 @@ export default function TofPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<TofSession | null>(null);
   const [date, setDate] = useState(() => new Date().toISOString().substring(0, 10));
-  const [targetValue, setTargetValue] = useState<string>(""); // "r:<routineId>" | "s:<skillId>"
+  const [targetValue, setTargetValue] = useState<string>(""); // "r:<routineId>" | "s:<skillId>" | "adhoc"
+  const [adhocIds, setAdhocIds] = useState<number[]>([]); // "connect skills" sequence when targetValue === "adhoc"
   const [values, setValues] = useState<string[]>(emptyValues());
   const [preJump, setPreJump] = useState("");
   const [note, setNote] = useState("");
@@ -70,6 +72,7 @@ export default function TofPage() {
     setEditing(null);
     setDate(new Date().toISOString().substring(0, 10));
     setTargetValue("");
+    setAdhocIds([]);
     setValues(emptyValues());
     setPreJump("");
     setNote("");
@@ -80,7 +83,8 @@ export default function TofPage() {
   const startEdit = (s: TofSession) => {
     setEditing(s);
     setDate(s.date);
-    setTargetValue(s.routineId != null ? encodeTarget("routine", s.routineId) : s.skillId != null ? encodeTarget("skill", s.skillId) : "");
+    setTargetValue(s.routineId != null ? encodeTarget("routine", s.routineId) : s.skillId != null ? encodeTarget("skill", s.skillId) : s.skillIds && s.skillIds.length > 0 ? "adhoc" : "");
+    setAdhocIds(s.skillIds ?? []);
     const vals = emptyValues();
     (s.tofValues ?? []).forEach((v, i) => { if (i < 10) vals[i] = String(v); });
     setValues(vals);
@@ -93,10 +97,13 @@ export default function TofPage() {
     if (!open) { setShowForm(false); resetForm(); }
   };
 
-  const selectedTarget = useMemo<TrackerTarget | undefined>(
-    () => (targetValue ? resolveTarget(decodeTarget(targetValue), routineById, allSkills) : undefined),
-    [targetValue, routineById, allSkills],
-  );
+  const selectedTarget = useMemo<TrackerTarget | undefined>(() => {
+    if (targetValue === "adhoc") {
+      // Needs at least 2 connected skills before it counts as a valid target.
+      return adhocIds.length >= 2 ? { kind: "adhoc", skillIds: adhocIds } : undefined;
+    }
+    return targetValue ? resolveTarget(decodeTarget(targetValue), routineById, allSkills) : undefined;
+  }, [targetValue, adhocIds, routineById, allSkills]);
   const selectedSeqLen = targetSeqLength(selectedTarget);
   // How many value cells this target can take (its sequence length, or up to
   // 10 attempts for a single skill/drill). Cells beyond this are hidden and
@@ -213,11 +220,13 @@ export default function TofPage() {
 
   const handleSave = () => {
     if (!canSave) return;
-    const decoded = decodeTarget(targetValue);
+    const adhoc = targetValue === "adhoc";
+    const decoded = decodeTarget(adhoc ? "" : targetValue);
     const body = {
       date,
       routineId: decoded.routineId,
       skillId: decoded.skillId,
+      skillIds: adhoc ? adhocIds : null,
       tofValues: parsedValues,
       preJumpTof: parsedPreJump,
       note: note.trim() || null,
@@ -307,9 +316,9 @@ export default function TofPage() {
             <div className="text-[10px] font-mono text-muted-foreground">{fmtDate(s.date)}</div>
             <h3 className="font-semibold text-base leading-tight truncate">{name}</h3>
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              {target?.kind === "skill" && (
+              {(target?.kind === "skill" || target?.kind === "adhoc") && (
                 <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 h-4 border-transparent bg-amber-500/15 text-amber-600 dark:text-amber-400" data-testid={`badge-tof-kind-${s.id}`}>
-                  {skillKindLabel(target.skill).toUpperCase()}
+                  {target.kind === "adhoc" ? "CUSTOM" : skillKindLabel(target.skill).toUpperCase()}
                 </Badge>
               )}
               {seqLen != null && vals.length < seqLen && <Badge variant="secondary" className="text-[10px]">{vals.length}/{seqLen} jumps</Badge>}
@@ -413,10 +422,15 @@ export default function TofPage() {
                   routines={routines}
                   allSkills={allSkills}
                   currentFallback={editingFallback}
+                  allowAdhoc
                   testId="select-tof-target"
                 />
               </div>
             </div>
+
+            {targetValue === "adhoc" && (
+              <AdhocSkillsBuilder skillIds={adhocIds} onChange={setAdhocIds} allSkills={allSkills} testPrefix="tof" />
+            )}
 
             <div>
               <input

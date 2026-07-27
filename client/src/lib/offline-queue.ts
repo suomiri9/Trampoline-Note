@@ -360,6 +360,11 @@ export function remapBody(kind: QueueKind, body: any, idMap: Map<number, number>
     if (typeof body.skillId === 'number' && idMap.has(body.skillId)) {
       next = { ...next, skillId: idMap.get(body.skillId) };
     }
+    // Ad-hoc "connect skills" target: remap each id (skills created offline
+    // get their real ids on sync).
+    if (Array.isArray(body.skillIds)) {
+      next = { ...next, skillIds: body.skillIds.map((id: number) => idMap.get(id) ?? id) };
+    }
     return next;
   }
   if (kind === 'focusMemo') {
