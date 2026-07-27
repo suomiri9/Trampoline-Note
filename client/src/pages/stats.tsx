@@ -114,15 +114,20 @@ export default function StatsPage() {
     }
   });
 
-  const tphOf = (found: { timedTurns: number; timedMinutes: number } | undefined): number | null =>
-    found && found.timedMinutes > 0
-      ? Math.round((found.timedTurns / (found.timedMinutes / 60)) * 10) / 10
+  // "3m 05s" / "45s" formatting shared by the Efficiency card and the chart tooltip.
+  const formatSecondsPerTurn = (sec: number) =>
+    sec >= 60 ? `${Math.floor(sec / 60)}m ${String(sec % 60).padStart(2, "0")}s` : `${sec}s`;
+
+  // Average minutes one turn took that day (plotted; tooltip shows it as m/s).
+  const minPerTurnOf = (found: { timedTurns: number; timedMinutes: number } | undefined): number | null =>
+    found && found.timedTurns > 0 && found.timedMinutes > 0
+      ? Math.round((found.timedMinutes / found.timedTurns) * 10) / 10
       : null;
 
   const today = startOfDay(new Date());
 
   // Build chart data based on selected range
-  type ChartPoint = { date: string; difficulty: number | null; sessions: number; turns: number | null; tph: number | null };
+  type ChartPoint = { date: string; difficulty: number | null; sessions: number; turns: number | null; minPerTurn: number | null };
   let chartData: ChartPoint[] = [];
   let xTickInterval: number | "preserveStartEnd" = 0;
   let xTicks: string[] | undefined;
@@ -148,7 +153,7 @@ export default function StatsPage() {
         difficulty: found?.difficulty ?? null,
         sessions: found?.sessions ?? 0,
         turns: found?.turns ?? null,
-        tph: tphOf(found),
+        minPerTurn: minPerTurnOf(found),
         isFuture,
       };
     });
@@ -163,7 +168,7 @@ export default function StatsPage() {
       const key = format(day, "yyyy-MM-dd");
       const found = ddByDate[key];
       const isFuture = day > today;
-      return { date: format(day, "d MMM"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, turns: found?.turns ?? null, tph: tphOf(found), isFuture };
+      return { date: format(day, "d MMM"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, turns: found?.turns ?? null, minPerTurn: minPerTurnOf(found), isFuture };
     });
   } else if (range === "year") {
     const refDay = addYears(today, offset);
@@ -175,7 +180,7 @@ export default function StatsPage() {
       const key = format(day, "yyyy-MM-dd");
       const found = ddByDate[key];
       const isFuture = day > today;
-      return { date: key, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, turns: found?.turns ?? null, tph: tphOf(found), isFuture };
+      return { date: key, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, turns: found?.turns ?? null, minPerTurn: minPerTurnOf(found), isFuture };
     });
     // Force a tick on the first of every month so all 12 month labels render.
     xTicks = days
@@ -194,7 +199,7 @@ export default function StatsPage() {
       chartData = days.map(day => {
         const key = format(day, "yyyy-MM-dd");
         const found = ddByDate[key];
-        return { date: key, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, turns: found?.turns ?? null, tph: tphOf(found) };
+        return { date: key, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, turns: found?.turns ?? null, minPerTurn: minPerTurnOf(found) };
       });
       // Adaptive month/year ticks: denser labels for short spans, yearly for long ones.
       const monthsSpan =
@@ -279,13 +284,9 @@ export default function StatsPage() {
     }
   });
   // Average duration of a single turn (session time ÷ turns), shown as "3m 05s".
-  const secondsPerTurn =
-    timedTurns > 0 && timedMinutes > 0 ? Math.round((timedMinutes * 60) / timedTurns) : null;
   const timePerTurn =
-    secondsPerTurn != null
-      ? secondsPerTurn >= 60
-        ? `${Math.floor(secondsPerTurn / 60)}m ${String(secondsPerTurn % 60).padStart(2, "0")}s`
-        : `${secondsPerTurn}s`
+    timedTurns > 0 && timedMinutes > 0
+      ? formatSecondsPerTurn(Math.round((timedMinutes * 60) / timedTurns))
       : null;
   const avgDDPerTurn = periodTurns > 0 ? periodTotalDD / periodTurns : null;
 
@@ -517,7 +518,7 @@ export default function StatsPage() {
                     </span>
                     <span className="flex items-center gap-1.5">
                       <span className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: 'hsl(150 70% 55%)' }} />
-                      turns/hr
+                      time/turn
                     </span>
                   </div>
                 </div>
@@ -571,8 +572,8 @@ export default function StatsPage() {
                       labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
                       formatter={(value: any, _n: any, item: any) => {
                         if (value === null || value === undefined) return ["Rest day", ""];
-                        if (item?.dataKey === "tph") {
-                          return [`${Number(value).toFixed(1)} turns/hr`, ""];
+                        if (item?.dataKey === "minPerTurn") {
+                          return [`${formatSecondsPerTurn(Math.round(Number(value) * 60))} / turn`, ""];
                         }
                         const s = item?.payload?.sessions ?? 0;
                         const sessionPart = s > 1 ? ` · ${s} sessions` : "";
@@ -588,7 +589,7 @@ export default function StatsPage() {
                       cursor={{ stroke: 'hsl(200 90% 60% / 0.3)', strokeWidth: 1 }}
                     />
                     <YAxis yAxisId="turns" hide />
-                    <YAxis yAxisId="tph" hide />
+                    <YAxis yAxisId="minPerTurn" hide />
                     <Line
                       yAxisId="turns"
                       type="linear"
@@ -600,9 +601,9 @@ export default function StatsPage() {
                       activeDot={{ r: 5, fill: 'hsl(200 90% 60%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                     />
                     <Line
-                      yAxisId="tph"
+                      yAxisId="minPerTurn"
                       type="linear"
-                      dataKey="tph"
+                      dataKey="minPerTurn"
                       stroke="hsl(150 70% 55%)"
                       strokeWidth={1.5}
                       strokeDasharray="4 3"
