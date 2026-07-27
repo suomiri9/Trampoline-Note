@@ -100,6 +100,7 @@ export const coachMessages = pgTable("coach_messages", {
   content: text("content").notNull(),
   images: text("images"), // JSON array of images attached to a user message; entries are object-storage refs {key, contentType} (new) or legacy base64 data URLs; null when none
   draft: text("draft"), // JSON draft training-log entry proposed by the assistant; null when none
+  proposals: text("proposals"), // JSON {skill?, point?} confirm-first proposals (skill addition / point to fix) from the assistant; null when none
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

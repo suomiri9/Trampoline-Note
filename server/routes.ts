@@ -777,11 +777,17 @@ export async function registerRoutes(
       };
 
       try {
-        const { reply, draft, guideUpdated } = await coachChat(getUserId(req), content, page, images, (chunk) =>
-          sendEvent({ delta: chunk }),
+        const { reply, draft, guideUpdated, skillProposal, pointProposal } = await coachChat(
+          getUserId(req),
+          content,
+          page,
+          images,
+          (chunk) => sendEvent({ delta: chunk }),
         );
-        const suggestions = await generateSuggestions(reply, !!draft);
-        sendEvent({ done: true, reply, draft, guideUpdated, suggestions });
+        // Quick-reply chips are skipped whenever a card (draft or proposal)
+        // is shown — the card's confirm/dismiss IS the next action.
+        const suggestions = await generateSuggestions(reply, !!draft || !!skillProposal || !!pointProposal);
+        sendEvent({ done: true, reply, draft, guideUpdated, suggestions, skillProposal, pointProposal });
         res.end();
       } catch (err) {
         const message =

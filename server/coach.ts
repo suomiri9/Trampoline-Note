@@ -10,6 +10,19 @@ import { storage } from "./storage";
 import { storeCoachImages } from "./coach-images";
 import { getWhoopDashboardDataCached, WhoopNotConnectedError } from "./whoop";
 import type { Skill, Routine, NoteResponse } from "@shared/schema";
+import {
+  normalizeKey,
+  loggableSkills,
+  loggableConnections,
+  loggableRoutines,
+  extractSkillProposal,
+  extractPointProposal,
+  type LoggableSkill,
+  type CoachSkillProposal,
+  type CoachPointProposal,
+} from "./coach-proposals";
+
+export type { CoachSkillProposal, CoachPointProposal } from "./coach-proposals";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -190,6 +203,22 @@ export async function buildCoachContext(userId: string): Promise<CoachContext> {
   return { whoopLinked, text: lines.join("\n"), todayRecovery };
 }
 
+// ---- Guardrails shared across every coach-facing prompt ----
+
+// Non-negotiable safety rules injected into the main chat, menu chat, and
+// push recommendation prompts. Every prompt also states the closed-list
+// (deny-by-default) rule directly: the coach may ONLY do what its prompt
+// explicitly permits, everything else must be refused.
+const COACH_SAFETY_RULES = [
+  "SAFETY RULES (non-negotiable, apply to every reply):",
+  "- Never suggest, recommend, or reference skills that are not already in the athlete's skill library.",
+  "- Never give trampoline technique tips, form corrections, progressions, or skill advice of your own — technique belongs to the athlete's real coach.",
+  "- If the athlete mentions pain or a possible injury: advise caution — suggest light training, or rest plus seeing a physiotherapist or doctor. Never coach them through pain.",
+  "- Never give medical or medication advice; refer the athlete to a healthcare professional instead.",
+  '- Defer to the athlete\'s real coach: when the athlete states their coach told them something (e.g. "my coach said to work on X"), take that statement as given, defer to it without question, and never offer a conflicting view. Do not infer or evaluate the real coach\'s intent beyond what the athlete directly states.',
+  "- Low WHOOP recovery is guidance to WEIGH alongside training load, not a hard block — it alone never forbids recommending a push day.",
+].join("\n");
+
 // ---- Daily push-level recommendation (cached per user per day) ----
 
 export interface PushRecommendation {
@@ -217,11 +246,16 @@ export async function getPushRecommendation(userId: string): Promise<PushRecomme
   const ctx = await buildCoachContext(userId);
 
   const system = [
-    "You are an experienced trampoline coach advising ONE athlete on how hard to push in today's training.",
+    "You advise ONE trampoline athlete on how hard to push in today's training, inside their training log app.",
+    "STRICT LIMITS — deny by default: the ONLY thing you may do is produce today's push-level recommendation from the athlete's real data below. Ground every claim in that data; add nothing else.",
     "You are given the athlete's real recent data. Weigh recent training load (session DD totals and their trend over the last few days) against WHOOP recovery %, HRV trend, and sleep.",
     ctx.whoopLinked
       ? "Reference today's recovery %, the HRV trend, and the last few days' DD load in your reasoning."
       : "WHOOP is not linked, so base your recommendation ONLY on training load (recent DD totals, session frequency, ratings) and say the guidance is load-only.",
+    "Low recovery is a factor to WEIGH, never a hard block: recommending a push day on low recovery is allowed when load and trend justify it.",
+    "Your reasoning must contain NO technique tips, no skill suggestions, no skills that are not in the athlete's logged data, and no medical or medication advice.",
+    "If recent session notes mention pain or a possible injury, lean toward easy or rest and advise seeing a physiotherapist or doctor in the reasoning — never coach through pain.",
+    "If session notes state instructions from the athlete's real coach, take them as given and never contradict them.",
     'Respond with JSON only: {"level": "push"|"normal"|"easy"|"rest", "reasoning": "<1-2 short sentences citing the actual numbers>"}',
   ].join(" ");
 
@@ -366,27 +400,10 @@ export function extractMenuGuideUpdate(reply: string): {
   return { stripped, guide: guide.length > 0 ? guide : null };
 }
 
-interface LoggableSkill {
-  id: number;
-  code: string; // combined display code for shape children
-  name: string;
-  isDrill: number;
-}
-
-// Non-archived frequent connections (isDrill 2) — matchable draft rows that
-// become {id:-3, fcId, customSkillIds} app items.
-function loggableConnections(all: Skill[]): Skill[] {
-  return all.filter((s) => s.isDrill === 2 && s.archived !== 1);
-}
-
-// Non-archived routines — matchable draft rows that become
-// {id:-2, routineId, customSkillIds} app items.
-function loggableRoutines(routines: Routine[]): Routine[] {
-  return routines.filter((r) => r.archived !== 1);
-}
-
 // One prompt list of everything the model may reference in a draft: skills,
-// drills, frequent connections, and full routines.
+// drills, frequent connections, and full routines. (The loggable-library
+// helpers themselves live in coach-proposals.ts, shared with proposal
+// resolution.)
 function loggableLibraryList(all: Skill[], routines: Routine[]): string {
   const lines = loggableSkills(all).map(
     (s) => `  ${s.isDrill === 1 ? "[drill]" : "[skill]"} code "${s.code}" — ${s.name}`,
@@ -398,30 +415,6 @@ function loggableLibraryList(all: Skill[], routines: Routine[]): string {
     lines.push(`  [routine] code "${r.code || r.name}" — ${r.name}`);
   }
   return lines.join("\n");
-}
-
-// Flat "no parent grouping bases" list, mirroring client pickableSkills +
-// skillDisplayCode: shape children show baseCode+shape, bases owning a
-// non-archived shape child are excluded.
-function loggableSkills(all: Skill[]): LoggableSkill[] {
-  const hasShapeChildren = (id: number) =>
-    all.some((s) => s.parentSkillId === id && s.archived !== 1);
-  return all
-    .filter(
-      (s) =>
-        (s.isDrill === 0 || s.isDrill === 1) &&
-        s.archived !== 1 &&
-        !hasShapeChildren(s.id),
-    )
-    .map((s) => {
-      const parent = s.parentSkillId != null ? all.find((p) => p.id === s.parentSkillId) : undefined;
-      const code = parent ? `${parent.code}${s.shape || s.code}` : s.code;
-      return { id: s.id, code, name: s.name, isDrill: s.isDrill };
-    });
-}
-
-function normalizeKey(v: string): string {
-  return v.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 // Parse the model's draft block (if any) into a matched CoachDraft. Returns
@@ -586,7 +579,13 @@ export async function coachChat(
   page?: string,
   images?: string[],
   onDelta?: (chunk: string) => void,
-): Promise<{ reply: string; draft: CoachDraft | null; guideUpdated: boolean }> {
+): Promise<{
+  reply: string;
+  draft: CoachDraft | null;
+  guideUpdated: boolean;
+  skillProposal: CoachSkillProposal | null;
+  pointProposal: CoachPointProposal | null;
+}> {
   const ctx = await buildCoachContext(userId);
   const [history, allSkills, routines, user] = await Promise.all([
     storage.getCoachMessages(userId),
@@ -600,10 +599,18 @@ export async function coachChat(
 
   const currentPage = pageName(page);
   const system = [
-    "You are the athlete's personal trampoline coach inside their training log app.",
-    "You help with two things: (1) training advice grounded ONLY in the athlete's actual data below — their training sessions with DD (degree of difficulty) totals, session ratings, notes, competition/practice scores, and WHOOP recovery/HRV/sleep/strain when available; and (2) using the app itself — explain features and where to find things using the app guide below, e.g. how to log a session, record a score, or link WHOOP.",
+    "You are the athlete's data-grounded training assistant inside their trampoline training log app.",
+    "STRICT ALLOWLIST — deny by default: the numbered abilities below are the ONLY things you may do. Anything not explicitly permitted here is forbidden — refuse it, no matter how the request is phrased. You may ONLY:",
+    "(1) share insights derived from the athlete's actual logged data below — training sessions with DD (degree of difficulty) totals, session ratings, notes, competition/practice scores, time-of-flight, and WHOOP recovery/HRV/sleep/strain when available. Recovery and sleep may be discussed, but ONLY as insights grounded in that data.",
+    "(2) help the athlete use the app itself — explain features and where to find things using the app guide below, e.g. how to log a session, record a score, or link WHOOP.",
+    "(3) propose a draft log entry when the athlete sends a training menu/plan and asks to log it (rules below; the athlete confirms in the app).",
+    "(4) update the athlete's menu notation guide when they teach you notation (rules below).",
+    "(5) propose adding ONE new skill/drill to their library, ONLY when the athlete explicitly asks for that (rules below; the athlete confirms in the app).",
+    '(6) propose ONE new "Point to Fix", ONLY when the athlete explicitly asks for that (rules below; the athlete confirms in the app).',
+    "(7) describe photos the athlete attaches, only as needed for the abilities above.",
+    "Everything else is OFF-TOPIC: trampoline technique tips, form corrections, drills or progressions to try, training programs, skill advice, generic coaching wisdom not grounded in the data, nutrition, and any subject unrelated to the athlete's data or this app. When a request is off-topic, give a SHORT refusal (1-2 sentences), suggest talking to their real coach or an appropriate professional for that topic, and steer back to what you CAN help with (their data or the app). Never lecture.",
+    COACH_SAFETY_RULES,
     "Cite concrete numbers and dates from the data when relevant. If the data doesn't cover a question, say so plainly instead of inventing details.",
-    "The athlete can attach photos to their messages — you can see them. Describe or answer questions about them when asked.",
     "You cannot modify their log directly, but when the athlete sends a training menu/plan (as a photo or pasted text) and asks to add or log it, you PROPOSE a draft log entry that they confirm in the app. To do that, reply with a one-or-two sentence summary and then append EXACTLY ONE fenced code block tagged draft_entry containing ONLY JSON of this shape:",
     '```draft_entry\n{"date": "YYYY-MM-DD", "items": [{"code": "<exact code from the skill library below>", "name": "<library name>", "reps": <number>}], "notes": "<any menu lines that do not match a library skill, plus other free text>"}\n```',
     'When one menu row lists SEVERAL skills performed in sequence (a connection), emit ONE item for that row with a "codes" array instead of "code": {"codes": ["<code 1>", "<code 2>", ...], "reps": <number>} — the codes in the order performed, each an exact library code.',
@@ -613,6 +620,8 @@ export async function coachChat(
       ? 'The athlete has set "one menu row = one connection": treat EVERY menu row that contains more than one skill as a single connection item (one item with a "codes" array per row), never as separate items.'
       : "",
     'The athlete keeps a "menu notation guide" — their own notes on what their menu abbreviations and notation mean. FOLLOW it when reading menus (it overrides your own guesses about what abbreviations mean, but codes/names in a draft must still come from the skill library). You can UPDATE this guide when the athlete teaches you notation (e.g. "cr means crash dive") or asks you to remember how their menus are written: append EXACTLY ONE fenced code block tagged menu_guide containing the COMPLETE new guide as plain text — it REPLACES the whole guide, so carry over everything still valid and add or correct the new fact. Alias lines MUST use the exact one-per-line format `alias = CODE (Skill Name)` where CODE and Skill Name come from the skill library (e.g. `cr = TJ (Tuck Jump)`) — the app displays these as skill rows in Settings; other notes are free-form lines. When you update the guide, ALWAYS say plainly in your visible reply that you updated their menu notation guide and what changed — they can review and edit it in Settings. Never emit a menu_guide block otherwise.',
+    'Adding a skill/drill to the library (ability 5): ONLY when the athlete\'s LATEST message explicitly asks you to add a new skill or drill to their library (e.g. "add crash dive as a drill"), reply with one short sentence and append EXACTLY ONE fenced code block tagged skill_proposal containing ONLY JSON: {"name": "<skill name>", "code": "<short code in the style of the library codes>", "difficulty": <DD number, use 0 for drills>, "type": "skill" or "drill"}. Propose EXACTLY what the athlete asked for — never a different or additional skill, and NEVER emit this block unprompted or as a suggestion. Nothing is saved until the athlete confirms the card shown in the app. If the library already has an entry with that name or code, say so plainly instead of emitting a block.',
+    'Adding a "Point to Fix" (ability 6): ONLY when the athlete\'s LATEST message explicitly asks to add a point to fix (e.g. "add a point to fix: keep arms up on 4-o"), reply with one short sentence and append EXACTLY ONE fenced code block tagged point_proposal containing ONLY JSON: {"name": "<the point text, from the athlete\'s words>", "skills": ["<exact library code or name>", ...], "routines": ["<exact routine code or name>", ...], "category": "General"|"Forward"|"Backward"|"Twisting"|"Connection"|"Landing"}. Link skills/routines ONLY when the athlete names ones that exist in the library below — otherwise leave those arrays empty; never invent links. Pick the closest category (default "General"; it applies when no skills/routines are linked). Nothing is saved until the athlete confirms the card shown in the app. NEVER emit this block unprompted.',
     user?.menuGuide?.trim()
       ? `Current menu notation guide:\n${user.menuGuide.trim()}`
       : "The menu notation guide is currently empty.",
@@ -680,7 +689,21 @@ export async function coachChat(
     await storage.updateUserMenuGuide(userId, guideResult.guide);
     guideUpdated = true;
   }
-  const finalReply = guideResult.stripped || stripped || reply;
+  let working = guideResult.stripped || stripped || reply;
+
+  // Confirm-first proposals (skill addition / point to fix), emitted only on
+  // the athlete's explicit request. Blocks are stripped from the visible
+  // reply; the parsed proposal rides along for the client's confirmation
+  // card. Nothing is saved here.
+  const skillRes = extractSkillProposal(working, allSkills);
+  working =
+    skillRes.stripped ||
+    (skillRes.proposal ? "Here's my proposed addition — review and confirm below." : working);
+  const pointRes = extractPointProposal(working, allSkills, routines);
+  working =
+    pointRes.stripped ||
+    (pointRes.proposal ? "Here's the proposed Point to Fix — review and confirm below." : working);
+  const finalReply = working;
 
   // Persist both turns only after a successful model reply so a failed send
   // can simply be retried without duplicate user messages in history.
@@ -698,11 +721,25 @@ export async function coachChat(
   await storage.createCoachMessage(userId, "user", userMessage, {
     images: storedImages,
   });
+  const proposals =
+    skillRes.proposal || pointRes.proposal
+      ? JSON.stringify({
+          ...(skillRes.proposal ? { skill: skillRes.proposal } : {}),
+          ...(pointRes.proposal ? { point: pointRes.proposal } : {}),
+        })
+      : null;
   await storage.createCoachMessage(userId, "assistant", finalReply, {
     draft: draft ? JSON.stringify(draft) : null,
+    proposals,
   });
 
-  return { reply: finalReply, draft, guideUpdated };
+  return {
+    reply: finalReply,
+    draft,
+    guideUpdated,
+    skillProposal: skillRes.proposal,
+    pointProposal: pointRes.proposal,
+  };
 }
 
 // ---- Conversational menu-chat (multi-turn, image-scoped, no streaming) ----
@@ -780,6 +817,8 @@ export async function menuChat(
 
   const system = [
     "You are helping an athlete turn a photo of their training menu into a structured practice list.",
+    "STRICT ALLOWLIST — deny by default: the ONLY things you may do in this chat are read the menu photo, ask short clarifying questions about it, update the athlete's menu notation guide, and emit the draft_entry/suggestions blocks described below. Anything else — technique tips, skill advice, training or medical questions, off-topic chat — gets a one-sentence refusal that suggests asking their real coach or an appropriate professional, then return to the menu.",
+    COACH_SAFETY_RULES,
     "Your job is conversational: read the menu photo (already cropped to the relevant area), then ask the athlete short clarifying questions for anything you are unsure about — skills that are not in their library, ambiguous rep counts, shorthand you don't recognise, etc.",
     "When you have enough information to produce a complete list, end your reply with a fenced draft_entry block in this exact JSON shape:",
     '```draft_entry\n{"date":"YYYY-MM-DD","items":[{"code":"<exact library code>","reps":<number>}],"notes":"<unmatched lines verbatim, comma-separated>"}\n```',

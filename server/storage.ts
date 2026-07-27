@@ -105,7 +105,7 @@ export interface IStorage {
   // AI coach chat history (per user)
   getCoachMessages(userId: string): Promise<CoachMessage[]>;
   getCoachMessage(userId: string, id: number): Promise<CoachMessage | undefined>;
-  createCoachMessage(userId: string, role: "user" | "assistant", content: string, extras?: { images?: string | null; draft?: string | null }): Promise<CoachMessage>;
+  createCoachMessage(userId: string, role: "user" | "assistant", content: string, extras?: { images?: string | null; draft?: string | null; proposals?: string | null }): Promise<CoachMessage>;
   clearCoachMessages(userId: string): Promise<void>;
 }
 
@@ -557,10 +557,17 @@ export class DatabaseStorage implements IStorage {
     userId: string,
     role: "user" | "assistant",
     content: string,
-    extras?: { images?: string | null; draft?: string | null },
+    extras?: { images?: string | null; draft?: string | null; proposals?: string | null },
   ): Promise<CoachMessage> {
     const [row] = await db.insert(coachMessages)
-      .values({ userId, role, content, images: extras?.images ?? null, draft: extras?.draft ?? null })
+      .values({
+        userId,
+        role,
+        content,
+        images: extras?.images ?? null,
+        draft: extras?.draft ?? null,
+        proposals: extras?.proposals ?? null,
+      })
       .returning();
     return row;
   }

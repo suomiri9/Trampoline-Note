@@ -104,6 +104,7 @@ async function runMigrations() {
       );
       ALTER TABLE coach_messages ADD COLUMN IF NOT EXISTS images text;
       ALTER TABLE coach_messages ADD COLUMN IF NOT EXISTS draft text;
+      ALTER TABLE coach_messages ADD COLUMN IF NOT EXISTS proposals text;
       CREATE TABLE IF NOT EXISTS whoop_tokens (
         user_id varchar PRIMARY KEY,
         access_token text NOT NULL,

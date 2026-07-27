@@ -58,7 +58,14 @@ Session cookies are `secure: true` behind `trust proxy`, so plain
 
 **How to apply:** add `-H 'X-Forwarded-Proto: https'` to both the login and the
 subsequent authenticated curl requests (with `-c`/`-b` cookie jar) when testing
-API routes from bash.
+API routes from bash — or simply target `https://$REPLIT_DEV_DOMAIN`, where
+cookies work as-is.
+
+**Trap:** with dev auto-login on, a dropped cookie does NOT error — every
+subsequent request silently runs as the DEMO user, so test seeds/chat messages
+pollute the demo account and need manual SQL cleanup. After registering a test
+user, immediately verify `GET /api/auth/user` returns the fresh id (and check
+`userId` on created rows) before seeding anything.
 
 - Coach chat vision: the model denies seeing a 1×1 test pixel ("no photo attached"); use a real ≥64px image when verifying image sends.
 - Dev auto-login (`DEV_AUTO_LOGIN=1`, non-prod) signs any cookieless `/api` request in as the demo user, so unauthenticated curl returning 200 in dev is NOT a missing-auth bug; `isAuthenticated` still enforces 401 in production.

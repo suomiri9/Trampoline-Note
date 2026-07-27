@@ -9,7 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useCreateNote } from "@/hooks/use-notes";
-import { Bot, Send, Loader2, Trash2, ImagePlus, X, CalendarPlus, Check } from "lucide-react";
+import { isPointCategory, parsePoints, type PointToFix } from "@shared/points";
+import type { SafeUser } from "@shared/models/auth";
+import { Bot, Send, Loader2, Trash2, ImagePlus, X, CalendarPlus, Check, Plus, Wrench } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +30,80 @@ export interface CoachMessage {
   content: string;
   images?: string | null;
   draft?: string | null;
+  proposals?: string | null;
   createdAt: string;
+}
+
+// Confirm-first proposals the coach can attach to a reply — only when the
+// athlete explicitly asked for them. Parsed and validated server-side; point
+// links carry real library ids (unresolvable references were dropped there).
+interface SkillProposal {
+  name: string;
+  code: string;
+  difficulty: number;
+  type: "skill" | "drill";
+  alreadyExists?: boolean;
+}
+
+interface PointLink {
+  id: number;
+  code: string;
+  name: string;
+}
+
+interface PointProposal {
+  name: string;
+  skills: PointLink[];
+  routines: PointLink[];
+  category: string;
+  unresolved: string[];
+}
+
+interface MessageProposals {
+  skill: SkillProposal | null;
+  point: PointProposal | null;
+}
+
+function parseMessageProposals(raw: string | null | undefined): MessageProposals | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    const skill: SkillProposal | null =
+      parsed.skill &&
+      typeof parsed.skill === "object" &&
+      typeof parsed.skill.name === "string" &&
+      typeof parsed.skill.code === "string"
+        ? {
+            name: parsed.skill.name,
+            code: parsed.skill.code,
+            difficulty: typeof parsed.skill.difficulty === "number" ? parsed.skill.difficulty : 0,
+            type: parsed.skill.type === "drill" ? "drill" : "skill",
+            alreadyExists: parsed.skill.alreadyExists === true,
+          }
+        : null;
+    const point: PointProposal | null =
+      parsed.point && typeof parsed.point === "object" && typeof parsed.point.name === "string"
+        ? {
+            name: parsed.point.name,
+            skills: Array.isArray(parsed.point.skills)
+              ? parsed.point.skills.filter((l: any) => l && typeof l.id === "number")
+              : [],
+            routines: Array.isArray(parsed.point.routines)
+              ? parsed.point.routines.filter((l: any) => l && typeof l.id === "number")
+              : [],
+            category:
+              typeof parsed.point.category === "string" ? parsed.point.category : "General",
+            unresolved: Array.isArray(parsed.point.unresolved)
+              ? parsed.point.unresolved.filter((u: any) => typeof u === "string")
+              : [],
+          }
+        : null;
+    if (!skill && !point) return null;
+    return { skill, point };
+  } catch {
+    return null;
+  }
 }
 
 // One draft row = one or more skills performed together (several = a
@@ -173,6 +248,37 @@ function markDraftAdded(messageId: number) {
       localStorage.setItem(ADDED_KEY, JSON.stringify([...ids, messageId].slice(-100)));
     } catch {}
   }
+}
+
+// Confirm/dismiss state for proposal cards, persisted so a confirmed
+// proposal can't be double-submitted after a reload (mirrors the draft
+// cards' localStorage approach).
+const PROPOSALS_STATE_KEY = "coach-proposals-state";
+type ProposalOutcome = "confirmed" | "dismissed";
+function getProposalOutcome(kind: "skill" | "point", messageId: number): ProposalOutcome | null {
+  try {
+    const raw = localStorage.getItem(PROPOSALS_STATE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    const v =
+      parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>)[`${kind}-${messageId}`] : undefined;
+    return v === "confirmed" || v === "dismissed" ? v : null;
+  } catch {
+    return null;
+  }
+}
+function setProposalOutcome(kind: "skill" | "point", messageId: number, outcome: ProposalOutcome) {
+  try {
+    const raw = localStorage.getItem(PROPOSALS_STATE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    const map: Record<string, unknown> =
+      parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+    map[`${kind}-${messageId}`] = outcome;
+    const keys = Object.keys(map);
+    if (keys.length > 200) {
+      for (const k of keys.slice(0, keys.length - 200)) delete map[k];
+    }
+    localStorage.setItem(PROPOSALS_STATE_KEY, JSON.stringify(map));
+  } catch {}
 }
 
 // Draft training-log entry proposed by the coach, shown side-by-side with the
@@ -405,6 +511,284 @@ function DraftEntryCard({
         </div>
       )}
       {editor}
+    </div>
+  );
+}
+
+// Confirm-first card for a coach-proposed library addition (new skill or
+// drill). Nothing is created until "Add to library" is tapped; Dismiss
+// retires the card without saving anything.
+function SkillProposalCard({
+  messageId,
+  proposal,
+}: {
+  messageId: number;
+  proposal: SkillProposal;
+}) {
+  const { toast } = useToast();
+  const [outcome, setOutcome] = useState<ProposalOutcome | null>(() =>
+    getProposalOutcome("skill", messageId),
+  );
+
+  const confirmMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/skills", {
+        name: proposal.name,
+        code: proposal.code,
+        difficulty: proposal.difficulty,
+        isDrill: proposal.type === "drill" ? 1 : 0,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/skills"] });
+      setProposalOutcome("skill", messageId, "confirmed");
+      setOutcome("confirmed");
+      toast({
+        title: `${proposal.type === "drill" ? "Drill" : "Skill"} added to library`,
+        description: `${proposal.name} (${proposal.code})`,
+      });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Couldn't add to library",
+        description: err.message || "Something went wrong.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const dismiss = () => {
+    setProposalOutcome("skill", messageId, "dismissed");
+    setOutcome("dismissed");
+  };
+
+  return (
+    <div
+      className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm space-y-2"
+      data-testid={`card-skill-proposal-${messageId}`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono uppercase tracking-wider text-[11px] font-semibold text-primary">
+          Add to skill library
+        </span>
+        <span
+          className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-primary"
+          data-testid={`badge-skill-proposal-type-${messageId}`}
+        >
+          {proposal.type}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-xs text-primary shrink-0">{proposal.code}</span>
+        <span className="truncate">{proposal.name}</span>
+        <span className="ml-auto font-mono text-xs text-muted-foreground shrink-0">
+          DD {proposal.difficulty.toFixed(1)}
+        </span>
+      </div>
+      {proposal.alreadyExists && outcome !== "confirmed" && (
+        <p className="text-xs text-muted-foreground" data-testid={`text-skill-proposal-exists-${messageId}`}>
+          An entry with this code or name is already in your library, so it can't be added again.
+        </p>
+      )}
+      {outcome === "dismissed" ? (
+        <p
+          className="text-xs text-muted-foreground italic"
+          data-testid={`text-skill-proposal-dismissed-${messageId}`}
+        >
+          Dismissed — nothing was added.
+        </p>
+      ) : (
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            className="flex-1"
+            variant={outcome === "confirmed" ? "secondary" : "default"}
+            disabled={
+              outcome === "confirmed" || confirmMutation.isPending || proposal.alreadyExists
+            }
+            onClick={() => confirmMutation.mutate()}
+            data-testid={`button-confirm-skill-proposal-${messageId}`}
+          >
+            {confirmMutation.isPending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : outcome === "confirmed" ? (
+              <Check className="w-4 h-4 mr-2" />
+            ) : (
+              <Plus className="w-4 h-4 mr-2" />
+            )}
+            {outcome === "confirmed" ? "Added to library" : "Add to library"}
+          </Button>
+          {outcome !== "confirmed" && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={dismiss}
+              disabled={confirmMutation.isPending}
+              data-testid={`button-dismiss-skill-proposal-${messageId}`}
+            >
+              Dismiss
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Confirm-first card for a coach-proposed Point to Fix. On confirm the
+// CURRENT points list is re-fetched from the server and the new point is
+// appended to THAT list (read-then-merge): the focus-memo endpoint is a
+// last-write-wins blob overwrite, so building the list from the client's
+// cached user could silently drop a point added from another device between
+// proposal and confirm.
+function PointProposalCard({
+  messageId,
+  proposal,
+}: {
+  messageId: number;
+  proposal: PointProposal;
+}) {
+  const { toast } = useToast();
+  const [outcome, setOutcome] = useState<ProposalOutcome | null>(() =>
+    getProposalOutcome("point", messageId),
+  );
+
+  const isLinked = proposal.skills.length > 0 || proposal.routines.length > 0;
+  const category = isPointCategory(proposal.category) ? proposal.category : "General";
+
+  const confirmMutation = useMutation({
+    mutationFn: async () => {
+      const freshRes = await fetch("/api/auth/user", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!freshRes.ok) {
+        throw new Error(`${freshRes.status}: couldn't load your current points`);
+      }
+      const freshUser = (await freshRes.json()) as SafeUser;
+      const current = parsePoints(freshUser.focusMemo);
+      const newPoint: PointToFix = {
+        id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        name: proposal.name,
+        skillIds: proposal.skills.map((l) => l.id),
+        routineIds: proposal.routines.map((l) => l.id),
+        ...(isLinked ? {} : { category }),
+      };
+      const res = await apiRequest("PATCH", "/api/auth/focus-memo", {
+        focusMemo: JSON.stringify([...current, newPoint]),
+      });
+      return res.json() as Promise<SafeUser>;
+    },
+    onSuccess: (updatedUser) => {
+      queryClient.setQueryData(["/api/auth/user"], updatedUser);
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      setProposalOutcome("point", messageId, "confirmed");
+      setOutcome("confirmed");
+      toast({ title: "Point to Fix added", description: proposal.name });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Couldn't add the point",
+        description: err.message || "Something went wrong. Check your connection and try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const dismiss = () => {
+    setProposalOutcome("point", messageId, "dismissed");
+    setOutcome("dismissed");
+  };
+
+  return (
+    <div
+      className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm space-y-2"
+      data-testid={`card-point-proposal-${messageId}`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono uppercase tracking-wider text-[11px] font-semibold text-primary flex items-center gap-1.5">
+          <Wrench className="w-3.5 h-3.5" />
+          Point to fix
+        </span>
+        {!isLinked && (
+          <span
+            className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-primary"
+            data-testid={`badge-point-proposal-category-${messageId}`}
+          >
+            {category}
+          </span>
+        )}
+      </div>
+      <p className="font-medium" data-testid={`text-point-proposal-name-${messageId}`}>
+        {proposal.name}
+      </p>
+      {isLinked && (
+        <div className="flex flex-wrap gap-1.5" data-testid={`row-point-proposal-links-${messageId}`}>
+          {proposal.skills.map((l) => (
+            <span
+              key={`s-${l.id}`}
+              className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-xs"
+            >
+              <span className="font-mono text-primary">{l.code}</span>
+              {l.name !== l.code && <span className="text-muted-foreground">{l.name}</span>}
+            </span>
+          ))}
+          {proposal.routines.map((l) => (
+            <span
+              key={`r-${l.id}`}
+              className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-xs"
+            >
+              <span className="font-mono text-primary">{l.code}</span>
+              <span className="text-muted-foreground">routine</span>
+            </span>
+          ))}
+        </div>
+      )}
+      {proposal.unresolved.length > 0 && (
+        <p className="text-xs text-muted-foreground" data-testid={`text-point-proposal-unresolved-${messageId}`}>
+          Not in your library (left unlinked): {proposal.unresolved.join(", ")}
+        </p>
+      )}
+      {outcome === "dismissed" ? (
+        <p
+          className="text-xs text-muted-foreground italic"
+          data-testid={`text-point-proposal-dismissed-${messageId}`}
+        >
+          Dismissed — nothing was added.
+        </p>
+      ) : (
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            className="flex-1"
+            variant={outcome === "confirmed" ? "secondary" : "default"}
+            disabled={outcome === "confirmed" || confirmMutation.isPending}
+            onClick={() => confirmMutation.mutate()}
+            data-testid={`button-confirm-point-proposal-${messageId}`}
+          >
+            {confirmMutation.isPending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : outcome === "confirmed" ? (
+              <Check className="w-4 h-4 mr-2" />
+            ) : (
+              <Plus className="w-4 h-4 mr-2" />
+            )}
+            {outcome === "confirmed" ? "Added to Points to Fix" : "Add to Points to Fix"}
+          </Button>
+          {outcome !== "confirmed" && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={dismiss}
+              disabled={confirmMutation.isPending}
+              data-testid={`button-dismiss-point-proposal-${messageId}`}
+            >
+              Dismiss
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -653,9 +1037,14 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
   };
 
   const hasMessages = (messages?.length ?? 0) > 0 || (sendMutation.isPending && pendingUser != null);
-  // Hide partially-streamed draft_entry / menu_guide blocks; the parsed card
-  // (or the guide-updated toast) replaces them.
-  const visibleStream = streamText.split("```draft_entry")[0].split("```menu_guide")[0].trimEnd();
+  // Hide partially-streamed draft_entry / menu_guide / proposal blocks; the
+  // parsed card (or the guide-updated toast) replaces them.
+  const visibleStream = streamText
+    .split("```draft_entry")[0]
+    .split("```menu_guide")[0]
+    .split("```skill_proposal")[0]
+    .split("```point_proposal")[0]
+    .trimEnd();
 
   return (
     <>
@@ -695,6 +1084,8 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
           messages!.map((m, idx) => {
             const msgImages = parseMessageImages(m.images);
             const msgDraft = m.role === "assistant" ? parseMessageDraft(m.draft) : null;
+            const msgProposals =
+              m.role === "assistant" ? parseMessageProposals(m.proposals) : null;
             // Photos from the user turn that triggered this draft, shown
             // beside the editable draft for easy comparison.
             const draftImages = msgDraft ? draftSourceImages(messages!, idx) : [];
@@ -726,6 +1117,16 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
                       images={draftImages}
                       compact={compact}
                     />
+                  </div>
+                )}
+                {msgProposals?.skill && (
+                  <div className="w-full">
+                    <SkillProposalCard messageId={m.id} proposal={msgProposals.skill} />
+                  </div>
+                )}
+                {msgProposals?.point && (
+                  <div className="w-full">
+                    <PointProposalCard messageId={m.id} proposal={msgProposals.point} />
                   </div>
                 )}
               </div>
