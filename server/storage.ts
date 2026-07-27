@@ -375,21 +375,63 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(tofSessions.date), desc(tofSessions.id));
   }
 
-  // A ToF session may only reference a routine owned by the same user.
-  private async assertOwnRoutine(userId: string, routineId: number): Promise<void> {
-    const [routine] = await db.select({ id: routines.id }).from(routines)
-      .where(and(eq(routines.id, routineId), eq(routines.userId, userId)));
-    if (!routine) throw new TofRoutineError("Routine not found");
+  // A ToF/execution session targets EITHER a routine or a library item
+  // (skill / drill / connection / routine part); exactly one of
+  // routineId/skillId must be set and it must belong to the same user.
+  // Returns the target's sequence length, or null for a single skill/drill
+  // (whose values are repeated attempts of the same skill).
+  private async assertSessionTarget(
+    userId: string,
+    routineId: number | null | undefined,
+    skillId: number | null | undefined,
+  ): Promise<number | null> {
+    const hasRoutine = routineId != null;
+    const hasSkill = skillId != null;
+    if (hasRoutine === hasSkill) {
+      throw new TofRoutineError("Pick exactly one target: a routine or a library skill");
+    }
+    if (hasRoutine) {
+      const [routine] = await db.select({ skillIds: routines.skillIds }).from(routines)
+        .where(and(eq(routines.id, routineId!), eq(routines.userId, userId)));
+      if (!routine) throw new TofRoutineError("Routine not found");
+      return routine.skillIds.length;
+    }
+    const [skill] = await db.select({ skillIds: skills.skillIds }).from(skills)
+      .where(and(eq(skills.id, skillId!), eq(skills.userId, userId)));
+    if (!skill) throw new TofRoutineError("Skill not found");
+    return skill.skillIds && skill.skillIds.length > 0 ? skill.skillIds.length : null;
+  }
+
+  // Values beyond the target's sequence length can't be attributed to any
+  // skill; single skills/drills take up to 10 attempts (matching the forms).
+  private assertValuesFitTarget(count: number, seqLen: number | null): void {
+    const cap = seqLen ?? 10;
+    if (count > cap) {
+      throw new TofRoutineError(`Too many values for this target (max ${cap})`);
+    }
   }
 
   async createTofSession(userId: string, session: InsertTofSession): Promise<TofSession> {
-    await this.assertOwnRoutine(userId, session.routineId);
+    const seqLen = await this.assertSessionTarget(userId, session.routineId, session.skillId);
+    this.assertValuesFitTarget(session.tofValues.length, seqLen);
     const [row] = await db.insert(tofSessions).values({ ...session, userId }).returning();
     return row;
   }
 
   async updateTofSession(id: number, userId: string, updates: Partial<InsertTofSession>): Promise<TofSession | undefined> {
-    if (updates.routineId != null) await this.assertOwnRoutine(userId, updates.routineId);
+    if (updates.routineId !== undefined || updates.skillId !== undefined || updates.tofValues !== undefined) {
+      const [existing] = await db.select({ routineId: tofSessions.routineId, skillId: tofSessions.skillId, tofValues: tofSessions.tofValues })
+        .from(tofSessions)
+        .where(and(eq(tofSessions.id, id), eq(tofSessions.userId, userId)));
+      if (!existing) return undefined;
+      const seqLen = await this.assertSessionTarget(
+        userId,
+        updates.routineId !== undefined ? updates.routineId : existing.routineId,
+        updates.skillId !== undefined ? updates.skillId : existing.skillId,
+      );
+      const values = updates.tofValues !== undefined ? updates.tofValues : existing.tofValues;
+      this.assertValuesFitTarget(values?.length ?? 0, seqLen);
+    }
     const [updated] = await db.update(tofSessions)
       .set(updates)
       .where(and(eq(tofSessions.id, id), eq(tofSessions.userId, userId)))
@@ -404,13 +446,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createExecutionSession(userId: string, session: InsertExecutionSession): Promise<ExecutionSession> {
-    await this.assertOwnRoutine(userId, session.routineId);
+    const seqLen = await this.assertSessionTarget(userId, session.routineId, session.skillId);
+    this.assertValuesFitTarget(session.deductions.length, seqLen);
     const [row] = await db.insert(executionSessions).values({ ...session, userId }).returning();
     return row;
   }
 
   async updateExecutionSession(id: number, userId: string, updates: Partial<InsertExecutionSession>): Promise<ExecutionSession | undefined> {
-    if (updates.routineId != null) await this.assertOwnRoutine(userId, updates.routineId);
+    if (updates.routineId !== undefined || updates.skillId !== undefined || updates.deductions !== undefined) {
+      const [existing] = await db.select({ routineId: executionSessions.routineId, skillId: executionSessions.skillId, deductions: executionSessions.deductions })
+        .from(executionSessions)
+        .where(and(eq(executionSessions.id, id), eq(executionSessions.userId, userId)));
+      if (!existing) return undefined;
+      const seqLen = await this.assertSessionTarget(
+        userId,
+        updates.routineId !== undefined ? updates.routineId : existing.routineId,
+        updates.skillId !== undefined ? updates.skillId : existing.skillId,
+      );
+      const values = updates.deductions !== undefined ? updates.deductions : existing.deductions;
+      this.assertValuesFitTarget(values?.length ?? 0, seqLen);
+    }
     const [updated] = await db.update(executionSessions)
       .set(updates)
       .where(and(eq(executionSessions.id, id), eq(executionSessions.userId, userId)))

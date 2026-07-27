@@ -1062,6 +1062,7 @@ export default function ScorePage() {
         const body = tenthsRowToInsert(d.tenths, {
           date: sheetDate,
           routineId: Number(d.routineId),
+          skillId: null, // score-sheet drafts are always whole-routine attempts
           category: d.category,
           note: null,
         });

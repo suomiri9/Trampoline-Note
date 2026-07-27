@@ -353,10 +353,14 @@ export function remapBody(kind: QueueKind, body: any, idMap: Map<number, number>
     return next;
   }
   if (kind === 'tofSession' || kind === 'executionSession') {
+    let next = body;
     if (typeof body.routineId === 'number' && idMap.has(body.routineId)) {
-      return { ...body, routineId: idMap.get(body.routineId) };
+      next = { ...next, routineId: idMap.get(body.routineId) };
     }
-    return body;
+    if (typeof body.skillId === 'number' && idMap.has(body.skillId)) {
+      next = { ...next, skillId: idMap.get(body.skillId) };
+    }
+    return next;
   }
   if (kind === 'focusMemo') {
     const remapMemoString = (s: unknown): unknown => {

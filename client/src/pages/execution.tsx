@@ -6,6 +6,17 @@ import { useToast } from "@/hooks/use-toast";
 import { useRoutines } from "@/hooks/use-routines";
 import { useSkills } from "@/hooks/use-skills";
 import { skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
+import {
+  resolveTarget,
+  targetSkillIdAt,
+  targetSeqLength,
+  targetName,
+  skillKindLabel,
+  encodeTarget,
+  decodeTarget,
+  type TrackerTarget,
+} from "@/lib/tracker-target";
+import { TrackerTargetSelect } from "@/components/tracker-target-select";
 import { PageLayout } from "@/components/page-layout";
 import { PageHeader, primaryActionClass } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -61,7 +72,8 @@ interface PhotoRow {
   label: string;
   tenths: string[];
   kept: boolean;
-  routineId: string;
+  /** Encoded target: "r:<routineId>" | "s:<skillId>" | "" while unpicked. */
+  target: string;
   category: "set" | "vol";
 }
 
@@ -74,14 +86,13 @@ export default function ExecutionPage() {
     queryKey: [api.executionSessions.list.path],
   });
 
-  const activeRoutines = (routines ?? []).filter(r => r.archived !== 1);
   const routineById = useMemo(() => new Map((routines ?? []).map(r => [r.id, r])), [routines]);
 
   // ---- Manual form state ----
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ExecutionSession | null>(null);
   const [date, setDate] = useState(() => new Date().toISOString().substring(0, 10));
-  const [routineId, setRoutineId] = useState<string>("");
+  const [targetValue, setTargetValue] = useState<string>(""); // "r:<routineId>" | "s:<skillId>"
   const [category, setCategory] = useState<"set" | "vol">("vol");
   const [tenths, setTenths] = useState<string[]>(emptyTenths());
   const [note, setNote] = useState("");
@@ -100,7 +111,7 @@ export default function ExecutionPage() {
   const resetForm = () => {
     setEditing(null);
     setDate(new Date().toISOString().substring(0, 10));
-    setRoutineId("");
+    setTargetValue("");
     setCategory("vol");
     setTenths(emptyTenths());
     setNote("");
@@ -111,7 +122,7 @@ export default function ExecutionPage() {
   const startEdit = (s: ExecutionSession) => {
     setEditing(s);
     setDate(s.date);
-    setRoutineId(String(s.routineId));
+    setTargetValue(s.routineId != null ? encodeTarget("routine", s.routineId) : s.skillId != null ? encodeTarget("skill", s.skillId) : "");
     setCategory(s.category === "set" ? "set" : "vol");
     const cells = emptyTenths();
     (s.deductions ?? []).forEach((v, i) => {
@@ -127,11 +138,31 @@ export default function ExecutionPage() {
     if (!open) { setShowForm(false); resetForm(); }
   };
 
-  const formParsed = useMemo(() => parseTenthsRow(tenths), [tenths]);
-  const selectedRoutine = routineId ? routineById.get(Number(routineId)) : undefined;
+  const selectedTarget = useMemo<TrackerTarget | undefined>(
+    () => (targetValue ? resolveTarget(decodeTarget(targetValue), routineById, allSkills) : undefined),
+    [targetValue, routineById, allSkills],
+  );
+  // Skill cells this target can take (its sequence length, or up to 10
+  // attempts for a single skill/drill). Cells beyond this are hidden and
+  // ignored, so switching targets can't leave stale trailing values.
+  const formMaxSkills = Math.min(targetSeqLength(selectedTarget) ?? EXECUTION_SKILL_COUNT, EXECUTION_SKILL_COUNT);
+  const formParsed = useMemo(() => parseTenthsRow(tenths, formMaxSkills), [tenths, formMaxSkills]);
+
+  // Keeps an archived/no-longer-pickable target visible in the picker while editing.
+  const editingFallback = useMemo(() => {
+    if (!editing) return null;
+    if (editing.routineId != null) {
+      const r = routineById.get(editing.routineId);
+      if (r) return { value: encodeTarget("routine", r.id), label: r.archived === 1 ? `${r.name} (archived)` : r.name };
+    } else if (editing.skillId != null) {
+      const sk = (allSkills ?? []).find(x => x.id === editing.skillId);
+      if (sk) return { value: encodeTarget("skill", sk.id), label: `${skillDisplayName(sk, allSkills)}${sk.archived === 1 ? " (archived)" : ""}` };
+    }
+    return null;
+  }, [editing, routineById, allSkills]);
 
   const canSave =
-    !!routineId && !!date &&
+    !!selectedTarget && !!date &&
     formParsed.skills.length >= 1 &&
     !formParsed.trailing && !formParsed.landingInvalid;
 
@@ -191,12 +222,15 @@ export default function ExecutionPage() {
 
   const handleSave = () => {
     if (!canSave) return;
+    const decoded = decodeTarget(targetValue);
     const body = tenthsRowToInsert(tenths, {
       date,
-      routineId: Number(routineId),
-      category,
+      routineId: decoded.routineId,
+      skillId: decoded.skillId,
+      // Set/voluntary only applies to full routine attempts.
+      category: decoded.routineId != null ? category : "vol",
       note: note.trim() || null,
-    });
+    }, formMaxSkills);
     if (editing) updateMutation.mutate({ id: editing.id, ...body });
     else createMutation.mutate(body);
   };
@@ -236,7 +270,7 @@ export default function ExecutionPage() {
           label: r.label,
           tenths: cells,
           kept: true,
-          routineId: "",
+          target: "",
           // On a two-row sheet R1 is usually the set routine and R2 the
           // voluntary — prefill that; the details step asks to confirm.
           category: parsed.rows.length > 1 && idx === 0 ? "set" : "vol",
@@ -266,7 +300,13 @@ export default function ExecutionPage() {
       const p = parseTenthsRow(r.tenths);
       return p.skills.length >= 1 && !p.trailing && !p.landingInvalid;
     });
-  const detailsValid = keptRows.length > 0 && !!photoDate && keptRows.every(r => r.routineId !== "");
+  const detailsValid = keptRows.length > 0 && !!photoDate && keptRows.every(r => {
+    if (r.target === "") return false;
+    // A sheet row can't carry more deductions than the chosen target has skills.
+    const t = resolveTarget(decodeTarget(r.target), routineById, allSkills);
+    const cap = Math.min(targetSeqLength(t) ?? EXECUTION_SKILL_COUNT, EXECUTION_SKILL_COUNT);
+    return parseTenthsRow(r.tenths).skills.length <= cap;
+  });
 
   const savePhotoSessions = async () => {
     if (!detailsValid || savingPhoto) return;
@@ -276,12 +316,16 @@ export default function ExecutionPage() {
     const doneKeys = new Set<number>();
     try {
       for (const row of keptRows) {
+        const decoded = decodeTarget(row.target);
+        const rowTarget = resolveTarget(decoded, routineById, allSkills);
+        const rowMax = Math.min(targetSeqLength(rowTarget) ?? EXECUTION_SKILL_COUNT, EXECUTION_SKILL_COUNT);
         const body = tenthsRowToInsert(row.tenths, {
           date: photoDate,
-          routineId: Number(row.routineId),
-          category: row.category,
+          routineId: decoded.routineId,
+          skillId: decoded.skillId,
+          category: decoded.routineId != null ? row.category : "vol",
           note: null,
-        });
+        }, rowMax);
         const result = await postSession(body);
         if (isQueuedOfflineResult(result)) queued += 1;
         else saved += 1;
@@ -320,11 +364,11 @@ export default function ExecutionPage() {
         landingSum += s.landingDeduction;
         landingCount += 1;
       }
-      const routine = routineById.get(s.routineId);
-      if (!routine) continue;
+      const target = resolveTarget(s, routineById, allSkills);
+      if (!target) continue;
       const vals = s.deductions ?? [];
-      for (let i = 0; i < vals.length && i < routine.skillIds.length; i++) {
-        const skillId = routine.skillIds[i];
+      for (let i = 0; i < vals.length; i++) {
+        const skillId = targetSkillIdAt(target, i);
         if (skillId == null) continue;
         let acc = bySkill.get(skillId);
         if (!acc) { acc = { skillId, sum: 0, count: 0 }; bySkill.set(skillId, acc); }
@@ -339,17 +383,20 @@ export default function ExecutionPage() {
       landingAvg: landingCount > 0 ? landingSum / landingCount : null,
       landingSamples: landingCount,
     };
-  }, [sessions, routineById]);
+  }, [sessions, routineById, allSkills]);
 
   const skillOf = (id: number) => allSkills?.find(s => s.id === id);
 
   const queuedSessions = useQueuedExecutionSessions();
 
   const renderSessionCard = (s: ExecutionSession, pending: boolean) => {
-    const routine = routineById.get(s.routineId);
+    const target = resolveTarget(s, routineById, allSkills);
+    const seqLen = targetSeqLength(target);
+    const name = targetName(target, allSkills) ?? (s.routineId != null ? "Deleted routine" : "Deleted item");
     const vals = s.deductions ?? [];
     const total = totalDeductionPoints(vals, s.landingDeduction);
-    const e = impliedEScore(vals, s.landingDeduction);
+    // An implied E score only makes sense for a full routine attempt.
+    const e = s.routineId != null ? impliedEScore(vals, s.landingDeduction) : null;
     return (
       <div
         key={pending ? `pending-${s.id}` : s.id}
@@ -360,27 +407,40 @@ export default function ExecutionPage() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[10px] font-mono text-muted-foreground">{fmtDate(s.date)}</div>
-            <h3 className="font-semibold text-base leading-tight truncate">{routine?.name ?? "Deleted routine"}</h3>
+            <h3 className="font-semibold text-base leading-tight truncate">{name}</h3>
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              <Badge
-                variant="outline"
-                className={cn(
-                  "text-[9px] font-mono px-1.5 py-0 h-4 border-transparent",
-                  s.category === "set"
-                    ? "bg-sky-500/15 text-sky-600 dark:text-sky-400"
-                    : "bg-violet-500/15 text-violet-600 dark:text-violet-400",
-                )}
-                data-testid={`badge-execution-category-${s.id}`}
-              >
-                {s.category === "set" ? "SET" : "VOL"}
-              </Badge>
+              {s.routineId != null ? (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-[9px] font-mono px-1.5 py-0 h-4 border-transparent",
+                    s.category === "set"
+                      ? "bg-sky-500/15 text-sky-600 dark:text-sky-400"
+                      : "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+                  )}
+                  data-testid={`badge-execution-category-${s.id}`}
+                >
+                  {s.category === "set" ? "SET" : "VOL"}
+                </Badge>
+              ) : target?.kind === "skill" ? (
+                <Badge
+                  variant="outline"
+                  className="text-[9px] font-mono px-1.5 py-0 h-4 border-transparent bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                  data-testid={`badge-execution-kind-${s.id}`}
+                >
+                  {skillKindLabel(target.skill).toUpperCase()}
+                </Badge>
+              ) : null}
               {e != null && (
                 <Badge variant="secondary" className="text-[10px]" data-testid={`badge-execution-total-${s.id}`}>
                   −{total.toFixed(1)} total
                 </Badge>
               )}
-              {vals.length < EXECUTION_SKILL_COUNT && (
-                <Badge variant="secondary" className="text-[10px]">{vals.length}/{EXECUTION_SKILL_COUNT} skills</Badge>
+              {seqLen != null && vals.length < seqLen && (
+                <Badge variant="secondary" className="text-[10px]">{vals.length}/{seqLen} skills</Badge>
+              )}
+              {seqLen == null && target?.kind === "skill" && (
+                <Badge variant="secondary" className="text-[10px]">{vals.length} attempt{vals.length === 1 ? "" : "s"}</Badge>
               )}
               {pending && <PendingSyncBadge size="xs" testId={`badge-pending-execution-${s.id}`} />}
             </div>
@@ -425,11 +485,11 @@ export default function ExecutionPage() {
         </div>
         <div className="grid grid-cols-6 gap-1.5 mt-4">
           {vals.map((v, i) => {
-            const skillId = routine?.skillIds[i];
+            const skillId = targetSkillIdAt(target, i);
             const sk = skillId != null ? skillOf(skillId) : undefined;
             return (
               <div key={i} className="text-center bg-secondary/40 border border-border/50 rounded-md px-1 py-1" title={sk ? skillDisplayName(sk, allSkills) : undefined}>
-                <div className="text-[9px] font-mono text-muted-foreground truncate">{sk ? skillDisplayCode(sk, allSkills) : `#${i + 1}`}</div>
+                <div className="text-[9px] font-mono text-muted-foreground truncate">{seqLen == null ? `#${i + 1}` : sk ? skillDisplayCode(sk, allSkills) : `#${i + 1}`}</div>
                 <div className={cn("text-[11px] font-mono font-bold", deductionClass(v))}>{v.toFixed(1)}</div>
               </div>
             );
@@ -452,23 +512,38 @@ export default function ExecutionPage() {
   const renderTenthsGrid = (
     cells: string[],
     onChange: (idx: number, value: string) => void,
-    routine: ReturnType<typeof routineById.get>,
+    target: TrackerTarget | undefined,
     testPrefix: string,
   ) => {
+    const seqLen = targetSeqLength(target);
+    const maxSkills = Math.min(seqLen ?? EXECUTION_SKILL_COUNT, EXECUTION_SKILL_COUNT);
     const labels = Array.from({ length: EXECUTION_SKILL_COUNT }, (_, i) => {
-      const skillId = routine?.skillIds[i];
+      if (seqLen == null) return undefined; // single skill/drill: cells are attempts, plain 1..10
+      const skillId = targetSkillIdAt(target, i);
       const sk = skillId != null ? skillOf(skillId) : undefined;
       return sk ? `${i + 1} · ${skillDisplayCode(sk, allSkills)}` : undefined;
     });
     const titles = Array.from({ length: EXECUTION_SKILL_COUNT }, (_, i) => {
-      const skillId = routine?.skillIds[i];
+      const skillId = targetSkillIdAt(target, i);
       const sk = skillId != null ? skillOf(skillId) : undefined;
       return sk ? skillDisplayName(sk, allSkills) : undefined;
     });
-    return <TenthsGrid cells={cells} onChange={onChange} labels={labels} titles={titles} testPrefix={testPrefix} />;
+    return <TenthsGrid cells={cells} onChange={onChange} labels={labels} titles={titles} testPrefix={testPrefix} skillCount={maxSkills} />;
   };
 
-  const rowSummary = (p: ParsedRow, testId: string) => <TenthsRowSummary p={p} testId={testId} />;
+  const rowSummary = (p: ParsedRow, testId: string, target?: TrackerTarget) => {
+    const seqLen = targetSeqLength(target);
+    const maxSkills = Math.min(seqLen ?? EXECUTION_SKILL_COUNT, EXECUTION_SKILL_COUNT);
+    return (
+      <TenthsRowSummary
+        p={p}
+        testId={testId}
+        skillCount={maxSkills}
+        unitLabel={target?.kind === "skill" && seqLen == null ? "attempts" : "skills"}
+        showE={target == null || target.kind === "routine"}
+      />
+    );
+  };
 
   return (
     <PageLayout>
@@ -516,42 +591,41 @@ export default function ExecutionPage() {
                 <Input type="date" value={date} onChange={e => setDate(e.target.value)} data-testid="input-exec-date" />
               </div>
               <div className="flex-1">
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Routine</label>
-                <Select value={routineId} onValueChange={setRoutineId}>
-                  <SelectTrigger data-testid="select-exec-routine"><SelectValue placeholder="Pick routine..." /></SelectTrigger>
-                  <SelectContent>
-                    {activeRoutines.map(r => (
-                      <SelectItem key={r.id} value={String(r.id)} data-testid={`option-exec-routine-${r.id}`}>{r.name}</SelectItem>
-                    ))}
-                    {editing && !activeRoutines.some(r => r.id === editing.routineId) && routineById.get(editing.routineId) && (
-                      <SelectItem value={String(editing.routineId)}>{routineById.get(editing.routineId)!.name} (archived)</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Routine / skill</label>
+                <TrackerTargetSelect
+                  value={targetValue}
+                  onValueChange={setTargetValue}
+                  routines={routines}
+                  allSkills={allSkills}
+                  currentFallback={editingFallback}
+                  testId="select-exec-target"
+                />
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Set routine or voluntary?</label>
-              <Select value={category} onValueChange={v => setCategory(v === "set" ? "set" : "vol")}>
-                <SelectTrigger data-testid="select-exec-category"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="set" data-testid="option-exec-category-set">Set routine</SelectItem>
-                  <SelectItem value="vol" data-testid="option-exec-category-vol">Voluntary</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {selectedTarget?.kind !== "skill" && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Set routine or voluntary?</label>
+                <Select value={category} onValueChange={v => setCategory(v === "set" ? "set" : "vol")}>
+                  <SelectTrigger data-testid="select-exec-category"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="set" data-testid="option-exec-category-set">Set routine</SelectItem>
+                    <SelectItem value="vol" data-testid="option-exec-category-vol">Voluntary</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Deductions (tenths, as printed — 2 = 0.2)</label>
-              {renderTenthsGrid(tenths, (i, val) => setTenths(prev => prev.map((p, j) => (j === i ? val : p))), selectedRoutine, "input-exec-value")}
+              {renderTenthsGrid(tenths, (i, val) => setTenths(prev => prev.map((p, j) => (j === i ? val : p))), selectedTarget, "input-exec-value")}
               {formParsed.trailing && (
                 <p className="text-[10px] text-red-500 mt-1" data-testid="text-exec-gap-warning">Fill skills in order without gaps (values 0-30) — an interrupted routine stops at the last skill judged.</p>
               )}
               {formParsed.landingInvalid && (
                 <p className="text-[10px] text-red-500 mt-1" data-testid="text-exec-landing-warning">Landing must be 0-30 tenths (0 = clean landing, 20 = 2.0).</p>
               )}
-              {rowSummary(formParsed, "text-exec-total")}
+              {rowSummary(formParsed, "text-exec-total", selectedTarget)}
             </div>
 
             <div>
@@ -653,42 +727,51 @@ export default function ExecutionPage() {
               </div>
               {keptRows.map(row => {
                 const p = parseTenthsRow(row.tenths);
+                const rowTarget = row.target ? resolveTarget(decodeTarget(row.target), routineById, allSkills) : undefined;
+                const rowMax = Math.min(targetSeqLength(rowTarget) ?? EXECUTION_SKILL_COUNT, EXECUTION_SKILL_COUNT);
+                const tooMany = p.skills.length > rowMax;
+                const showRowE = rowTarget == null || rowTarget.kind === "routine";
                 return (
                   <div key={row.key} className="rounded-xl border border-border/60 p-3 space-y-2" data-testid={`details-execution-row-${row.key}`}>
                     <div className="flex items-center justify-between text-xs font-mono">
                       <Badge variant="outline" className="font-mono text-[10px]">{row.label}</Badge>
                       <span>
-                        <span className="text-muted-foreground">−{p.total.toFixed(1)} · E </span>
-                        <span className={cn("font-bold", p.e != null ? "text-rose-400" : "text-muted-foreground")}>{p.e != null ? p.e.toFixed(1) : "—"}</span>
+                        <span className="text-muted-foreground">−{p.total.toFixed(1)}{showRowE ? " · E " : ""}</span>
+                        {showRowE && (
+                          <span className={cn("font-bold", p.e != null ? "text-rose-400" : "text-muted-foreground")}>{p.e != null ? p.e.toFixed(1) : "—"}</span>
+                        )}
                       </span>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Routine</label>
-                      <Select
-                        value={row.routineId}
-                        onValueChange={v => setPhotoRows(prev => prev.map(r => r.key === row.key ? { ...r, routineId: v } : r))}
-                      >
-                        <SelectTrigger data-testid={`select-exec-photo-routine-${row.key}`}><SelectValue placeholder="Pick routine..." /></SelectTrigger>
-                        <SelectContent>
-                          {activeRoutines.map(r => (
-                            <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Routine / skill</label>
+                      <TrackerTargetSelect
+                        value={row.target}
+                        onValueChange={v => setPhotoRows(prev => prev.map(r => r.key === row.key ? { ...r, target: v } : r))}
+                        routines={routines}
+                        allSkills={allSkills}
+                        testId={`select-exec-photo-target-${row.key}`}
+                      />
                     </div>
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Set routine or voluntary?</label>
-                      <Select
-                        value={row.category}
-                        onValueChange={v => setPhotoRows(prev => prev.map(r => r.key === row.key ? { ...r, category: v === "set" ? "set" : "vol" } : r))}
-                      >
-                        <SelectTrigger data-testid={`select-exec-photo-category-${row.key}`}><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="set">Set routine</SelectItem>
-                          <SelectItem value="vol">Voluntary</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {tooMany && (
+                      <p className="text-[10px] text-red-500" data-testid={`text-exec-photo-too-many-${row.key}`}>
+                        This row has {p.skills.length} deductions but the selected target only has {rowMax} skill{rowMax === 1 ? "" : "s"}. Pick a longer target, or go back and clear the extra cells.
+                      </p>
+                    )}
+                    {decodeTarget(row.target).routineId != null && (
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Set routine or voluntary?</label>
+                        <Select
+                          value={row.category}
+                          onValueChange={v => setPhotoRows(prev => prev.map(r => r.key === row.key ? { ...r, category: v === "set" ? "set" : "vol" } : r))}
+                        >
+                          <SelectTrigger data-testid={`select-exec-photo-category-${row.key}`}><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="set">Set routine</SelectItem>
+                            <SelectItem value="vol">Voluntary</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 );
               })}

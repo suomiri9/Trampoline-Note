@@ -31,9 +31,12 @@ export interface ParsedRow {
 }
 
 // Parse an 11-cell tenths row (shared by manual forms and photo reviews).
-export function parseTenthsRow(cells: string[]): ParsedRow {
+// `maxSkills` bounds how many skill cells count — a session against a shorter
+// sequence target (connection / routine part) ignores cells beyond its
+// length; the landing cell is always the last of the 11.
+export function parseTenthsRow(cells: string[], maxSkills: number = EXECUTION_SKILL_COUNT): ParsedRow {
   const skills: number[] = [];
-  for (let i = 0; i < EXECUTION_SKILL_COUNT; i++) {
+  for (let i = 0; i < maxSkills; i++) {
     const t = (cells[i] ?? "").trim();
     if (t === "") break;
     const n = Number(t);
@@ -41,7 +44,7 @@ export function parseTenthsRow(cells: string[]): ParsedRow {
     skills.push(n);
   }
   const trailing = cells
-    .slice(skills.length, EXECUTION_SKILL_COUNT)
+    .slice(skills.length, maxSkills)
     .some(v => (v ?? "").trim() !== "");
   const landingRaw = (cells[EXECUTION_SKILL_COUNT] ?? "").trim();
   const landingNum = landingRaw === "" ? null : Number(landingRaw);
@@ -62,12 +65,14 @@ export function parseTenthsRow(cells: string[]): ParsedRow {
 
 export function tenthsRowToInsert(
   cells: string[],
-  base: { date: string; routineId: number; category: "set" | "vol"; note: string | null },
+  base: { date: string; routineId: number | null; skillId: number | null; category: "set" | "vol"; note: string | null },
+  maxSkills: number = EXECUTION_SKILL_COUNT,
 ): InsertExecutionSession {
-  const p = parseTenthsRow(cells);
+  const p = parseTenthsRow(cells, maxSkills);
   return {
     date: base.date,
     routineId: base.routineId,
+    skillId: base.skillId,
     category: base.category,
     deductions: p.skills.map(tenthsToPoints),
     landingDeduction: p.landing != null ? tenthsToPoints(p.landing) : null,
@@ -83,17 +88,21 @@ export function TenthsGrid({
   labels,
   titles,
   testPrefix,
+  skillCount = EXECUTION_SKILL_COUNT,
 }: {
   cells: string[];
   onChange: (idx: number, value: string) => void;
   labels?: (string | undefined)[];
   titles?: (string | undefined)[];
   testPrefix: string;
+  /** Skill cells to show (the target's sequence length); landing always shows. */
+  skillCount?: number;
 }) {
   return (
     <div className="grid grid-cols-6 gap-1.5">
       {cells.map((v, i) => {
         const isLanding = i === EXECUTION_SKILL_COUNT;
+        if (!isLanding && i >= skillCount) return null;
         return (
           <div key={i} className="space-y-0.5">
             <div
@@ -121,15 +130,32 @@ export function TenthsGrid({
   );
 }
 
-export function TenthsRowSummary({ p, testId }: { p: ParsedRow; testId: string }) {
+export function TenthsRowSummary({
+  p,
+  testId,
+  skillCount = EXECUTION_SKILL_COUNT,
+  unitLabel = "skills",
+  showE = true,
+}: {
+  p: ParsedRow;
+  testId: string;
+  skillCount?: number;
+  unitLabel?: string;
+  /** An implied E score only makes sense for whole-routine attempts. */
+  showE?: boolean;
+}) {
   return (
     <div className="flex justify-between items-center mt-2 text-xs font-mono">
-      <span className="text-muted-foreground">{p.skills.length}/{EXECUTION_SKILL_COUNT} skills{p.landing != null ? " + landing" : ""}</span>
+      <span className="text-muted-foreground">{p.skills.length}/{skillCount} {unitLabel}{p.landing != null ? " + landing" : ""}</span>
       <span data-testid={testId}>
         <span className="text-muted-foreground">Total </span>
         <span className="font-bold text-foreground">−{p.total.toFixed(1)}</span>
-        <span className="text-muted-foreground"> · E </span>
-        <span className={cn("font-bold", p.e != null ? "text-rose-400" : "text-muted-foreground")}>{p.e != null ? p.e.toFixed(1) : "—"}</span>
+        {showE && (
+          <>
+            <span className="text-muted-foreground"> · E </span>
+            <span className={cn("font-bold", p.e != null ? "text-rose-400" : "text-muted-foreground")}>{p.e != null ? p.e.toFixed(1) : "—"}</span>
+          </>
+        )}
       </span>
     </div>
   );

@@ -5,6 +5,7 @@ import { api } from "@shared/routes";
 import { useRoutines } from "@/hooks/use-routines";
 import { useSkills } from "@/hooks/use-skills";
 import { skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
+import { resolveTarget, targetSkillIdAt, targetName } from "@/lib/tracker-target";
 import { PageLayout } from "@/components/page-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,16 +56,16 @@ export default function TofSkillPage() {
     const out: TofSample[] = [];
     const ordered = [...(sessions ?? [])].sort((a, b) => (a.date === b.date ? a.id - b.id : a.date < b.date ? -1 : 1));
     for (const s of ordered) {
-      const routine = routineById.get(s.routineId);
-      if (!routine) continue;
+      const target = resolveTarget(s, routineById, allSkills);
+      if (!target) continue;
       const vals = s.tofValues ?? [];
-      for (let i = 0; i < vals.length && i < routine.skillIds.length; i++) {
-        if (routine.skillIds[i] !== skillId) continue;
+      for (let i = 0; i < vals.length; i++) {
+        if (targetSkillIdAt(target, i) !== skillId) continue;
         const prev = i > 0 ? vals[i - 1] : s.preJumpTof;
         out.push({
           sessionId: s.id,
           date: s.date,
-          routineName: routine.name,
+          routineName: targetName(target, allSkills) ?? "?",
           jumpNo: i + 1,
           tof: vals[i],
           drop: prev != null ? prev - vals[i] : null,
@@ -72,7 +73,7 @@ export default function TofSkillPage() {
       }
     }
     return out;
-  }, [sessions, routineById, skillId]);
+  }, [sessions, routineById, allSkills, skillId]);
 
   const stats = useMemo(() => {
     if (samples.length === 0) return null;
@@ -230,7 +231,7 @@ export default function TofSkillPage() {
                   >
                     <span className="text-muted-foreground w-20 shrink-0">{format(parseISO(s.date), "dd-MM-yyyy")}</span>
                     <span className="text-muted-foreground flex-1 truncate">{s.routineName}</span>
-                    <span className="text-muted-foreground/60 shrink-0" title="Position in the routine">#{s.jumpNo}</span>
+                    <span className="text-muted-foreground/60 shrink-0" title="Position in the sequence (or attempt number)">#{s.jumpNo}</span>
                     <span className="text-foreground font-bold shrink-0 w-14 text-right">{s.tof.toFixed(3)}s</span>
                     <span
                       className={cn("shrink-0 w-16 text-right", s.drop == null ? "text-muted-foreground/50" : s.drop > 0 ? "text-red-500" : "text-emerald-500")}

@@ -75,14 +75,19 @@ export const scores = pgTable("scores", {
 });
 
 // Time-of-Flight tracker sessions (per user). Each session records the
-// per-jump ToF values (in seconds, in jump order) for one routine attempt —
-// entered manually or parsed from a Veriflite screenshot. The routine defines
-// which skill was performed at each position, so values map to skills.
+// per-jump ToF values (in seconds, in jump order) for one attempt — entered
+// manually or parsed from a Veriflite screenshot. The target is EITHER a
+// routine (routineId) OR a library item (skillId — skill, drill, connection,
+// routine part); exactly one of the two is set. A sequence target (routine /
+// connection / routine part) defines which skill was performed at each
+// position; a single skill or drill target means every value is another
+// attempt of that same skill (e.g. a swing series).
 export const tofSessions = pgTable("tof_sessions", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id"),
   date: date("date").notNull(),
-  routineId: integer("routine_id").notNull().references(() => routines.id),
+  routineId: integer("routine_id").references(() => routines.id),
+  skillId: integer("skill_id").references(() => skills.id),
   tofValues: real("tof_values").array().notNull(), // 1-10 per-jump ToF seconds, jump order
   // Optional in-bounce jump ToF right before skill 1, so the first skill also
   // gets a drop-vs-previous value. Derivable from a Veriflite screenshot as
@@ -95,14 +100,16 @@ export const tofSessions = pgTable("tof_sessions", {
 // per-skill execution deductions for one routine attempt — 10 skills plus a
 // landing deduction — entered manually or parsed from a judges'-sheet photo.
 // Values are stored in POINTS (0.2), while sheets print tenths (2 = 0.2);
-// the shared/execution.ts helpers convert. The routine defines which skill
-// each deduction belongs to. Implied E score = 20 - (sum + landing).
+// the shared/execution.ts helpers convert. The target (routine or library
+// item — same rules as tofSessions) defines which skill each deduction
+// belongs to. Implied E score = 20 - (sum + landing), routine targets only.
 export const executionSessions = pgTable("execution_sessions", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id"),
   date: date("date").notNull(),
-  routineId: integer("routine_id").notNull().references(() => routines.id),
-  category: text("category").notNull().default("vol"), // "set" (compulsory) or "vol" (voluntary)
+  routineId: integer("routine_id").references(() => routines.id),
+  skillId: integer("skill_id").references(() => skills.id), // library-item target; exactly one of routineId/skillId is set
+  category: text("category").notNull().default("vol"), // "set" (compulsory) or "vol" (voluntary); only meaningful for routine targets
   deductions: real("deductions").array().notNull(), // 1-10 per-skill deductions in points, skill order (0 = perfect skill)
   // Landing deduction in points; 0 = clean landing as printed, null = not
   // recorded (e.g. interrupted routine with no landing judged).

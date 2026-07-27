@@ -7,6 +7,17 @@ import { useToast } from "@/hooks/use-toast";
 import { useRoutines } from "@/hooks/use-routines";
 import { useSkills } from "@/hooks/use-skills";
 import { skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
+import {
+  resolveTarget,
+  targetSkillIdAt,
+  targetSeqLength,
+  targetName,
+  skillKindLabel,
+  encodeTarget,
+  decodeTarget,
+  type TrackerTarget,
+} from "@/lib/tracker-target";
+import { TrackerTargetSelect } from "@/components/tracker-target-select";
 import { PageLayout } from "@/components/page-layout";
 import { PageHeader, primaryActionClass } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -14,7 +25,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Timer, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDown, ChevronRight } from "lucide-react";
@@ -42,14 +52,13 @@ export default function TofPage() {
     queryKey: [api.tofSessions.list.path],
   });
 
-  const activeRoutines = (routines ?? []).filter(r => r.archived !== 1);
   const routineById = useMemo(() => new Map((routines ?? []).map(r => [r.id, r])), [routines]);
 
   // ---- Form state ----
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<TofSession | null>(null);
   const [date, setDate] = useState(() => new Date().toISOString().substring(0, 10));
-  const [routineId, setRoutineId] = useState<string>("");
+  const [targetValue, setTargetValue] = useState<string>(""); // "r:<routineId>" | "s:<skillId>"
   const [values, setValues] = useState<string[]>(emptyValues());
   const [preJump, setPreJump] = useState("");
   const [note, setNote] = useState("");
@@ -60,7 +69,7 @@ export default function TofPage() {
   const resetForm = () => {
     setEditing(null);
     setDate(new Date().toISOString().substring(0, 10));
-    setRoutineId("");
+    setTargetValue("");
     setValues(emptyValues());
     setPreJump("");
     setNote("");
@@ -71,7 +80,7 @@ export default function TofPage() {
   const startEdit = (s: TofSession) => {
     setEditing(s);
     setDate(s.date);
-    setRoutineId(String(s.routineId));
+    setTargetValue(s.routineId != null ? encodeTarget("routine", s.routineId) : s.skillId != null ? encodeTarget("skill", s.skillId) : "");
     const vals = emptyValues();
     (s.tofValues ?? []).forEach((v, i) => { if (i < 10) vals[i] = String(v); });
     setValues(vals);
@@ -84,10 +93,20 @@ export default function TofPage() {
     if (!open) { setShowForm(false); resetForm(); }
   };
 
-  // Entered values must be contiguous from jump 1 (partial routines allowed).
+  const selectedTarget = useMemo<TrackerTarget | undefined>(
+    () => (targetValue ? resolveTarget(decodeTarget(targetValue), routineById, allSkills) : undefined),
+    [targetValue, routineById, allSkills],
+  );
+  const selectedSeqLen = targetSeqLength(selectedTarget);
+  // How many value cells this target can take (its sequence length, or up to
+  // 10 attempts for a single skill/drill). Cells beyond this are hidden and
+  // ignored, so switching targets can't leave stale trailing values.
+  const maxCells = Math.min(selectedSeqLen ?? 10, 10);
+
+  // Entered values must be contiguous from jump 1 (partial attempts allowed).
   const parsedValues = useMemo(() => {
     const out: number[] = [];
-    for (const v of values) {
+    for (const v of values.slice(0, maxCells)) {
       const t = v.trim();
       if (t === "") break;
       const n = Number(t);
@@ -95,13 +114,14 @@ export default function TofPage() {
       out.push(n);
     }
     return out;
-  }, [values]);
+  }, [values, maxCells]);
 
   const trailingEntries = useMemo(() => {
-    const firstEmpty = values.findIndex(v => v.trim() === "");
+    const inRange = values.slice(0, maxCells);
+    const firstEmpty = inRange.findIndex(v => v.trim() === "");
     if (firstEmpty === -1) return false;
-    return values.slice(firstEmpty).some(v => v.trim() !== "");
-  }, [values]);
+    return inRange.slice(firstEmpty).some(v => v.trim() !== "");
+  }, [values, maxCells]);
 
   const totalTof = parsedValues.reduce((a, b) => a + b, 0);
 
@@ -113,9 +133,20 @@ export default function TofPage() {
     return Number.isFinite(n) && n > 0 ? n : null;
   }, [preJump]);
 
-  const selectedRoutine = routineId ? routineById.get(Number(routineId)) : undefined;
+  // Keeps an archived/no-longer-pickable target visible in the picker while editing.
+  const editingFallback = useMemo(() => {
+    if (!editing) return null;
+    if (editing.routineId != null) {
+      const r = routineById.get(editing.routineId);
+      if (r) return { value: encodeTarget("routine", r.id), label: r.archived === 1 ? `${r.name} (archived)` : r.name };
+    } else if (editing.skillId != null) {
+      const sk = (allSkills ?? []).find(x => x.id === editing.skillId);
+      if (sk) return { value: encodeTarget("skill", sk.id), label: `${skillDisplayName(sk, allSkills)}${sk.archived === 1 ? " (archived)" : ""}` };
+    }
+    return null;
+  }, [editing, routineById, allSkills]);
 
-  const canSave = !!routineId && !!date && parsedValues.length >= 1 && !trailingEntries;
+  const canSave = !!selectedTarget && !!date && parsedValues.length >= 1 && !trailingEntries;
 
   type CreateTofResult = OfflineQueuedResult | TofSession;
   const createMutation = useMutation<CreateTofResult, Error, InsertTofSession>({
@@ -171,9 +202,11 @@ export default function TofPage() {
 
   const handleSave = () => {
     if (!canSave) return;
+    const decoded = decodeTarget(targetValue);
     const body = {
       date,
-      routineId: Number(routineId),
+      routineId: decoded.routineId,
+      skillId: decoded.skillId,
       tofValues: parsedValues,
       preJumpTof: parsedPreJump,
       note: note.trim() || null,
@@ -211,11 +244,11 @@ export default function TofPage() {
     type Acc = { skillId: number; tofSum: number; tofCount: number; dropSum: number; dropCount: number };
     const bySkill = new Map<number, Acc>();
     for (const s of sessions ?? []) {
-      const routine = routineById.get(s.routineId);
-      if (!routine) continue;
+      const target = resolveTarget(s, routineById, allSkills);
+      if (!target) continue;
       const vals = s.tofValues ?? [];
-      for (let i = 0; i < vals.length && i < routine.skillIds.length; i++) {
-        const skillId = routine.skillIds[i];
+      for (let i = 0; i < vals.length; i++) {
+        const skillId = targetSkillIdAt(target, i);
         if (skillId == null) continue;
         let acc = bySkill.get(skillId);
         if (!acc) { acc = { skillId, tofSum: 0, tofCount: 0, dropSum: 0, dropCount: 0 }; bySkill.set(skillId, acc); }
@@ -239,14 +272,16 @@ export default function TofPage() {
         dropSamples: a.dropCount,
       }))
       .sort((a, b) => (b.avgDrop ?? -Infinity) - (a.avgDrop ?? -Infinity));
-  }, [sessions, routineById]);
+  }, [sessions, routineById, allSkills]);
 
   const skillOf = (id: number) => allSkills?.find(s => s.id === id);
 
   const queuedSessions = useQueuedTofSessions();
 
   const renderSessionCard = (s: TofSession, pending: boolean) => {
-    const routine = routineById.get(s.routineId);
+    const target = resolveTarget(s, routineById, allSkills);
+    const seqLen = targetSeqLength(target);
+    const name = targetName(target, allSkills) ?? (s.routineId != null ? "Deleted routine" : "Deleted item");
     const vals = s.tofValues ?? [];
     const total = vals.reduce((a, b) => a + b, 0);
     return (
@@ -259,9 +294,17 @@ export default function TofPage() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[10px] font-mono text-muted-foreground">{fmtDate(s.date)}</div>
-            <h3 className="font-semibold text-base leading-tight truncate">{routine?.name ?? "Deleted routine"}</h3>
-            <div className="flex items-center gap-1.5 mt-1">
-              {vals.length < 10 && <Badge variant="secondary" className="text-[10px]">{vals.length}/10 jumps</Badge>}
+            <h3 className="font-semibold text-base leading-tight truncate">{name}</h3>
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              {target?.kind === "skill" && (
+                <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 h-4 border-transparent bg-amber-500/15 text-amber-600 dark:text-amber-400" data-testid={`badge-tof-kind-${s.id}`}>
+                  {skillKindLabel(target.skill).toUpperCase()}
+                </Badge>
+              )}
+              {seqLen != null && vals.length < seqLen && <Badge variant="secondary" className="text-[10px]">{vals.length}/{seqLen} jumps</Badge>}
+              {seqLen == null && target?.kind === "skill" && (
+                <Badge variant="secondary" className="text-[10px]">{vals.length} attempt{vals.length === 1 ? "" : "s"}</Badge>
+              )}
               {pending && <PendingSyncBadge size="xs" testId={`badge-pending-tof-${s.id}`} />}
             </div>
           </div>
@@ -304,13 +347,13 @@ export default function TofPage() {
             </div>
           )}
           {vals.map((v, i) => {
-            const skillId = routine?.skillIds[i];
+            const skillId = targetSkillIdAt(target, i);
             const sk = skillId != null ? skillOf(skillId) : undefined;
             const prev = i > 0 ? vals[i - 1] : s.preJumpTof;
             const drop = prev != null ? prev - v : null;
             return (
               <div key={i} className="text-center bg-secondary/40 border border-border/50 rounded-md px-1 py-1" title={sk ? skillDisplayName(sk, allSkills) : undefined}>
-                <div className="text-[9px] font-mono text-muted-foreground truncate">{sk ? skillDisplayCode(sk, allSkills) : `#${i + 1}`}</div>
+                <div className="text-[9px] font-mono text-muted-foreground truncate">{seqLen == null ? `#${i + 1}` : sk ? skillDisplayCode(sk, allSkills) : `#${i + 1}`}</div>
                 <div className="text-[11px] font-mono font-bold text-foreground">{v.toFixed(2)}</div>
                 {drop != null && (
                   <div className={cn("text-[9px] font-mono", drop > 0 ? "text-red-500" : "text-emerald-500")}>
@@ -352,18 +395,15 @@ export default function TofPage() {
                 <Input type="date" value={date} onChange={e => setDate(e.target.value)} data-testid="input-tof-date" />
               </div>
               <div className="flex-1">
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Routine</label>
-                <Select value={routineId} onValueChange={setRoutineId}>
-                  <SelectTrigger data-testid="select-tof-routine"><SelectValue placeholder="Pick routine..." /></SelectTrigger>
-                  <SelectContent>
-                    {activeRoutines.map(r => (
-                      <SelectItem key={r.id} value={String(r.id)} data-testid={`option-tof-routine-${r.id}`}>{r.name}</SelectItem>
-                    ))}
-                    {editing && !activeRoutines.some(r => r.id === editing.routineId) && routineById.get(editing.routineId) && (
-                      <SelectItem value={String(editing.routineId)}>{routineById.get(editing.routineId)!.name} (archived)</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Routine / skill</label>
+                <TrackerTargetSelect
+                  value={targetValue}
+                  onValueChange={setTargetValue}
+                  routines={routines}
+                  allSkills={allSkills}
+                  currentFallback={editingFallback}
+                  testId="select-tof-target"
+                />
               </div>
             </div>
 
@@ -409,13 +449,13 @@ export default function TofPage() {
                     data-testid="input-tof-prejump"
                   />
                 </div>
-                {values.map((v, i) => {
-                  const skillId = selectedRoutine?.skillIds[i];
+                {values.slice(0, maxCells).map((v, i) => {
+                  const skillId = targetSkillIdAt(selectedTarget, i);
                   const sk = skillId != null ? skillOf(skillId) : undefined;
                   return (
                     <div key={i} className="space-y-0.5">
                       <div className="text-[9px] font-mono text-muted-foreground text-center truncate" title={sk ? skillDisplayName(sk, allSkills) : undefined}>
-                        {i + 1}{sk ? ` · ${skillDisplayCode(sk, allSkills)}` : ""}
+                        {i + 1}{selectedSeqLen == null ? "" : sk ? ` · ${skillDisplayCode(sk, allSkills)}` : ""}
                       </div>
                       <Input
                         type="number"
