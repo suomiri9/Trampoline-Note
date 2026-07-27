@@ -124,10 +124,14 @@ export default function StatsPage() {
       ? Math.round((found.timedMinutes / found.timedTurns) * 10) / 10
       : null;
 
+  // Average DD of one turn that day (day total DD ÷ day turns), same math as the Efficiency card.
+  const ddPerTurnOf = (found: { difficulty: number; turns: number } | undefined): number | null =>
+    found && found.turns > 0 ? Math.round((found.difficulty / found.turns) * 100) / 100 : null;
+
   const today = startOfDay(new Date());
 
   // Build chart data based on selected range
-  type ChartPoint = { date: string; difficulty: number | null; sessions: number; turns: number | null; minPerTurn: number | null };
+  type ChartPoint = { date: string; difficulty: number | null; sessions: number; turns: number | null; minPerTurn: number | null; ddPerTurn: number | null };
   let chartData: ChartPoint[] = [];
   let xTickInterval: number | "preserveStartEnd" = 0;
   let xTicks: string[] | undefined;
@@ -154,6 +158,7 @@ export default function StatsPage() {
         sessions: found?.sessions ?? 0,
         turns: found?.turns ?? null,
         minPerTurn: minPerTurnOf(found),
+        ddPerTurn: ddPerTurnOf(found),
         isFuture,
       };
     });
@@ -168,7 +173,7 @@ export default function StatsPage() {
       const key = format(day, "yyyy-MM-dd");
       const found = ddByDate[key];
       const isFuture = day > today;
-      return { date: format(day, "d MMM"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, turns: found?.turns ?? null, minPerTurn: minPerTurnOf(found), isFuture };
+      return { date: format(day, "d MMM"), difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, turns: found?.turns ?? null, minPerTurn: minPerTurnOf(found), ddPerTurn: ddPerTurnOf(found), isFuture };
     });
   } else if (range === "year") {
     const refDay = addYears(today, offset);
@@ -180,7 +185,7 @@ export default function StatsPage() {
       const key = format(day, "yyyy-MM-dd");
       const found = ddByDate[key];
       const isFuture = day > today;
-      return { date: key, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, turns: found?.turns ?? null, minPerTurn: minPerTurnOf(found), isFuture };
+      return { date: key, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, turns: found?.turns ?? null, minPerTurn: minPerTurnOf(found), ddPerTurn: ddPerTurnOf(found), isFuture };
     });
     // Force a tick on the first of every month so all 12 month labels render.
     xTicks = days
@@ -199,7 +204,7 @@ export default function StatsPage() {
       chartData = days.map(day => {
         const key = format(day, "yyyy-MM-dd");
         const found = ddByDate[key];
-        return { date: key, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, turns: found?.turns ?? null, minPerTurn: minPerTurnOf(found) };
+        return { date: key, difficulty: found?.difficulty ?? null, sessions: found?.sessions ?? 0, turns: found?.turns ?? null, minPerTurn: minPerTurnOf(found), ddPerTurn: ddPerTurnOf(found) };
       });
       // Adaptive month/year ticks: denser labels for short spans, yearly for long ones.
       const monthsSpan =
@@ -520,6 +525,10 @@ export default function StatsPage() {
                       <span className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: 'hsl(150 70% 55%)' }} />
                       time/turn
                     </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="inline-block w-4 border-t-2 border-dotted" style={{ borderColor: 'hsl(35 90% 60%)' }} />
+                      DD/turn
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-start gap-2 shrink-0">
@@ -575,6 +584,9 @@ export default function StatsPage() {
                         if (item?.dataKey === "minPerTurn") {
                           return [`${formatSecondsPerTurn(Math.round(Number(value) * 60))} / turn`, ""];
                         }
+                        if (item?.dataKey === "ddPerTurn") {
+                          return [`${Number(value).toFixed(1)} DD / turn`, ""];
+                        }
                         const s = item?.payload?.sessions ?? 0;
                         const sessionPart = s > 1 ? ` · ${s} sessions` : "";
                         return [`${Number(value)} turn${Number(value) === 1 ? "" : "s"}${sessionPart}`, ""];
@@ -590,6 +602,7 @@ export default function StatsPage() {
                     />
                     <YAxis yAxisId="turns" hide />
                     <YAxis yAxisId="minPerTurn" hide />
+                    <YAxis yAxisId="ddPerTurn" hide />
                     <Line
                       yAxisId="turns"
                       type="linear"
@@ -610,6 +623,17 @@ export default function StatsPage() {
                       connectNulls
                       dot={{ r: chartData.length > 60 ? 1.5 : 2.5, fill: 'hsl(150 70% 55%)', strokeWidth: 0 }}
                       activeDot={{ r: 4, fill: 'hsl(150 70% 55%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+                    />
+                    <Line
+                      yAxisId="ddPerTurn"
+                      type="linear"
+                      dataKey="ddPerTurn"
+                      stroke="hsl(35 90% 60%)"
+                      strokeWidth={1.5}
+                      strokeDasharray="1 3"
+                      connectNulls
+                      dot={{ r: chartData.length > 60 ? 1.5 : 2.5, fill: 'hsl(35 90% 60%)', strokeWidth: 0 }}
+                      activeDot={{ r: 4, fill: 'hsl(35 90% 60%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
