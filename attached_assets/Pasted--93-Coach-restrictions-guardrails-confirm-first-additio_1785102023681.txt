@@ -1,0 +1,29 @@
+#93 - Coach restrictions, guardrails & confirm-first additions
+What & Why
+Tighten what the AI coach can and cannot say or do, and add two new confirm-first abilities. The coach should be a strictly data-grounded assistant: it speaks only from the athlete's own logged data, never gives trampoline technique tips or skill advice of its own, refuses off-topic questions, and follows explicit safety rules. It also gains the ability to propose adding a new skill to the library and adding a Point to Fix — but only when the athlete explicitly asks, and always with user confirmation before anything is saved.
+
+Core principle — strict allowlist: the coach may ONLY do what is explicitly permitted below. Anything not on the allowed list is forbidden by default — the prompts must state this closed-list rule directly (deny-by-default), not merely list a few prohibitions.
+
+Done looks like
+Topics: the coach only discusses (a) insights derived from the athlete's actual data (training sessions, scores, WHOOP recovery/sleep, ToF), and (b) app help via the app guide. It never offers trampoline technique tips, skill advice, or generic coaching wisdom not grounded in the data. Recovery and sleep discussion is allowed, but only as data insight.
+Off-topic handling: anything outside that scope gets a short refusal that suggests talking to a real coach or an appropriate professional, then steers back.
+Safety rules (applied across chat, menu chat, and push recommendation prompts):
+Never suggests or references skills that are not already in the athlete's skill library.
+If the athlete mentions pain or possible injury: advise caution — either light-training suggestions or rest plus seeing a professional; never coach through pain.
+Never gives medical or medication advice.
+Never contradicts the athlete's real coach — defers to them on technique and progression.
+Low WHOOP recovery remains guidance the coach weighs, not a hard block on recommending a push day.
+Existing allowed actions unchanged: draft log entries from menu photos/text (user confirms), notation guide updates, Veriflite ToF screenshot parsing, daily push/normal/easy/rest recommendations, quick-reply suggestions.
+New ability — propose a skill addition: when the athlete explicitly asks the coach to add a skill/drill to their library (e.g. "add crash dive as a drill"), the coach replies with a structured proposal shown as a confirmation card in the chat (name, code, difficulty, type). Only on the user tapping confirm does it save via the existing skill-creation API. The coach never proposes additions unprompted and adds only what the athlete told it to add.
+New ability — propose a Point to Fix: same pattern — when explicitly asked (e.g. "add a point to fix: keep arms up on 4-o"), the coach proposes a Point to Fix (name, optional linked skills/routines from the library, category) shown as a confirmation card. On confirm it is merged into the existing points list and saved (points are stored as JSON in the user's focus memo, so the client must merge into the current list, never overwrite it wholesale).
+Both new proposals follow the existing draft-entry pattern: fenced structured block from the model, parsed server-side, rendered as a card the user can review and confirm or dismiss; nothing is ever saved without confirmation.
+Out of scope
+No hard block on push recommendations when recovery is low (stays as weighted guidance).
+No changes to the ToF parsing, notation guide, or draft log entry flows beyond adding the new guardrail wording to their prompts.
+No offline-queue support for the two new proposal types (confirm requires being online, like the rest of coach chat).
+No coach-initiated suggestions to add skills or points — proposals happen only on explicit user request.
+Steps
+Prompt guardrails — Update the coach system prompts (main chat, menu chat, push recommendation) with the deny-by-default allowlist rule (the coach may only do what these prompts explicitly permit; everything else it must refuse), the topic restriction (data-grounded insights + app help only, recovery/sleep as data insight, no technique tips), the off-topic refusal behavior (refuse + suggest a real coach/professional), and the safety rules (library-only skills, pain/injury caution, no medical/medication advice, never contradict the real coach).
+Skill-addition proposal flow — Add a new fenced block type the model emits only when the athlete explicitly requests a skill/drill addition; parse it server-side, return it alongside the reply, and render a confirmation card in the chat UI that creates the skill via the existing skill-creation mutation on confirm (invalidating the skills cache).
+Point-to-Fix proposal flow — Add a second fenced block type for an explicitly requested Point to Fix; parse and return it, render a confirmation card, and on confirm merge the new point into the current parsed points list and save through the existing focus-memo update path (invalidating the auth/user cache). Linked skill/routine ids must resolve against the athlete's real library; unresolvable links are dropped or left unlinked rather than invented.
+Verification — Exercise the chat: confirm off-topic questions are refused with the professional-referral wording, technique-tip requests are declined, an explicit "add skill" and "add point to fix" request each produce a confirmation card that saves correctly on confirm and saves nothing when dismissed, and existing draft-entry/menu/ToF flows still work.
