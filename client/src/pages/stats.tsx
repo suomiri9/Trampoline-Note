@@ -278,7 +278,15 @@ export default function StatsPage() {
       timedMinutes += end - start;
     }
   });
-  const turnsPerHour = timedMinutes > 0 ? timedTurns / (timedMinutes / 60) : null;
+  // Average duration of a single turn (session time ÷ turns), shown as "3m 05s".
+  const secondsPerTurn =
+    timedTurns > 0 && timedMinutes > 0 ? Math.round((timedMinutes * 60) / timedTurns) : null;
+  const timePerTurn =
+    secondsPerTurn != null
+      ? secondsPerTurn >= 60
+        ? `${Math.floor(secondsPerTurn / 60)}m ${String(secondsPerTurn % 60).padStart(2, "0")}s`
+        : `${secondsPerTurn}s`
+      : null;
   const avgDDPerTurn = periodTurns > 0 ? periodTotalDD / periodTurns : null;
 
   // ---- All-time overview (not period-scoped) ----
@@ -625,7 +633,7 @@ export default function StatsPage() {
               <div className="divide-y divide-border/50">
                 {[
                   { label: "Turns", value: String(periodTurns), testId: "stat-turns" },
-                  { label: "Turns / Hour", value: turnsPerHour != null ? turnsPerHour.toFixed(1) : "—", testId: "stat-turns-per-hour" },
+                  { label: "Time / Turn", value: timePerTurn ?? "—", testId: "stat-time-per-turn" },
                   { label: "Avg DD / Turn", value: avgDDPerTurn != null ? avgDDPerTurn.toFixed(1) : "—", testId: "stat-avg-dd-per-turn" },
                 ].map((row) => (
                   <div key={row.label} className="flex items-center justify-between py-3.5">
@@ -635,7 +643,7 @@ export default function StatsPage() {
                 ))}
               </div>
               <p className="text-[11px] text-muted-foreground/70 mt-3 leading-snug">
-                Turns/hour counts only sessions with start and end times.
+                Time per turn counts only sessions with start and end times.
               </p>
             </div>
           </div>
