@@ -13,3 +13,4 @@
 - [Stale dev server after task merges](stale-dev-server-after-merge.md) — merges don't restart the Express process; if runtime contradicts current server source, restart the workflow first.
 - [ResizeObserver crash noise](resizeobserver-crash-noise.md) — the "not an error object" preview crash is the benign RO-loop error; only the first-in-head inline script + RO rAF patch can silence it.
 - [iOS PWA splash handoff](ios-splash-handoff.md) — don't pixel-match designed launch images to a live overlay; use plain solid launch images + a pre-React spinner that reveals the splash when assets load.
+- [Coach stream pacing](coach-stream-pacing.md) — SSE deltas arrive as one end-burst (model thinks, then dumps); the typing feel is a client-side paced reveal — don't re-debug transport.

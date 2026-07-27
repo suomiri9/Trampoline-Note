@@ -887,6 +887,43 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Paced typewriter for the coach reply. The upstream model often delivers
+  // the whole answer in one burst at the end of the SSE stream (it "thinks",
+  // then every token lands within ~100ms), so rendering raw deltas shows the
+  // full text at once. Deltas accumulate in streamTargetRef; an interval
+  // drains them into streamText at a readable rate instead.
+  const streamTargetRef = useRef("");
+  const streamShownRef = useRef(0);
+  const revealTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopReveal = () => {
+    if (revealTimerRef.current != null) {
+      clearInterval(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
+    streamTargetRef.current = "";
+    streamShownRef.current = 0;
+  };
+
+  const startReveal = () => {
+    if (revealTimerRef.current != null) return;
+    revealTimerRef.current = setInterval(() => {
+      const target = streamTargetRef.current;
+      const shown = streamShownRef.current;
+      if (shown >= target.length) return; // caught up — wait for more deltas
+      const backlog = target.length - shown;
+      // Drain ~1/25th of the backlog per tick (min 2 chars): a huge burst
+      // finishes within ~1–2s, while a trickle still types word by word.
+      const step = Math.max(2, Math.ceil(backlog / 25));
+      const next = Math.min(target.length, shown + step);
+      streamShownRef.current = next;
+      setStreamText(target.slice(0, next));
+    }, 33);
+  };
+
+  // Never leave the reveal interval running after the chat unmounts.
+  useEffect(() => stopReveal, []);
+
   const { data: messages, isLoading: messagesLoading } = useQuery<CoachMessage[]>({
     queryKey: ["/api/coach/messages"],
   });
@@ -903,6 +940,8 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
     mutationFn: async ({ content, images }: { content: string; images: string[] }) => {
       setPendingUser({ content, images });
       setStreamText("");
+      stopReveal();
+      startReveal();
       const res = await fetch("/api/coach/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -943,7 +982,8 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
           if (payload.error) throw new Error(`503: ${payload.error}`);
           if (payload.delta) {
             acc += payload.delta;
-            setStreamText(acc);
+            // Feed the typewriter; the reveal interval paces the display.
+            streamTargetRef.current = acc;
           }
           if (payload.done) {
             done = true;
@@ -952,9 +992,22 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
         }
       }
       if (!done) throw new Error("503: stream ended unexpectedly");
+      // Let the typewriter catch up (bounded) so the bubble doesn't jump to
+      // the full text the instant the network stream ends. If the reveal
+      // interval is gone (chat closed mid-reply), skip the wait entirely so
+      // the reply persists and history refreshes without an artificial stall.
+      const revealDeadline = Date.now() + 4000;
+      while (
+        revealTimerRef.current != null &&
+        streamShownRef.current < streamTargetRef.current.length &&
+        Date.now() < revealDeadline
+      ) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
       return { reply: acc, guideUpdated };
     },
     onSuccess: async ({ guideUpdated }) => {
+      stopReveal();
       await queryClient.invalidateQueries({ queryKey: ["/api/coach/messages"] });
       setPendingUser(null);
       setStreamText("");
@@ -969,6 +1022,7 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
       }
     },
     onError: (err: Error) => {
+      stopReveal();
       setPendingUser(null);
       setStreamText("");
       toast({
