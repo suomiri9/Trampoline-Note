@@ -97,6 +97,7 @@ export default function ExecutionPage() {
   const [adhocIds, setAdhocIds] = useState<number[]>([]); // "connect skills" sequence when targetValue === "adhoc"
   const [category, setCategory] = useState<"set" | "vol">("vol");
   const [tenths, setTenths] = useState<string[]>(emptyTenths());
+  const [landingOn, setLandingOn] = useState(false); // landing cell hidden & null until toggled on
   const [note, setNote] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<ExecutionSession | null>(null);
 
@@ -117,6 +118,7 @@ export default function ExecutionPage() {
     setAdhocIds([]);
     setCategory("vol");
     setTenths(emptyTenths());
+    setLandingOn(false);
     setNote("");
   };
 
@@ -134,6 +136,7 @@ export default function ExecutionPage() {
     });
     if (s.landingDeduction != null) cells[EXECUTION_SKILL_COUNT] = String(pointsToTenths(s.landingDeduction));
     setTenths(cells);
+    setLandingOn(s.landingDeduction != null);
     setNote(s.note ?? "");
     setShowForm(true);
   };
@@ -172,6 +175,18 @@ export default function ExecutionPage() {
     !!selectedTarget && !!date &&
     formParsed.skills.length >= 1 &&
     !formParsed.trailing && !formParsed.landingInvalid;
+
+  // Landing on/off: turning on prefills a clean landing (0), turning off
+  // clears the cell so the session saves with no landing recorded.
+  const toggleLanding = () => {
+    const next = !landingOn;
+    setLandingOn(next);
+    setTenths(cells => cells.map((v, i) => {
+      if (i !== EXECUTION_SKILL_COUNT) return v;
+      if (!next) return "";
+      return v.trim() === "" ? "0" : v;
+    }));
+  };
 
   type CreateResult = OfflineQueuedResult | ExecutionSession;
   const postSession = async (body: InsertExecutionSession) => {
@@ -523,6 +538,7 @@ export default function ExecutionPage() {
     onChange: (idx: number, value: string) => void,
     target: TrackerTarget | undefined,
     testPrefix: string,
+    showLanding: boolean = true,
   ) => {
     const seqLen = targetSeqLength(target);
     const maxSkills = Math.min(seqLen ?? EXECUTION_SKILL_COUNT, EXECUTION_SKILL_COUNT);
@@ -546,7 +562,7 @@ export default function ExecutionPage() {
       const lastFilled = cells.slice(0, maxSkills).reduce((acc, v, i) => ((v ?? "").trim() !== "" ? i : acc), -1);
       visibleSkills = Math.min(maxSkills, Math.max(p.skills.length + 1, lastFilled + 1));
     }
-    return <TenthsGrid cells={cells} onChange={onChange} labels={labels} titles={titles} testPrefix={testPrefix} skillCount={visibleSkills} />;
+    return <TenthsGrid cells={cells} onChange={onChange} labels={labels} titles={titles} testPrefix={testPrefix} skillCount={visibleSkills} showLanding={showLanding} />;
   };
 
   const rowSummary = (p: ParsedRow, testId: string, target?: TrackerTarget) => {
@@ -642,8 +658,22 @@ export default function ExecutionPage() {
             )}
 
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Deductions (tenths, as printed — 2 = 0.2)</label>
-              {renderTenthsGrid(tenths, (i, val) => setTenths(prev => prev.map((p, j) => (j === i ? val : p))), selectedTarget, "input-exec-value")}
+              <div className="flex items-center justify-between mb-1 gap-2">
+                <label className="text-xs font-medium text-muted-foreground">Deductions (tenths, as printed — 2 = 0.2)</label>
+                <button
+                  type="button"
+                  onClick={toggleLanding}
+                  aria-pressed={landingOn}
+                  className={cn(
+                    "shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-mono uppercase tracking-wider transition-colors",
+                    landingOn ? "border-primary/60 bg-primary/15 text-primary" : "border-border/60 bg-secondary/30 text-muted-foreground",
+                  )}
+                  data-testid="button-exec-landing-toggle"
+                >
+                  Landing {landingOn ? "on" : "off"}
+                </button>
+              </div>
+              {renderTenthsGrid(tenths, (i, val) => setTenths(prev => prev.map((p, j) => (j === i ? val : p))), selectedTarget, "input-exec-value", landingOn)}
               {formParsed.trailing && (
                 <p className="text-[10px] text-red-500 mt-1" data-testid="text-exec-gap-warning">Fill skills in order without gaps (values 0-30) — an interrupted routine stops at the last skill judged.</p>
               )}

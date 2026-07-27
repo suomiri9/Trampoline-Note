@@ -92,19 +92,23 @@ export function TenthsGrid({
   titles,
   testPrefix,
   skillCount = EXECUTION_SKILL_COUNT,
+  showLanding = true,
 }: {
   cells: string[];
   onChange: (idx: number, value: string) => void;
   labels?: (string | undefined)[];
   titles?: (string | undefined)[];
   testPrefix: string;
-  /** Skill cells to show (the target's sequence length); landing always shows. */
+  /** Skill cells to show (the target's sequence length). */
   skillCount?: number;
+  /** Render the landing cell (the manual form hides it until toggled on). */
+  showLanding?: boolean;
 }) {
   return (
     <div className="grid grid-cols-6 gap-1.5">
       {cells.map((v, i) => {
         const isLanding = i === EXECUTION_SKILL_COUNT;
+        if (isLanding && !showLanding) return null;
         if (!isLanding && i >= skillCount) return null;
         return (
           <div key={i} className="space-y-0.5">

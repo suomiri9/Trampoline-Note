@@ -1,12 +1,12 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X } from "lucide-react";
+import { Delete } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { Skill } from "@shared/schema";
 import { pickableSkills, skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
 
-// Inline builder for an ad-hoc "connect skills" tracker target: chips show
-// the chosen sequence in order, the select underneath appends another skill
-// (the same skill can repeat). Nothing is saved to the library — the ids
-// live on the session row itself.
+// Inline builder for an ad-hoc "connect skills" tracker target. Kept
+// deliberately simple: tap skill buttons to build the sequence (repeats
+// allowed), backspace removes the last one. Nothing is saved to the
+// library — the ids live on the session row itself.
 export function AdhocSkillsBuilder({
   skillIds,
   onChange,
@@ -23,55 +23,60 @@ export function AdhocSkillsBuilder({
   const options = pickableSkills(allSkills, 0)
     .slice()
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  const full = skillIds.length >= max;
   return (
     <div className="rounded-xl border border-border/60 bg-secondary/20 p-3 space-y-2" data-testid={`${testPrefix}-adhoc-builder`}>
-      <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-        Connected skills, in order{skillIds.length > 0 ? ` (${skillIds.length}/${max})` : ""}
-      </div>
-      {skillIds.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {skillIds.map((id, i) => {
-            const sk = allSkills?.find(s => s.id === id);
-            return (
-              <span
-                key={`${id}-${i}`}
-                className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-mono"
-                title={sk ? skillDisplayName(sk, allSkills) : undefined}
-                data-testid={`${testPrefix}-adhoc-chip-${i}`}
-              >
-                <span className="text-muted-foreground">{i + 1}.</span>
-                <span className="font-bold">{sk ? skillDisplayCode(sk, allSkills) : `#${id}`}</span>
-                <button
-                  type="button"
-                  className="text-muted-foreground hover:text-foreground ml-0.5"
-                  onClick={() => onChange(skillIds.filter((_, j) => j !== i))}
-                  aria-label={`Remove skill ${i + 1}`}
-                  data-testid={`${testPrefix}-adhoc-remove-${i}`}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            );
-          })}
+      <div className="flex items-center gap-1.5">
+        <div className="flex-1 min-h-9 rounded-md border border-border/50 bg-background px-2 py-1.5 flex flex-wrap items-center gap-y-1 font-mono text-sm">
+          {skillIds.length === 0 ? (
+            <span className="text-xs text-muted-foreground">Tap skills below, in order</span>
+          ) : (
+            skillIds.map((id, i) => {
+              const sk = allSkills?.find(s => s.id === id);
+              return (
+                <span key={`${id}-${i}`} data-testid={`${testPrefix}-adhoc-chip-${i}`} title={sk ? skillDisplayName(sk, allSkills) : undefined}>
+                  {i > 0 && <span className="text-muted-foreground/60 mx-1">+</span>}
+                  <span className="font-bold">{sk ? skillDisplayCode(sk, allSkills) : `#${id}`}</span>
+                </span>
+              );
+            })
+          )}
         </div>
-      )}
-      {skillIds.length < max && (
-        <Select value="" onValueChange={v => onChange([...skillIds, Number(v)])}>
-          <SelectTrigger className="h-8 text-xs" data-testid={`${testPrefix}-adhoc-add`}>
-            <SelectValue placeholder="+ Add skill" />
-          </SelectTrigger>
-          <SelectContent>
-            {options.map(s => (
-              <SelectItem key={s.id} value={String(s.id)} className="text-xs">
-                {skillDisplayCode(s, allSkills)} · {skillDisplayName(s, allSkills)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-      {skillIds.length < 2 && (
-        <p className="text-[10px] text-muted-foreground">Pick at least 2 skills to connect — this won't be added to your library.</p>
-      )}
+        {skillIds.length > 0 && (
+          <button
+            type="button"
+            className="h-9 w-9 shrink-0 rounded-md border border-border/60 bg-secondary/40 flex items-center justify-center text-muted-foreground hover:text-foreground"
+            onClick={() => onChange(skillIds.slice(0, -1))}
+            aria-label="Remove last skill"
+            data-testid={`${testPrefix}-adhoc-backspace`}
+          >
+            <Delete className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map(s => (
+          <button
+            key={s.id}
+            type="button"
+            disabled={full}
+            onClick={() => onChange([...skillIds, s.id])}
+            title={skillDisplayName(s, allSkills)}
+            className={cn(
+              "rounded-md border border-border/60 bg-secondary px-2.5 py-1.5 text-xs font-mono font-bold transition-colors",
+              full ? "opacity-40" : "hover:bg-secondary/70 active:scale-95",
+            )}
+            data-testid={`${testPrefix}-adhoc-pick-${s.id}`}
+          >
+            {skillDisplayCode(s, allSkills)}
+          </button>
+        ))}
+      </div>
+      <p className="text-[10px] text-muted-foreground">
+        {skillIds.length < 2
+          ? "Tap at least 2 skills in the order you jump them — nothing is added to your library."
+          : `${skillIds.length}/${max} skills connected.`}
+      </p>
     </div>
   );
 }
