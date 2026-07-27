@@ -1146,12 +1146,12 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
       </div>
 
       {suggestions.length > 0 && !sendMutation.isPending && (
-        <div className="px-3 pt-2 pb-1 flex flex-wrap gap-2 shrink-0" data-testid="row-coach-suggestions">
+        <div className="px-3 pt-2 pb-1 flex gap-2 shrink-0 overflow-x-auto no-scrollbar" data-testid="row-coach-suggestions">
           {suggestions.map((s, i) => (
             <button
               key={i}
               onClick={() => send(s)}
-              className="text-sm px-4 py-2 rounded-full border border-border bg-secondary/50 hover:bg-secondary text-foreground transition-colors"
+              className="text-sm px-4 py-2 rounded-full border border-border bg-secondary/50 hover:bg-secondary text-foreground transition-colors whitespace-nowrap shrink-0"
               data-testid={`button-reply-suggestion-${i}`}
             >
               {s}

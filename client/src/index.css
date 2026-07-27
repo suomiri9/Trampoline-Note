@@ -375,6 +375,16 @@ html, body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Horizontally scrollable rows (e.g. coach reply suggestions) — scrolls but
+   hides the scrollbar so chip rows stay clean on mobile. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Staggered animation delays for lists */
 .stagger-1 { animation-delay: 0.1s; }
 .stagger-2 { animation-delay: 0.2s; }
