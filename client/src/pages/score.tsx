@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertScoreSchema, type Score, type Routine, type Skill, type InsertScore } from "@shared/schema";
+import { insertScoreSchema, type Score, type Routine, type Skill, type InsertScore, type ExecutionSession, type InsertExecutionSession } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { calcDDFromSkillIds, parseNoteSkills } from "@/lib/training-utils";
 import { PageLayout } from "@/components/page-layout";
@@ -24,12 +24,18 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
-import { Trash2, Plus, Trophy, CalendarIcon, Pencil, MoreVertical, TrendingUp, SlidersHorizontal, Users } from "lucide-react";
+import { Trash2, Plus, Trophy, CalendarIcon, Pencil, MoreVertical, TrendingUp, SlidersHorizontal, Users, ImageUp, Loader2, RotateCcw, X } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { fileToDataUrl } from "@/lib/image-file";
+import { SheetPhotoPreview } from "@/components/sheet-photo-preview";
+import { emptyTenths, parseTenthsRow, tenthsRowToInsert, TenthsGrid, TenthsRowSummary } from "@/components/execution-tenths";
+import { EXECUTION_SKILL_COUNT } from "@shared/execution";
+import { api } from "@shared/routes";
 
 const scoreDefaults = {
   date: new Date().toISOString().split('T')[0],
@@ -260,6 +266,61 @@ function newCompetitionId(): string {
     /* fall through */
   }
   return `comp_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+// One extracted routine line from a competition scoresheet photo. Values stay
+// as editable strings during review; blank = not printed on the sheet.
+type SheetRow = {
+  key: number;
+  label: string;
+  execution: string;
+  difficulty: string;
+  horizontal: string;
+  timeOfFlight: string;
+  total: string;
+  kept: boolean;
+  routineId: string; // "" = unset, "none" = explicitly no routine
+};
+
+// A deduction row read from the same photo by the judges'-sheet parser.
+type ParsedExecRow = { label: string; deductions: number[]; landing: number | null };
+
+// Draft execution session offered after the score saves (step 3).
+type ExecDraft = {
+  key: number;
+  label: string;
+  tenths: string[];
+  kept: boolean;
+  routineId: string; // "" = unset — a routine is required before saving
+  category: "set" | "vol";
+};
+
+const sheetNum = (s: string): number => {
+  const n = Number(s);
+  return s.trim() !== "" && Number.isFinite(n) && n >= 0 ? n : 0;
+};
+
+function sheetRowValues(r: SheetRow) {
+  const e = sheetNum(r.execution);
+  const d = sheetNum(r.difficulty);
+  const h = sheetNum(r.horizontal);
+  const t = sheetNum(r.timeOfFlight);
+  const sum = Math.round((e + d + h + t) * 1000) / 1000;
+  const total = r.total.trim() === "" ? sum : sheetNum(r.total);
+  return { e, d, h, t, sum, total, mismatch: r.total.trim() !== "" && Math.abs(total - sum) > 0.005 };
+}
+
+function sheetFieldInvalid(s: string): boolean {
+  if (s.trim() === "") return false;
+  const n = Number(s);
+  return !Number.isFinite(n) || n < 0;
+}
+
+function sheetRowValid(r: SheetRow): boolean {
+  return (
+    r.execution.trim() !== "" &&
+    ![r.execution, r.difficulty, r.horizontal, r.timeOfFlight, r.total].some(sheetFieldInvalid)
+  );
 }
 
 // Overall score for a row: vol_vol counts the BEST of the two voluntary routines,
@@ -680,6 +741,27 @@ export default function ScorePage() {
   const [offlineModeEnabled] = useOfflineMode();
   const isOnline = useOnline();
 
+  // ---- Scoresheet photo flow (parse → review → details → save) ----
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetStep, setSheetStep] = useState<"review" | "details" | "executions">("review");
+  const [sheetRows, setSheetRows] = useState<SheetRow[]>([]);
+  const [sheetPhotoUrl, setSheetPhotoUrl] = useState<string | null>(null);
+  // Draft execution sessions parsed from the same photo, offered after the
+  // score saves ("add the deductions too" step).
+  const [execDrafts, setExecDrafts] = useState<ExecDraft[]>([]);
+  const [savingExecDrafts, setSavingExecDrafts] = useState(false);
+  const [sheetFinishing, setSheetFinishing] = useState(false);
+  const execParseRef = useRef<Promise<ParsedExecRow[] | null> | null>(null);
+  const [sheetDate, setSheetDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [sheetType, setSheetType] = useState<string>("competition");
+  const [sheetCompName, setSheetCompName] = useState("");
+  const [sheetRound, setSheetRound] = useState<string>("prelims");
+  const [sheetCategory, setSheetCategory] = useState<"set" | "vol">("vol");
+  // Two-row sheets: are the two routines set+vol (qualification) or vol+vol (e.g. a final)?
+  const [sheetPairCategory, setSheetPairCategory] = useState<"both" | "vol_vol">("both");
+  const [parsingSheet, setParsingSheet] = useState(false);
+  const sheetInputRef = useRef<HTMLInputElement>(null);
+
   const { data: scores } = useQuery<Score[]>({
     queryKey: ["/api/scores"],
     enabled: !(offlineModeEnabled && !isOnline),
@@ -794,6 +876,234 @@ export default function ScorePage() {
       });
     },
   });
+
+  const closeSheet = () => {
+    setSheetOpen(false);
+    setSheetStep("review");
+    setSheetRows([]);
+    setSheetPhotoUrl(null);
+    setExecDrafts([]);
+    setSavingExecDrafts(false);
+    setSheetFinishing(false);
+    execParseRef.current = null;
+    setSheetCompName("");
+    setSheetRound("prelims");
+    setSheetType("competition");
+    setSheetCategory("vol");
+    setSheetPairCategory("both");
+    setSheetDate(new Date().toISOString().split("T")[0]);
+  };
+
+  const handleSheetPhoto = async (file: File) => {
+    setParsingSheet(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      // In parallel, try reading per-skill deduction rows from the same photo
+      // — offered as Execution-tracker drafts after the score is saved.
+      execParseRef.current = apiRequest("POST", "/api/execution-sessions/parse-photo", { images: [dataUrl] })
+        .then(res => res.json())
+        .then((p: { rows: ParsedExecRow[] }) => (p.rows && p.rows.length > 0 ? p.rows : null))
+        .catch(() => null);
+      const res = await apiRequest("POST", "/api/scores/parse-photo", { images: [dataUrl] });
+      const parsed = (await res.json()) as {
+        routines: { label: string; execution: number | null; difficulty: number | null; horizontal: number | null; timeOfFlight: number | null; total: number | null }[];
+        competitionName: string | null;
+        round: string | null;
+        date: string | null;
+      };
+      if (!parsed.routines || parsed.routines.length === 0) {
+        toast({
+          title: "No routine scores found",
+          description: "Couldn't read E/D/H/T lines from that photo. Try a closer crop, or enter the score manually.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const rows: SheetRow[] = parsed.routines.map((r, idx) => ({
+        key: idx,
+        label: r.label,
+        execution: r.execution != null ? String(r.execution) : "",
+        difficulty: r.difficulty != null ? String(r.difficulty) : "",
+        horizontal: r.horizontal != null ? String(r.horizontal) : "",
+        timeOfFlight: r.timeOfFlight != null ? String(r.timeOfFlight) : "",
+        total: r.total != null ? String(r.total) : "",
+        kept: true,
+        routineId: "",
+      }));
+      setSheetRows(rows);
+      setSheetPhotoUrl(dataUrl);
+      setSheetDate(parsed.date ?? new Date().toISOString().split("T")[0]);
+      setSheetCompName(parsed.competitionName ?? "");
+      setSheetRound(parsed.round === "final" ? "final" : "prelims");
+      setSheetType(parsed.competitionName || parsed.round ? "competition" : "practice");
+      // Single-routine sheet: a blank DD line usually means the set routine.
+      const first = parsed.routines[0];
+      setSheetCategory(rows.length === 1 && (first.difficulty == null || first.difficulty === 0) ? "set" : "vol");
+      // Two-routine sheet: a printed DD on the first routine suggests two voluntaries
+      // (e.g. a final); a blank/0 DD on R1 means the classic set + voluntary pair.
+      setSheetPairCategory(rows.length === 2 && first.difficulty != null && first.difficulty > 0 ? "vol_vol" : "both");
+      setSheetStep("review");
+      setSheetOpen(true);
+    } catch (e) {
+      toast({
+        title: "Photo reading failed",
+        description: e instanceof Error ? e.message : "Try again or enter the score manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setParsingSheet(false);
+      if (sheetInputRef.current) sheetInputRef.current.value = "";
+    }
+  };
+
+  const keptSheetRows = sheetRows.filter(r => r.kept);
+  const sheetReviewValid = keptSheetRows.length > 0 && keptSheetRows.length <= 2 && keptSheetRows.every(sheetRowValid);
+  const isSheetComp = sheetType === "competition" || sheetType === "trial";
+  const sheetDetailsValid = !!sheetDate && (!isSheetComp || sheetCompName.trim() !== "");
+
+  const routineIdOrUndef = (v: string) => (v && v !== "none" ? Number(v) : undefined);
+
+  const saveSheetScore = async () => {
+    if (!sheetReviewValid || !sheetDetailsValid || createMutation.isPending || sheetFinishing) return;
+    const base = { ...scoreDefaults, date: sheetDate, type: sheetType };
+    let values: InsertScore;
+    if (keptSheetRows.length === 2) {
+      // Two routines on the sheet → one entry: set + vol, or vol 1 + vol 2.
+      const [r1, r2] = keptSheetRows;
+      const v1 = sheetRowValues(r1);
+      const v2 = sheetRowValues(r2);
+      values = {
+        ...base,
+        category: sheetPairCategory,
+        routineId: routineIdOrUndef(r1.routineId),
+        routineIdVol: routineIdOrUndef(r2.routineId),
+        execution: v1.e, difficulty: v1.d, horizontal: v1.h, timeOfFlight: v1.t, total: v1.total,
+        executionVol: v2.e, difficultyVol: v2.d, horizontalVol: v2.h, timeOfFlightVol: v2.t, totalVol: v2.total,
+      };
+    } else {
+      const r1 = keptSheetRows[0];
+      const v1 = sheetRowValues(r1);
+      values = {
+        ...base,
+        category: sheetCategory,
+        routineId: routineIdOrUndef(r1.routineId),
+        execution: v1.e, difficulty: v1.d, horizontal: v1.h, timeOfFlight: v1.t, total: v1.total,
+      };
+    }
+    values = isSheetComp
+      ? { ...values, competitionName: sheetCompName.trim(), round: sheetRound || "prelims", competitionId: newCompetitionId() }
+      : { ...values, round: null, competitionId: null, competitionName: "", rank: null };
+    setSheetFinishing(true);
+    try {
+      await createMutation.mutateAsync(values);
+      // Score saved — if the same photo also carries per-skill deduction rows
+      // (competition sheets usually do), offer them as Execution-tracker
+      // drafts instead of closing.
+      const parsedExec = execParseRef.current ? await execParseRef.current : null;
+      const drafts = buildExecDrafts(parsedExec);
+      if (drafts.length > 0) {
+        setExecDrafts(drafts);
+        setSheetStep("executions");
+      } else {
+        closeSheet();
+      }
+    } catch {
+      // createMutation.onError already showed a toast; keep the dialog open.
+    } finally {
+      setSheetFinishing(false);
+    }
+  };
+
+  // ---- "Add the deductions too" step (execution drafts from the same photo) ----
+
+  const buildExecDrafts = (rows: ParsedExecRow[] | null): ExecDraft[] => {
+    if (!rows) return [];
+    return rows
+      .filter(r => r.deductions.length > 0 || r.landing != null)
+      .slice(0, 2)
+      .map((r, idx) => {
+        const cells = emptyTenths();
+        r.deductions.forEach((v, i) => { if (i < EXECUTION_SKILL_COUNT) cells[i] = String(v); });
+        if (r.landing != null) cells[EXECUTION_SKILL_COUNT] = String(r.landing);
+        // Prefill routine + category from what the user picked for the score.
+        const scoreRow = keptSheetRows.find(k => k.label === r.label) ?? keptSheetRows[idx];
+        const scoreIdx = scoreRow ? keptSheetRows.indexOf(scoreRow) : idx;
+        const category: "set" | "vol" =
+          keptSheetRows.length === 2
+            ? (sheetPairCategory === "vol_vol" ? "vol" : scoreIdx === 0 ? "set" : "vol")
+            : sheetCategory;
+        return {
+          key: idx,
+          label: r.label,
+          tenths: cells,
+          kept: true,
+          routineId: scoreRow && scoreRow.routineId && scoreRow.routineId !== "none" ? scoreRow.routineId : "",
+          category,
+        };
+      });
+  };
+
+  const keptExecDrafts = execDrafts.filter(d => d.kept);
+  const execDraftsValid =
+    keptExecDrafts.length > 0 &&
+    keptExecDrafts.every(d => {
+      const p = parseTenthsRow(d.tenths);
+      return p.skills.length >= 1 && !p.trailing && !p.landingInvalid && d.routineId !== "";
+    });
+
+  const saveExecDrafts = async () => {
+    if (!execDraftsValid || savingExecDrafts) return;
+    setSavingExecDrafts(true);
+    let saved = 0;
+    let queued = 0;
+    const doneKeys = new Set<number>();
+    try {
+      for (const d of keptExecDrafts) {
+        const body = tenthsRowToInsert(d.tenths, {
+          date: sheetDate,
+          routineId: Number(d.routineId),
+          category: d.category,
+          note: null,
+        });
+        const result = await tryNetworkOrEnqueue("executionSession", body, async (signal) => {
+          const res = await fetch(api.executionSessions.create.path, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+            credentials: "include",
+            signal,
+          });
+          if (!res.ok) {
+            const text = (await res.text()) || res.statusText;
+            throw new Error(`${res.status}: ${text}`);
+          }
+          return (await res.json()) as ExecutionSession;
+        });
+        if (isQueuedOfflineResult(result)) queued += 1;
+        else saved += 1;
+        doneKeys.add(d.key);
+      }
+      if (saved > 0) queryClient.invalidateQueries({ queryKey: [api.executionSessions.list.path] });
+      const n = saved + queued;
+      toast({
+        title: queued > 0
+          ? `${n} execution session${n === 1 ? "" : "s"} saved offline. Will sync when reconnected.`
+          : `${n} execution session${n === 1 ? "" : "s"} added to the Execution tracker`,
+      });
+      closeSheet();
+    } catch (e) {
+      if (saved > 0) queryClient.invalidateQueries({ queryKey: [api.executionSessions.list.path] });
+      // Keep only the rows that didn't make it, so retrying can't duplicate.
+      setExecDrafts(prev => prev.filter(d => !doneKeys.has(d.key)));
+      toast({
+        title: "Failed to save execution session",
+        description: e instanceof Error ? e.message : "Try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingExecDrafts(false);
+    }
+  };
 
   const skipDDAutoFill = useRef(false);
 
@@ -1031,12 +1341,33 @@ export default function ScorePage() {
         accent="Board"
         subtitle="Track execution, DD, and competition results."
         actions={
-          <Button
-            onClick={() => { setIsAdding(true); setEditingScore(null); setCustomSkillIds(null); setCustomSkillIdsVol(null); form.reset({ ...scoreDefaults, date: new Date().toISOString().split('T')[0] }); }}
-            className={primaryActionClass}
-          >
-            <Plus className="w-5 h-5" /> Add Score
-          </Button>
+          <>
+            <input
+              ref={sheetInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleSheetPhoto(f); }}
+              data-testid="input-scoresheet-photo"
+            />
+            <Button
+              variant="outline"
+              className="rounded-xl h-12 px-4 font-semibold gap-2"
+              disabled={parsingSheet}
+              onClick={() => sheetInputRef.current?.click()}
+              data-testid="button-upload-scoresheet"
+            >
+              {parsingSheet ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageUp className="w-4 h-4" />}
+              {parsingSheet ? "Reading..." : "From photo"}
+            </Button>
+            <Button
+              onClick={() => { setIsAdding(true); setEditingScore(null); setCustomSkillIds(null); setCustomSkillIdsVol(null); form.reset({ ...scoreDefaults, date: new Date().toISOString().split('T')[0] }); }}
+              className={primaryActionClass}
+              data-testid="button-add-score"
+            >
+              <Plus className="w-5 h-5" /> Add Score
+            </Button>
+          </>
         }
       />
 
@@ -1430,6 +1761,276 @@ export default function ScorePage() {
                 </Button>
               </form>
             </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---- Scoresheet photo confirmation (review → details) ---- */}
+      <Dialog open={sheetOpen} onOpenChange={(o) => { if (!o && !createMutation.isPending && !sheetFinishing && !savingExecDrafts) closeSheet(); }}>
+        <DialogContent aria-describedby={undefined} className="sm:max-w-lg max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {sheetStep === "review" ? "Check the scores" : sheetStep === "details" ? "Score details" : "Add the deductions too?"}
+              {sheetStep !== "executions" && (
+                <span className="ml-2 text-xs font-mono font-normal text-muted-foreground">{sheetStep === "review" ? "1/2" : "2/2"}</span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          {sheetStep === "review" ? (
+            <div className="space-y-4">
+              <p className="text-xs text-muted-foreground">
+                These are the values read from the scoresheet — fix anything that's wrong before continuing. A blank DD usually means a set routine.
+              </p>
+              {sheetPhotoUrl && <SheetPhotoPreview src={sheetPhotoUrl} testId="img-sheet-photo" />}
+              {sheetRows.map((row) => {
+                const v = sheetRowValues(row);
+                return (
+                  <div key={row.key} className={cn("rounded-xl border border-border/60 p-3", !row.kept && "opacity-60 bg-secondary/20")} data-testid={`review-sheet-row-${row.key}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge variant="outline" className="font-mono text-[10px]">{row.label}</Badge>
+                      {row.kept ? (
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive gap-1" onClick={() => setSheetRows(prev => prev.map(r => r.key === row.key ? { ...r, kept: false } : r))} data-testid={`button-sheet-row-discard-${row.key}`}>
+                          <X className="h-3.5 w-3.5" /> Discard row
+                        </Button>
+                      ) : (
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1" onClick={() => setSheetRows(prev => prev.map(r => r.key === row.key ? { ...r, kept: true } : r))} data-testid={`button-sheet-row-restore-${row.key}`}>
+                          <RotateCcw className="h-3.5 w-3.5" /> Restore
+                        </Button>
+                      )}
+                    </div>
+                    {row.kept && (
+                      <>
+                        <div className="grid grid-cols-5 gap-1.5">
+                          {([
+                            ["E", "execution"],
+                            ["DD", "difficulty"],
+                            ["HD", "horizontal"],
+                            ["TOF", "timeOfFlight"],
+                            ["Total", "total"],
+                          ] as const).map(([label, field]) => (
+                            <div key={field} className="space-y-0.5">
+                              <div className="text-[9px] font-mono text-muted-foreground text-center">{label}</div>
+                              <Input
+                                type="number"
+                                inputMode="decimal"
+                                step="0.001"
+                                min="0"
+                                placeholder="—"
+                                value={row[field]}
+                                onChange={(e) => setSheetRows(prev => prev.map(r => r.key === row.key ? { ...r, [field]: e.target.value } : r))}
+                                className="h-9 px-1 text-center font-mono text-xs"
+                                data-testid={`input-sheet-${field}-${row.key}`}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        {!sheetRowValid(row) && (
+                          <p className="text-[10px] text-red-500 mt-1">E is required and values can't be negative.</p>
+                        )}
+                        {v.mismatch && (
+                          <p className="text-[10px] text-amber-500 mt-1" data-testid={`text-sheet-mismatch-${row.key}`}>
+                            E + DD + HD + TOF = {fmtScore(v.sum)} but the sheet total says {fmtScore(v.total)} — double-check the numbers.
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+              {keptSheetRows.length > 2 && (
+                <p className="text-[10px] text-red-500">Keep at most two routines — one score entry holds at most two routines.</p>
+              )}
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={closeSheet} data-testid="button-sheet-review-cancel">Cancel</Button>
+                <Button className="flex-1" disabled={!sheetReviewValid} onClick={() => setSheetStep("details")} data-testid="button-sheet-review-continue">Continue</Button>
+              </div>
+            </div>
+          ) : sheetStep === "executions" ? (
+            <div className="space-y-4">
+              <p className="text-xs text-muted-foreground" data-testid="text-exec-offer">
+                Score saved. The sheet also shows per-skill execution deductions — add them to the Execution tracker for {sheetDate ? format(parseISO(sheetDate), "d MMM yyyy") : "this date"} too? Values are in tenths (2 = 0.2; landing 20 = 2.0; a final 0 is a clean landing).
+              </p>
+              {sheetPhotoUrl && <SheetPhotoPreview src={sheetPhotoUrl} testId="img-sheet-photo-exec" />}
+              {execDrafts.map(d => {
+                const p = parseTenthsRow(d.tenths);
+                return (
+                  <div key={d.key} className={cn("rounded-xl border border-border/60 p-3", !d.kept && "opacity-60 bg-secondary/20")} data-testid={`exec-draft-row-${d.key}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge variant="outline" className="font-mono text-[10px]">{d.label}</Badge>
+                      {d.kept ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive gap-1"
+                          onClick={() => setExecDrafts(prev => prev.map(r => r.key === d.key ? { ...r, kept: false } : r))}
+                          data-testid={`button-exec-draft-discard-${d.key}`}
+                        >
+                          <X className="h-3.5 w-3.5" /> Don't add
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs gap-1"
+                          onClick={() => setExecDrafts(prev => prev.map(r => r.key === d.key ? { ...r, kept: true } : r))}
+                          data-testid={`button-exec-draft-restore-${d.key}`}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" /> Restore
+                        </Button>
+                      )}
+                    </div>
+                    {d.kept && (
+                      <div className="space-y-2">
+                        <TenthsGrid
+                          cells={d.tenths}
+                          onChange={(i, val) => setExecDrafts(prev => prev.map(r => r.key === d.key ? { ...r, tenths: r.tenths.map((t, j) => (j === i ? val : t)) } : r))}
+                          testPrefix={`input-exec-draft-${d.key}`}
+                        />
+                        {(p.trailing || p.landingInvalid || p.skills.length === 0) && (
+                          <p className="text-[10px] text-red-500">Values must run from skill 1 without gaps (0-30 tenths).</p>
+                        )}
+                        <TenthsRowSummary p={p} testId={`text-exec-draft-total-${d.key}`} />
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Routine</label>
+                            <Select value={d.routineId} onValueChange={val => setExecDrafts(prev => prev.map(r => r.key === d.key ? { ...r, routineId: val } : r))}>
+                              <SelectTrigger data-testid={`select-exec-draft-routine-${d.key}`}><SelectValue placeholder="Pick a routine" /></SelectTrigger>
+                              <SelectContent>
+                                {(routines ?? []).filter(r => r.archived !== 1).map(r => (
+                                  <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="w-36">
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Category</label>
+                            <Select value={d.category} onValueChange={val => setExecDrafts(prev => prev.map(r => r.key === d.key ? { ...r, category: val === "set" ? "set" : "vol" } : r))}>
+                              <SelectTrigger data-testid={`select-exec-draft-category-${d.key}`}><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="set">Set routine</SelectItem>
+                                <SelectItem value="vol">Voluntary</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {keptExecDrafts.some(d => d.routineId === "") && (
+                <p className="text-[10px] text-muted-foreground">Each kept row needs a routine from your library.</p>
+              )}
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={closeSheet} disabled={savingExecDrafts} data-testid="button-exec-draft-skip">Skip</Button>
+                <Button
+                  className="flex-1"
+                  disabled={!execDraftsValid || savingExecDrafts}
+                  onClick={saveExecDrafts}
+                  data-testid="button-exec-draft-save"
+                >
+                  {savingExecDrafts
+                    ? "Saving..."
+                    : keptExecDrafts.length === 0
+                      ? "Nothing to add"
+                      : `Add ${keptExecDrafts.length} session${keptExecDrafts.length === 1 ? "" : "s"}`}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {sheetPhotoUrl && <SheetPhotoPreview src={sheetPhotoUrl} testId="img-sheet-photo-details" />}
+              {keptSheetRows.length === 2 && (
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">What are the two routines?</label>
+                  <Select value={sheetPairCategory} onValueChange={(val) => setSheetPairCategory(val === "vol_vol" ? "vol_vol" : "both")}>
+                    <SelectTrigger data-testid="select-sheet-pair-category"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="both">Set and Vol</SelectItem>
+                      <SelectItem value="vol_vol">Vol and Vol</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground mt-1" data-testid="text-sheet-pair-hint">
+                    {sheetPairCategory === "vol_vol"
+                      ? `Saved as one entry with two voluntary routines (${keptSheetRows[0].label} = Vol 1, ${keptSheetRows[1].label} = Vol 2) — the best one counts.`
+                      : `Saved as one entry: ${keptSheetRows[0].label} as the set routine, ${keptSheetRows[1].label} as the voluntary.`}
+                  </p>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
+                  <Select value={sheetType} onValueChange={setSheetType}>
+                    <SelectTrigger data-testid="select-sheet-type"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="practice">Practice</SelectItem>
+                      <SelectItem value="competition">Competition</SelectItem>
+                      <SelectItem value="trial">Trial</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
+                  <Input type="date" value={sheetDate} onChange={(e) => setSheetDate(e.target.value)} data-testid="input-sheet-date" />
+                </div>
+              </div>
+              {isSheetComp && (
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Competition name</label>
+                    <Input value={sheetCompName} onChange={(e) => setSheetCompName(e.target.value)} placeholder="e.g. Regional Cup" data-testid="input-sheet-comp-name" />
+                  </div>
+                  <div className="w-32">
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Round</label>
+                    <Select value={sheetRound} onValueChange={setSheetRound}>
+                      <SelectTrigger data-testid="select-sheet-round"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="prelims">Prelims</SelectItem>
+                        <SelectItem value="final">Final</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+              {keptSheetRows.length === 1 && (
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Set routine or voluntary?</label>
+                  <Select value={sheetCategory} onValueChange={(val) => setSheetCategory(val === "set" ? "set" : "vol")}>
+                    <SelectTrigger data-testid="select-sheet-category"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="set">Set routine</SelectItem>
+                      <SelectItem value="vol">Voluntary</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {keptSheetRows.map((row, idx) => (
+                <div key={row.key}>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                    {keptSheetRows.length === 2
+                      ? sheetPairCategory === "vol_vol"
+                        ? `Vol ${idx + 1} routine (${row.label})`
+                        : idx === 0 ? `Set routine (${row.label})` : `Voluntary routine (${row.label})`
+                      : "Routine (optional)"}
+                  </label>
+                  <Select value={row.routineId} onValueChange={(val) => setSheetRows(prev => prev.map(r => r.key === row.key ? { ...r, routineId: val } : r))}>
+                    <SelectTrigger data-testid={`select-sheet-routine-${row.key}`}><SelectValue placeholder="No routine" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No routine</SelectItem>
+                      {(routines ?? []).filter(r => r.archived !== 1).map(r => (
+                        <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setSheetStep("review")} disabled={createMutation.isPending || sheetFinishing} data-testid="button-sheet-back">Back</Button>
+                <Button className="flex-1" disabled={!sheetDetailsValid || createMutation.isPending || sheetFinishing} onClick={saveSheetScore} data-testid="button-sheet-save">
+                  {createMutation.isPending ? "Saving..." : "Save score"}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

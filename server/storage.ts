@@ -16,6 +16,9 @@ import {
   tofSessions,
   type TofSession,
   type InsertTofSession,
+  executionSessions,
+  type ExecutionSession,
+  type InsertExecutionSession,
   whoopTokens,
   type WhoopToken,
   coachMessages,
@@ -39,8 +42,8 @@ export class SkillLinkError extends Error {
   }
 }
 
-// Thrown when a ToF session references a routine the user doesn't own.
-// Routes map this to a 400.
+// Thrown when a ToF or execution session references a routine the user
+// doesn't own. Routes map this to a 400.
 export class TofRoutineError extends Error {
   constructor(message: string) {
     super(message);
@@ -80,6 +83,12 @@ export interface IStorage {
   createTofSession(userId: string, session: InsertTofSession): Promise<TofSession>;
   updateTofSession(id: number, userId: string, updates: Partial<InsertTofSession>): Promise<TofSession | undefined>;
   deleteTofSession(id: number, userId: string): Promise<void>;
+
+  // Execution deduction sessions
+  getExecutionSessions(userId: string): Promise<ExecutionSession[]>;
+  createExecutionSession(userId: string, session: InsertExecutionSession): Promise<ExecutionSession>;
+  updateExecutionSession(id: number, userId: string, updates: Partial<InsertExecutionSession>): Promise<ExecutionSession | undefined>;
+  deleteExecutionSession(id: number, userId: string): Promise<void>;
 
   // Reorder
   reorderSkills(userId: string, orderedIds: number[]): Promise<void>;
@@ -386,6 +395,31 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(tofSessions.id, id), eq(tofSessions.userId, userId)))
       .returning();
     return updated;
+  }
+
+  async getExecutionSessions(userId: string): Promise<ExecutionSession[]> {
+    return await db.select().from(executionSessions)
+      .where(eq(executionSessions.userId, userId))
+      .orderBy(desc(executionSessions.date), desc(executionSessions.id));
+  }
+
+  async createExecutionSession(userId: string, session: InsertExecutionSession): Promise<ExecutionSession> {
+    await this.assertOwnRoutine(userId, session.routineId);
+    const [row] = await db.insert(executionSessions).values({ ...session, userId }).returning();
+    return row;
+  }
+
+  async updateExecutionSession(id: number, userId: string, updates: Partial<InsertExecutionSession>): Promise<ExecutionSession | undefined> {
+    if (updates.routineId != null) await this.assertOwnRoutine(userId, updates.routineId);
+    const [updated] = await db.update(executionSessions)
+      .set(updates)
+      .where(and(eq(executionSessions.id, id), eq(executionSessions.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteExecutionSession(id: number, userId: string): Promise<void> {
+    await db.delete(executionSessions).where(and(eq(executionSessions.id, id), eq(executionSessions.userId, userId)));
   }
 
   async deleteTofSession(id: number, userId: string): Promise<void> {

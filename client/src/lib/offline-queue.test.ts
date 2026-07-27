@@ -312,6 +312,43 @@ describe("remapBody('tofSession', ...) remaps the routine link on offline-create
   });
 });
 
+describe("remapBody('executionSession', ...) remaps the routine link on offline-created execution sessions", () => {
+  function execBody(extra: Record<string, unknown>) {
+    return {
+      date: "2026-07-26",
+      category: "vol",
+      deductions: [0.1, 0.2, 0.2, 0.2, 0.3, 0.2, 0.3, 0.1, 0.2, 0.2],
+      landingDeduction: 2,
+      note: "judged run-through",
+      ...extra,
+    };
+  }
+
+  it("remaps a temp routineId and keeps deductions/landing/note untouched", () => {
+    const body = execBody({ routineId: -201 });
+    const out = remapBody("executionSession", body, idMap);
+    expect(out.routineId).toBe(601);
+    expect(out.deductions).toEqual([0.1, 0.2, 0.2, 0.2, 0.3, 0.2, 0.3, 0.1, 0.2, 0.2]);
+    expect(out.landingDeduction).toBe(2);
+    expect(out.category).toBe("vol");
+    expect(out.note).toBe("judged run-through");
+    expect(out.date).toBe("2026-07-26");
+  });
+
+  it("leaves a real routineId untouched when not in the idMap", () => {
+    const body = execBody({ routineId: 9 });
+    const out = remapBody("executionSession", body, idMap);
+    expect(out).toBe(body);
+    expect(out.routineId).toBe(9);
+  });
+
+  it("returns the body unchanged when idMap is empty", () => {
+    const body = execBody({ routineId: -201 });
+    const out = remapBody("executionSession", body, new Map());
+    expect(out).toBe(body);
+  });
+});
+
 describe("remapBody('focusMemo', ...) remaps ids inside the focusMemo JSON string", () => {
   it("remaps temp skillIds and routineIds per point, preserving other point fields", () => {
     const points = [

@@ -32,6 +32,8 @@ const LARGE_BODY_ROUTES = new Set([
   "/api/coach/parse-menu",
   "/api/coach/menu-chat",
   "/api/tof-sessions/parse-screenshot",
+  "/api/execution-sessions/parse-photo",
+  "/api/scores/parse-photo",
 ]);
 app.use((req, res, next) => {
   if (req.method === "POST" && LARGE_BODY_ROUTES.has(req.path)) {
@@ -113,6 +115,25 @@ async function runMigrations() {
         expires_at timestamp NOT NULL,
         scope text,
         updated_at timestamp NOT NULL DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS tof_sessions (
+        id serial PRIMARY KEY,
+        user_id varchar,
+        date date NOT NULL,
+        routine_id integer NOT NULL,
+        tof_values real[] NOT NULL,
+        pre_jump_tof real,
+        note text
+      );
+      CREATE TABLE IF NOT EXISTS execution_sessions (
+        id serial PRIMARY KEY,
+        user_id varchar,
+        date date NOT NULL,
+        routine_id integer NOT NULL,
+        category text NOT NULL DEFAULT 'vol',
+        deductions real[] NOT NULL,
+        landing_deduction real,
+        note text
       );
     `);
     console.log("Database migrations applied");

@@ -10,6 +10,7 @@ import { storage } from "./storage";
 import { storeCoachImages } from "./coach-images";
 import { getWhoopDashboardDataCached, WhoopNotConnectedError } from "./whoop";
 import type { Skill, Routine, NoteResponse } from "@shared/schema";
+import { sanitizeDeductionValues } from "@shared/execution";
 import {
   normalizeKey,
   loggableSkills,
@@ -977,6 +978,192 @@ export async function parseTofScreenshot(
     return { tofValues: values, preJumpTof, date };
   } catch {
     throw new CoachUnavailableError("Could not read the screenshot.");
+  }
+}
+
+// ---- Judges' execution sheet parsing ----
+
+// Reads a photo of a trampoline judges' execution deduction sheet. Each
+// athlete block shows one or two rows — R1 (routine 1) and optionally R2 —
+// with up to 11 whole numbers in TENTHS of a point: 10 per-skill deductions
+// followed by the landing deduction (e.g. "2" = 0.2, "20" = 2.0; a final "0"
+// means a clean landing). Returns rows in tenths for user review — nothing
+// is saved here.
+export async function parseExecutionSheet(
+  images: string[],
+): Promise<{
+  rows: { label: string; deductions: number[]; landing: number | null }[];
+  date: string | null;
+}> {
+  const system = [
+    "You are reading a photo of a trampoline judges' execution deduction sheet.",
+    "It lists rows labeled R1 (routine 1) and sometimes R2 (routine 2). Each complete row has 11 whole numbers, all in TENTHS of a point: the first 10 are the per-skill execution deductions (usually 0-9), and the 11th is the landing deduction (0-20, where 20 means 2.0 points and a final 0 means a clean landing).",
+    "An interrupted routine may show fewer than 11 numbers — return exactly the numbers printed, in order, without padding.",
+    "Return the numbers EXACTLY as printed (whole numbers in tenths). Do NOT convert them to points.",
+    "IGNORE any score summary lines containing letters like E, D, H, T with decimal values (e.g. 'E 16.0 D 9.0 H 9.50 T 15.250') — those are not deduction rows.",
+    "If the sheet shows multiple athletes, read only the most prominent/centered athlete block.",
+    "Also extract the date if visible.",
+    'Respond with JSON only: {"rows":[{"label":"R1","values":[<whole numbers in printed order>]},{"label":"R2","values":[...]}],"date":"YYYY-MM-DD" or null}. Include only the rows actually present. If you cannot find any deduction rows, return {"rows":[],"date":null}.',
+  ].join(" ");
+
+  const userParts: ContentPart[] = [
+    { type: "text", text: "Extract the execution deduction rows from this judges' sheet photo." },
+    ...images.map((url) => ({ type: "image_url" as const, image_url: { url } })),
+  ];
+
+  let raw: string;
+  try {
+    const response = await openai.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: userParts },
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 2048,
+    });
+    raw = response.choices[0]?.message?.content ?? "";
+  } catch (err) {
+    console.error("[execution] parse-sheet failed:", err);
+    throw new CoachUnavailableError("Photo reading is unavailable right now.");
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    const rows: { label: string; deductions: number[]; landing: number | null }[] = [];
+    if (Array.isArray(parsed.rows)) {
+      for (const row of parsed.rows.slice(0, 2)) {
+        const sanitized = sanitizeDeductionValues(row?.values);
+        if (!sanitized) continue;
+        const label =
+          typeof row?.label === "string" && /^R[12]$/i.test(row.label.trim())
+            ? row.label.trim().toUpperCase()
+            : `R${rows.length + 1}`;
+        rows.push({ label, ...sanitized });
+      }
+    }
+    const date =
+      typeof parsed.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)
+        ? parsed.date
+        : null;
+    return { rows, date };
+  } catch {
+    throw new CoachUnavailableError("Could not read the sheet photo.");
+  }
+}
+
+// ---- Competition scoresheet parsing ----
+
+// Reads a photo of a competition scoresheet and extracts the per-routine
+// score lines (E/D/H/T and the routine total) plus the competition header
+// (name, round) and date when visible. Values are in points as printed.
+export async function parseScoreSheet(
+  images: string[],
+): Promise<{
+  routines: {
+    label: string;
+    execution: number | null;
+    difficulty: number | null;
+    horizontal: number | null;
+    timeOfFlight: number | null;
+    total: number | null;
+  }[];
+  competitionName: string | null;
+  round: "prelims" | "final" | null;
+  date: string | null;
+}> {
+  const system = [
+    "You are reading a photo of a trampoline competition scoresheet or results sheet.",
+    "It shows one or two routine score lines labeled R1 (routine 1) and sometimes R2 (routine 2), like 'R1 E 16.0 D 9.0 H 9.50 T 15.250 40.750'.",
+    "E = execution score (0-20), D = difficulty (may be BLANK for a set/compulsory routine — return null then), H = horizontal displacement score (0-10), T = time of flight in seconds (about 10-20). The last number on the line is that routine's total score.",
+    "A value like 'Σ 89.400' is the sum across routines — do NOT treat it as a routine total.",
+    "IGNORE rows of small whole numbers without letters (e.g. 'R1 1 2 2 2 3 ...') — those are raw deduction rows, not scores.",
+    "If the sheet shows multiple athletes, read only the most prominent/centered athlete block.",
+    "Also extract the competition name, the round if identifiable (qualification/preliminary vs final), and the date, when visible.",
+    'Respond with JSON only: {"routines":[{"label":"R1","execution":16.0,"difficulty":9.0 or null,"horizontal":9.5,"timeOfFlight":15.25,"total":40.75}],"competitionName":"..." or null,"round":"prelims"|"final" or null,"date":"YYYY-MM-DD" or null}. Include only routines actually present; use null for unreadable values. If nothing is readable, return {"routines":[],"competitionName":null,"round":null,"date":null}.',
+  ].join(" ");
+
+  const userParts: ContentPart[] = [
+    { type: "text", text: "Extract the routine scores from this scoresheet photo." },
+    ...images.map((url) => ({ type: "image_url" as const, image_url: { url } })),
+  ];
+
+  let raw: string;
+  try {
+    const response = await openai.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: userParts },
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 2048,
+    });
+    raw = response.choices[0]?.message?.content ?? "";
+  } catch (err) {
+    console.error("[score] parse-sheet failed:", err);
+    throw new CoachUnavailableError("Photo reading is unavailable right now.");
+  }
+
+  const num = (v: unknown, max: number): number | null => {
+    const n = Number(v);
+    if (v == null || v === "" || !Number.isFinite(n) || n < 0 || n > max) return null;
+    return Math.round(n * 1000) / 1000;
+  };
+
+  try {
+    const parsed = JSON.parse(raw);
+    const routines: {
+      label: string;
+      execution: number | null;
+      difficulty: number | null;
+      horizontal: number | null;
+      timeOfFlight: number | null;
+      total: number | null;
+    }[] = [];
+    if (Array.isArray(parsed.routines)) {
+      for (const row of parsed.routines.slice(0, 2)) {
+        const routine = {
+          label:
+            typeof row?.label === "string" && /^R[12]$/i.test(row.label.trim())
+              ? row.label.trim().toUpperCase()
+              : `R${routines.length + 1}`,
+          execution: num(row?.execution, 20),
+          difficulty: num(row?.difficulty, 25),
+          horizontal: num(row?.horizontal, 10),
+          timeOfFlight: num(row?.timeOfFlight, 30),
+          total: num(row?.total, 120),
+        };
+        // Skip rows with nothing usable at all.
+        if (
+          routine.execution == null &&
+          routine.difficulty == null &&
+          routine.horizontal == null &&
+          routine.timeOfFlight == null &&
+          routine.total == null
+        ) {
+          continue;
+        }
+        routines.push(routine);
+      }
+    }
+    const rawRound = typeof parsed.round === "string" ? parsed.round.toLowerCase() : "";
+    const round = rawRound.includes("final")
+      ? ("final" as const)
+      : rawRound.includes("prelim") || rawRound.includes("qual")
+        ? ("prelims" as const)
+        : null;
+    const competitionName =
+      typeof parsed.competitionName === "string" && parsed.competitionName.trim().length > 0
+        ? parsed.competitionName.trim().slice(0, 120)
+        : null;
+    const date =
+      typeof parsed.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)
+        ? parsed.date
+        : null;
+    return { routines, competitionName, round, date };
+  } catch {
+    throw new CoachUnavailableError("Could not read the scoresheet photo.");
   }
 }
 

@@ -4,7 +4,7 @@ import { storage, SkillLinkError, TofRoutineError } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { isAuthenticated, getUserId, getBaseUrl } from "./auth";
-import { getPushRecommendation, coachChat, parseMenuPhoto, parseTofScreenshot, menuChat, CoachUnavailableError } from "./coach";
+import { getPushRecommendation, coachChat, parseMenuPhoto, parseTofScreenshot, parseExecutionSheet, parseScoreSheet, menuChat, CoachUnavailableError } from "./coach";
 import { serveCoachImage } from "./coach-images";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
@@ -354,6 +354,113 @@ export async function registerRoutes(
         return res.status(503).json({ code: "coach_unavailable", message: err.message });
       }
       console.error("parse-tof-screenshot error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Execution deduction sessions (judges'-sheet tracker)
+  app.get(api.executionSessions.list.path, isAuthenticated, async (req, res) => {
+    const sessions = await storage.getExecutionSessions(getUserId(req));
+    res.json(sessions);
+  });
+
+  app.post(api.executionSessions.create.path, isAuthenticated, async (req, res) => {
+    try {
+      const input = api.executionSessions.create.input.parse(req.body);
+      const session = await storage.createExecutionSession(getUserId(req), input);
+      res.status(201).json(session);
+    } catch (err) {
+      if (err instanceof TofRoutineError) {
+        return res.status(400).json({ message: err.message });
+      }
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put(api.executionSessions.update.path, isAuthenticated, async (req, res) => {
+    try {
+      const input = api.executionSessions.update.input.parse(req.body);
+      const session = await storage.updateExecutionSession(Number(req.params.id), getUserId(req), input);
+      if (!session) return res.status(404).json({ message: "Session not found" });
+      res.json(session);
+    } catch (err) {
+      if (err instanceof TofRoutineError) {
+        return res.status(400).json({ message: err.message });
+      }
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete(api.executionSessions.delete.path, isAuthenticated, async (req, res) => {
+    await storage.deleteExecutionSession(Number(req.params.id), getUserId(req));
+    res.status(204).send();
+  });
+
+  // Judges' execution sheet photo → per-skill deduction rows (R1/R2).
+  // Returns the parsed rows for user review; nothing is saved here.
+  app.post("/api/execution-sessions/parse-photo", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z.object({
+        images: z
+          .array(
+            z
+              .string()
+              .regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, "Unsupported image format")
+              .max(4 * 1024 * 1024, "Image too large"),
+          )
+          .min(1)
+          .max(3),
+      });
+      const { images } = schema.parse(req.body);
+      const result = await parseExecutionSheet(images);
+      res.json(result);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message ?? "Invalid request" });
+      }
+      if (err instanceof CoachUnavailableError) {
+        return res.status(503).json({ code: "coach_unavailable", message: err.message });
+      }
+      console.error("parse-execution-sheet error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Competition scoresheet photo → per-routine E/D/H/T/total lines plus
+  // competition header. Returns parsed values for user review; nothing saved.
+  app.post("/api/scores/parse-photo", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z.object({
+        images: z
+          .array(
+            z
+              .string()
+              .regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, "Unsupported image format")
+              .max(4 * 1024 * 1024, "Image too large"),
+          )
+          .min(1)
+          .max(3),
+      });
+      const { images } = schema.parse(req.body);
+      const result = await parseScoreSheet(images);
+      res.json(result);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message ?? "Invalid request" });
+      }
+      if (err instanceof CoachUnavailableError) {
+        return res.status(503).json({ code: "coach_unavailable", message: err.message });
+      }
+      console.error("parse-score-sheet error:", err);
       res.status(500).json({ message: "Internal server error" });
     }
   });

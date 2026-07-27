@@ -91,6 +91,25 @@ export const tofSessions = pgTable("tof_sessions", {
   note: text("note"),
 });
 
+// Execution deduction tracker sessions (per user). Each session records the
+// per-skill execution deductions for one routine attempt — 10 skills plus a
+// landing deduction — entered manually or parsed from a judges'-sheet photo.
+// Values are stored in POINTS (0.2), while sheets print tenths (2 = 0.2);
+// the shared/execution.ts helpers convert. The routine defines which skill
+// each deduction belongs to. Implied E score = 20 - (sum + landing).
+export const executionSessions = pgTable("execution_sessions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id"),
+  date: date("date").notNull(),
+  routineId: integer("routine_id").notNull().references(() => routines.id),
+  category: text("category").notNull().default("vol"), // "set" (compulsory) or "vol" (voluntary)
+  deductions: real("deductions").array().notNull(), // 1-10 per-skill deductions in points, skill order (0 = perfect skill)
+  // Landing deduction in points; 0 = clean landing as printed, null = not
+  // recorded (e.g. interrupted routine with no landing judged).
+  landingDeduction: real("landing_deduction"),
+  note: text("note"),
+});
+
 // AI coach chat history (per user). Read-only advisor; messages persist so
 // the conversation survives reloads.
 export const coachMessages = pgTable("coach_messages", {
@@ -127,6 +146,18 @@ export const insertTofSessionSchema = createInsertSchema(tofSessions)
     preJumpTof: z.number().gt(0).max(30).nullable().optional(),
   });
 
+// Deductions are in points (a printed "2" is stored as 0.2). A skill can have
+// a 0 deduction (perfect skill), unlike ToF values; per-skill deductions are
+// realistically <= 1.0 and the landing <= 2.0, but we allow up to 3 to avoid
+// rejecting unusual sheets.
+export const insertExecutionSessionSchema = createInsertSchema(executionSessions)
+  .omit({ id: true })
+  .extend({
+    category: z.enum(["set", "vol"]),
+    deductions: z.array(z.number().min(0).max(3)).min(1).max(10),
+    landingDeduction: z.number().min(0).max(3).nullable().optional(),
+  });
+
 export type InsertNote = z.infer<typeof insertNoteSchema>;
 export type Note = typeof notes.$inferSelect;
 
@@ -141,6 +172,9 @@ export type InsertScore = z.infer<typeof insertScoreSchema>;
 
 export type TofSession = typeof tofSessions.$inferSelect;
 export type InsertTofSession = z.infer<typeof insertTofSessionSchema>;
+
+export type ExecutionSession = typeof executionSessions.$inferSelect;
+export type InsertExecutionSession = z.infer<typeof insertExecutionSessionSchema>;
 
 export type WhoopToken = typeof whoopTokens.$inferSelect;
 

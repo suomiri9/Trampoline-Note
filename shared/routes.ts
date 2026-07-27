@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertNoteSchema, notes, skills, routines, scores, tofSessions, insertSkillSchema, insertRoutineSchema, insertScoreSchema, insertTofSessionSchema } from './schema';
+import { insertNoteSchema, notes, skills, routines, scores, tofSessions, executionSessions, insertSkillSchema, insertRoutineSchema, insertScoreSchema, insertTofSessionSchema, insertExecutionSessionSchema } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -161,6 +161,42 @@ export const api = {
     delete: {
       method: 'DELETE' as const,
       path: '/api/tof-sessions/:id' as const,
+      responses: {
+        204: z.void(),
+        404: errorSchemas.notFound,
+      },
+    },
+  },
+  executionSessions: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/execution-sessions' as const,
+      responses: {
+        200: z.array(z.custom<typeof executionSessions.$inferSelect>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/execution-sessions' as const,
+      input: insertExecutionSessionSchema,
+      responses: {
+        201: z.custom<typeof executionSessions.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/execution-sessions/:id' as const,
+      input: insertExecutionSessionSchema.partial(),
+      responses: {
+        200: z.custom<typeof executionSessions.$inferSelect>(),
+        400: errorSchemas.validation,
+        404: errorSchemas.notFound,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/execution-sessions/:id' as const,
       responses: {
         204: z.void(),
         404: errorSchemas.notFound,
