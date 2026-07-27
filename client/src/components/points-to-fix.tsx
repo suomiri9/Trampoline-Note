@@ -178,6 +178,22 @@ export function PointsToFix({
       pendingIds: string[];
     }) => {
       const focusMemoStr = JSON.stringify(next);
+      // Ship the list we based this edit on so the server can three-way
+      // merge our change onto the current stored list instead of blindly
+      // overwriting edits made concurrently from another device. Legacy
+      // plain-text memos get fresh ids on every parse, so a merge base is
+      // only meaningful once the memo is the JSON-array format — send the
+      // canonical parsed form so client and server diff identical shapes.
+      const baseFocusMemo = (() => {
+        const raw = user?.focusMemo;
+        if (!raw) return JSON.stringify([]);
+        try {
+          if (!Array.isArray(JSON.parse(raw))) return undefined;
+        } catch {
+          return undefined;
+        }
+        return JSON.stringify(points);
+      })();
       return await tryNetworkOrEnqueueFocusMemo<SafeUser>(
         focusMemoStr,
         async (signal) => {
@@ -185,7 +201,7 @@ export function PointsToFix({
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify({ focusMemo: focusMemoStr }),
+            body: JSON.stringify({ focusMemo: focusMemoStr, baseFocusMemo }),
             signal,
           });
           if (!res.ok) {
@@ -195,6 +211,7 @@ export function PointsToFix({
         },
         12000,
         pendingIds,
+        baseFocusMemo,
       );
     },
     onSuccess: (updatedUser: any) => {

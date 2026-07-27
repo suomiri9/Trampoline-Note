@@ -26,6 +26,79 @@ export type PointCategory = typeof POINT_CATEGORIES[number];
 export const isPointCategory = (v: unknown): v is PointCategory =>
   typeof v === "string" && (POINT_CATEGORIES as readonly string[]).includes(v);
 
+/** Stable serialization of one point so two versions can be compared. */
+function pointFingerprint(p: PointToFix): string {
+  return JSON.stringify({
+    name: p.name,
+    skillIds: p.skillIds,
+    routineIds: p.routineIds,
+    category: p.category ?? null,
+  });
+}
+
+/**
+ * Three-way merge of Points-to-Fix lists for concurrent edits from two
+ * devices. `base` is the list the editing client last read, `mine` is what
+ * that client wants to write, and `theirs` is what is currently stored on
+ * the server (possibly changed by another device since `base`).
+ *
+ * Rules (per point id):
+ * - Added by me (in mine, not in base)            → kept.
+ * - Added/kept by them (in theirs, not touched by me) → kept.
+ * - Edited by me (differs from base)              → my version wins.
+ * - Edited only by them                           → their version wins.
+ * - Deleted by me (in base, not in mine)          → removed, even if they
+ *   edited it (an explicit delete beats a concurrent tweak).
+ * - Deleted by them, unedited by me               → stays deleted.
+ * - Deleted by them but edited by me              → my edited version is
+ *   restored (an edit implies the point still matters).
+ *
+ * Result order follows `theirs` (the stored list), with my additions and
+ * restorations appended in my order.
+ */
+export function mergePoints(
+  base: PointToFix[],
+  mine: PointToFix[],
+  theirs: PointToFix[],
+): PointToFix[] {
+  const baseById = new Map(base.map((p) => [p.id, p]));
+  const mineById = new Map(mine.map((p) => [p.id, p]));
+  const theirsIds = new Set(theirs.map((p) => p.id));
+
+  const deletedByMe = new Set<string>();
+  for (const p of base) {
+    if (!mineById.has(p.id)) deletedByMe.add(p.id);
+  }
+
+  const changedByMe = (id: string): boolean => {
+    const b = baseById.get(id);
+    const m = mineById.get(id);
+    if (!m) return false;
+    if (!b) return true; // added by me
+    return pointFingerprint(b) !== pointFingerprint(m);
+  };
+
+  const result: PointToFix[] = [];
+  for (const t of theirs) {
+    if (deletedByMe.has(t.id)) continue;
+    const m = mineById.get(t.id);
+    if (m && changedByMe(t.id)) {
+      result.push(m);
+    } else {
+      result.push(t);
+    }
+  }
+  // My additions, plus points they deleted but I edited (restore my edit).
+  for (const m of mine) {
+    if (theirsIds.has(m.id)) continue;
+    const inBase = baseById.has(m.id);
+    if (!inBase || changedByMe(m.id)) {
+      result.push(m);
+    }
+  }
+  return result;
+}
+
 export function parsePoints(raw: string | null | undefined): PointToFix[] {
   if (!raw) return [];
   const trimmed = raw.trim();

@@ -359,23 +359,39 @@ export function remapBody(kind: QueueKind, body: any, idMap: Map<number, number>
     return body;
   }
   if (kind === 'focusMemo') {
+    const remapMemoString = (s: unknown): unknown => {
+      if (typeof s !== 'string') return s;
+      try {
+        const arr = JSON.parse(s);
+        if (!Array.isArray(arr)) return s;
+        const remapped = arr.map((p: any) => ({
+          ...p,
+          ...(Array.isArray(p?.skillIds)
+            ? { skillIds: p.skillIds.map((id: number) => idMap.get(id) ?? id) }
+            : {}),
+          ...(Array.isArray(p?.routineIds)
+            ? { routineIds: p.routineIds.map((id: number) => idMap.get(id) ?? id) }
+            : {}),
+        }));
+        return JSON.stringify(remapped);
+      } catch {
+        return s;
+      }
+    };
     if (typeof body.focusMemo !== 'string') return body;
-    try {
-      const arr = JSON.parse(body.focusMemo);
-      if (!Array.isArray(arr)) return body;
-      const remapped = arr.map((p: any) => ({
-        ...p,
-        ...(Array.isArray(p?.skillIds)
-          ? { skillIds: p.skillIds.map((id: number) => idMap.get(id) ?? id) }
-          : {}),
-        ...(Array.isArray(p?.routineIds)
-          ? { routineIds: p.routineIds.map((id: number) => idMap.get(id) ?? id) }
-          : {}),
-      }));
-      return { ...body, focusMemo: JSON.stringify(remapped) };
-    } catch {
+    const remappedMemo = remapMemoString(body.focusMemo);
+    // Remap the merge base the same way so base/mine diffs stay meaningful
+    // after temp skill/routine ids are replaced with real ones.
+    const remappedBase =
+      typeof body.baseFocusMemo === 'string'
+        ? remapMemoString(body.baseFocusMemo)
+        : undefined;
+    if (remappedMemo === body.focusMemo && remappedBase === body.baseFocusMemo) {
       return body;
     }
+    const next: any = { ...body, focusMemo: remappedMemo };
+    if (remappedBase !== undefined) next.baseFocusMemo = remappedBase;
+    return next;
   }
   return body;
 }
@@ -417,16 +433,27 @@ async function applyOptimisticFocusMemo(focusMemo: string): Promise<any> {
 export async function enqueueFocusMemoUpdate(
   focusMemo: string,
   pendingPointIds: string[] = [],
+  baseFocusMemo?: string,
 ): Promise<any> {
   const existing = await queueAll();
   let priorPending: string[] = [];
+  // When collapsing prior queued focus-memo items, keep the EARLIEST base:
+  // later local edits were built on local (unsynced) state, so the true
+  // "last state read from the server" is the base of the first queued item.
+  let effectiveBase = baseFocusMemo;
   for (const item of existing) {
     if (item.kind === 'focusMemo') {
-      const body = item.body as { pendingPointIds?: unknown } | null;
+      const body = item.body as {
+        pendingPointIds?: unknown;
+        baseFocusMemo?: unknown;
+      } | null;
       if (body && Array.isArray(body.pendingPointIds)) {
         for (const id of body.pendingPointIds) {
           if (typeof id === 'string') priorPending.push(id);
         }
+      }
+      if (body && typeof body.baseFocusMemo === 'string') {
+        effectiveBase = body.baseFocusMemo;
       }
       if (item.id != null) await queueDelete(item.id);
     }
@@ -452,7 +479,11 @@ export async function enqueueFocusMemoUpdate(
     kind: 'focusMemo',
     url: urlForKind('focusMemo'),
     method: 'PATCH',
-    body: { focusMemo, pendingPointIds: merged },
+    body: {
+      focusMemo,
+      pendingPointIds: merged,
+      ...(effectiveBase !== undefined ? { baseFocusMemo: effectiveBase } : {}),
+    },
     tempId: 0,
     createdAt: Date.now(),
   });
@@ -471,12 +502,13 @@ export async function tryNetworkOrEnqueueFocusMemo<T extends object>(
   doFetch: (signal: AbortSignal) => Promise<T>,
   timeoutMs = 12000,
   pendingPointIds: string[] = [],
+  baseFocusMemo?: string,
 ): Promise<T | (T & { _queuedOffline: true })> {
   const offline = getOfflineModeEnabled();
   const onLine = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
   const enqueue = async (): Promise<T & { _queuedOffline: true }> => {
-    const u = await enqueueFocusMemoUpdate(focusMemo, pendingPointIds);
+    const u = await enqueueFocusMemoUpdate(focusMemo, pendingPointIds, baseFocusMemo);
     return { ...(u as object), _queuedOffline: true } as T & { _queuedOffline: true };
   };
 

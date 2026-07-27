@@ -10,7 +10,7 @@ import { db } from "./db";
 import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
 import crypto from "crypto";
-import { parsePoints, isPointCategory, type PointToFix } from "@shared/points";
+import { parsePoints, mergePoints, isPointCategory, type PointToFix } from "@shared/points";
 import {
   getWhoopDashboardDataCached,
   WhoopNotConnectedError,
@@ -1096,16 +1096,63 @@ export async function registerRoutes(
     }
   });
 
+  // Whole-list focus-memo write. When the client also sends `baseFocusMemo`
+  // (the list it last read), the write becomes a server-side three-way merge
+  // inside a row-locked transaction: only the points the client actually
+  // changed/deleted are applied on top of the CURRENT stored list, so two
+  // devices editing different points at the same moment no longer overwrite
+  // each other. Without `baseFocusMemo` (legacy clients) it stays
+  // last-write-wins.
   app.patch("/api/auth/focus-memo", isAuthenticated, async (req, res) => {
     try {
-      const schema = z.object({ focusMemo: z.string().max(20000) });
-      const { focusMemo } = schema.parse(req.body);
+      const schema = z.object({
+        focusMemo: z.string().max(20000),
+        baseFocusMemo: z.string().max(20000).optional(),
+      });
+      const { focusMemo, baseFocusMemo } = schema.parse(req.body);
       const userId = getUserId(req);
-      const [updated] = await db
-        .update(users)
-        .set({ focusMemo, updatedAt: new Date() })
-        .where(eq(users.id, userId))
-        .returning();
+
+      const updated = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .for("update");
+        if (!row) return null;
+
+        // Only merge when the stored memo is already the migrated JSON-array
+        // format. Legacy plain-text memos get fresh ids on every parse, so a
+        // three-way merge would duplicate points — fall back to
+        // last-write-wins (the client's write completes the migration).
+        const storedIsJsonArray = (() => {
+          if (!row.focusMemo) return true; // empty → merge is a no-op either way
+          try {
+            return Array.isArray(JSON.parse(row.focusMemo));
+          } catch {
+            return false;
+          }
+        })();
+
+        let nextStr = focusMemo;
+        if (baseFocusMemo !== undefined && storedIsJsonArray) {
+          const theirs = parsePoints(row.focusMemo);
+          const base = parsePoints(baseFocusMemo);
+          const mine = parsePoints(focusMemo);
+          const merged = mergePoints(base, mine, theirs);
+          nextStr = JSON.stringify(merged);
+          if (nextStr.length > 20000) {
+            throw new PointsMemoTooLargeError();
+          }
+        }
+
+        const [saved] = await tx
+          .update(users)
+          .set({ focusMemo: nextStr, updatedAt: new Date() })
+          .where(eq(users.id, userId))
+          .returning();
+        return saved ?? null;
+      });
+
       if (!updated) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -1114,6 +1161,9 @@ export async function registerRoutes(
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
+      }
+      if (err instanceof PointsMemoTooLargeError) {
+        return res.status(400).json({ message: "Points to Fix list is too large" });
       }
       res.status(500).json({ message: "Failed to update focus memo" });
     }
