@@ -158,7 +158,7 @@ export function PointsToFix({
   };
 
   const saveEdit = () => {
-    if (mutation.isPending) return;
+    if (isSaving) return;
     if (editingId === null) return;
     const name = editingName.trim();
     if (!name) return;
@@ -210,6 +210,48 @@ export function PointsToFix({
     },
   });
 
+  // Adding a single point goes through the server-side atomic append
+  // endpoint so a point added concurrently from another device can't be
+  // lost. When offline, fall back to queueing the whole-list PATCH like
+  // every other edit (the queue collapses to the latest local state).
+  const addMutation = useMutation({
+    mutationFn: async (newPoint: PointToFix) => {
+      return await tryNetworkOrEnqueueFocusMemo<SafeUser>(
+        JSON.stringify([...points, newPoint]),
+        async (signal) => {
+          const res = await fetch("/api/auth/points-to-fix", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(newPoint),
+            signal,
+          });
+          if (!res.ok) {
+            throw new Error(`${res.status}: ${(await res.text()) || res.statusText}`);
+          }
+          return res.json() as Promise<SafeUser>;
+        },
+        12000,
+        [newPoint.id],
+      );
+    },
+    onSuccess: (updatedUser: any) => {
+      if (updatedUser) {
+        queryClient.setQueryData(["/api/auth/user"], updatedUser);
+      }
+    },
+    onError: () => {
+      toast({ title: "Failed to save points to fix", variant: "destructive" });
+    },
+  });
+
+  // Single pending gate for ALL Points-to-Fix writes: while an atomic add
+  // POST is in flight, an edit/delete PATCH built from the stale local list
+  // (not yet containing the new point) could land after it and wipe the new
+  // point. Blocking every write while either mutation is pending serializes
+  // this device's writes.
+  const isSaving = mutation.isPending || addMutation.isPending;
+
   const skillTypeOf = (isDrill: number | null | undefined): LinkType =>
     isDrill === 1 ? "drill" : isDrill === 2 ? "connection" : "skill";
 
@@ -260,7 +302,7 @@ export function PointsToFix({
   };
 
   const addPoint = () => {
-    if (mutation.isPending) return;
+    if (isSaving) return;
     const name = draftName.trim();
     if (!name) return;
     const isUnlinkedDraft =
@@ -272,7 +314,7 @@ export function PointsToFix({
       routineIds: draftRoutineIds,
       ...(isUnlinkedDraft ? { category: draftCategory } : {}),
     };
-    mutation.mutate({ next: [...points, newPoint], pendingIds: [newPoint.id] });
+    addMutation.mutate(newPoint);
     setDraftName("");
     setDraftSkillIds([]);
     setDraftRoutineIds([]);
@@ -281,7 +323,7 @@ export function PointsToFix({
   };
 
   const setPointCategory = (id: string, category: PointCategory) => {
-    if (mutation.isPending) return;
+    if (isSaving) return;
     const target = points.find((p) => p.id === id);
     if (!target) return;
     if (target.skillIds.length > 0 || target.routineIds.length > 0) return;
@@ -295,7 +337,7 @@ export function PointsToFix({
     fromSkillId: number | null,
     fromRoutineId: number | null,
   ) => {
-    if (mutation.isPending) return;
+    if (isSaving) return;
     const target = points.find((p) => p.id === id);
     if (!target) return;
     const totalLinks = target.skillIds.length + target.routineIds.length;
@@ -355,7 +397,7 @@ export function PointsToFix({
             <DialogTitle className="flex items-center gap-2">
               <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               Points to Fix
-              {mutation.isPending && (
+              {isSaving && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
               )}
             </DialogTitle>
@@ -481,7 +523,7 @@ export function PointsToFix({
                             variant="ghost"
                             size="icon"
                             onClick={saveEdit}
-                            disabled={!editingName.trim() || mutation.isPending}
+                            disabled={!editingName.trim() || isSaving}
                             data-testid={`button-save-point-${p.id}`}
                             className="shrink-0 h-6 w-6 opacity-70 hover:opacity-100"
                           >
@@ -522,7 +564,7 @@ export function PointsToFix({
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                disabled={mutation.isPending || editingId !== null}
+                                disabled={isSaving || editingId !== null}
                                 data-testid={`button-point-actions-${p.id}`}
                                 className="shrink-0 h-6 w-6 -mr-1 opacity-50 hover:opacity-100"
                               >
@@ -993,7 +1035,7 @@ export function PointsToFix({
                           <Button
                             type="button"
                             onClick={addPoint}
-                            disabled={!draftName.trim() || mutation.isPending}
+                            disabled={!draftName.trim() || isSaving}
                             data-testid="button-add-point"
                             className="w-full gap-2"
                           >

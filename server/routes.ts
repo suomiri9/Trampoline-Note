@@ -10,6 +10,7 @@ import { db } from "./db";
 import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
 import crypto from "crypto";
+import { parsePoints, isPointCategory, type PointToFix } from "@shared/points";
 import {
   getWhoopDashboardDataCached,
   WhoopNotConnectedError,
@@ -20,6 +21,8 @@ import {
   completeWhoopLink,
   disconnectWhoop,
 } from "./whoop";
+
+class PointsMemoTooLargeError extends Error {}
 
 interface SkillEntry { id: number; reps?: number }
 
@@ -919,6 +922,71 @@ export async function registerRoutes(
         return res.status(400).json({ message: err.errors[0].message });
       }
       res.status(500).json({ message: "Failed to update menu settings" });
+    }
+  });
+
+  // Atomic single-point append. Unlike the whole-blob PATCH below (which is
+  // last-write-wins), this parses the CURRENT stored list, appends one point
+  // and writes back inside a transaction with a row lock — two devices adding
+  // points at the same moment can no longer drop one of them.
+  app.post("/api/auth/points-to-fix", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z.object({
+        id: z.string().min(1).max(80).optional(),
+        name: z.string().trim().min(1).max(200),
+        skillIds: z.array(z.number().int().refine((n) => n !== 0)).max(50).default([]),
+        routineIds: z.array(z.number().int().refine((n) => n !== 0)).max(50).default([]),
+        category: z.string().optional(),
+      });
+      const body = schema.parse(req.body);
+      const userId = getUserId(req);
+      const isLinked = body.skillIds.length > 0 || body.routineIds.length > 0;
+      const newPoint: PointToFix = {
+        id: body.id ?? `p-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
+        name: body.name,
+        skillIds: body.skillIds,
+        routineIds: body.routineIds,
+        ...(!isLinked && isPointCategory(body.category) ? { category: body.category } : {}),
+      };
+
+      const updated = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .for("update");
+        if (!row) return null;
+        const current = parsePoints(row.focusMemo);
+        // Idempotent on retry: if this exact point id already exists,
+        // return the current state instead of appending a duplicate.
+        if (newPoint.id && current.some((p) => p.id === newPoint.id)) {
+          return row;
+        }
+        const nextStr = JSON.stringify([...current, newPoint]);
+        if (nextStr.length > 20000) {
+          throw new PointsMemoTooLargeError();
+        }
+        const [saved] = await tx
+          .update(users)
+          .set({ focusMemo: nextStr, updatedAt: new Date() })
+          .where(eq(users.id, userId))
+          .returning();
+        return saved ?? null;
+      });
+
+      if (!updated) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const { password: _, ...safeUser } = updated;
+      res.status(201).json(safeUser);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      if (err instanceof PointsMemoTooLargeError) {
+        return res.status(400).json({ message: "Points to Fix list is too large" });
+      }
+      res.status(500).json({ message: "Failed to add point to fix" });
     }
   });
 

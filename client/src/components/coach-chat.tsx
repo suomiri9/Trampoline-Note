@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useCreateNote } from "@/hooks/use-notes";
-import { isPointCategory, parsePoints, type PointToFix } from "@shared/points";
+import { isPointCategory } from "@shared/points";
 import type { SafeUser } from "@shared/models/auth";
 import { Bot, Send, Loader2, Trash2, ImagePlus, X, CalendarPlus, Check, Plus, Wrench } from "lucide-react";
 import {
@@ -637,11 +637,9 @@ function SkillProposalCard({
 }
 
 // Confirm-first card for a coach-proposed Point to Fix. On confirm the
-// CURRENT points list is re-fetched from the server and the new point is
-// appended to THAT list (read-then-merge): the focus-memo endpoint is a
-// last-write-wins blob overwrite, so building the list from the client's
-// cached user could silently drop a point added from another device between
-// proposal and confirm.
+// point is sent to the server-side atomic append endpoint, which parses
+// the CURRENT stored list, appends and writes inside one transaction —
+// so a point added concurrently from another device can't be dropped.
 function PointProposalCard({
   messageId,
   proposal,
@@ -659,24 +657,12 @@ function PointProposalCard({
 
   const confirmMutation = useMutation({
     mutationFn: async () => {
-      const freshRes = await fetch("/api/auth/user", {
-        credentials: "include",
-        cache: "no-store",
-      });
-      if (!freshRes.ok) {
-        throw new Error(`${freshRes.status}: couldn't load your current points`);
-      }
-      const freshUser = (await freshRes.json()) as SafeUser;
-      const current = parsePoints(freshUser.focusMemo);
-      const newPoint: PointToFix = {
+      const res = await apiRequest("POST", "/api/auth/points-to-fix", {
         id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         name: proposal.name,
         skillIds: proposal.skills.map((l) => l.id),
         routineIds: proposal.routines.map((l) => l.id),
         ...(isLinked ? {} : { category }),
-      };
-      const res = await apiRequest("PATCH", "/api/auth/focus-memo", {
-        focusMemo: JSON.stringify([...current, newPoint]),
       });
       return res.json() as Promise<SafeUser>;
     },
