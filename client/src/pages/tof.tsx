@@ -102,6 +102,8 @@ export default function TofPage() {
   // 10 attempts for a single skill/drill). Cells beyond this are hidden and
   // ignored, so switching targets can't leave stale trailing values.
   const maxCells = Math.min(selectedSeqLen ?? 10, 10);
+  // Single skill/drill target: every value is another attempt of that skill.
+  const attemptMode = selectedTarget?.kind === "skill" && selectedSeqLen == null;
 
   // Entered values must be contiguous from jump 1 (partial attempts allowed).
   const parsedValues = useMemo(() => {
@@ -122,6 +124,15 @@ export default function TofPage() {
     if (firstEmpty === -1) return false;
     return inRange.slice(firstEmpty).some(v => v.trim() !== "");
   }, [values, maxCells]);
+
+  // Attempt mode starts with a single box for the skill and grows one box at
+  // a time as attempts are entered (up to 10). Any filled cell stays visible
+  // so gap warnings always point at something on screen.
+  const visibleCells = useMemo(() => {
+    if (!attemptMode) return maxCells;
+    const lastFilled = values.slice(0, maxCells).reduce((acc, v, i) => (v.trim() !== "" ? i : acc), -1);
+    return Math.min(maxCells, Math.max(parsedValues.length + 1, lastFilled + 1));
+  }, [attemptMode, maxCells, values, parsedValues]);
 
   const totalTof = parsedValues.reduce((a, b) => a + b, 0);
 
@@ -449,7 +460,7 @@ export default function TofPage() {
                     data-testid="input-tof-prejump"
                   />
                 </div>
-                {values.slice(0, maxCells).map((v, i) => {
+                {values.slice(0, visibleCells).map((v, i) => {
                   const skillId = targetSkillIdAt(selectedTarget, i);
                   const sk = skillId != null ? skillOf(skillId) : undefined;
                   return (
@@ -476,7 +487,7 @@ export default function TofPage() {
                 <p className="text-[10px] text-red-500 mt-1" data-testid="text-tof-gap-warning">Fill jumps in order without gaps — a partial routine stops at the last jump performed.</p>
               )}
               <div className="flex justify-between items-center mt-2 text-xs font-mono">
-                <span className="text-muted-foreground">{parsedValues.length} jump{parsedValues.length === 1 ? "" : "s"}</span>
+                <span className="text-muted-foreground">{parsedValues.length} {attemptMode ? "attempt" : "jump"}{parsedValues.length === 1 ? "" : "s"}</span>
                 <span className="text-foreground font-bold" data-testid="text-tof-total">Total {totalTof.toFixed(2)}s</span>
               </div>
             </div>

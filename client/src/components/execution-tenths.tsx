@@ -136,6 +136,7 @@ export function TenthsRowSummary({
   skillCount = EXECUTION_SKILL_COUNT,
   unitLabel = "skills",
   showE = true,
+  showCap = true,
 }: {
   p: ParsedRow;
   testId: string;
@@ -143,10 +144,12 @@ export function TenthsRowSummary({
   unitLabel?: string;
   /** An implied E score only makes sense for whole-routine attempts. */
   showE?: boolean;
+  /** Hide the "/N" cap for open-ended attempt logging. */
+  showCap?: boolean;
 }) {
   return (
     <div className="flex justify-between items-center mt-2 text-xs font-mono">
-      <span className="text-muted-foreground">{p.skills.length}/{skillCount} {unitLabel}{p.landing != null ? " + landing" : ""}</span>
+      <span className="text-muted-foreground">{p.skills.length}{showCap ? `/${skillCount}` : ""} {unitLabel}{p.landing != null ? " + landing" : ""}</span>
       <span data-testid={testId}>
         <span className="text-muted-foreground">Total </span>
         <span className="font-bold text-foreground">−{p.total.toFixed(1)}</span>

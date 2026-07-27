@@ -528,18 +528,29 @@ export default function ExecutionPage() {
       const sk = skillId != null ? skillOf(skillId) : undefined;
       return sk ? skillDisplayName(sk, allSkills) : undefined;
     });
-    return <TenthsGrid cells={cells} onChange={onChange} labels={labels} titles={titles} testPrefix={testPrefix} skillCount={maxSkills} />;
+    // Attempt mode (single skill/drill): start with one box for the skill and
+    // grow as attempts are filled. Sheet-review rows (no target) keep all 10.
+    const attemptMode = target?.kind === "skill" && seqLen == null;
+    let visibleSkills = maxSkills;
+    if (attemptMode) {
+      const p = parseTenthsRow(cells, maxSkills);
+      const lastFilled = cells.slice(0, maxSkills).reduce((acc, v, i) => ((v ?? "").trim() !== "" ? i : acc), -1);
+      visibleSkills = Math.min(maxSkills, Math.max(p.skills.length + 1, lastFilled + 1));
+    }
+    return <TenthsGrid cells={cells} onChange={onChange} labels={labels} titles={titles} testPrefix={testPrefix} skillCount={visibleSkills} />;
   };
 
   const rowSummary = (p: ParsedRow, testId: string, target?: TrackerTarget) => {
     const seqLen = targetSeqLength(target);
     const maxSkills = Math.min(seqLen ?? EXECUTION_SKILL_COUNT, EXECUTION_SKILL_COUNT);
+    const attemptMode = target?.kind === "skill" && seqLen == null;
     return (
       <TenthsRowSummary
         p={p}
         testId={testId}
         skillCount={maxSkills}
-        unitLabel={target?.kind === "skill" && seqLen == null ? "attempts" : "skills"}
+        unitLabel={attemptMode ? (p.skills.length === 1 ? "attempt" : "attempts") : "skills"}
+        showCap={!attemptMode}
         showE={target == null || target.kind === "routine"}
       />
     );
