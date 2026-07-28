@@ -28,7 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardCheck, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDown, RotateCcw, X } from "lucide-react";
+import { ClipboardCheck, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDown, RotateCcw, X, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { useQueuedExecutionSessions } from "@/hooks/use-queued-execution-sessions";
@@ -639,6 +639,17 @@ export default function ExecutionPage() {
                 />
               </div>
             </div>
+
+            {targetValue !== "adhoc" && (
+              <button
+                type="button"
+                onClick={() => setTargetValue("adhoc")}
+                className="w-full rounded-xl border border-dashed border-border/70 bg-secondary/20 px-3 py-2 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-colors"
+                data-testid="button-exec-connect-skills"
+              >
+                <Link2 className="h-3.5 w-3.5" /> Connect skills — build a quick sequence instead
+              </button>
+            )}
 
             {targetValue === "adhoc" && (
               <AdhocSkillsBuilder skillIds={adhocIds} onChange={setAdhocIds} allSkills={allSkills} testPrefix="exec" />

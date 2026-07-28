@@ -15,7 +15,9 @@ import { encodeTarget } from "@/lib/tracker-target";
 // Grouped target picker shared by the ToF and Execution trackers: pick a
 // routine OR any loggable library item (skill, drill, connection, routine
 // part). Values are encoded "r:<routineId>" / "s:<skillId>"; with allowAdhoc
-// the special value "adhoc" offers an inline "connect skills" sequence.
+// the special value "adhoc" (set via the standalone "Connect skills" button
+// next to the picker, not a dropdown entry) shows an inline "connect skills"
+// sequence as the current selection.
 export function TrackerTargetSelect({
   value,
   onValueChange,
@@ -32,7 +34,7 @@ export function TrackerTargetSelect({
   allSkills: Skill[] | undefined;
   /** Keeps an archived/deleted current selection visible while editing. */
   currentFallback?: { value: string; label: string } | null;
-  /** Adds a "Connect skills…" option (value "adhoc") for ad-hoc sequences. */
+  /** Allows the special "adhoc" value (set externally) to display sensibly. */
   allowAdhoc?: boolean;
   testId?: string;
   placeholder?: string;
@@ -83,11 +85,13 @@ export function TrackerTargetSelect({
             ))}
           </SelectGroup>
         ))}
-        {allowAdhoc && (
-          <SelectGroup>
-            <SelectLabel>Custom</SelectLabel>
-            <SelectItem value="adhoc" data-testid="option-target-adhoc">Connect skills…</SelectItem>
-          </SelectGroup>
+        {/* Hidden item so SelectValue reads sensibly while the ad-hoc target
+            (set via the "Connect skills" button) is active. Picking any real
+            option above still switches the target away from ad-hoc. */}
+        {allowAdhoc && value === "adhoc" && (
+          <SelectItem value="adhoc" className="hidden" data-testid="option-target-adhoc">
+            Connected skills
+          </SelectItem>
         )}
         {currentFallback && !known && currentFallback.value === value && (
           <SelectItem value={currentFallback.value}>{currentFallback.label}</SelectItem>
