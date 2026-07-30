@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "wouter";
 import {
   LogOut,
   Loader2,
@@ -874,6 +875,15 @@ export default function SettingsPage() {
           <div className="space-y-6">
             <div className="rounded-2xl card-3d p-4 text-center">
               <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60">Trampoline Note · v{appVersion}</span>
+              <div className="mt-1.5">
+                <Link
+                  href="/privacy"
+                  className="text-[11px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60 underline underline-offset-4 hover:text-foreground transition-colors"
+                  data-testid="link-privacy-policy"
+                >
+                  Privacy Policy
+                </Link>
+              </div>
             </div>
           </div>
         </div>
