@@ -24,7 +24,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
-import { Trash2, Plus, Trophy, CalendarIcon, Pencil, MoreVertical, TrendingUp, SlidersHorizontal, Users, ImageUp, Loader2, RotateCcw, X } from "lucide-react";
+import { Trash2, Plus, Trophy, CalendarIcon, Pencil, MoreVertical, TrendingUp, SlidersHorizontal, Users, ImageUp, Loader2, RotateCcw, X, Medal } from "lucide-react";
+import { useLocation } from "wouter";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -729,6 +730,7 @@ function ScoreGraph({
 }
 
 export default function ScorePage() {
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
 
@@ -1351,6 +1353,14 @@ export default function ScorePage() {
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handleSheetPhoto(f); }}
               data-testid="input-scoresheet-photo"
             />
+            <Button
+              variant="outline"
+              className="rounded-xl h-12 px-4 font-semibold gap-2"
+              onClick={() => navigate("/score/debuts")}
+              data-testid="button-comp-debuts"
+            >
+              <Medal className="w-4 h-4" /> Debuts
+            </Button>
             <Button
               variant="outline"
               className="rounded-xl h-12 px-4 font-semibold gap-2"

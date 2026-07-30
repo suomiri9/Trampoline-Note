@@ -25,6 +25,7 @@ const TofSkillPage = lazy(() => import("@/pages/tof-skill"));
 const TofRoutinePage = lazy(() => import("@/pages/tof-routine"));
 const TofSessionPage = lazy(() => import("@/pages/tof-session"));
 const ExecutionSessionPage = lazy(() => import("@/pages/execution-session"));
+const DebutsPage = lazy(() => import("@/pages/debuts"));
 const ExecutionPage = lazy(() => import("@/pages/execution"));
 const ExecutionRoutinePage = lazy(() => import("@/pages/execution-routine"));
 import { useAuth } from "@/hooks/use-auth";
@@ -156,6 +157,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/score" component={ScorePage} />
+        <Route path="/score/debuts" component={DebutsPage} />
         <Route path="/stats" component={StatsPage} />
         <Route path="/skills" component={SkillsPage} />
         <Route path="/skills/:id" component={SkillDetailPage} />
