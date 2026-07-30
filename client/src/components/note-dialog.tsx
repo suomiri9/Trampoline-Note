@@ -415,9 +415,37 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     }
   }, [open, noteToEdit, form]);
 
-  const addSkill = (idStr: string) => {
+  // `known` lets create-then-add flows (e.g. the New Routine Part button) pass
+  // the freshly created item, since the allItems cache may not have it yet —
+  // without it a new part would be added as a plain skill row (wrong badge).
+  // Heal legacy rows: a connection/part that got added as a plain skill row
+  // (added before the cache knew the item, older sessions) is converted into
+  // a proper PART/CONN entry so it renders and edits like the others.
+  useEffect(() => {
+    if (!open || !allItems) return;
+    setSelectedSkills(prev => {
+      let changed = false;
+      const ns = prev.map(it => {
+        if (it.id > 0 && (it as any).fcId === undefined) {
+          const s = allItems.find(x => x.id === it.id);
+          if (s && (s.isDrill === 2 || s.isDrill === 3) && s.skillIds) {
+            changed = true;
+            return { ...it, id: -3, fcId: s.id, fcName: s.name, customSkillIds: s.skillIds } as any;
+          }
+        }
+        return it;
+      });
+      if (!changed) return prev;
+      form.setValue('skills', JSON.stringify(ns));
+      return ns;
+    });
+  }, [open, allItems, form]);
+
+  const addSkill = (idStr: string, known?: Skill) => {
     const id = parseInt(idStr);
-    const fcItem = allItems?.find(s => s.id === id && (s.isDrill === 2 || s.isDrill === 3));
+    const fcItem =
+      (known && known.id === id && (known.isDrill === 2 || known.isDrill === 3) ? known : undefined) ??
+      allItems?.find(s => s.id === id && (s.isDrill === 2 || s.isDrill === 3));
     addRecentEntry({ kind: fcItem ? 'fc' : 'skill', id });
     if (fcItem && fcItem.skillIds) {
       setSelectedSkills(prev => {
@@ -2256,7 +2284,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                 if (!sel) return;
                                 const created = await createSkill({ name: finalName, code: finalName, difficulty: dd, isDrill: 3, skillIds: slice, sourceRoutineId: sel.id });
                                 if (created && (created as Skill).id !== undefined) {
-                                  addSkill(String((created as Skill).id));
+                                  addSkill(String((created as Skill).id), created as Skill);
                                 }
                                 setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); setShowNewPart(false);
                               } catch {}
