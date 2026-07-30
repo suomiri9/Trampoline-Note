@@ -296,6 +296,23 @@ export default function TofPage() {
 
   const skillOf = (id: number) => allSkills?.find(s => s.id === id);
 
+  // ---- Per-routine analysis across all sessions ----
+  const routineAnalysis = useMemo(() => {
+    const byRoutine = new Map<number, { count: number; totalSum: number }>();
+    for (const s of sessions ?? []) {
+      if (s.routineId == null) continue;
+      const vals = s.tofValues ?? [];
+      if (vals.length === 0) continue;
+      const acc = byRoutine.get(s.routineId) ?? { count: 0, totalSum: 0 };
+      acc.count += 1;
+      acc.totalSum += vals.reduce((a, b) => a + b, 0);
+      byRoutine.set(s.routineId, acc);
+    }
+    return Array.from(byRoutine.entries())
+      .map(([routineId, a]) => ({ routineId, sessions: a.count, avgTotal: a.totalSum / a.count }))
+      .sort((a, b) => b.sessions - a.sessions);
+  }, [sessions]);
+
   const queuedSessions = useQueuedTofSessions();
 
   const renderSessionCard = (s: TofSession, pending: boolean) => {
@@ -533,6 +550,37 @@ export default function TofPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ---- Per-routine analysis ---- */}
+      {routineAnalysis.length > 0 && (
+        <div className="card-3d rounded-2xl p-5 mb-6">
+          <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+            <Timer className="h-4 w-4 text-amber-500" /> Routine analysis
+            <span className="text-[10px] font-mono font-normal text-muted-foreground">tap for the routine's graph</span>
+          </h3>
+          <div className="space-y-1.5">
+            {routineAnalysis.map(a => {
+              const r = routineById.get(a.routineId);
+              return (
+                <div
+                  key={a.routineId}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/tof/routine/${a.routineId}`)}
+                  onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/tof/routine/${a.routineId}`); } }}
+                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-secondary/30 border border-border/50 px-3 py-2 cursor-pointer transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  data-testid={`row-tof-routine-analysis-${a.routineId}`}
+                >
+                  <span className="font-bold text-foreground flex-1 truncate">{r?.name ?? "Unknown routine"}</span>
+                  <span className="text-muted-foreground shrink-0" title="Average total ToF per session">avg <span className="text-foreground font-bold">{a.avgTotal.toFixed(2)}s</span></span>
+                  <span className="text-muted-foreground/60 shrink-0 w-10 text-right" title="Recorded sessions">n={a.sessions}</span>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ---- Per-skill analysis ---- */}
       {analysis.length > 0 && (

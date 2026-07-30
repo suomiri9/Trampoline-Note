@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -28,7 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardCheck, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDown, RotateCcw, X, Link2 } from "lucide-react";
+import { ClipboardCheck, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDown, RotateCcw, X, Link2, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { useQueuedExecutionSessions } from "@/hooks/use-queued-execution-sessions";
@@ -80,6 +81,7 @@ interface PhotoRow {
 
 export default function ExecutionPage() {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const { data: routines } = useRoutines();
   const { data: allSkills } = useSkills();
 
@@ -376,6 +378,22 @@ export default function ExecutionPage() {
       setSavingPhoto(false);
     }
   };
+
+  // ---- Per-routine analysis across all sessions ----
+  const routineAnalysis = useMemo(() => {
+    const byRoutine = new Map<number, { count: number; totalSum: number }>();
+    for (const s of sessions ?? []) {
+      if (s.routineId == null) continue;
+      const total = totalDeductionPoints(s.deductions ?? [], s.landingDeduction);
+      const acc = byRoutine.get(s.routineId) ?? { count: 0, totalSum: 0 };
+      acc.count += 1;
+      acc.totalSum += total;
+      byRoutine.set(s.routineId, acc);
+    }
+    return Array.from(byRoutine.entries())
+      .map(([routineId, a]) => ({ routineId, sessions: a.count, avgTotal: a.totalSum / a.count }))
+      .sort((a, b) => b.sessions - a.sessions);
+  }, [sessions]);
 
   // ---- Per-skill analysis across all sessions (worst first) ----
   const analysis = useMemo(() => {
@@ -856,6 +874,37 @@ export default function ExecutionPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ---- Per-routine analysis ---- */}
+      {routineAnalysis.length > 0 && (
+        <div className="card-3d rounded-2xl p-5 mb-6">
+          <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+            <ClipboardCheck className="h-4 w-4 text-emerald-500" /> Routine analysis
+            <span className="text-[10px] font-mono font-normal text-muted-foreground">tap for the routine's graph</span>
+          </h3>
+          <div className="space-y-1.5">
+            {routineAnalysis.map(a => {
+              const r = routineById.get(a.routineId);
+              return (
+                <div
+                  key={a.routineId}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/execution/routine/${a.routineId}`)}
+                  onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/execution/routine/${a.routineId}`); } }}
+                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-secondary/30 border border-border/50 px-3 py-2 cursor-pointer transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  data-testid={`row-exec-routine-analysis-${a.routineId}`}
+                >
+                  <span className="font-bold text-foreground flex-1 truncate">{r?.name ?? "Unknown routine"}</span>
+                  <span className="text-muted-foreground shrink-0" title="Average total deductions per session">avg <span className="text-rose-500 font-bold">−{a.avgTotal.toFixed(1)}</span></span>
+                  <span className="text-muted-foreground/60 shrink-0 w-10 text-right" title="Recorded sessions">n={a.sessions}</span>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ---- Per-skill analysis ---- */}
       {(analysis.ranked.length > 0 || analysis.landingAvg != null) && (

@@ -22,7 +22,9 @@ const WhoopPage = lazy(() => import("@/pages/whoop"));
 const CoachPage = lazy(() => import("@/pages/coach"));
 const TofPage = lazy(() => import("@/pages/tof"));
 const TofSkillPage = lazy(() => import("@/pages/tof-skill"));
+const TofRoutinePage = lazy(() => import("@/pages/tof-routine"));
 const ExecutionPage = lazy(() => import("@/pages/execution"));
+const ExecutionRoutinePage = lazy(() => import("@/pages/execution-routine"));
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Target, Layers, BarChart3, Trophy, Loader2, Settings, HeartPulse, Bot, MoreHorizontal, Timer, ClipboardCheck } from "lucide-react";
@@ -161,7 +163,9 @@ function Router() {
         <Route path="/coach" component={CoachPage} />
         <Route path="/tof" component={TofPage} />
         <Route path="/tof/skill/:id" component={TofSkillPage} />
+        <Route path="/tof/routine/:id" component={TofRoutinePage} />
         <Route path="/execution" component={ExecutionPage} />
+        <Route path="/execution/routine/:id" component={ExecutionRoutinePage} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/privacy" component={PrivacyPage} />
         <Route path="/forgot-password"><Redirect to="/" /></Route>
