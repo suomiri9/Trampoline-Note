@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Timer, Loader2, TrendingDown } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import type { TofSession } from "@shared/schema";
 
 const tooltipStyle = {
@@ -95,6 +95,8 @@ export default function TofSkillPage() {
         label: format(parseISO(s.date), "MMM d"),
         tof: s.tof,
         drop: s.drop,
+        // Plotted with the same sign convention as fmtDrop: below 0 = lost height.
+        dropDelta: s.drop == null ? null : -s.drop,
         routineName: s.routineName,
         jumpNo: s.jumpNo,
       })),
@@ -207,6 +209,43 @@ export default function TofSkillPage() {
                       }}
                     />
                     <Line type="monotone" dataKey="tof" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3, fill: "#f59e0b" }} activeDot={{ r: 5 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ---- Drop over time ---- */}
+          <Card className="mb-6">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingDown className="w-4 h-4 text-red-500" /> Drop over time
+                <span className="text-[10px] font-mono font-normal text-muted-foreground">vs previous jump · below 0 = lost height</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-52 w-full" data-testid="chart-tof-skill-drop">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval="preserveStartEnd" minTickGap={40} />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      className="fill-muted-foreground"
+                      domain={["auto", "auto"]}
+                      tickFormatter={(v: number) => v.toFixed(2)}
+                      width={52}
+                    />
+                    <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      formatter={(_value: number, _name, entry) => [fmtDrop(entry?.payload?.drop ?? null), "Drop"]}
+                      labelFormatter={(_, payload) => {
+                        const p = payload?.[0]?.payload;
+                        return p ? `${p.label} · ${p.routineName} · jump ${p.jumpNo}` : "";
+                      }}
+                    />
+                    <Line type="monotone" dataKey="dropDelta" connectNulls stroke="#ef4444" strokeWidth={2} dot={{ r: 3, fill: "#ef4444" }} activeDot={{ r: 5 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
