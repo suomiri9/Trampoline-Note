@@ -442,7 +442,8 @@ export default function ExecutionPage() {
     return (
       <div
         key={pending ? `pending-${s.id}` : s.id}
-        className={cn("relative card-3d rounded-2xl p-5 pl-6 overflow-hidden", pending && "border-amber-500/40")}
+        className={cn("relative card-3d rounded-2xl p-5 pl-6 overflow-hidden", pending && "border-amber-500/40", !pending && "cursor-pointer transition-colors hover:bg-secondary/20")}
+        onClick={pending ? undefined : () => navigate(`/execution/session/${s.id}`)}
         data-testid={pending ? `card-execution-pending-${s.id}` : `card-execution-session-${s.id}`}
       >
         <span className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500 rounded-full" aria-hidden="true" />
@@ -455,8 +456,8 @@ export default function ExecutionPage() {
                 role="button"
                 tabIndex={0}
                 title="Open this routine's execution graph"
-                onClick={() => navigate(`/execution/routine/${s.routineId}`)}
-                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/execution/routine/${s.routineId}`); } }}
+                onClick={e => { e.stopPropagation(); navigate(`/execution/routine/${s.routineId}`); }}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); navigate(`/execution/routine/${s.routineId}`); } }}
                 data-testid={`link-exec-routine-${s.id}`}
               >{name}</h3>
             ) : (
@@ -513,7 +514,7 @@ export default function ExecutionPage() {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 -mr-2 text-muted-foreground/50 hover:text-foreground" data-testid={`button-actions-execution-${s.id}`}><MoreVertical className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7 -mr-2 text-muted-foreground/50 hover:text-foreground" onClick={e => e.stopPropagation()} data-testid={`button-actions-execution-${s.id}`}><MoreVertical className="h-4 w-4" /></Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-36 rounded-xl">
                 {pending ? (

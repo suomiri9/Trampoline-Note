@@ -23,6 +23,8 @@ const CoachPage = lazy(() => import("@/pages/coach"));
 const TofPage = lazy(() => import("@/pages/tof"));
 const TofSkillPage = lazy(() => import("@/pages/tof-skill"));
 const TofRoutinePage = lazy(() => import("@/pages/tof-routine"));
+const TofSessionPage = lazy(() => import("@/pages/tof-session"));
+const ExecutionSessionPage = lazy(() => import("@/pages/execution-session"));
 const ExecutionPage = lazy(() => import("@/pages/execution"));
 const ExecutionRoutinePage = lazy(() => import("@/pages/execution-routine"));
 import { useAuth } from "@/hooks/use-auth";
@@ -164,8 +166,10 @@ function Router() {
         <Route path="/tof" component={TofPage} />
         <Route path="/tof/skill/:id" component={TofSkillPage} />
         <Route path="/tof/routine/:id" component={TofRoutinePage} />
+        <Route path="/tof/session/:id" component={TofSessionPage} />
         <Route path="/execution" component={ExecutionPage} />
         <Route path="/execution/routine/:id" component={ExecutionRoutinePage} />
+        <Route path="/execution/session/:id" component={ExecutionSessionPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/privacy" component={PrivacyPage} />
         <Route path="/forgot-password"><Redirect to="/" /></Route>
