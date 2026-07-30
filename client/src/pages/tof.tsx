@@ -331,7 +331,19 @@ export default function TofPage() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[10px] font-mono text-muted-foreground">{fmtDate(s.date)}</div>
-            <h3 className="font-semibold text-base leading-tight truncate">{name}</h3>
+            {s.routineId != null ? (
+              <h3
+                className="font-semibold text-base leading-tight truncate cursor-pointer hover:text-amber-500 hover:underline underline-offset-2 transition-colors"
+                role="button"
+                tabIndex={0}
+                title="Open this routine's ToF graph"
+                onClick={() => navigate(`/tof/routine/${s.routineId}`)}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/tof/routine/${s.routineId}`); } }}
+                data-testid={`link-tof-routine-${s.id}`}
+              >{name}</h3>
+            ) : (
+              <h3 className="font-semibold text-base leading-tight truncate">{name}</h3>
+            )}
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               {(target?.kind === "skill" || target?.kind === "adhoc") && (
                 <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 h-4 border-transparent bg-amber-500/15 text-amber-600 dark:text-amber-400" data-testid={`badge-tof-kind-${s.id}`}>

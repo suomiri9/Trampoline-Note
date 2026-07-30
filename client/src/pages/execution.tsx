@@ -449,7 +449,19 @@ export default function ExecutionPage() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[10px] font-mono text-muted-foreground">{fmtDate(s.date)}</div>
-            <h3 className="font-semibold text-base leading-tight truncate">{name}</h3>
+            {s.routineId != null ? (
+              <h3
+                className="font-semibold text-base leading-tight truncate cursor-pointer hover:text-rose-500 hover:underline underline-offset-2 transition-colors"
+                role="button"
+                tabIndex={0}
+                title="Open this routine's execution graph"
+                onClick={() => navigate(`/execution/routine/${s.routineId}`)}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/execution/routine/${s.routineId}`); } }}
+                data-testid={`link-exec-routine-${s.id}`}
+              >{name}</h3>
+            ) : (
+              <h3 className="font-semibold text-base leading-tight truncate">{name}</h3>
+            )}
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               {s.routineId != null ? (
                 <Badge
