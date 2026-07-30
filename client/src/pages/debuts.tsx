@@ -213,7 +213,7 @@ export default function DebutsPage() {
       </Button>
 
       <PageHeader
-        className="static"
+        className="static !mt-0"
         eyebrow="Competition readiness"
         title="Comp Debuts"
         accent="Debuts"

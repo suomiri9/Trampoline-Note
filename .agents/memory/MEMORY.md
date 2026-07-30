@@ -15,3 +15,4 @@
 - [iOS PWA splash handoff](ios-splash-handoff.md) — don't pixel-match designed launch images to a live overlay; use plain solid launch images + a pre-React spinner that reveals the splash when assets load.
 - [Coach stream pacing](coach-stream-pacing.md) — SSE deltas arrive as one end-burst (model thinks, then dumps); the typing feel is a client-side paced reveal — don't re-debug transport.
 - [Tracker target model](tracker-target-model.md) — ToF/exec sessions target exactly one of routine|skill|ad-hoc skillIds (storage-enforced, not zod); bound values to target seqLen at every layer; deductions API takes points, UI tenths.
+- [PageHeader must be first](page-header-first-element.md) — sticky PageHeader has a negative top margin (page-header-safe); anything rendered above it gets covered — move it below, or pass `className="static !mt-0"`.
