@@ -1897,6 +1897,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           const childIsDrill = newSkillIsDrill ? 1 : 0;
                           const hasRealShapes = newSkillShapes.some(d => (d.shape || "").trim() || (d.name || "").trim());
                           const base = await createSkill({ name: newSkillName, code: newSkillCode, difficulty: hasRealShapes ? 0 : (parseFloat(newSkillDD) || 0), isDrill: childIsDrill });
+                          if (!hasRealShapes && base?.id != null) {
+                            addRecentEntry({ kind: 'skill', id: base.id });
+                          }
                           if (hasRealShapes && base?.id != null) {
                             for (const d of newSkillShapes) {
                               const label = (d.shape || "").trim();
@@ -2038,7 +2041,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       <Button type="button" className="w-full" disabled={!newConnName || newConnSkillIds.length === 0 || isCreatingSkill} onClick={async () => {
                         try {
                           const dd = newConnSkillIds.reduce((acc, sid) => acc + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0);
-                          await createSkill({ name: newConnName, code: newConnName, difficulty: dd, isDrill: 2, skillIds: newConnSkillIds, sourceRoutineId: newConnRoutineId });
+                          const createdConn = await createSkill({ name: newConnName, code: newConnName, difficulty: dd, isDrill: 2, skillIds: newConnSkillIds, sourceRoutineId: newConnRoutineId });
+                          if (createdConn && (createdConn as Skill).id !== undefined) {
+                            addRecentEntry({ kind: 'fc', id: (createdConn as Skill).id });
+                          }
                           setNewConnName(""); setNewConnSkillIds([]); setNewConnRoutineId(null); setShowNewConn(false);
                         } catch {}
                       }} data-testid="btn-save-new-conn">Save Connection</Button>
@@ -2054,7 +2060,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         const word = SHAPE_OPTIONS.find(o => o.value === shape)?.word ?? "";
                         const dupName = word ? `${newConnName} (${word})` : newConnName;
                         try {
-                          await createSkill({ name: dupName, code: dupName, difficulty: dd, isDrill: 2, skillIds: swapped, sourceRoutineId: newConnRoutineId });
+                          const dupCreated = await createSkill({ name: dupName, code: dupName, difficulty: dd, isDrill: 2, skillIds: swapped, sourceRoutineId: newConnRoutineId });
+                          if (dupCreated && (dupCreated as Skill).id !== undefined) {
+                            addRecentEntry({ kind: 'fc', id: (dupCreated as Skill).id });
+                          }
                           toast({ title: "Connection duplicated", description: `Created "${dupName}"` });
                         } catch {}
                       }}
@@ -2284,7 +2293,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                 if (!sel) return;
                                 const created = await createSkill({ name: finalName, code: finalName, difficulty: dd, isDrill: 3, skillIds: slice, sourceRoutineId: sel.id });
                                 if (created && (created as Skill).id !== undefined) {
-                                  addSkill(String((created as Skill).id), created as Skill);
+                                  addRecentEntry({ kind: 'fc', id: (created as Skill).id });
                                 }
                                 setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); setShowNewPart(false);
                               } catch {}
