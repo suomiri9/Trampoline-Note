@@ -150,9 +150,30 @@ function PageLoader() {
   );
 }
 
+// Safety net: if a modal dialog gets unmounted mid-navigation (e.g. bottom
+// nav is clicked while a dialog is open), Radix's body scroll lock can leak
+// and leave the page dimmed/unscrollable. Clear it once no dialog remains.
+function BodyLockCleanup() {
+  const [location] = useLocation();
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const anyOpen = document.querySelector(
+        '[data-state="open"][role="dialog"], [data-state="open"][role="alertdialog"]',
+      );
+      if (!anyOpen) {
+        if (document.body.style.overflow === "hidden") document.body.style.overflow = "";
+        if (document.body.style.pointerEvents === "none") document.body.style.pointerEvents = "";
+      }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [location]);
+  return null;
+}
+
 function Router() {
   return (
     <div className="pt-safe pb-nav-safe bg-mesh min-h-[100dvh]">
+      <BodyLockCleanup />
       <Suspense fallback={<PageLoader />}>
       <Switch>
         <Route path="/" component={Home} />

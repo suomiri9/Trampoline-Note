@@ -1095,6 +1095,22 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     if (open) { setNoteStep(1); isSavingRef.current = false; }
   }, [open]);
 
+  // If the user navigates with the bottom nav (which sits above the dialog)
+  // while this dialog is open, close it — otherwise it stays stuck over the
+  // new page and leaks the body scroll lock ("black screen" bug).
+  const [currentLocation] = useLocation();
+  const openedAtLocationRef = useRef(currentLocation);
+  useEffect(() => {
+    if (open) openedAtLocationRef.current = currentLocation;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+  useEffect(() => {
+    if (open && currentLocation !== openedAtLocationRef.current) {
+      handleOpenChange(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLocation]);
+
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen && !isSavingRef.current) {
       const v = form.getValues();
