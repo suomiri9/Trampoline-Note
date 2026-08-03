@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { api, buildUrl, type NoteInput, type NoteUpdateInput } from "@shared/routes";
 import { isQueuedOfflineResult, tryNetworkOrEnqueue, type OfflineQueuedResult } from "@/lib/offline-queue";
+import { cacheGet, cacheSet } from "@/lib/offline-db";
+import { getOfflineModeEnabled } from "@/lib/offline-mode";
 import type { z } from "zod";
 
 // Utility to parse standard error responses if needed
@@ -18,14 +20,28 @@ async function handleResponse(res: Response, fallbackError: string) {
   return res.status === 204 ? null : res.json();
 }
 
+type NoteList = z.infer<(typeof api.notes.list.responses)[200]>;
+
 export function useNotes() {
   return useQuery({
     queryKey: [api.notes.list.path],
     queryFn: async () => {
-      const res = await fetch(api.notes.list.path, { credentials: "include" });
-      const data = await handleResponse(res, "Failed to fetch notes");
-      // Optionally validate with Zod here
-      return api.notes.list.responses[200].parse(data);
+      const offlineModeOn = getOfflineModeEnabled();
+      try {
+        const res = await fetch(api.notes.list.path, { credentials: "include" });
+        const data = await handleResponse(res, "Failed to fetch notes");
+        const parsed = api.notes.list.responses[200].parse(data);
+        // Mirror into IndexedDB so the list still renders offline (only while
+        // offline mode is on — see queryClient.ts for the privacy rationale).
+        if (offlineModeOn) await cacheSet("notes", parsed);
+        return parsed;
+      } catch (err) {
+        if (offlineModeOn) {
+          const cached = await cacheGet<NoteList>("notes");
+          if (cached != null) return cached;
+        }
+        throw err;
+      }
     },
   });
 }
@@ -36,14 +52,30 @@ export function useNotesPage(limit: number, options?: { enabled?: boolean }) {
     placeholderData: keepPreviousData,
     enabled: options?.enabled ?? true,
     queryFn: async () => {
-      const url = `${api.notes.list.path}?limit=${limit}`;
-      const res = await fetch(url, { credentials: "include" });
-      const totalHeader = res.headers.get("X-Total-Count");
-      const data = await handleResponse(res, "Failed to fetch notes");
-      const all = api.notes.list.responses[200].parse(data);
-      const total = totalHeader !== null ? parseInt(totalHeader, 10) : all.length;
-      const hasMore = all.length < total;
-      return { items: all, hasMore, total };
+      const offlineModeOn = getOfflineModeEnabled();
+      try {
+        const url = `${api.notes.list.path}?limit=${limit}`;
+        const res = await fetch(url, { credentials: "include" });
+        const totalHeader = res.headers.get("X-Total-Count");
+        const data = await handleResponse(res, "Failed to fetch notes");
+        const all = api.notes.list.responses[200].parse(data);
+        const total = totalHeader !== null ? parseInt(totalHeader, 10) : all.length;
+        const hasMore = all.length < total;
+        // If this page happens to be the complete list, mirror it too so the
+        // offline fallback works even when only the paged hook is ever used.
+        if (offlineModeOn && !hasMore) await cacheSet("notes", all);
+        return { items: all, hasMore, total };
+      } catch (err) {
+        // Offline fallback: serve whatever full list we last mirrored.
+        if (offlineModeOn) {
+          const cached = await cacheGet<NoteList>("notes");
+          if (cached != null) {
+            const items = cached.slice(0, limit);
+            return { items, hasMore: items.length < cached.length, total: cached.length };
+          }
+        }
+        throw err;
+      }
     },
   });
 }

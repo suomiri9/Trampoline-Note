@@ -30,6 +30,9 @@ export async function apiRequest(
 const OFFLINE_CACHE_KEYS: Record<string, string> = {
   "/api/skills": "skills",
   "/api/routines": "routines",
+  "/api/scores": "scores",
+  "/api/tof-sessions": "tofSessions",
+  "/api/execution-sessions": "executionSessions",
 };
 
 type UnauthorizedBehavior = "returnNull" | "throw";
