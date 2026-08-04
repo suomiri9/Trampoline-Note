@@ -396,9 +396,11 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                               <div key={skillIdx} className="flex items-center gap-1.5">
                                 <Badge variant="outline" className={cn(
                                   "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
-                                  (!isSingle || skill.isDrill === 2)
-                                    ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
-                                    : "border-border/60 text-muted-foreground"
+                                  skill.isDrill === 1
+                                    ? "border-yellow-400/60 text-yellow-600 dark:border-yellow-600/60 dark:text-yellow-400"
+                                    : (!isSingle || skill.isDrill === 2)
+                                      ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
+                                      : "border-border/60 text-muted-foreground"
                                 )}>
                                   <SkillCode skill={skill} allSkills={allItems} />
                                 </Badge>
