@@ -1031,6 +1031,35 @@ export async function registerRoutes(
     }
   });
 
+  // Debuts-page visibility choices (which skills/routines are switched off),
+  // stored per account so they follow the user across devices.
+  app.patch("/api/auth/debuts-hidden", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z.object({
+        debutsHidden: z
+          .record(z.array(z.string().max(40)).max(500))
+          .refine((v) => Object.keys(v).length <= 10, { message: "Too many groups" }),
+      });
+      const { debutsHidden } = schema.parse(req.body);
+      const userId = getUserId(req);
+      const [updated] = await db
+        .update(users)
+        .set({ debutsHidden: JSON.stringify(debutsHidden), updatedAt: new Date() })
+        .where(eq(users.id, userId))
+        .returning();
+      if (!updated) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const { password: _, ...safeUser } = updated;
+      res.json(safeUser);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to update debuts settings" });
+    }
+  });
+
   // Atomic single-point append. Unlike the whole-blob PATCH below (which is
   // last-write-wins), this parses the CURRENT stored list, appends one point
   // and writes back inside a transaction with a row lock — two devices adding

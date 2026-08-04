@@ -28,6 +28,10 @@ export const users = pgTable("users", {
   // When true, the coach treats each menu row as ONE connection (skills
   // performed in sequence) instead of separate skills.
   menuRowConnections: boolean("menu_row_connections").default(true),
+  // JSON blob of Debuts-page visibility choices, e.g.
+  // {"debut-skill":["12","34"],"debut-routine":["7"]} — keys the user
+  // switched OFF. Stored per account so choices follow the user across devices.
+  debutsHidden: text("debuts_hidden"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

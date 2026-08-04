@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { api } from "@shared/routes";
 import { useNotes } from "@/hooks/use-notes";
@@ -56,17 +57,48 @@ function saveHidden(all: Record<string, string[]>) {
   }
 }
 
-function DebutList({ rows, accent, testPrefix }: { rows: DebutRow[]; accent: string; testPrefix: string }) {
-  const [hidden, setHidden] = useState<string[]>(() => loadHidden()[testPrefix] ?? []);
+/** Hidden-key state shared by both lists, synced to the user account. */
+function useHiddenDebuts() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [all, setAll] = useState<Record<string, string[]>>(() => {
+    // The account value wins when present; localStorage is the offline fallback.
+    if (user?.debutsHidden) {
+      try {
+        const parsed = JSON.parse(user.debutsHidden);
+        if (parsed && typeof parsed === "object") return parsed as Record<string, string[]>;
+      } catch {
+        // fall through to localStorage
+      }
+    }
+    return loadHidden();
+  });
 
-  const setAndPersist = (keys: string[]) => {
-    setHidden(keys);
-    const all = loadHidden();
-    all[testPrefix] = keys;
-    saveHidden(all);
+  const update = (prefix: string, keys: string[]) => {
+    const next = { ...all, [prefix]: keys };
+    setAll(next);
+    saveHidden(next); // offline fallback copy
+    // Best-effort account sync; keeps working offline via localStorage.
+    fetch("/api/auth/debuts-hidden", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ debutsHidden: next }),
+    })
+      .then((res) => {
+        if (res.ok) queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      })
+      .catch(() => {
+        // offline — localStorage copy already saved
+      });
   };
+
+  return { all, update };
+}
+
+function DebutList({ rows, accent, testPrefix, hidden, onChange }: { rows: DebutRow[]; accent: string; testPrefix: string; hidden: string[]; onChange: (keys: string[]) => void }) {
   const toggleRow = (key: string, on: boolean) =>
-    setAndPersist(on ? hidden.filter(k => k !== key) : [...hidden, key]);
+    onChange(on ? hidden.filter(k => k !== key) : [...hidden, key]);
 
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -182,6 +214,7 @@ function DebutList({ rows, accent, testPrefix }: { rows: DebutRow[]; accent: str
 
 export default function DebutsPage() {
   const [, navigate] = useLocation();
+  const hiddenDebuts = useHiddenDebuts();
   const { data: notes, isLoading: notesLoading } = useNotes();
   const { data: routines, isLoading: routinesLoading } = useRoutines();
   const { data: allSkills, isLoading: skillsLoading } = useSkills();
@@ -329,7 +362,7 @@ export default function DebutsPage() {
               </p>
             </CardHeader>
             <CardContent>
-              <DebutList rows={skillRows} accent="bg-amber-500/15 text-amber-600 dark:text-amber-400" testPrefix="debut-skill" />
+              <DebutList rows={skillRows} accent="bg-amber-500/15 text-amber-600 dark:text-amber-400" testPrefix="debut-skill" hidden={hiddenDebuts.all["debut-skill"] ?? []} onChange={(keys) => hiddenDebuts.update("debut-skill", keys)} />
             </CardContent>
           </Card>
           <Card>
@@ -342,7 +375,7 @@ export default function DebutsPage() {
               </p>
             </CardHeader>
             <CardContent>
-              <DebutList rows={routineRows} accent="bg-violet-500/15 text-violet-600 dark:text-violet-400" testPrefix="debut-routine" />
+              <DebutList rows={routineRows} accent="bg-violet-500/15 text-violet-600 dark:text-violet-400" testPrefix="debut-routine" hidden={hiddenDebuts.all["debut-routine"] ?? []} onChange={(keys) => hiddenDebuts.update("debut-routine", keys)} />
             </CardContent>
           </Card>
         </div>
