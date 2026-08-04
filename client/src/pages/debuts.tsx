@@ -11,7 +11,9 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Medal, Repeat, Loader2, X } from "lucide-react";
+import { ArrowLeft, Medal, Repeat, Loader2, ListChecks } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { format, parseISO, differenceInCalendarDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Score, Skill, Routine } from "@shared/schema";
@@ -63,8 +65,10 @@ function DebutList({ rows, accent, testPrefix }: { rows: DebutRow[]; accent: str
     all[testPrefix] = keys;
     saveHidden(all);
   };
-  const hideRow = (key: string) => setAndPersist([...hidden, key]);
-  const restoreAll = () => setAndPersist([]);
+  const toggleRow = (key: string, on: boolean) =>
+    setAndPersist(on ? hidden.filter(k => k !== key) : [...hidden, key]);
+
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const visible = rows.filter(r => !hidden.includes(r.key));
   const hiddenCount = rows.length - visible.length;
@@ -72,24 +76,67 @@ function DebutList({ rows, accent, testPrefix }: { rows: DebutRow[]; accent: str
   const pending = visible.filter(r => r.days == null && r.firstTrained != null).sort((a, b) => a.firstTrained!.localeCompare(b.firstTrained!));
   const maxDays = Math.max(1, ...debuted.map(r => r.days!));
 
-  if (debuted.length === 0 && pending.length === 0 && hiddenCount === 0) {
-    return <p className="text-sm text-muted-foreground py-4 text-center">Nothing to show yet.</p>;
-  }
+  const allSorted = [...rows].sort((a, b) => a.label.localeCompare(b.label));
 
-  const removeButton = (key: string) => (
-    <button
-      type="button"
-      onClick={() => hideRow(key)}
-      className="shrink-0 -mr-1 p-1 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-secondary transition-colors"
-      aria-label="Remove from debuts"
-      data-testid={`button-hide-${testPrefix}-${key}`}
-    >
-      <X className="w-3 h-3" />
-    </button>
+  const picker = (
+    <>
+      <div className="flex justify-end -mt-1 mb-1">
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors"
+          data-testid={`button-choose-${testPrefix}`}
+        >
+          <ListChecks className="w-3.5 h-3.5" />
+          Choose{hiddenCount > 0 ? ` · ${hiddenCount} off` : ""}
+        </button>
+      </div>
+      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+        <DialogContent className="sm:max-w-[420px] w-[calc(100vw-32px)] rounded-2xl max-h-[80dvh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-lg">Show in debuts</DialogTitle>
+            <DialogDescription className="text-xs">
+              Toggle which ones appear in the list. Choices are saved on this device.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 space-y-1">
+            {allSorted.map(r => {
+              const on = !hidden.includes(r.key);
+              return (
+                <label
+                  key={r.key}
+                  className="flex items-center gap-3 rounded-lg px-2.5 py-2 hover:bg-secondary/50 cursor-pointer"
+                  data-testid={`toggle-${testPrefix}-${r.key}`}
+                >
+                  <span className={cn("flex-1 min-w-0 truncate text-xs font-mono font-bold", on ? "text-foreground" : "text-muted-foreground/60")}>
+                    {r.label}
+                    {r.sub && <span className="font-normal text-muted-foreground/70 ml-1.5">{r.sub}</span>}
+                  </span>
+                  <Switch checked={on} onCheckedChange={(v) => toggleRow(r.key, v)} />
+                </label>
+              );
+            })}
+            {allSorted.length === 0 && (
+              <p className="text-sm text-muted-foreground py-4 text-center">Nothing here yet.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
+
+  if (debuted.length === 0 && pending.length === 0) {
+    return (
+      <div>
+        {picker}
+        <p className="text-sm text-muted-foreground py-4 text-center">Nothing to show yet.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-1.5">
+      {picker}
       {debuted.map(r => (
         <div key={r.key} className="rounded-lg bg-secondary/30 border border-border/50 px-3 py-2" data-testid={`row-${testPrefix}-${r.key}`}>
           <div className="flex items-center gap-3 text-xs font-mono">
@@ -100,7 +147,6 @@ function DebutList({ rows, accent, testPrefix }: { rows: DebutRow[]; accent: str
             <Badge variant="outline" className={cn("text-[10px] font-mono px-1.5 py-0 h-4 border-transparent shrink-0", r.days! < 0 ? "bg-muted text-muted-foreground" : accent)}>
               {r.days! < 0 ? "comped before first log" : r.days === 0 ? "same day" : `${r.days} day${r.days === 1 ? "" : "s"}`}
             </Badge>
-            {removeButton(r.key)}
           </div>
           <div className="mt-1.5 h-1.5 rounded-full bg-border/40 overflow-hidden">
             <div className="h-full rounded-full bg-amber-500/70" style={{ width: `${Math.max(2, (Math.max(0, r.days!) / maxDays) * 100)}%` }} />
@@ -126,20 +172,9 @@ function DebutList({ rows, accent, testPrefix }: { rows: DebutRow[]; accent: str
               <span className="text-muted-foreground/70 shrink-0">
                 training {differenceInCalendarDays(new Date(), parseISO(r.firstTrained!))}d · since {fmtD(r.firstTrained)}
               </span>
-              {removeButton(r.key)}
             </div>
           ))}
         </>
-      )}
-      {hiddenCount > 0 && (
-        <button
-          type="button"
-          onClick={restoreAll}
-          className="w-full text-center text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60 hover:text-foreground pt-2 transition-colors"
-          data-testid={`button-restore-${testPrefix}`}
-        >
-          {hiddenCount} removed · restore
-        </button>
       )}
     </div>
   );
