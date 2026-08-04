@@ -167,6 +167,7 @@ export default function DebutsPage() {
     for (const id of Array.from(skillIds)) {
       const sk = skillById.get(id);
       if (!sk) continue;
+      if (sk.isDrill === 1) continue; // drills aren't competition skills — no debut
       const trained = skillFirstTrained.get(id) ?? null;
       const comp = skillFirstComp.get(id) ?? null;
       skillRows.push({
