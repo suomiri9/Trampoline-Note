@@ -995,6 +995,50 @@ export async function registerRoutes(
     }
   });
 
+  // Debuts page picker: which rows the user switched off, stored per user so
+  // the choices follow them across devices. Whole-blob last-write-wins.
+  app.patch("/api/auth/debuts-hidden", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z.object({
+        debutsHidden: z
+          .string()
+          .max(20000)
+          .refine((raw) => {
+            try {
+              const parsed = JSON.parse(raw);
+              return (
+                parsed !== null &&
+                typeof parsed === "object" &&
+                !Array.isArray(parsed) &&
+                Object.values(parsed).every(
+                  (v) => Array.isArray(v) && v.every((k) => typeof k === "string"),
+                )
+              );
+            } catch {
+              return false;
+            }
+          }, { message: "debutsHidden must be a JSON object of string arrays" }),
+      });
+      const { debutsHidden } = schema.parse(req.body);
+      const userId = getUserId(req);
+      const [updated] = await db
+        .update(users)
+        .set({ debutsHidden, updatedAt: new Date() })
+        .where(eq(users.id, userId))
+        .returning();
+      if (!updated) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const { password: _, ...safeUser } = updated;
+      res.json(safeUser);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to update debuts preferences" });
+    }
+  });
+
   // Per-user AI menu-reading settings: a free-text notation guide (what the
   // athlete's abbreviations mean) and the "one menu row = one connection"
   // toggle. Both feed into the coach's draft_entry instructions.

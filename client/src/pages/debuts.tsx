@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import type { SafeUser } from "@shared/models/auth";
 import { useLocation } from "wouter";
 import { api } from "@shared/routes";
 import { useNotes } from "@/hooks/use-notes";
@@ -17,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Switch } from "@/components/ui/switch";
 import { format, parseISO, differenceInCalendarDays } from "date-fns";
 import { cn } from "@/lib/utils";
+import { resolveHidden, saveHiddenLocal, type HiddenMap } from "@/lib/debuts-hidden";
 import type { Score, Skill, Routine } from "@shared/schema";
 
 interface DebutRow {
@@ -37,68 +39,21 @@ function minDate(a: string | null | undefined, b: string): string {
   return a == null || b < a ? b : a;
 }
 
-const HIDDEN_STORAGE_KEY = "debuts-hidden";
-
-function loadHidden(): Record<string, string[]> {
-  try {
-    const raw = localStorage.getItem(HIDDEN_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveHidden(all: Record<string, string[]>) {
-  try {
-    localStorage.setItem(HIDDEN_STORAGE_KEY, JSON.stringify(all));
-  } catch {
-    // localStorage unavailable — hiding just won't persist
-  }
-}
-
-/** Hidden-key state shared by both lists, synced to the user account. */
-function useHiddenDebuts() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const [all, setAll] = useState<Record<string, string[]>>(() => {
-    // The account value wins when present; localStorage is the offline fallback.
-    if (user?.debutsHidden) {
-      try {
-        const parsed = JSON.parse(user.debutsHidden);
-        if (parsed && typeof parsed === "object") return parsed as Record<string, string[]>;
-      } catch {
-        // fall through to localStorage
-      }
-    }
-    return loadHidden();
-  });
-
-  const update = (prefix: string, keys: string[]) => {
-    const next = { ...all, [prefix]: keys };
-    setAll(next);
-    saveHidden(next); // offline fallback copy
-    // Best-effort account sync; keeps working offline via localStorage.
-    fetch("/api/auth/debuts-hidden", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ debutsHidden: next }),
-    })
-      .then((res) => {
-        if (res.ok) queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      })
-      .catch(() => {
-        // offline — localStorage copy already saved
-      });
-  };
-
-  return { all, update };
-}
-
-function DebutList({ rows, accent, testPrefix, hidden, onChange }: { rows: DebutRow[]; accent: string; testPrefix: string; hidden: string[]; onChange: (keys: string[]) => void }) {
+function DebutList({
+  rows,
+  accent,
+  testPrefix,
+  hidden,
+  onHiddenChange,
+}: {
+  rows: DebutRow[];
+  accent: string;
+  testPrefix: string;
+  hidden: string[];
+  onHiddenChange: (keys: string[]) => void;
+}) {
   const toggleRow = (key: string, on: boolean) =>
-    onChange(on ? hidden.filter(k => k !== key) : [...hidden, key]);
+    onHiddenChange(on ? hidden.filter(k => k !== key) : [...hidden, key]);
 
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -128,7 +83,7 @@ function DebutList({ rows, accent, testPrefix, hidden, onChange }: { rows: Debut
           <DialogHeader>
             <DialogTitle className="text-lg">Show in debuts</DialogTitle>
             <DialogDescription className="text-xs">
-              Toggle which ones appear in the list. Choices are saved on this device.
+              Toggle which ones appear in the list. Choices are saved to your account.
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 space-y-1">
@@ -214,7 +169,51 @@ function DebutList({ rows, accent, testPrefix, hidden, onChange }: { rows: Debut
 
 export default function DebutsPage() {
   const [, navigate] = useLocation();
-  const hiddenDebuts = useHiddenDebuts();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Hidden keys per section. Server value (user.debutsHidden) is the source
+  // of truth; the localStorage fallback is namespaced by user id, so choices
+  // never leak between accounts on a shared device. Until the user loads,
+  // show everything (empty map) rather than any device-local blob.
+  const safeUser = user as SafeUser | null | undefined;
+  const userId = safeUser?.id ?? null;
+  const serverRaw = safeUser?.debutsHidden;
+  const [hiddenAll, setHiddenAll] = useState<HiddenMap>(() =>
+    userId ? resolveHidden(userId, serverRaw) : {},
+  );
+  // Once the user toggles something this session, don't let a late/refetched
+  // server value clobber their newer local edits (last write wins).
+  const editedRef = useRef(false);
+  useEffect(() => {
+    if (editedRef.current || !userId) return;
+    setHiddenAll(resolveHidden(userId, serverRaw));
+  }, [userId, serverRaw]);
+
+  const setSectionHidden = (testPrefix: string, keys: string[]) => {
+    editedRef.current = true;
+    const next = { ...hiddenAll, [testPrefix]: keys };
+    setHiddenAll(next);
+    saveHiddenLocal(userId, next);
+    // Fire-and-forget server sync (last write wins). If it fails (offline),
+    // localStorage keeps the choice on this device and the next successful
+    // toggle re-ships the whole map.
+    fetch("/api/auth/debuts-hidden", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ debutsHidden: JSON.stringify(next) }),
+    })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const updated = (await res.json()) as SafeUser;
+        queryClient.setQueryData(["/api/auth/user"], updated);
+      })
+      .catch(() => {
+        // offline — local fallback already saved
+      });
+  };
+
   const { data: notes, isLoading: notesLoading } = useNotes();
   const { data: routines, isLoading: routinesLoading } = useRoutines();
   const { data: allSkills, isLoading: skillsLoading } = useSkills();
@@ -362,7 +361,13 @@ export default function DebutsPage() {
               </p>
             </CardHeader>
             <CardContent>
-              <DebutList rows={skillRows} accent="bg-amber-500/15 text-amber-600 dark:text-amber-400" testPrefix="debut-skill" hidden={hiddenDebuts.all["debut-skill"] ?? []} onChange={(keys) => hiddenDebuts.update("debut-skill", keys)} />
+              <DebutList
+                rows={skillRows}
+                accent="bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                testPrefix="debut-skill"
+                hidden={hiddenAll["debut-skill"] ?? []}
+                onHiddenChange={(keys) => setSectionHidden("debut-skill", keys)}
+              />
             </CardContent>
           </Card>
           <Card>
@@ -375,7 +380,13 @@ export default function DebutsPage() {
               </p>
             </CardHeader>
             <CardContent>
-              <DebutList rows={routineRows} accent="bg-violet-500/15 text-violet-600 dark:text-violet-400" testPrefix="debut-routine" hidden={hiddenDebuts.all["debut-routine"] ?? []} onChange={(keys) => hiddenDebuts.update("debut-routine", keys)} />
+              <DebutList
+                rows={routineRows}
+                accent="bg-violet-500/15 text-violet-600 dark:text-violet-400"
+                testPrefix="debut-routine"
+                hidden={hiddenAll["debut-routine"] ?? []}
+                onHiddenChange={(keys) => setSectionHidden("debut-routine", keys)}
+              />
             </CardContent>
           </Card>
         </div>
