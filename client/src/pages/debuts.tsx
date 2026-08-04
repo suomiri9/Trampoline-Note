@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { api } from "@shared/routes";
@@ -11,7 +11,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Medal, Repeat, Loader2 } from "lucide-react";
+import { ArrowLeft, Medal, Repeat, Loader2, X } from "lucide-react";
 import { format, parseISO, differenceInCalendarDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Score, Skill, Routine } from "@shared/schema";
@@ -34,14 +34,59 @@ function minDate(a: string | null | undefined, b: string): string {
   return a == null || b < a ? b : a;
 }
 
+const HIDDEN_STORAGE_KEY = "debuts-hidden";
+
+function loadHidden(): Record<string, string[]> {
+  try {
+    const raw = localStorage.getItem(HIDDEN_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveHidden(all: Record<string, string[]>) {
+  try {
+    localStorage.setItem(HIDDEN_STORAGE_KEY, JSON.stringify(all));
+  } catch {
+    // localStorage unavailable — hiding just won't persist
+  }
+}
+
 function DebutList({ rows, accent, testPrefix }: { rows: DebutRow[]; accent: string; testPrefix: string }) {
-  const debuted = rows.filter(r => r.days != null).sort((a, b) => a.days! - b.days!);
-  const pending = rows.filter(r => r.days == null && r.firstTrained != null).sort((a, b) => a.firstTrained!.localeCompare(b.firstTrained!));
+  const [hidden, setHidden] = useState<string[]>(() => loadHidden()[testPrefix] ?? []);
+
+  const setAndPersist = (keys: string[]) => {
+    setHidden(keys);
+    const all = loadHidden();
+    all[testPrefix] = keys;
+    saveHidden(all);
+  };
+  const hideRow = (key: string) => setAndPersist([...hidden, key]);
+  const restoreAll = () => setAndPersist([]);
+
+  const visible = rows.filter(r => !hidden.includes(r.key));
+  const hiddenCount = rows.length - visible.length;
+  const debuted = visible.filter(r => r.days != null).sort((a, b) => a.days! - b.days!);
+  const pending = visible.filter(r => r.days == null && r.firstTrained != null).sort((a, b) => a.firstTrained!.localeCompare(b.firstTrained!));
   const maxDays = Math.max(1, ...debuted.map(r => r.days!));
 
-  if (debuted.length === 0 && pending.length === 0) {
+  if (debuted.length === 0 && pending.length === 0 && hiddenCount === 0) {
     return <p className="text-sm text-muted-foreground py-4 text-center">Nothing to show yet.</p>;
   }
+
+  const removeButton = (key: string) => (
+    <button
+      type="button"
+      onClick={() => hideRow(key)}
+      className="shrink-0 -mr-1 p-1 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-secondary transition-colors"
+      aria-label="Remove from debuts"
+      data-testid={`button-hide-${testPrefix}-${key}`}
+    >
+      <X className="w-3 h-3" />
+    </button>
+  );
 
   return (
     <div className="space-y-1.5">
@@ -55,6 +100,7 @@ function DebutList({ rows, accent, testPrefix }: { rows: DebutRow[]; accent: str
             <Badge variant="outline" className={cn("text-[10px] font-mono px-1.5 py-0 h-4 border-transparent shrink-0", r.days! < 0 ? "bg-muted text-muted-foreground" : accent)}>
               {r.days! < 0 ? "comped before first log" : r.days === 0 ? "same day" : `${r.days} day${r.days === 1 ? "" : "s"}`}
             </Badge>
+            {removeButton(r.key)}
           </div>
           <div className="mt-1.5 h-1.5 rounded-full bg-border/40 overflow-hidden">
             <div className="h-full rounded-full bg-amber-500/70" style={{ width: `${Math.max(2, (Math.max(0, r.days!) / maxDays) * 100)}%` }} />
@@ -80,9 +126,20 @@ function DebutList({ rows, accent, testPrefix }: { rows: DebutRow[]; accent: str
               <span className="text-muted-foreground/70 shrink-0">
                 training {differenceInCalendarDays(new Date(), parseISO(r.firstTrained!))}d · since {fmtD(r.firstTrained)}
               </span>
+              {removeButton(r.key)}
             </div>
           ))}
         </>
+      )}
+      {hiddenCount > 0 && (
+        <button
+          type="button"
+          onClick={restoreAll}
+          className="w-full text-center text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60 hover:text-foreground pt-2 transition-colors"
+          data-testid={`button-restore-${testPrefix}`}
+        >
+          {hiddenCount} removed · restore
+        </button>
       )}
     </div>
   );
