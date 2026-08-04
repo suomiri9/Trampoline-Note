@@ -3,7 +3,12 @@
  * so an installed PWA can launch with zero network. API requests are NOT
  * intercepted — offline behaviour for data is handled at the React layer. */
 
-const CACHE = 'tn-shell-v9';
+const CACHE = 'tn-shell-v10';
+
+// How long a navigation waits on a slow network before falling back to the
+// cached shell. Keeps the app openable on flaky/slow wifi (school wifi etc.)
+// when offline mode has pre-cached the shell.
+const NAV_TIMEOUT_MS = 3500;
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
@@ -71,18 +76,45 @@ self.addEventListener('fetch', (event) => {
 
   if (isBypassed(url)) return;
 
-  // Navigation requests: try network first, fall back to cached shell.
+  // Navigation requests: try network first, but if the network is slow
+  // (no response within NAV_TIMEOUT_MS) or fails, fall back to the cached
+  // shell so the app still opens on bad wifi. The network fetch keeps
+  // running in the background to refresh the cached copy for next launch.
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put('/', copy)).catch(() => {});
-          return res;
-        })
-        .catch(() =>
-          caches.match('/').then((r) => r || caches.match('/index.html') || Response.error()),
-        ),
+      (async () => {
+        const cachedShell = () =>
+          caches.match('/').then((r) => r || caches.match('/index.html') || null);
+
+        const network = fetch(req)
+          .then((res) => {
+            if (res && res.ok) {
+              const copy = res.clone();
+              caches.open(CACHE).then((c) => c.put('/', copy)).catch(() => {});
+            }
+            return res;
+          });
+
+        const timeout = new Promise((resolve) => {
+          setTimeout(() => resolve('timeout'), NAV_TIMEOUT_MS);
+        });
+
+        const winner = await Promise.race([network.catch(() => 'error'), timeout]);
+        if (winner !== 'timeout' && winner !== 'error') return winner;
+
+        const cached = await cachedShell();
+        if (cached) {
+          // Let the slow network response land in the cache in the background.
+          event.waitUntil(network.catch(() => {}));
+          return cached;
+        }
+        // No cached shell — wait out the network after all.
+        try {
+          return await network;
+        } catch {
+          return Response.error();
+        }
+      })(),
     );
     return;
   }
