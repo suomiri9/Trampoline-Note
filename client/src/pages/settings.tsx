@@ -581,68 +581,74 @@ export default function SettingsPage() {
                 const drillsLoaded = drillsCount !== null;
                 const connectionsLoaded = connectionsCount !== null;
                 const routinesReady = routinesCount !== null;
-                const allReady =
-                  sw && accountReady && skillsLoaded && drillsLoaded && connectionsLoaded && routinesReady;
-                const StatusIcon = ({ ready }: { ready: boolean }) =>
-                  ready ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  ) : (
-                    <CircleDashed className="w-3.5 h-3.5 text-muted-foreground animate-spin shrink-0" />
-                  );
+                const steps: Array<{ testId: string; label: string; ready: boolean; count?: number | null }> = [
+                  { testId: "status-app-shell", label: "App ready to launch offline", ready: sw },
+                  { testId: "status-account", label: "Account & points to fix", ready: accountReady },
+                  { testId: "status-skills", label: "Skills", ready: skillsLoaded, count: skillsCount },
+                  { testId: "status-drills", label: "Drills", ready: drillsLoaded, count: drillsCount },
+                  { testId: "status-connections", label: "Connections", ready: connectionsLoaded, count: connectionsCount },
+                  { testId: "status-routines", label: "Routines", ready: routinesReady, count: routinesCount },
+                ];
+                const readyCount = steps.filter((s) => s.ready).length;
+                const percent = Math.round((readyCount / steps.length) * 100);
+                const allReady = readyCount === steps.length;
                 return (
                   <div
-                    className="mt-3 rounded-xl bg-secondary/40 px-3 py-2"
+                    className="mt-3 rounded-xl bg-secondary/40 px-4 py-3"
                     data-testid="block-download-status"
                   >
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                      Downloaded for offline
-                    </p>
-                    <ul className="space-y-1.5 text-sm">
-                      <li className="flex items-center gap-2" data-testid="status-app-shell">
-                        <StatusIcon ready={sw} />
-                        <span className="flex-1">App ready to launch offline</span>
-                      </li>
-                      <li className="flex items-center gap-2" data-testid="status-account">
-                        <StatusIcon ready={accountReady} />
-                        <span className="flex-1">Account &amp; points to fix</span>
-                      </li>
-                      <li className="flex items-center gap-2" data-testid="status-skills">
-                        <StatusIcon ready={skillsLoaded} />
-                        <span className="flex-1">
-                          Skills{skillsLoaded ? ` (${skillsCount})` : ""}
-                        </span>
-                      </li>
-                      <li className="flex items-center gap-2" data-testid="status-drills">
-                        <StatusIcon ready={drillsLoaded} />
-                        <span className="flex-1">
-                          Drills{drillsLoaded ? ` (${drillsCount})` : ""}
-                        </span>
-                      </li>
-                      <li className="flex items-center gap-2" data-testid="status-connections">
-                        <StatusIcon ready={connectionsLoaded} />
-                        <span className="flex-1">
-                          Connections{connectionsLoaded ? ` (${connectionsCount})` : ""}
-                        </span>
-                      </li>
-                      <li className="flex items-center gap-2" data-testid="status-routines">
-                        <StatusIcon ready={routinesReady} />
-                        <span className="flex-1">
-                          Routines{routinesReady ? ` (${routinesCount})` : ""}
-                        </span>
-                      </li>
-                    </ul>
-                    {!allReady && isOnline && (
-                      <p className="text-[11px] text-muted-foreground mt-2">
-                        Still downloading — keep the app open for a moment.
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Downloaded for offline
                       </p>
-                    )}
-                    {!allReady && !isOnline && (
+                      <span
+                        className={`text-xs font-mono font-semibold tabular-nums ${allReady ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}
+                        data-testid="text-download-percent"
+                      >
+                        {percent}%
+                      </span>
+                    </div>
+                    <div
+                      className="h-2 w-full rounded-full bg-secondary overflow-hidden mb-3"
+                      role="progressbar"
+                      aria-valuenow={percent}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      data-testid="bar-download-progress"
+                    >
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${allReady ? "bg-emerald-500" : "bg-primary"}`}
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                      {steps.map((s) => (
+                        <li key={s.testId} className="flex items-center gap-2" data-testid={s.testId}>
+                          {s.ready ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          ) : (
+                            <CircleDashed className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          )}
+                          <span className={`flex-1 truncate ${s.ready ? "" : "text-muted-foreground"}`}>
+                            {s.label}
+                          </span>
+                          {typeof s.count === "number" && (
+                            <span className="text-xs font-mono tabular-nums text-muted-foreground shrink-0">
+                              {s.count}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    {!allReady && (
                       <p className="text-[11px] text-muted-foreground mt-2">
-                        Some data isn't downloaded yet. Reconnect to finish.
+                        {isOnline
+                          ? "Still downloading — keep the app open for a moment."
+                          : "Some data isn't downloaded yet. Reconnect to finish."}
                       </p>
                     )}
                     <p
-                      className="text-[11px] text-muted-foreground mt-2"
+                      className="text-[11px] text-muted-foreground mt-2 border-t border-border/50 pt-2"
                       data-testid="text-download-wipe-warning"
                     >
                       ⚠️ The download stays on this device through tab closes and restarts. It is wiped if you turn offline mode off, clear this site's browser data, or open the app in a different browser. The device may also evict it if storage runs very low.
