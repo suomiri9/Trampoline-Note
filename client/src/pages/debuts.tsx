@@ -19,6 +19,8 @@ import { Switch } from "@/components/ui/switch";
 import { format, parseISO, differenceInCalendarDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { resolveHidden, saveHiddenLocal, type HiddenMap } from "@/lib/debuts-hidden";
+import { enqueueDebutsHiddenUpdate } from "@/lib/offline-queue";
+import { getOfflineModeEnabled } from "@/lib/offline-mode";
 import type { Score, Skill, Routine } from "@shared/schema";
 
 interface DebutRow {
@@ -195,14 +197,20 @@ export default function DebutsPage() {
     const next = { ...hiddenAll, [testPrefix]: keys };
     setHiddenAll(next);
     saveHiddenLocal(userId, next);
-    // Fire-and-forget server sync (last write wins). If it fails (offline),
-    // localStorage keeps the choice on this device and the next successful
-    // toggle re-ships the whole map.
+    const payload = JSON.stringify(next);
+    // Fire-and-forget server sync (last write wins). When clearly offline,
+    // queue the whole map (collapsing prior queued updates) so it ships
+    // automatically once connectivity returns; localStorage remains the
+    // on-device fallback either way.
+    if (getOfflineModeEnabled() && typeof navigator !== "undefined" && !navigator.onLine) {
+      void enqueueDebutsHiddenUpdate(payload);
+      return;
+    }
     fetch("/api/auth/debuts-hidden", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ debutsHidden: JSON.stringify(next) }),
+      body: JSON.stringify({ debutsHidden: payload }),
     })
       .then(async (res) => {
         if (!res.ok) return;
@@ -210,7 +218,12 @@ export default function DebutsPage() {
         queryClient.setQueryData(["/api/auth/user"], updated);
       })
       .catch(() => {
-        // offline — local fallback already saved
+        // Network failure — only queue when offline mode is on (queue
+        // draining is gated on offline mode, so queuing otherwise could
+        // leave a stale payload that later overwrites newer server state).
+        // Otherwise the localStorage fallback already keeps the choice on
+        // this device, matching the pre-existing behavior.
+        if (getOfflineModeEnabled()) void enqueueDebutsHiddenUpdate(payload);
       });
   };
 

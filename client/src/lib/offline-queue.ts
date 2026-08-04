@@ -60,6 +60,7 @@ function urlForKind(kind: QueueKind): string {
     case 'skill': return '/api/skills';
     case 'routine': return '/api/routines';
     case 'focusMemo': return '/api/auth/focus-memo';
+    case 'debutsHidden': return '/api/auth/debuts-hidden';
     case 'tofSession': return '/api/tof-sessions';
     case 'executionSession': return '/api/execution-sessions';
   }
@@ -502,6 +503,41 @@ export async function enqueueFocusMemoUpdate(
 }
 
 /**
+ * Queue a Debuts hidden-map PATCH while collapsing any prior queued
+ * debuts-hidden update — the payload is the whole map (last write wins),
+ * so only the most recent state needs to reach the server. Also mirrors
+ * the new value into the cached user (IndexedDB + react-query) so the
+ * choice survives a reload while offline.
+ */
+export async function enqueueDebutsHiddenUpdate(debutsHidden: string): Promise<void> {
+  const existing = await queueAll();
+  for (const item of existing) {
+    if (item.kind === 'debutsHidden' && item.id != null) {
+      await queueDelete(item.id);
+    }
+  }
+  await queueAdd({
+    kind: 'debutsHidden',
+    url: urlForKind('debutsHidden'),
+    method: 'PATCH',
+    body: { debutsHidden },
+    tempId: 0,
+    createdAt: Date.now(),
+  });
+  try {
+    const cached = await cacheGet<any>('user');
+    if (cached) await cacheSet('user', { ...cached, debutsHidden });
+  } catch {
+    // ignore
+  }
+  const current = queryClient.getQueryData<any>(['/api/auth/user']);
+  if (current) {
+    queryClient.setQueryData(['/api/auth/user'], { ...current, debutsHidden });
+  }
+  notifyQueueChange();
+}
+
+/**
  * Try to PATCH the focus memo over the network; if offline, queue the
  * update and return the optimistic user. Mirrors the offline-create
  * helpers used for skills/routines.
@@ -638,7 +674,7 @@ export async function drainQueue(): Promise<DrainResult> {
         // For focus-memo, refresh the cached user so the server's
         // canonical state (including any timestamps it sets) lands in
         // both caches and replaces any optimistic local copy.
-        if (item.kind === 'focusMemo') {
+        if (item.kind === 'focusMemo' || item.kind === 'debutsHidden') {
           try {
             const data = await res.clone().json();
             if (data) {
