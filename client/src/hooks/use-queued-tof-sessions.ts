@@ -22,7 +22,7 @@ export function useQueuedTofSessions(): PendingTofSession[] {
         const all = await queueAll();
         if (!alive) return;
         const sessions: PendingTofSession[] = all
-          .filter((q) => q.kind === "tofSession")
+          .filter((q) => q.kind === "tofSession" && q.method === "POST")
           .map((q) => {
             const body = (q.body ?? {}) as Partial<InsertTofSession>;
             return {

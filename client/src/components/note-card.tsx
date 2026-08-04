@@ -56,8 +56,11 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
       return;
     }
     deleteNote.mutate(note.id, {
-      onSuccess: () => {
-        toast({ title: "Session deleted", description: "Your training note has been removed." });
+      onSuccess: (result) => {
+        const queued = !!(result && typeof result === "object" && "_queuedOffline" in result);
+        toast(queued
+          ? { title: "Deleted offline. Will sync when reconnected." }
+          : { title: "Session deleted", description: "Your training note has been removed." });
       }
     });
   };

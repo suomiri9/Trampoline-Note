@@ -16,7 +16,7 @@ import { useOnline } from "@/hooks/use-online";
 import { useNotes } from "@/hooks/use-notes";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { useQueuedScores } from "@/hooks/use-queued-scores";
-import { deleteQueuedByTempId, isQueuedOfflineResult, tryNetworkOrEnqueue, type OfflineQueuedResult } from "@/lib/offline-queue";
+import { deleteQueuedByTempId, isQueuedOfflineResult, tryNetworkOrEnqueue, tryNetworkOrEnqueueChange, type OfflineQueuedResult } from "@/lib/offline-queue";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
@@ -829,16 +829,26 @@ export default function ScorePage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, values }: { id: number; values: any }) => {
-      const res = await apiRequest("PUT", `/api/scores/${id}`, values);
-      return res.json();
+      return await tryNetworkOrEnqueueChange("score", id, "PUT", values, async (signal) => {
+        const res = await fetch(`/api/scores/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(values),
+          credentials: "include",
+          signal,
+        });
+        if (!res.ok) throw new Error((await res.text()) || res.statusText);
+        return res.json();
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
+    onSuccess: (result) => {
+      const queued = isQueuedOfflineResult(result);
+      if (!queued) queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
       setEditingScore(null);
       setIsAdding(false);
       setCustomSkillIds(null);
       setCustomSkillIdsVol(null);
-      toast({ title: "Score updated!" });
+      toast({ title: queued ? "Saved offline. Will sync when reconnected." : "Score updated!" });
     },
     onError: (err) => {
       toast({
@@ -851,11 +861,15 @@ export default function ScorePage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/scores/${id}`);
+      return await tryNetworkOrEnqueueChange("score", id, "DELETE", undefined, async (signal) => {
+        const res = await fetch(`/api/scores/${id}`, { method: "DELETE", credentials: "include", signal });
+        if (!res.ok) throw new Error((await res.text()) || res.statusText);
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
-      toast({ title: "Score deleted" });
+    onSuccess: (result) => {
+      const queued = isQueuedOfflineResult(result);
+      if (!queued) queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
+      toast({ title: queued ? "Deleted offline. Will sync when reconnected." : "Score deleted" });
     }
   });
 

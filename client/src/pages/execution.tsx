@@ -33,7 +33,7 @@ import { ClipboardCheck, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, T
 import { cn } from "@/lib/utils";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { useQueuedExecutionSessions } from "@/hooks/use-queued-execution-sessions";
-import { tryNetworkOrEnqueue, isQueuedOfflineResult, deleteQueuedByTempId, type OfflineQueuedResult } from "@/lib/offline-queue";
+import { tryNetworkOrEnqueue, tryNetworkOrEnqueueChange, isQueuedOfflineResult, deleteQueuedByTempId, type OfflineQueuedResult } from "@/lib/offline-queue";
 import type { ExecutionSession, InsertExecutionSession } from "@shared/schema";
 import { fileToDataUrl } from "@/lib/image-file";
 import { SheetPhotoPreview } from "@/components/sheet-photo-preview";
@@ -223,12 +223,22 @@ export default function ExecutionPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...body }: { id: number } & Partial<InsertExecutionSession>) => {
-      const res = await apiRequest("PUT", buildUrl(api.executionSessions.update.path, { id }), body);
-      return res.json();
+      return await tryNetworkOrEnqueueChange("executionSession", id, "PUT", body, async (signal) => {
+        const res = await fetch(buildUrl(api.executionSessions.update.path, { id }), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          credentials: "include",
+          signal,
+        });
+        if (!res.ok) throw new Error((await res.text()) || res.statusText);
+        return res.json();
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.executionSessions.list.path] });
-      toast({ title: "Execution session updated" });
+    onSuccess: (result) => {
+      const queued = isQueuedOfflineResult(result);
+      if (!queued) queryClient.invalidateQueries({ queryKey: [api.executionSessions.list.path] });
+      toast({ title: queued ? "Saved offline. Will sync when reconnected." : "Execution session updated" });
       closeForm(false);
     },
     onError: (e: Error) => toast({ title: "Failed to update session", description: e.message, variant: "destructive" }),
@@ -236,11 +246,15 @@ export default function ExecutionPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("DELETE", buildUrl(api.executionSessions.delete.path, { id }));
+      return await tryNetworkOrEnqueueChange("executionSession", id, "DELETE", undefined, async (signal) => {
+        const res = await fetch(buildUrl(api.executionSessions.delete.path, { id }), { method: "DELETE", credentials: "include", signal });
+        if (!res.ok) throw new Error((await res.text()) || res.statusText);
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.executionSessions.list.path] });
-      toast({ title: "Execution session deleted" });
+    onSuccess: (result) => {
+      const queued = isQueuedOfflineResult(result);
+      if (!queued) queryClient.invalidateQueries({ queryKey: [api.executionSessions.list.path] });
+      toast({ title: queued ? "Deleted offline. Will sync when reconnected." : "Execution session deleted" });
     },
   });
 

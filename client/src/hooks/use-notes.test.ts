@@ -154,7 +154,7 @@ describe("useNotesPage offline fallback", () => {
     await expect(cacheGet("notes")).resolves.toEqual(data);
   });
 
-  it("does NOT mirror an incomplete page (hasMore=true)", async () => {
+  it("mirrors an incomplete page when nothing is cached yet", async () => {
     setOfflineModeEnabled(true);
     const data = [note(1), note(2)];
     okFetch(data, { "X-Total-Count": "10" });
@@ -163,6 +163,20 @@ describe("useNotesPage offline fallback", () => {
       hasMore: true,
       total: 10,
     });
-    await expect(cacheGet("notes")).resolves.toBeNull();
+    // Having the first page cached beats an empty offline log.
+    await expect(cacheGet("notes")).resolves.toEqual(data);
+  });
+
+  it("does NOT let a shorter incomplete page clobber a longer cached list", async () => {
+    setOfflineModeEnabled(true);
+    const fuller = [note(1), note(2), note(3)];
+    await cacheSet("notes", fuller);
+    okFetch([note(1)], { "X-Total-Count": "10" });
+    await expect(notesPageQueryFn(1)()).resolves.toEqual({
+      items: [note(1)],
+      hasMore: true,
+      total: 10,
+    });
+    await expect(cacheGet("notes")).resolves.toEqual(fuller);
   });
 });

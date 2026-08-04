@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { api, buildUrl, type NoteInput, type NoteUpdateInput } from "@shared/routes";
-import { isQueuedOfflineResult, tryNetworkOrEnqueue, type OfflineQueuedResult } from "@/lib/offline-queue";
+import { isQueuedOfflineResult, tryNetworkOrEnqueue, tryNetworkOrEnqueueChange, type OfflineQueuedResult } from "@/lib/offline-queue";
 import { cacheGet, cacheSet } from "@/lib/offline-db";
 import { getOfflineModeEnabled } from "@/lib/offline-mode";
 import type { z } from "zod";
@@ -61,9 +61,16 @@ export function useNotesPage(limit: number, options?: { enabled?: boolean }) {
         const all = api.notes.list.responses[200].parse(data);
         const total = totalHeader !== null ? parseInt(totalHeader, 10) : all.length;
         const hasMore = all.length < total;
-        // If this page happens to be the complete list, mirror it too so the
-        // offline fallback works even when only the paged hook is ever used.
-        if (offlineModeOn && !hasMore) await cacheSet("notes", all);
+        // Mirror into IndexedDB so the list renders offline. Keep the longest
+        // list we've seen: a partial first page must not clobber a previously
+        // mirrored fuller list, but having only the first page cached is far
+        // better than an empty offline log.
+        if (offlineModeOn) {
+          const cached = await cacheGet<NoteList>("notes");
+          if (!hasMore || !cached || all.length >= cached.length) {
+            await cacheSet("notes", all);
+          }
+        }
         return { items: all, hasMore, total };
       } catch (err) {
         // Offline fallback: serve whatever full list we last mirrored.
@@ -127,17 +134,20 @@ export function useUpdateNote() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: { id: number } & Record<string, any>) => {
-      const url = buildUrl(api.notes.update.path, { id });
-      const res = await fetch(url, {
-        method: api.notes.update.method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-        credentials: "include",
+      return await tryNetworkOrEnqueueChange("note", id, "PUT", updates, async (signal) => {
+        const url = buildUrl(api.notes.update.path, { id });
+        const res = await fetch(url, {
+          method: api.notes.update.method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates),
+          credentials: "include",
+          signal,
+        });
+        return await handleResponse(res, "Failed to update note");
       });
-      const responseData = await handleResponse(res, "Failed to update note");
-      return responseData;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (result, variables) => {
+      if (isQueuedOfflineResult(result)) return;
       invalidateAllNotes(queryClient);
       queryClient.invalidateQueries({ queryKey: [api.notes.get.path, variables.id] });
       invalidateAllHistory(queryClient);
@@ -149,14 +159,18 @@ export function useDeleteNote() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
-      const url = buildUrl(api.notes.delete.path, { id });
-      const res = await fetch(url, { 
-        method: api.notes.delete.method, 
-        credentials: "include" 
+      return await tryNetworkOrEnqueueChange("note", id, "DELETE", undefined, async (signal) => {
+        const url = buildUrl(api.notes.delete.path, { id });
+        const res = await fetch(url, {
+          method: api.notes.delete.method,
+          credentials: "include",
+          signal,
+        });
+        await handleResponse(res, "Failed to delete note");
       });
-      await handleResponse(res, "Failed to delete note");
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (isQueuedOfflineResult(result)) return;
       invalidateAllNotes(queryClient);
       invalidateAllHistory(queryClient);
     },

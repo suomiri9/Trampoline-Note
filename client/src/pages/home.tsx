@@ -20,9 +20,7 @@ export default function Home() {
   const [offlineModeEnabled] = useOfflineMode();
   const isOnline = useOnline();
   const offlineView = offlineModeEnabled && !isOnline;
-  const { data, isLoading, isError, error, isFetching } = useNotesPage(limit, {
-    enabled: !offlineView,
-  });
+  const { data, isLoading, isError, error, isFetching } = useNotesPage(limit);
   const queuedNotes = useQueuedNotes();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
@@ -60,7 +58,7 @@ export default function Home() {
       />
 
       <main>
-        {offlineView ? (
+        {offlineView && visibleNotes.length === 0 && !isLoading ? (
           <div className="space-y-4">
             {queuedNotes.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="list-pending-notes">
@@ -111,6 +109,19 @@ export default function Home() {
           </div>
         ) : (
           <>
+            {queuedNotes.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4" data-testid="list-pending-notes">
+                {queuedNotes.map((note, index) => (
+                  <NoteCard
+                    key={note.id}
+                    note={note}
+                    index={index}
+                    onEdit={handleEdit}
+                    isPending
+                  />
+                ))}
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {visibleNotes.map((note, index) => (
                 <NoteCard

@@ -32,7 +32,7 @@ import { Timer, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDo
 import { cn } from "@/lib/utils";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { useQueuedTofSessions } from "@/hooks/use-queued-tof-sessions";
-import { tryNetworkOrEnqueue, isQueuedOfflineResult, deleteQueuedByTempId, type OfflineQueuedResult } from "@/lib/offline-queue";
+import { tryNetworkOrEnqueue, tryNetworkOrEnqueueChange, isQueuedOfflineResult, deleteQueuedByTempId, type OfflineQueuedResult } from "@/lib/offline-queue";
 import type { TofSession, InsertTofSession } from "@shared/schema";
 import { fileToDataUrl } from "@/lib/image-file";
 
@@ -197,12 +197,22 @@ export default function TofPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...body }: { id: number } & Partial<InsertTofSession>) => {
-      const res = await apiRequest("PUT", buildUrl(api.tofSessions.update.path, { id }), body);
-      return res.json();
+      return await tryNetworkOrEnqueueChange("tofSession", id, "PUT", body, async (signal) => {
+        const res = await fetch(buildUrl(api.tofSessions.update.path, { id }), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          credentials: "include",
+          signal,
+        });
+        if (!res.ok) throw new Error((await res.text()) || res.statusText);
+        return res.json();
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.tofSessions.list.path] });
-      toast({ title: "ToF session updated" });
+    onSuccess: (result) => {
+      const queued = isQueuedOfflineResult(result);
+      if (!queued) queryClient.invalidateQueries({ queryKey: [api.tofSessions.list.path] });
+      toast({ title: queued ? "Saved offline. Will sync when reconnected." : "ToF session updated" });
       closeForm(false);
     },
     onError: (e: Error) => toast({ title: "Failed to update session", description: e.message, variant: "destructive" }),
@@ -210,11 +220,15 @@ export default function TofPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("DELETE", buildUrl(api.tofSessions.delete.path, { id }));
+      return await tryNetworkOrEnqueueChange("tofSession", id, "DELETE", undefined, async (signal) => {
+        const res = await fetch(buildUrl(api.tofSessions.delete.path, { id }), { method: "DELETE", credentials: "include", signal });
+        if (!res.ok) throw new Error((await res.text()) || res.statusText);
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.tofSessions.list.path] });
-      toast({ title: "ToF session deleted" });
+    onSuccess: (result) => {
+      const queued = isQueuedOfflineResult(result);
+      if (!queued) queryClient.invalidateQueries({ queryKey: [api.tofSessions.list.path] });
+      toast({ title: queued ? "Deleted offline. Will sync when reconnected." : "ToF session deleted" });
     },
   });
 

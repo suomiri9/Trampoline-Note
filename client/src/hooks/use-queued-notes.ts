@@ -17,7 +17,7 @@ export function useQueuedNotes(): PendingNote[] {
         const all = await queueAll();
         if (!alive) return;
         const notes: PendingNote[] = all
-          .filter((q) => q.kind === "note")
+          .filter((q) => q.kind === "note" && q.method === "POST")
           .map((q) => {
             const body = (q.body ?? {}) as Partial<InsertNote>;
             return {

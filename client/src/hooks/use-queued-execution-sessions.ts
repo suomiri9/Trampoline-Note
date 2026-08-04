@@ -22,7 +22,7 @@ export function useQueuedExecutionSessions(): PendingExecutionSession[] {
         const all = await queueAll();
         if (!alive) return;
         const sessions: PendingExecutionSession[] = all
-          .filter((q) => q.kind === "executionSession")
+          .filter((q) => q.kind === "executionSession" && q.method === "POST")
           .map((q) => {
             const body = (q.body ?? {}) as Partial<InsertExecutionSession>;
             return {

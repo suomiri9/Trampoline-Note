@@ -22,7 +22,7 @@ export function useQueuedScores(): PendingScore[] {
         const all = await queueAll();
         if (!alive) return;
         const scores: PendingScore[] = all
-          .filter((q) => q.kind === "score")
+          .filter((q) => q.kind === "score" && q.method === "POST")
           .map((q) => {
             const body = (q.body ?? {}) as Partial<InsertScore>;
             return {

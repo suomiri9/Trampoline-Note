@@ -1049,9 +1049,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         return;
       }
       updateNote.mutate({ id: noteToEdit.id, ...payload }, {
-        onSuccess: () => {
+        onSuccess: (result) => {
           onOpenChange(false);
-          toast({ title: "Session updated" });
+          const queued = !!(result && typeof result === "object" && "_queuedOffline" in result);
+          toast({ title: queued ? "Saved offline. Will sync when reconnected." : "Session updated" });
         },
         onError: (err) => {
           toast({

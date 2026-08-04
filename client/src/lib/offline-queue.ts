@@ -242,6 +242,134 @@ export async function tryNetworkOrEnqueue<T>(
   }
 }
 
+/** Entity kinds that support offline UPDATE/DELETE of already-synced rows. */
+export type ChangeKind = 'note' | 'score' | 'tofSession' | 'executionSession';
+
+function listPathForChange(kind: ChangeKind): string {
+  switch (kind) {
+    case 'note': return '/api/notes';
+    case 'score': return '/api/scores';
+    case 'tofSession': return '/api/tof-sessions';
+    case 'executionSession': return '/api/execution-sessions';
+  }
+}
+
+function cacheKeyForChange(kind: ChangeKind): string {
+  switch (kind) {
+    case 'note': return 'notes';
+    case 'score': return 'scores';
+    case 'tofSession': return 'tofSessions';
+    case 'executionSession': return 'executionSessions';
+  }
+}
+
+/**
+ * Apply an offline update/delete optimistically to the cached list
+ * (IndexedDB, so it survives reloads while offline) and every mounted
+ * react-query list query (plain arrays and the paged notes shape).
+ */
+async function applyOptimisticListChange(
+  kind: ChangeKind,
+  id: number,
+  method: 'PUT' | 'DELETE',
+  body?: unknown,
+): Promise<void> {
+  const patch = (body && typeof body === 'object') ? (body as Record<string, unknown>) : {};
+  const apply = (list: Array<Record<string, unknown>>) =>
+    method === 'DELETE'
+      ? list.filter((r) => r?.id !== id)
+      : list.map((r) => (r?.id === id ? { ...r, ...patch } : r));
+  try {
+    const cached = await cacheGet<Array<Record<string, unknown>>>(cacheKeyForChange(kind));
+    if (Array.isArray(cached)) await cacheSet(cacheKeyForChange(kind), apply(cached));
+  } catch {
+    // ignore — in-memory update below still lands
+  }
+  const listPath = listPathForChange(kind);
+  queryClient.setQueriesData(
+    { predicate: (q) => q.queryKey[0] === listPath },
+    (old: unknown) => {
+      if (Array.isArray(old)) return apply(old as Array<Record<string, unknown>>);
+      if (old && typeof old === 'object' && Array.isArray((old as { items?: unknown }).items)) {
+        const o = old as { items: Array<Record<string, unknown>>; total?: number };
+        const items = apply(o.items);
+        const total =
+          method === 'DELETE' && typeof o.total === 'number'
+            ? Math.max(0, o.total - 1)
+            : o.total;
+        return { ...o, items, total };
+      }
+      return old;
+    },
+  );
+}
+
+/**
+ * Queue an offline UPDATE or DELETE of an already-synced entity (positive id).
+ * Collapses any prior queued change for the same entity — only the latest
+ * state needs to reach the server (a DELETE supersedes earlier PUTs).
+ * Pending offline entries (negative tempIds) are handled elsewhere via
+ * updateQueuedByTempId / deleteQueuedByTempId.
+ */
+export async function enqueueEntityChange(
+  kind: ChangeKind,
+  id: number,
+  method: 'PUT' | 'DELETE',
+  body?: unknown,
+): Promise<OfflineQueuedResult> {
+  const existing = await queueAll();
+  for (const item of existing) {
+    if (item.kind === kind && item.method !== 'POST' && item.tempId === id && item.id != null) {
+      await queueDelete(item.id);
+    }
+  }
+  await queueAdd({
+    kind,
+    url: `${listPathForChange(kind)}/${id}`,
+    method,
+    body: body ?? null,
+    tempId: id,
+    createdAt: Date.now(),
+  });
+  await applyOptimisticListChange(kind, id, method, body);
+  notifyQueueChange();
+  return { _queuedOffline: true, tempId: id };
+}
+
+/**
+ * Run a network update/delete with an abort-controlled timeout; if offline
+ * mode is on and the network fails or is too slow, queue the change instead.
+ * Mirrors tryNetworkOrEnqueue for creates.
+ */
+export async function tryNetworkOrEnqueueChange<T>(
+  kind: ChangeKind,
+  id: number,
+  method: 'PUT' | 'DELETE',
+  body: unknown,
+  doFetch: (signal: AbortSignal) => Promise<T>,
+  timeoutMs = 8000,
+): Promise<T | OfflineQueuedResult> {
+  const offline = getOfflineModeEnabled();
+  const onLine = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  if (offline && !onLine) {
+    return enqueueEntityChange(kind, id, method, body);
+  }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => {
+    try { ctrl.abort(); } catch { /* ignore */ }
+  }, timeoutMs);
+  try {
+    return await doFetch(ctrl.signal);
+  } catch (err) {
+    if (offline && isNetworkOrAbortError(err)) {
+      return enqueueEntityChange(kind, id, method, body);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function getQueueCount(): Promise<number> {
   return queueCount();
 }
@@ -593,12 +721,20 @@ export async function drainQueue(): Promise<DrainResult> {
     for (const item of items) {
       const remappedBody = remapBody(item.kind, item.body, idMap);
       try {
+        const isDelete = item.method === 'DELETE';
         const res = await fetch(item.url, {
           method: item.method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(remappedBody),
+          headers: isDelete ? undefined : { 'Content-Type': 'application/json' },
+          body: isDelete ? undefined : JSON.stringify(remappedBody),
           credentials: 'include',
         });
+        // A queued DELETE hitting 404 means the entity is already gone
+        // (deleted on another device) — that's the desired end state.
+        if (isDelete && res.status === 404) {
+          if (item.id != null) await queueDelete(item.id);
+          synced += 1;
+          continue;
+        }
         if (!res.ok) {
           failed += 1;
           // Stop on auth errors so we don't churn the queue and keep

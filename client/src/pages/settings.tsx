@@ -538,6 +538,9 @@ export default function SettingsPage() {
                     <div className="min-w-0">
                       <p className="text-sm font-medium">Offline Mode</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{offlineModeEnabled ? "On — entries sync when you reconnect." : "Save sessions and scores with no connection."}</p>
+                      <p className="text-[11px] text-muted-foreground mt-1" data-testid="text-offline-storage-note">
+                        Uses barely any storage — years of training data is smaller than one photo.
+                      </p>
                     </div>
                     <Switch
                       checked={offlineModeEnabled}
