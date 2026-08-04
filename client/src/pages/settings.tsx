@@ -208,21 +208,31 @@ export default function SettingsPage() {
       } catch {
         // ignore
       }
-      if (alive)
-        setDownloadStatus({
-          sw,
-          accountReady,
-          skillsCount,
-          drillsCount,
-          connectionsCount,
-          routinesCount,
-        });
+      if (!alive) return;
+      setDownloadStatus({
+        sw,
+        accountReady,
+        skillsCount,
+        drillsCount,
+        connectionsCount,
+        routinesCount,
+      });
+      // Poll fast while the download is incomplete so the progress bar
+      // moves promptly; slow down once everything is ready.
+      const allReady =
+        sw &&
+        accountReady &&
+        skillsCount !== null &&
+        drillsCount !== null &&
+        connectionsCount !== null &&
+        routinesCount !== null;
+      timer = setTimeout(check, allReady ? 5000 : 500);
     };
+    let timer: ReturnType<typeof setTimeout> | undefined;
     void check();
-    const interval = setInterval(check, 3000);
     return () => {
       alive = false;
-      clearInterval(interval);
+      if (timer !== undefined) clearTimeout(timer);
     };
   }, [offlineModeEnabled, isOnline]);
 
