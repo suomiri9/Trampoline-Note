@@ -1063,9 +1063,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       });
     } else {
       createNote.mutate(payload as any, {
-        onSuccess: () => {
+        onSuccess: (result) => {
           onOpenChange(false);
-          toast({ title: "Session logged!" });
+          const queued = !!(result && typeof result === "object" && "_queuedOffline" in result);
+          toast({ title: queued ? "Saved offline. Will sync when reconnected." : "Session logged!" });
         },
         onError: (err) => {
           toast({

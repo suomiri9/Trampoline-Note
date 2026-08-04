@@ -159,7 +159,7 @@ export async function tryNetworkOrEnqueueWithOptimistic<T extends Record<string,
   body: unknown,
   buildOptimistic: (tempId: number) => T & { id: number },
   doFetch: (signal: AbortSignal) => Promise<T>,
-  timeoutMs = 12000,
+  timeoutMs = 8000,
 ): Promise<T & { _queuedOffline?: true }> {
   const offline = getOfflineModeEnabled();
   const onLine = typeof navigator !== 'undefined' ? navigator.onLine : true;
@@ -218,7 +218,7 @@ export async function tryNetworkOrEnqueue<T>(
   kind: QueueKind,
   body: unknown,
   doFetch: (signal: AbortSignal) => Promise<T>,
-  timeoutMs = 12000,
+  timeoutMs = 8000,
 ): Promise<T | OfflineQueuedResult> {
   const offline = getOfflineModeEnabled();
   const onLine = typeof navigator !== 'undefined' ? navigator.onLine : true;
@@ -509,7 +509,7 @@ export async function enqueueFocusMemoUpdate(
 export async function tryNetworkOrEnqueueFocusMemo<T extends object>(
   focusMemo: string,
   doFetch: (signal: AbortSignal) => Promise<T>,
-  timeoutMs = 12000,
+  timeoutMs = 8000,
   pendingPointIds: string[] = [],
   baseFocusMemo?: string,
 ): Promise<T | (T & { _queuedOffline: true })> {
