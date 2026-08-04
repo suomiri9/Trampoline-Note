@@ -40,6 +40,7 @@ import {
 import { useEffect } from "react";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { drainQueue } from "@/lib/offline-queue";
+import { applyAccountSettings } from "@/lib/settings-sync";
 import { useToast } from "@/hooks/use-toast";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { CoachWidget } from "@/components/coach-widget";
@@ -205,7 +206,13 @@ function Router() {
 }
 
 function AppContent() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  // Account-synced general settings: apply the server copy whenever the
+  // signed-in user (re)loads, so preferences follow the account across devices.
+  useEffect(() => {
+    if (user?.appSettings) applyAccountSettings(user.appSettings);
+  }, [user?.appSettings]);
   const [offlineModeEnabled] = useOfflineMode();
   const { toast } = useToast();
 

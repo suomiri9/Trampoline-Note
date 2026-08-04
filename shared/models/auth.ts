@@ -32,6 +32,10 @@ export const users = pgTable("users", {
   // {"debut-skill":["12","34"],"debut-routine":["7"]} — keys the user
   // switched OFF. Stored per account so choices follow the user across devices.
   debutsHidden: text("debuts_hidden"),
+  // JSON blob of general app preferences (theme, time format, skill-name
+  // display, turn tracking, archive cascade) so they follow the account
+  // across devices. Device-specific settings (offline mode) are NOT here.
+  appSettings: text("app_settings"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

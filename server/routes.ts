@@ -1060,6 +1060,55 @@ export async function registerRoutes(
     }
   });
 
+  // General app preferences synced across devices (theme, time format, etc.).
+  app.patch("/api/auth/app-settings", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z.object({
+        appSettings: z
+          .object({
+            theme: z.enum(["dark", "light"]).optional(),
+            timeFormat: z.enum(["12h", "24h"]).optional(),
+            showSkillNames: z.boolean().optional(),
+            trackTurns: z.boolean().optional(),
+            archiveCascade: z.boolean().optional(),
+          })
+          .strict(),
+      });
+      const { appSettings } = schema.parse(req.body);
+      const userId = getUserId(req);
+      // Merge into the stored blob inside a transaction with a row lock so
+      // two devices changing DIFFERENT settings can't overwrite each other.
+      const updated = await db.transaction(async (tx) => {
+        const [row] = await tx.select().from(users).where(eq(users.id, userId)).for("update");
+        if (!row) return undefined;
+        let current: Record<string, unknown> = {};
+        try {
+          const parsed = row.appSettings ? JSON.parse(row.appSettings) : null;
+          if (parsed && typeof parsed === "object") current = parsed;
+        } catch {
+          // corrupted blob — start fresh
+        }
+        const merged = { ...current, ...appSettings };
+        const [u] = await tx
+          .update(users)
+          .set({ appSettings: JSON.stringify(merged), updatedAt: new Date() })
+          .where(eq(users.id, userId))
+          .returning();
+        return u;
+      });
+      if (!updated) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const { password: _, ...safeUser } = updated;
+      res.json(safeUser);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to update app settings" });
+    }
+  });
+
   // Atomic single-point append. Unlike the whole-blob PATCH below (which is
   // last-write-wins), this parses the CURRENT stored list, appends one point
   // and writes back inside a transaction with a row lock — two devices adding

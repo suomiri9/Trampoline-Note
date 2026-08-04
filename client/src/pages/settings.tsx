@@ -59,6 +59,7 @@ import {
 } from "@/lib/offline-queue";
 import type { FailedItem } from "@/lib/offline-db";
 import { enableOfflineMode, disableOfflineMode } from "@/lib/offline-control";
+import { pushAccountSettings } from "@/lib/settings-sync";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -463,7 +464,7 @@ export default function SettingsPage() {
                       </div>
                       <Switch
                         checked={theme === "dark"}
-                        onCheckedChange={(v) => setTheme(v ? "dark" : "light")}
+                        onCheckedChange={(v) => { setTheme(v ? "dark" : "light"); pushAccountSettings({ theme: v ? "dark" : "light" }); }}
                         data-testid="toggle-theme"
                       />
                     </div>
@@ -475,7 +476,7 @@ export default function SettingsPage() {
                     </div>
                     <Switch
                       checked={showSkillNames}
-                      onCheckedChange={setShowSkillNames}
+                      onCheckedChange={(v) => { setShowSkillNames(v); pushAccountSettings({ showSkillNames: v }); }}
                       data-testid="toggle-skill-names"
                     />
                   </div>
@@ -486,7 +487,7 @@ export default function SettingsPage() {
                     </div>
                     <Switch
                       checked={trackTurns}
-                      onCheckedChange={setTrackTurns}
+                      onCheckedChange={(v) => { setTrackTurns(v); pushAccountSettings({ trackTurns: v }); }}
                       data-testid="toggle-track-turns"
                     />
                   </div>
@@ -500,7 +501,7 @@ export default function SettingsPage() {
                         <button
                           key={opt}
                           type="button"
-                          onClick={() => setTimeFormat(opt)}
+                          onClick={() => { setTimeFormat(opt); pushAccountSettings({ timeFormat: opt }); }}
                           className={cn(
                             "px-4 h-8 rounded-lg text-xs font-semibold transition-all",
                             timeFormat === opt
@@ -528,7 +529,7 @@ export default function SettingsPage() {
                     </div>
                     <Switch
                       checked={archiveCascade}
-                      onCheckedChange={setArchiveCascade}
+                      onCheckedChange={(v) => { setArchiveCascade(v); pushAccountSettings({ archiveCascade: v }); }}
                       data-testid="toggle-archive-cascade"
                     />
                   </div>

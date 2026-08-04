@@ -92,6 +92,7 @@ async function runMigrations() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS menu_guide text;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS menu_row_connections boolean DEFAULT true;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS debuts_hidden text;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS app_settings text;
       ALTER TABLE users ALTER COLUMN menu_row_connections SET DEFAULT true;
       UPDATE users SET menu_row_connections = true WHERE menu_row_connections IS NULL;
       ALTER TABLE skills ADD COLUMN IF NOT EXISTS sort_order integer;

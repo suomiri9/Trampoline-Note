@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SafeUser } from "@shared/models/auth";
 import { cacheGet, cacheSet, cacheClearAll } from "@/lib/offline-db";
+import { cancelPendingSettingsPush } from "@/lib/settings-sync";
 import { getOfflineModeEnabled } from "@/lib/offline-mode";
 
 const USER_CACHE_KEY = "user";
@@ -115,6 +116,7 @@ async function logoutFn(): Promise<void> {
   // this device: session marker, cached user, mirrored skills/routines,
   // AND any pending offline create queue entries.
   setSessionMarker(false);
+  cancelPendingSettingsPush();
   await cacheClearAll();
 }
 

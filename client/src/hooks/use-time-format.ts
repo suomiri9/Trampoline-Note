@@ -13,6 +13,19 @@ function readStored(): TimeFormat {
   return v === "24h" || v === "12h" ? v : DEFAULT;
 }
 
+/** Read the current stored value (for account-settings sync). */
+export function getTimeFormat(): TimeFormat {
+  return readStored();
+}
+
+/** Set the value from outside React (account-settings sync). */
+export function setTimeFormatGlobal(v: TimeFormat) {
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(STORAGE_KEY, v);
+  }
+  listeners.forEach(fn => fn(v));
+}
+
 export function useTimeFormat(): [TimeFormat, (v: TimeFormat) => void] {
   const [value, setValue] = useState<TimeFormat>(readStored);
 
