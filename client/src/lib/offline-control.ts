@@ -32,9 +32,12 @@ export async function unregisterServiceWorkers(): Promise<void> {
 export async function enableOfflineMode(): Promise<void> {
   setOfflineModeEnabled(true);
   await registerServiceWorker();
-  // Refresh reference data so it lands in IndexedDB right away.
-  queryClient.invalidateQueries({ queryKey: ["/api/skills"] });
-  queryClient.invalidateQueries({ queryKey: ["/api/routines"] });
+  // Actively fetch reference data so it lands in IndexedDB right away.
+  // invalidateQueries alone only refetches queries that are currently
+  // mounted — from the Settings page, routines/skills may not be — which
+  // left the download progress stuck until the user visited those pages.
+  void queryClient.prefetchQuery({ queryKey: ["/api/skills"], staleTime: 0 });
+  void queryClient.prefetchQuery({ queryKey: ["/api/routines"], staleTime: 0 });
 }
 
 export async function disableOfflineMode(): Promise<void> {

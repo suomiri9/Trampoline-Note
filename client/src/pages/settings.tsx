@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import {
   LogOut,
@@ -179,6 +179,7 @@ export default function SettingsPage() {
     connectionsCount: number | null;
     routinesCount: number | null;
   } | null>(null);
+  const lastPrefetchRef = useRef(0);
 
   // Target download percent (fractional: the app-shell step counts per cached
   // file); the animated value ticks toward it one percent at a time.
@@ -261,6 +262,20 @@ export default function SettingsPage() {
         routinesCount = Array.isArray(routines) ? routines.length : null;
       } catch {
         // ignore
+      }
+      // Safety net: if reference data still isn't mirrored (e.g. offline mode
+      // was enabled before the active-prefetch fix), fetch it now while
+      // online instead of waiting for the user to visit those pages.
+      if (
+        isOnline &&
+        (skillsCount === null || routinesCount === null) &&
+        Date.now() - lastPrefetchRef.current > 10000
+      ) {
+        lastPrefetchRef.current = Date.now();
+        if (skillsCount === null)
+          void queryClient.prefetchQuery({ queryKey: ["/api/skills"], staleTime: 0 });
+        if (routinesCount === null)
+          void queryClient.prefetchQuery({ queryKey: ["/api/routines"], staleTime: 0 });
       }
       if (!alive) return;
       setDownloadStatus({
