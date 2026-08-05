@@ -10,28 +10,54 @@ import { lazy, Suspense } from "react";
 // Lazy route loader that doesn't blank the whole app when a page's JS chunk
 // can't be fetched (e.g. navigating offline to a page that was never loaded).
 // Instead it renders a small "not downloaded yet" screen with a retry button.
+//
+// React.lazy caches a failed load forever, so a plain lazy() would keep
+// showing the fallback even after reconnecting. To recover seamlessly, each
+// failed attempt creates a *fresh* lazy component (keyed by a nonce) the next
+// time the route mounts, so SPA navigation re-attempts the import.
 function lazyPage(load: () => Promise<{ default: React.ComponentType<any> }>) {
-  return lazy(() =>
-    load().catch(() => ({
-      default: function ChunkLoadFallback() {
-        return (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 px-6 text-center" data-testid="card-chunk-offline">
-            <p className="text-lg font-medium">This page isn't available offline yet</p>
-            <p className="text-sm text-muted-foreground">
-              It hasn't been downloaded to this device. Reconnect and try again.
-            </p>
-            <button
-              className="mt-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm"
-              onClick={() => window.location.reload()}
-              data-testid="button-chunk-retry"
-            >
-              Retry
-            </button>
-          </div>
-        );
-      },
-    })),
-  );
+  let nonce = 0;
+  let current: { key: number; Comp: React.LazyExoticComponent<React.ComponentType<any>> } | null = null;
+  let failed = false;
+
+  const makeLazy = () => {
+    const key = ++nonce;
+    failed = false;
+    const Comp = lazy(() =>
+      load().catch(() => {
+        failed = true;
+        return {
+          default: function ChunkLoadFallback() {
+            return (
+              <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 px-6 text-center" data-testid="card-chunk-offline">
+                <p className="text-lg font-medium">This page isn't available offline yet</p>
+                <p className="text-sm text-muted-foreground">
+                  It hasn't been downloaded to this device. Reconnect and try again.
+                </p>
+                <button
+                  className="mt-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm"
+                  onClick={() => window.location.reload()}
+                  data-testid="button-chunk-retry"
+                >
+                  Retry
+                </button>
+              </div>
+            );
+          },
+        };
+      }),
+    );
+    current = { key, Comp };
+    return current;
+  };
+
+  return function LazyPageGate(props: any) {
+    // If the last attempt failed, build a fresh lazy component so this
+    // mount re-runs the dynamic import instead of reusing the cached failure.
+    const entry = !current || failed ? makeLazy() : current;
+    const { key, Comp } = entry;
+    return <Comp key={key} {...props} />;
+  };
 }
 
 const Home = lazyPage(() => import("@/pages/home"));
