@@ -64,6 +64,20 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
+/** Animates a percent value toward `target` one point at a time, so the
+ * progress bar ticks through every percent instead of jumping. */
+function useAnimatedPercent(target: number): number {
+  const [shown, setShown] = useState(target);
+  useEffect(() => {
+    if (shown === target) return;
+    const t = setTimeout(() => {
+      setShown((s) => (s < target ? s + 1 : s > target ? s - 1 : s));
+    }, 25);
+    return () => clearTimeout(t);
+  }, [shown, target]);
+  return shown;
+}
+
 export default function SettingsPage() {
   const { user, logout, isLoggingOut } = useAuth();
   const { toast } = useToast();
@@ -165,6 +179,23 @@ export default function SettingsPage() {
     connectionsCount: number | null;
     routinesCount: number | null;
   } | null>(null);
+
+  // Target download percent (fractional: the app-shell step counts per cached
+  // file); the animated value ticks toward it one percent at a time.
+  const downloadTargetPercent = useMemo(() => {
+    if (!downloadStatus) return 0;
+    const { sw, shellProgress, accountReady, skillsCount, drillsCount, connectionsCount, routinesCount } = downloadStatus;
+    const parts = [
+      Math.max(sw ? 1 : 0, shellProgress),
+      accountReady ? 1 : 0,
+      skillsCount !== null ? 1 : 0,
+      drillsCount !== null ? 1 : 0,
+      connectionsCount !== null ? 1 : 0,
+      routinesCount !== null ? 1 : 0,
+    ];
+    return Math.round((parts.reduce((a, b) => a + b, 0) / parts.length) * 100);
+  }, [downloadStatus]);
+  const animatedDownloadPercent = useAnimatedPercent(downloadTargetPercent);
 
   useEffect(() => {
     if (!offlineModeEnabled) {
@@ -624,14 +655,8 @@ export default function SettingsPage() {
                   { testId: "status-routines", label: "Routines", ready: routinesReady, count: routinesCount },
                 ];
                 const readyCount = steps.filter((s) => s.ready).length;
-                // Fractional progress: the app-shell step counts partially
-                // (per cached file) so the bar moves in smaller increments.
-                const progressSum =
-                  steps.reduce((sum, s) => sum + (s.ready ? 1 : 0), 0) -
-                  (sw ? 1 : 0) +
-                  Math.max(sw ? 1 : 0, shellProgress);
-                const percent = Math.round((progressSum / steps.length) * 100);
                 const allReady = readyCount === steps.length;
+                const percent = animatedDownloadPercent;
                 return (
                   <div
                     className="mt-3 rounded-xl bg-secondary/40 px-4 py-3"
@@ -657,7 +682,7 @@ export default function SettingsPage() {
                       data-testid="bar-download-progress"
                     >
                       <div
-                        className={`h-full rounded-full transition-all duration-500 ${allReady ? "bg-emerald-500" : "bg-primary"}`}
+                        className={`h-full rounded-full transition-all duration-200 ${allReady ? "bg-emerald-500" : "bg-primary"}`}
                         style={{ width: `${percent}%` }}
                       />
                     </div>
