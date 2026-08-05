@@ -198,6 +198,35 @@ export default function SettingsPage() {
   }, [downloadStatus]);
   const animatedDownloadPercent = useAnimatedPercent(downloadTargetPercent);
 
+  // Rough time-left estimate based on how fast the download has progressed
+  // since this page started watching it.
+  const etaBaselineRef = useRef<{ t0: number; p0: number } | null>(null);
+  const [etaNow, setEtaNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (downloadTargetPercent <= 0 || downloadTargetPercent >= 100) {
+      etaBaselineRef.current = null;
+      return;
+    }
+    if (!etaBaselineRef.current) {
+      etaBaselineRef.current = { t0: Date.now(), p0: downloadTargetPercent };
+    }
+    const t = setInterval(() => setEtaNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [downloadTargetPercent]);
+  let downloadEtaText: string | null = null;
+  if (downloadTargetPercent > 0 && downloadTargetPercent < 100 && etaBaselineRef.current) {
+    const { t0, p0 } = etaBaselineRef.current;
+    const elapsed = (etaNow - t0) / 1000;
+    const gained = downloadTargetPercent - p0;
+    if (gained > 0 && elapsed > 0.5) {
+      const secs = Math.ceil((100 - downloadTargetPercent) / (gained / elapsed));
+      downloadEtaText =
+        secs <= 60 ? `about ${Math.max(secs, 1)}s left` : "about a minute left";
+    } else if (elapsed > 12) {
+      downloadEtaText = "taking longer than usual — retrying";
+    }
+  }
+
   useEffect(() => {
     if (!offlineModeEnabled) {
       setDownloadStatus(null);
@@ -686,21 +715,26 @@ export default function SettingsPage() {
                         data-testid="text-download-percent"
                       >
                         {percent}%
+                        {!allReady && downloadEtaText && downloadEtaText.startsWith("about") && (
+                          <span className="font-normal" data-testid="text-download-eta"> · {downloadEtaText}</span>
+                        )}
                       </span>
                     </div>
-                    <div
-                      className="h-2 w-full rounded-full bg-secondary overflow-hidden mb-3"
-                      role="progressbar"
-                      aria-valuenow={percent}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      data-testid="bar-download-progress"
-                    >
+                    {!(allReady && percent >= 100) && (
                       <div
-                        className={`h-full rounded-full transition-all duration-200 ${allReady ? "bg-emerald-500" : "bg-primary"}`}
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
+                        className="h-2 w-full rounded-full bg-secondary overflow-hidden mb-3"
+                        role="progressbar"
+                        aria-valuenow={percent}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        data-testid="bar-download-progress"
+                      >
+                        <div
+                          className={`h-full rounded-full transition-all duration-200 ${allReady ? "bg-emerald-500" : "bg-primary"}`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    )}
                     <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
                       {steps.map((s) => (
                         <li key={s.testId} className="flex items-center gap-2" data-testid={s.testId}>
@@ -722,9 +756,11 @@ export default function SettingsPage() {
                     </ul>
                     {!allReady && (
                       <p className="text-[11px] text-muted-foreground mt-2">
-                        {isOnline
-                          ? "Still downloading — keep the app open for a moment."
-                          : "Some data isn't downloaded yet. Reconnect to finish."}
+                        {!isOnline
+                          ? "Some data isn't downloaded yet. Reconnect to finish."
+                          : downloadEtaText === "taking longer than usual — retrying"
+                            ? "Taking longer than usual — retrying automatically. Keep the app open."
+                            : "Still downloading — keep the app open for a moment."}
                       </p>
                     )}
                     <p
