@@ -361,7 +361,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                         <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
                           {group.map((gItem: any, skillIdx) => {
                             const sep = skillIdx < group.length - 1 ? (
-                              <span className="text-red-400/70 font-bold text-xs">+</span>
+                              <span className="text-muted-foreground/60 font-bold text-xs">+</span>
                             ) : null;
                             if (gItem.id === -2) {
                               const r = routines?.find(rt => rt.id === gItem.routineId);
@@ -379,7 +379,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                               return (
                                 <div key={skillIdx} className="flex items-center gap-1.5">
                                   <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] border-none shrink-0", isPart ? "bg-secondary text-secondary-foreground" : "bg-red-500 text-white")}>{isPart ? "PART" : "CONN"}</Badge>
-                                  <span className={cn("text-[11px] font-bold truncate max-w-[120px]", isPart ? "text-gray-700 dark:text-gray-300" : "text-red-600 dark:text-red-400")}>{fc?.name || gItem.fcName}</span>
+                                  <span className={cn("text-[11px] font-bold truncate max-w-[120px]", isPart ? "text-muted-foreground" : "text-red-500 dark:text-red-400")}>{fc?.name || gItem.fcName}</span>
                                   {sep}
                                 </div>
                               );
@@ -401,9 +401,11 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                                   "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
                                   skill.isDrill === 1
                                     ? "border-yellow-400/60 text-yellow-600 dark:border-yellow-600/60 dark:text-yellow-400"
-                                    : (!isSingle || skill.isDrill === 2)
-                                      ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
-                                      : "border-border/60 text-muted-foreground"
+                                    : !isSingle
+                                      ? "border-border/70 text-foreground/70"
+                                      : skill.isDrill === 2
+                                        ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
+                                        : "border-border/60 text-muted-foreground"
                                 )}>
                                   <SkillCode skill={skill} allSkills={allItems} />
                                 </Badge>
@@ -422,7 +424,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                             <>
                               <span className="text-muted-foreground">{lineDD.toFixed(1)}</span>
                               <span className={isSingle ? "text-muted-foreground/40" : "text-red-400/70"}>×</span>
-                              <span className={isSingle ? "text-foreground" : "text-red-600 dark:text-red-400"}>{reps}</span>
+                              <span className="text-foreground">{reps}</span>
                               <span className={isSingle ? "text-muted-foreground/40" : "text-red-400/70"}>=</span>
                               <span className={isSingle ? "text-foreground" : "text-red-600 dark:text-red-400"}>{(lineDD * reps).toFixed(1)}</span>
                             </>
