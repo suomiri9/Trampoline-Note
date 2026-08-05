@@ -141,6 +141,27 @@ interface NoteDialogProps {
 
 
 
+/** Height (px) of the viewport strip covered by the fixed bottom nav. The
+ * nav sits at z-[60] — deliberately ABOVE dialogs and dropdowns — so a row
+ * menu that extends down behind it becomes unreachable. This measures the
+ * covered strip live (includes safe-area insets and nav size) so the menus'
+ * collisionPadding makes Radix flip them upward before they slide under. */
+function useBottomNavCoverPx(): number {
+  const [px, setPx] = useState(96);
+  useEffect(() => {
+    const measure = () => {
+      const nav = document.querySelector("[data-bottom-nav]");
+      if (!nav) return;
+      const top = nav.getBoundingClientRect().top;
+      setPx(Math.max(0, Math.round(window.innerHeight - top)) + 8);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+  return px;
+}
+
 function SortablePracticeGroup({ gId, isConnected, children }: { gId: string; isConnected: boolean; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: gId });
   return (
@@ -172,6 +193,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const globalRecentSkillIds = useRecentSkills();
   const persistedRecentEntries = useRecentEntries();
   const { data: routines, createRoutine, isCreating: isCreatingRoutine } = useRoutines();
+  const bottomNavCoverPx = useBottomNavCoverPx();
   
   const [selectedSkills, setSelectedSkills] = useState<SkillItem[]>([]);
   const [isConnectMode, setIsConnectMode] = useState(false);
@@ -2500,7 +2522,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                       </div>
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-36 rounded-xl" onCloseAutoFocus={(e) => e.preventDefault()}>
+                                        <DropdownMenuContent align="end" className="w-36 rounded-xl" collisionPadding={{ top: 8, bottom: bottomNavCoverPx }} onCloseAutoFocus={(e) => e.preventDefault()}>
                                           <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (grpNote !== undefined && grpNote !== null) { updateSkillNote(grpNoteIdx, undefined); } else { addNoteAndFocus(grpNoteIdx); } }}><MessageSquare className="h-3.5 w-3.5" /> {grpNote !== undefined && grpNote !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
                                           <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
                                           {canShapeSwapGroup(group.indices) && (
@@ -2582,7 +2604,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         {(!isConnected || iIdx === 0) ? (
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-36 rounded-xl" onCloseAutoFocus={(e) => e.preventDefault()}>
+                                            <DropdownMenuContent align="end" className="w-36 rounded-xl" collisionPadding={{ top: 8, bottom: bottomNavCoverPx }} onCloseAutoFocus={(e) => e.preventDefault()}>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { addNoteAndFocus(idx); } }}><MessageSquare className="h-3.5 w-3.5" /> {item.note !== undefined && item.note !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
                                               {turnMenuItems}
@@ -2652,7 +2674,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         {(!isConnected || iIdx === 0) ? (
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-36 rounded-xl" onCloseAutoFocus={(e) => e.preventDefault()}>
+                                            <DropdownMenuContent align="end" className="w-36 rounded-xl" collisionPadding={{ top: 8, bottom: bottomNavCoverPx }} onCloseAutoFocus={(e) => e.preventDefault()}>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => { if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); } else { addNoteAndFocus(idx); } }}><MessageSquare className="h-3.5 w-3.5" /> {item.note !== undefined && item.note !== null ? "Remove Note" : "Add Note"}</DropdownMenuItem>
                                               <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => duplicateGroup(group.indices)}><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
                                               {turnMenuItems}
@@ -2732,7 +2754,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                       {(!isConnected || iIdx === 0) ? (
                                         <DropdownMenu>
                                           <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end" className="w-36 rounded-xl" onCloseAutoFocus={(e) => e.preventDefault()}>
+                                          <DropdownMenuContent align="end" className="w-36 rounded-xl" collisionPadding={{ top: 8, bottom: bottomNavCoverPx }} onCloseAutoFocus={(e) => e.preventDefault()}>
                                             <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => {
                                               if (item.note !== undefined && item.note !== null) { updateSkillNote(idx, undefined); }
                                               else { addNoteAndFocus(isConnected ? group.indices[0] : idx); }

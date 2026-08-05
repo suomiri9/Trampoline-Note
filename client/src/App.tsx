@@ -177,7 +177,7 @@ function Navigation() {
   // popups. The wrapper itself is click-through; only the pill and the
   // launcher accept pointer events.
   return (
-    <div className="fixed bottom-4 left-0 right-0 z-[60] mb-safe px-1 flex items-center justify-center gap-1.5 pointer-events-none">
+    <div data-bottom-nav className="fixed bottom-4 left-0 right-0 z-[60] mb-safe px-1 flex items-center justify-center gap-1.5 pointer-events-none">
       <nav className="glass-surface px-1.5 sm:px-2 pt-2 pb-2 rounded-2xl flex items-center gap-0.5 sm:gap-1 pointer-events-auto">
       {navItems.map((item) => {
         const active =
