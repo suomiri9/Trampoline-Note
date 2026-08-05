@@ -55,8 +55,12 @@ const LEVELS: Record<
 };
 
 function PushCard() {
+  // Send the athlete's LOCAL calendar date — the server clock is UTC, which
+  // runs up to half a day behind (e.g. NZ mornings). "en-CA" formats as
+  // YYYY-MM-DD. Having the date in the key also refetches after midnight.
+  const localDate = new Date().toLocaleDateString("en-CA");
   const { data, isLoading, error, refetch, isRefetching } = useQuery<PushRecommendation>({
-    queryKey: ["/api/coach/push"],
+    queryKey: [`/api/coach/push?date=${localDate}`],
     staleTime: 10 * 60 * 1000,
     retry: 1,
   });

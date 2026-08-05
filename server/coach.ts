@@ -9,6 +9,7 @@ import OpenAI from "openai";
 import { storage } from "./storage";
 import { storeCoachImages } from "./coach-images";
 import { getWhoopDashboardDataCached, WhoopNotConnectedError } from "./whoop";
+import { resolveClientDate, pickTodayRecovery } from "./coach-dates";
 import type { Skill, Routine, NoteResponse } from "@shared/schema";
 import { sanitizeDeductionValues } from "@shared/execution";
 import {
@@ -106,7 +107,7 @@ function fmt(n: number | null | undefined, digits = 1): string {
   return n == null ? "-" : n.toFixed(digits);
 }
 
-export async function buildCoachContext(userId: string): Promise<CoachContext> {
+export async function buildCoachContext(userId: string, clientDate?: unknown): Promise<CoachContext> {
   const [notes, skills, routines, scores] = await Promise.all([
     storage.getNotes(userId, { limit: 60 }),
     storage.getSkills(userId),
@@ -115,7 +116,9 @@ export async function buildCoachContext(userId: string): Promise<CoachContext> {
   ]);
 
   const today = new Date();
-  const todayKey = today.toISOString().substring(0, 10);
+  // The athlete's LOCAL calendar day (client-reported), not the server's UTC
+  // day — east-of-UTC athletes are otherwise a day behind all morning.
+  const todayKey = resolveClientDate(clientDate);
   const cutoff = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
     .toISOString()
     .substring(0, 10);
@@ -183,15 +186,7 @@ export async function buildCoachContext(userId: string): Promise<CoachContext> {
         `  ${date} · recovery ${d.rec != null ? Math.round(d.rec) + "%" : "-"} · HRV ${d.hrv != null ? Math.round(d.hrv) + "ms" : "-"} · sleep ${d.sleep != null ? d.sleep.toFixed(1) + "h" : "-"} · strain ${d.strain != null ? d.strain.toFixed(1) : "-"}`,
       );
     }
-    let todayRow = byDate.get(todayKey);
-    if (!todayRow && days.length) {
-      // Recovery days are the athlete's LOCAL wake days, which can run ahead
-      // of the server's UTC date (east of UTC around midnight) — accept the
-      // newest day when it is later than the UTC "today".
-      const [newestDate, newestRow] = days[days.length - 1];
-      if (newestDate > todayKey) todayRow = newestRow;
-    }
-    todayRecovery = todayRow?.rec ?? null;
+    todayRecovery = pickTodayRecovery(whoop.recovery, todayKey)?.score ?? null;
   } catch (err) {
     if (!(err instanceof WhoopNotConnectedError)) {
       // WHOOP API failure: proceed with load-only guidance, note the gap.
@@ -238,13 +233,28 @@ export function clearCoachPushCache(userId: string): void {
   }
 }
 
-export async function getPushRecommendation(userId: string): Promise<PushRecommendation> {
-  const dateKey = new Date().toISOString().substring(0, 10);
-  const cacheKey = `${userId}:${dateKey}`;
+export async function getPushRecommendation(userId: string, clientDate?: unknown): Promise<PushRecommendation> {
+  const dateKey = resolveClientDate(clientDate);
+  // The cache key includes today's recovery state so the card regenerates
+  // the moment WHOOP syncs the day's recovery — a rec computed at 7am
+  // before the sync must not survive until midnight showing yesterday's
+  // numbers. The WHOOP dashboard data has its own 5-minute cache, so this
+  // pre-check stays cheap.
+  let recFingerprint: string;
+  try {
+    const whoop = await getWhoopDashboardDataCached(userId, 14);
+    const todayRec = pickTodayRecovery(whoop.recovery, dateKey);
+    recFingerprint = todayRec
+      ? `${todayRec.date}:${todayRec.score == null ? "-" : Math.round(todayRec.score)}`
+      : "none";
+  } catch (err) {
+    recFingerprint = err instanceof WhoopNotConnectedError ? "nolink" : "unavail";
+  }
+  const cacheKey = `${userId}:${dateKey}:${recFingerprint}`;
   const hit = pushCache.get(cacheKey);
   if (hit) return hit;
 
-  const ctx = await buildCoachContext(userId);
+  const ctx = await buildCoachContext(userId, dateKey);
 
   const system = [
     "You advise ONE trampoline athlete on how hard to push in today's training, inside their training log app.",
@@ -296,6 +306,9 @@ export async function getPushRecommendation(userId: string): Promise<PushRecomme
     todayRecovery: ctx.todayRecovery,
     date: dateKey,
   };
+  // Keep exactly one live entry per user — older days and stale recovery
+  // fingerprints are dead weight.
+  clearCoachPushCache(userId);
   pushCache.set(cacheKey, rec);
   return rec;
 }
@@ -580,6 +593,7 @@ export async function coachChat(
   page?: string,
   images?: string[],
   onDelta?: (chunk: string) => void,
+  clientDate?: unknown,
 ): Promise<{
   reply: string;
   draft: CoachDraft | null;
@@ -588,7 +602,7 @@ export async function coachChat(
   pointProposal: CoachPointProposal | null;
   suggestions: string[];
 }> {
-  const ctx = await buildCoachContext(userId);
+  const ctx = await buildCoachContext(userId, clientDate);
   const [history, allSkills, routines, user] = await Promise.all([
     storage.getCoachMessages(userId),
     storage.getSkills(userId),

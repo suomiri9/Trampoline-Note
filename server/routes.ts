@@ -776,7 +776,10 @@ export async function registerRoutes(
 
   app.get("/api/coach/push", isAuthenticated, async (req, res) => {
     try {
-      const rec = await getPushRecommendation(getUserId(req));
+      const rec = await getPushRecommendation(
+        getUserId(req),
+        typeof req.query.date === "string" ? req.query.date : undefined,
+      );
       res.json(rec);
     } catch (err) {
       if (err instanceof CoachUnavailableError) {
@@ -861,8 +864,11 @@ export async function registerRoutes(
           )
           .max(3)
           .optional(),
+        // Athlete's local calendar date (YYYY-MM-DD) so the coach's "today"
+        // matches their timezone, not the server's UTC day.
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
       });
-      const { content, page, images } = schema.parse(req.body);
+      const { content, page, images, date } = schema.parse(req.body);
       if (!content && (!images || images.length === 0)) {
         return res.status(400).json({ message: "Message is empty" });
       }
@@ -893,6 +899,7 @@ export async function registerRoutes(
           page,
           images,
           (chunk) => sendEvent({ delta: chunk }),
+          date,
         );
         // Chips are persisted on the assistant message row inside coachChat,
         // so reopening the chat later re-shows them.

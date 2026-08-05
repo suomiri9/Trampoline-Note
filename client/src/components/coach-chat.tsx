@@ -948,6 +948,9 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
         body: JSON.stringify({
           content,
           page: location,
+          // Local calendar date so the coach's "today" matches the athlete's
+          // timezone (the server clock is UTC).
+          date: new Date().toLocaleDateString("en-CA"),
           ...(images.length > 0 ? { images } : {}),
         }),
         credentials: "include",

@@ -21,3 +21,4 @@
 - [Offline lazy route chunks](offline-lazy-chunks.md) — never rebuild a suspended React.lazy (infinite remount loop) and never import() while offline (module-map poisoning); recovery component owns retries.
 - [Local headless e2e fallback](local-headless-e2e.md) — when the testing subagent's browser is down, run playwright-core locally via LD_LIBRARY_PATH + $REPLIT_DEV_DOMAIN (Secure cookies fail on http).
 - [PageHeader must be first](page-header-first-element.md) — sticky PageHeader has a negative top margin (page-header-safe); anything rendered above it gets covered — move it below, or pass `className="static !mt-0"`.
+- [Server UTC vs local "today"](utc-vs-local-today.md) — NZ athlete is up to half a day ahead of server UTC; "today" logic needs a client-sent local date, and day-keyed caches must fingerprint the data too.

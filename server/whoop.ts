@@ -343,7 +343,11 @@ export async function getWhoopDashboardData(userId: string, days: number): Promi
 // ---- Light in-memory cache to respect WHOOP rate limits (per user+range) ----
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
-const cache = new Map<string, { at: number; data: WhoopDashboardData }>();
+// Failures are cached too (briefly) — several callers probe WHOOP on every
+// request (e.g. the push-card recovery fingerprint), so an outage must not
+// turn each of them into a fresh failed WHOOP round-trip.
+const ERROR_TTL_MS = 60 * 1000;
+const cache = new Map<string, { at: number; data?: WhoopDashboardData; error?: unknown }>();
 
 export function clearWhoopCache(userId: string): void {
   for (const key of Array.from(cache.keys())) {
@@ -354,8 +358,21 @@ export function clearWhoopCache(userId: string): void {
 export async function getWhoopDashboardDataCached(userId: string, days: number): Promise<WhoopDashboardData> {
   const key = `${userId}:${days}`;
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data;
-  const data = await getWhoopDashboardData(userId, days);
-  cache.set(key, { at: Date.now(), data });
-  return data;
+  if (hit) {
+    const age = Date.now() - hit.at;
+    if (hit.data !== undefined && age < CACHE_TTL_MS) return hit.data;
+    if (hit.error !== undefined && age < ERROR_TTL_MS) throw hit.error;
+  }
+  try {
+    const data = await getWhoopDashboardData(userId, days);
+    cache.set(key, { at: Date.now(), data });
+    return data;
+  } catch (err) {
+    // "Not connected" is NOT cached: it's a cheap local token lookup (no API
+    // call) and must clear the moment the athlete links WHOOP.
+    if (!(err instanceof WhoopNotConnectedError)) {
+      cache.set(key, { at: Date.now(), error: err });
+    }
+    throw err;
+  }
 }
