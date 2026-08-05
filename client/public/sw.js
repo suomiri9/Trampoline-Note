@@ -3,7 +3,7 @@
  * so an installed PWA can launch with zero network. API requests are NOT
  * intercepted — offline behaviour for data is handled at the React layer. */
 
-const CACHE = 'tn-shell-v10';
+const CACHE = 'tn-shell-v11';
 
 // How long a navigation waits on a slow network before falling back to the
 // cached shell. Keeps the app openable on flaky/slow wifi (school wifi etc.)
@@ -23,11 +23,31 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE).then(async (cache) => {
       await Promise.all(
-        APP_SHELL.map((url) =>
-          fetch(url, { cache: 'reload', credentials: 'same-origin' })
-            .then((res) => (res && res.ok ? cache.put(url, res) : null))
-            .catch(() => null),
-        ),
+        APP_SHELL.map(async (url) => {
+          try {
+            const res = await fetch(url, { cache: 'reload', credentials: 'same-origin' });
+            if (res && res.ok) {
+              await cache.put(url, res);
+              return;
+            }
+          } catch {
+            // fall through
+          }
+          // '/' is the navigation shell — without it the app cannot open
+          // offline at all. If it can't be fetched now (flaky wifi during an
+          // update), salvage the previous version's copy instead of shipping
+          // an empty shell cache.
+          if (url === '/') {
+            const prior = await caches.match('/');
+            if (prior) {
+              await cache.put('/', prior);
+            } else {
+              // No shell available at all — abort this install so the old
+              // service worker (and its cache) stays in charge.
+              throw new Error('shell precache failed');
+            }
+          }
+        }),
       );
     }),
   );
@@ -35,12 +55,17 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    Promise.all([
-      caches.keys().then((keys) =>
-        Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))),
-      ),
-      self.clients.claim(),
-    ]),
+    (async () => {
+      // Safety net: never delete old caches until the new one has a shell.
+      const cache = await caches.open(CACHE);
+      if (!(await cache.match('/'))) {
+        const prior = await caches.match('/');
+        if (prior) await cache.put('/', prior);
+      }
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+      await self.clients.claim();
+    })(),
   );
 });
 
