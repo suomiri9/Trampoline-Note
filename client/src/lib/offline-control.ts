@@ -2,6 +2,42 @@ import { setOfflineModeEnabled } from "./offline-mode";
 import { drainQueue, clearOfflineDataAndQueue } from "./offline-queue";
 import { queryClient } from "./queryClient";
 
+/** App-shell URLs — must stay in sync with APP_SHELL in client/public/sw.js. */
+export const APP_SHELL_URLS = [
+  "/",
+  "/manifest.webmanifest",
+  "/favicon.png",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/apple-touch-icon.png",
+];
+
+/** Finds the service worker's current shell cache (the highest-numbered
+ * `tn-shell-vN`). Returns null when no shell cache exists yet. Page code must
+ * NEVER hardcode the version — sw.js bumps its CACHE name on every shell
+ * change, and a hardcoded copy silently goes stale (it happened: settings
+ * kept checking v10 after sw.js moved to v11, refilling a dead cache). */
+export async function findShellCacheName(): Promise<string | null> {
+  if (typeof caches === "undefined") return null;
+  try {
+    const keys = await caches.keys();
+    let best: string | null = null;
+    let bestN = -1;
+    for (const key of keys) {
+      const m = /^tn-shell-v(\d+)$/.exec(key);
+      if (!m) continue;
+      const n = parseInt(m[1], 10);
+      if (n > bestN) {
+        bestN = n;
+        best = key;
+      }
+    }
+    return best;
+  } catch {
+    return null;
+  }
+}
+
 export async function registerServiceWorker(): Promise<void> {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
   try {

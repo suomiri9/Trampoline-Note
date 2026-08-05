@@ -59,20 +59,35 @@ import {
   tryNetworkOrEnqueueMenuSettings,
 } from "@/lib/offline-queue";
 import type { FailedItem } from "@/lib/offline-db";
-import { enableOfflineMode, disableOfflineMode, registerServiceWorker } from "@/lib/offline-control";
+import {
+  enableOfflineMode,
+  disableOfflineMode,
+  registerServiceWorker,
+  findShellCacheName,
+  APP_SHELL_URLS,
+} from "@/lib/offline-control";
 import { pushAccountSettings } from "@/lib/settings-sync";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 /** Animates a percent value toward `target` one point at a time, so the
- * progress bar ticks through every percent instead of jumping. */
-function useAnimatedPercent(target: number): number {
-  const [shown, setShown] = useState(target);
+ * progress bar ticks through every percent instead of jumping. `target` is
+ * null until the first real status arrives; the hook snaps straight to that
+ * first value, so an already-complete download shows 100% immediately
+ * instead of fake-animating 0 → 100 on every page open. */
+function useAnimatedPercent(target: number | null): number | null {
+  const [shown, setShown] = useState<number | null>(target);
   useEffect(() => {
-    if (shown === target) return;
+    if (target === null || shown === target) return;
+    if (shown === null) {
+      setShown(target);
+      return;
+    }
     const t = setTimeout(() => {
-      setShown((s) => (s < target ? s + 1 : s > target ? s - 1 : s));
+      setShown((s) =>
+        s === null ? target : s < target ? s + 1 : s > target ? s - 1 : s,
+      );
     }, 25);
     return () => clearTimeout(t);
   }, [shown, target]);
@@ -203,7 +218,9 @@ export default function SettingsPage() {
     ];
     return Math.round((parts.reduce((a, b) => a + b, 0) / parts.length) * 100);
   }, [downloadStatus]);
-  const animatedDownloadPercent = useAnimatedPercent(downloadTargetPercent);
+  const animatedDownloadPercent = useAnimatedPercent(
+    downloadStatus ? downloadTargetPercent : null,
+  );
 
   // Rough time-left estimate based on how fast the download has progressed
   // since this page started watching it.
@@ -251,23 +268,20 @@ export default function SettingsPage() {
         // ignore
       }
       // Fine-grained shell progress: fraction of app-shell files already in
-      // the service worker cache. Must stay in sync with APP_SHELL + CACHE
-      // in client/public/sw.js.
+      // the service worker's CURRENT cache. The cache name is discovered at
+      // runtime (never hardcoded — sw.js bumps it on every shell change).
       let shellProgress = sw ? 1 : 0;
       try {
         if (typeof caches !== "undefined") {
-          const shellUrls = [
-            "/",
-            "/manifest.webmanifest",
-            "/favicon.png",
-            "/icon-192.png",
-            "/icon-512.png",
-            "/apple-touch-icon.png",
-          ];
-          const cache = await caches.open("tn-shell-v10");
-          const hits = await Promise.all(shellUrls.map((u) => cache.match(u)));
-          const cachedCount = hits.filter(Boolean).length;
-          shellProgress = cachedCount / shellUrls.length;
+          const shellCacheName = await findShellCacheName();
+          if (shellCacheName) {
+            const cache = await caches.open(shellCacheName);
+            const hits = await Promise.all(APP_SHELL_URLS.map((u) => cache.match(u)));
+            const cachedCount = hits.filter(Boolean).length;
+            shellProgress = cachedCount / APP_SHELL_URLS.length;
+          } else {
+            shellProgress = 0;
+          }
         }
       } catch {
         // ignore — fall back to the binary sw flag
@@ -317,22 +331,18 @@ export default function SettingsPage() {
           void queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
         if (shellIncomplete) {
           // Re-register the service worker and backfill any missing shell
-          // files straight into its cache from the page.
+          // files straight into its CURRENT cache from the page. If no shell
+          // cache exists yet, skip — the service worker's install step will
+          // create and precache it.
           void registerServiceWorker();
           void (async () => {
             try {
               if (typeof caches === "undefined") return;
-              const cache = await caches.open("tn-shell-v10");
-              const shellUrls = [
-                "/",
-                "/manifest.webmanifest",
-                "/favicon.png",
-                "/icon-192.png",
-                "/icon-512.png",
-                "/apple-touch-icon.png",
-              ];
+              const shellCacheName = await findShellCacheName();
+              if (!shellCacheName) return;
+              const cache = await caches.open(shellCacheName);
               await Promise.all(
-                shellUrls.map(async (u) => {
+                APP_SHELL_URLS.map(async (u) => {
                   if (await cache.match(u)) return;
                   const res = await fetch(u, { cache: "reload", credentials: "same-origin" });
                   if (res.ok) await cache.put(u, res);
@@ -738,7 +748,7 @@ export default function SettingsPage() {
                 ];
                 const readyCount = steps.filter((s) => s.ready).length;
                 const allReady = readyCount === steps.length;
-                const percent = animatedDownloadPercent;
+                const percent = animatedDownloadPercent ?? downloadTargetPercent;
                 return (
                   <div
                     className="mt-3 rounded-xl bg-secondary/40 px-4 py-3"
