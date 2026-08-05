@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 
 // Lazy route loader that doesn't blank the whole app when a page's JS chunk
 // can't be fetched (e.g. navigating offline to a page that was never loaded).
@@ -16,47 +16,96 @@ import { lazy, Suspense } from "react";
 // failed attempt creates a *fresh* lazy component (keyed by a nonce) the next
 // time the route mounts, so SPA navigation re-attempts the import.
 function lazyPage(load: () => Promise<{ default: React.ComponentType<any> }>) {
-  let nonce = 0;
-  let current: { key: number; Comp: React.LazyExoticComponent<React.ComponentType<any>> } | null = null;
-  let failed = false;
+  // Once the real module loads (first try or any retry), it's cached here so
+  // every later mount renders it instantly with no further network fetches.
+  let Loaded: React.ComponentType<any> | null = null;
+  // Chunk URL captured from the failed-import error. Chrome caches a FAILED
+  // dynamic import in its module map, so re-running the same import() rejects
+  // instantly without touching the network — retries must re-import the chunk
+  // by URL with a cache-busting query instead.
+  let failedUrl: string | null = null;
+  let retrySeq = 0;
 
-  const makeLazy = () => {
-    const key = ++nonce;
-    failed = false;
-    const Comp = lazy(() =>
-      load().catch(() => {
-        failed = true;
-        return {
-          default: function ChunkLoadFallback() {
-            return (
-              <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 px-6 text-center" data-testid="card-chunk-offline">
-                <p className="text-lg font-medium">This page isn't available offline yet</p>
-                <p className="text-sm text-muted-foreground">
-                  It hasn't been downloaded to this device. Reconnect and try again.
-                </p>
-                <button
-                  className="mt-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm"
-                  onClick={() => window.location.reload()}
-                  data-testid="button-chunk-retry"
-                >
-                  Retry
-                </button>
-              </div>
-            );
-          },
-        };
-      }),
-    );
-    current = { key, Comp };
-    return current;
+  const attemptLoad = async (): Promise<{ default: React.ComponentType<any> }> => {
+    // Never attempt the import while the browser knows it's offline: a failed
+    // fetch poisons the browser's module map (both the chunk itself and its
+    // modulepreload'ed dependencies), after which even online imports of the
+    // same URLs reject instantly from cache. Skipping the attempt keeps the
+    // module map clean so the first online retry succeeds normally.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      throw new Error("offline: skipping chunk import");
+    }
+    try {
+      return await load();
+    } catch (err) {
+      const m = /https?:\/\/\S+\.js/.exec(String(err));
+      if (m) failedUrl = m[0];
+      if (!failedUrl) throw err;
+      // Fresh URL → fresh module-map entry → real network re-fetch.
+      return await import(/* @vite-ignore */ `${failedUrl}?retry=${++retrySeq}`);
+    }
   };
 
+  // ChunkRecovery is what React.lazy resolves to when the FIRST import fails
+  // (e.g. navigating offline to a never-downloaded page). React.lazy caches
+  // its result forever, so recovery cannot happen by rebuilding the lazy
+  // component: while the route is suspended, React re-mounts the subtree on
+  // every retry, and "rebuild on failure" loops forever creating fresh
+  // pending imports (the app just spins). Instead, this component owns all
+  // retries itself: on every mount (and on Retry taps) it re-runs the dynamic
+  // import and swaps in the real page in place — pure SPA, no reload.
+  function ChunkRecovery(props: any) {
+    const [Comp, setComp] = useState<React.ComponentType<any> | null>(() => Loaded);
+    const [attempt, setAttempt] = useState(0);
+    const [failedNow, setFailedNow] = useState(false);
+
+    useEffect(() => {
+      if (Comp) return;
+      let alive = true;
+      setFailedNow(false);
+      attemptLoad()
+        .then((m) => {
+          Loaded = m.default;
+          if (alive) setComp(() => m.default);
+        })
+        .catch(() => {
+          if (alive) setFailedNow(true);
+        });
+      return () => {
+        alive = false;
+      };
+    }, [Comp, attempt]);
+
+    if (Comp) return <Comp {...props} />;
+    if (!failedNow) return <PageLoader />;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 px-6 text-center" data-testid="card-chunk-offline">
+        <p className="text-lg font-medium">This page isn't available offline yet</p>
+        <p className="text-sm text-muted-foreground">
+          It hasn't been downloaded to this device. Reconnect and try again.
+        </p>
+        <button
+          className="mt-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm"
+          onClick={() => setAttempt((a) => a + 1)}
+          data-testid="button-chunk-retry"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const Lazy = lazy(() =>
+    attemptLoad()
+      .then((m) => {
+        Loaded = m.default;
+        return m;
+      })
+      .catch(() => ({ default: ChunkRecovery })),
+  );
+
   return function LazyPageGate(props: any) {
-    // If the last attempt failed, build a fresh lazy component so this
-    // mount re-runs the dynamic import instead of reusing the cached failure.
-    const entry = !current || failed ? makeLazy() : current;
-    const { key, Comp } = entry;
-    return <Comp key={key} {...props} />;
+    return <Lazy {...props} />;
   };
 }
 

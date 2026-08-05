@@ -1,10 +1,18 @@
 ---
 name: Offline lazy route chunks
-description: Route chunk imports fail offline and used to blank the whole app; lazyPage fallback + retry semantics.
+description: How lazy route chunk loading fails offline and the recovery design that actually works
 ---
 
-Rule: every route in App.tsx must be created via `lazyPage()` (not raw `lazy()`), which catches a failed chunk import and renders a "This page isn't available offline yet" screen (testid `card-chunk-offline`) instead of crashing the app to blank.
+- Blank-app-offline = failed dynamic chunk import, not app logic; all routes must use `lazyPage()`; preload pages online before offline e2e.
 
-**Why:** Navigating offline to a page whose JS chunk was never fetched rejects the dynamic import; React error-boundaries were absent, so the whole tree unmounted (this masqueraded as a "save crashed the app" bug during offline e2e testing — the real trigger was a stray nav click to /stats).
+## Recovery design (verified in real browser, prod build)
+The rule: **never rebuild a React.lazy component while its route is suspended.** On retry React re-mounts the suspended subtree, so "rebuild fresh lazy on failure" loops forever (thousands of import attempts, eternal spinner, fallback never shows).
 
-**How to apply:** When debugging "blank app offline" reports, check pageerror for `Failed to fetch dynamically imported module` first — it's a chunk miss, not app logic. Note: React lazy caches the rejection-fallback for the session; only the fallback's reload button recovers (improvement tracked as a follow-up task). E2E testers must preload pages online before going offline.
+Working design (in `lazyPage`):
+1. `React.lazy` resolves ONCE; on failure it resolves to a `ChunkRecovery` component (never rejects, never rebuilt).
+2. `ChunkRecovery` owns retries: on every mount (and Retry taps) it re-runs the import and swaps the real page in place — SPA recovery, no reload.
+3. **Never call `import()` while `navigator.onLine === false`.** A failed fetch poisons Chrome's module map — including all `modulepreload`ed dependency chunks — after which even online imports reject instantly from cache. Skip the attempt offline; the first online retry then succeeds normally.
+4. Best-effort for flaky-network poisoning: extract the chunk URL from the import error and re-import with `?retry=N` (fresh module-map entry). This only cures the parent chunk, not poisoned deps — prevention (rule 3) is the real fix.
+
+**Why:** verified offline→online real-browser flow; simulation/unit reasoning missed both the remount loop and module-map poisoning.
+**How to apply:** any change to `lazyPage` in `client/src/App.tsx` must preserve rules 1–3 and re-verify with a real offline browser flow.
