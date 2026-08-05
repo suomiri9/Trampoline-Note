@@ -158,6 +158,7 @@ export default function SettingsPage() {
     (allSkills ?? []).find((s) => skillDisplayCode(s, allSkills ?? []) === code);
   const [downloadStatus, setDownloadStatus] = useState<{
     sw: boolean;
+    shellProgress: number; // 0..1 — fraction of app-shell files cached
     accountReady: boolean;
     skillsCount: number | null;
     drillsCount: number | null;
@@ -180,6 +181,28 @@ export default function SettingsPage() {
         }
       } catch {
         // ignore
+      }
+      // Fine-grained shell progress: fraction of app-shell files already in
+      // the service worker cache. Must stay in sync with APP_SHELL + CACHE
+      // in client/public/sw.js.
+      let shellProgress = sw ? 1 : 0;
+      try {
+        if (typeof caches !== "undefined") {
+          const shellUrls = [
+            "/",
+            "/manifest.webmanifest",
+            "/favicon.png",
+            "/icon-192.png",
+            "/icon-512.png",
+            "/apple-touch-icon.png",
+          ];
+          const cache = await caches.open("tn-shell-v10");
+          const hits = await Promise.all(shellUrls.map((u) => cache.match(u)));
+          const cachedCount = hits.filter(Boolean).length;
+          shellProgress = cachedCount / shellUrls.length;
+        }
+      } catch {
+        // ignore — fall back to the binary sw flag
       }
       let accountReady = false;
       let skillsCount: number | null = null;
@@ -211,6 +234,7 @@ export default function SettingsPage() {
       if (!alive) return;
       setDownloadStatus({
         sw,
+        shellProgress,
         accountReady,
         skillsCount,
         drillsCount,
@@ -586,7 +610,7 @@ export default function SettingsPage() {
                 </p>
               )}
               {offlineModeEnabled && downloadStatus && (() => {
-                const { sw, accountReady, skillsCount, drillsCount, connectionsCount, routinesCount } = downloadStatus;
+                const { sw, shellProgress, accountReady, skillsCount, drillsCount, connectionsCount, routinesCount } = downloadStatus;
                 const skillsLoaded = skillsCount !== null;
                 const drillsLoaded = drillsCount !== null;
                 const connectionsLoaded = connectionsCount !== null;
@@ -600,7 +624,13 @@ export default function SettingsPage() {
                   { testId: "status-routines", label: "Routines", ready: routinesReady, count: routinesCount },
                 ];
                 const readyCount = steps.filter((s) => s.ready).length;
-                const percent = Math.round((readyCount / steps.length) * 100);
+                // Fractional progress: the app-shell step counts partially
+                // (per cached file) so the bar moves in smaller increments.
+                const progressSum =
+                  steps.reduce((sum, s) => sum + (s.ready ? 1 : 0), 0) -
+                  (sw ? 1 : 0) +
+                  Math.max(sw ? 1 : 0, shellProgress);
+                const percent = Math.round((progressSum / steps.length) * 100);
                 const allReady = readyCount === steps.length;
                 return (
                   <div
