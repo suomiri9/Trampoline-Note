@@ -297,7 +297,7 @@ export default function SettingsPage() {
       // online instead of waiting for the user to visit those pages.
       if (
         isOnline &&
-        (skillsCount === null || routinesCount === null) &&
+        (skillsCount === null || routinesCount === null || !accountReady) &&
         Date.now() - lastPrefetchRef.current > 10000
       ) {
         lastPrefetchRef.current = Date.now();
@@ -305,6 +305,8 @@ export default function SettingsPage() {
           void queryClient.prefetchQuery({ queryKey: ["/api/skills"], staleTime: 0 });
         if (routinesCount === null)
           void queryClient.prefetchQuery({ queryKey: ["/api/routines"], staleTime: 0 });
+        if (!accountReady)
+          void queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
       }
       if (!alive) return;
       setDownloadStatus({

@@ -38,6 +38,10 @@ export async function enableOfflineMode(): Promise<void> {
   // left the download progress stuck until the user visited those pages.
   void queryClient.prefetchQuery({ queryKey: ["/api/skills"], staleTime: 0 });
   void queryClient.prefetchQuery({ queryKey: ["/api/routines"], staleTime: 0 });
+  // Re-run the auth query so the account (incl. points to fix) is mirrored
+  // into IndexedDB — its fetcher does the mirroring, but react-query won't
+  // call it again on its own since the user data is already fresh.
+  void queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
 }
 
 export async function disableOfflineMode(): Promise<void> {
