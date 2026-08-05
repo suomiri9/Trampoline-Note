@@ -57,26 +57,7 @@ export default function StatsPage() {
   const { data: routines, isLoading: routinesLoading } = useRoutines();
   const [trackTurns] = useTrackTurns();
 
-  if (offlineView) {
-    return (
-      <PageLayout>
-        <div className="flex items-center gap-3 mb-8">
-          <div className="p-3 bg-slate-100 dark:bg-slate-800/30 rounded-2xl icon-3d">
-            <TrendingUp className="w-6 h-6 text-slate-500" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-display font-normal">Progress Analytics</h1>
-            <p className="text-muted-foreground text-sm">Tracking your daily training intensity</p>
-          </div>
-        </div>
-        <OfflinePlaceholder
-          testId="card-offline-stats"
-          hint="Stats need your full training history. They'll be back when you reconnect."
-        />
-      </PageLayout>
-    );
-  }
-
+  // Offline: stats render from the mirrored notes/skills/routines caches.
   if (notesLoading || skillsLoading || routinesLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">

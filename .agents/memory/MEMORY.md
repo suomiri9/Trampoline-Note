@@ -17,4 +17,5 @@
 - [Tracker target model](tracker-target-model.md) — ToF/exec sessions target exactly one of routine|skill|ad-hoc skillIds (storage-enforced, not zod); bound values to target seqLen at every layer; deductions API takes points, UI tenths.
 - [User-scoped localStorage fallbacks](user-scoped-local-fallback.md) — per-account prefs with a local fallback must namespace the key by user id; server null → empty, never the device blob.
 - [Offline download mirroring](offline-download-mirroring.md) — invalidateQueries won't refetch unmounted queries; force-mirror with prefetch/refetch or the offline "download" stalls forever.
+- [Offline lazy route chunks](offline-lazy-chunks.md) — blank-app-offline = failed dynamic chunk import, not app logic; all routes must use lazyPage(); preload pages online before offline e2e.
 - [PageHeader must be first](page-header-first-element.md) — sticky PageHeader has a negative top margin (page-header-safe); anything rendered above it gets covered — move it below, or pass `className="static !mt-0"`.

@@ -61,6 +61,7 @@ function urlForKind(kind: QueueKind): string {
     case 'routine': return '/api/routines';
     case 'focusMemo': return '/api/auth/focus-memo';
     case 'debutsHidden': return '/api/auth/debuts-hidden';
+    case 'menuSettings': return '/api/auth/menu-settings';
     case 'tofSession': return '/api/tof-sessions';
     case 'executionSession': return '/api/execution-sessions';
   }
@@ -243,7 +244,7 @@ export async function tryNetworkOrEnqueue<T>(
 }
 
 /** Entity kinds that support offline UPDATE/DELETE of already-synced rows. */
-export type ChangeKind = 'note' | 'score' | 'tofSession' | 'executionSession';
+export type ChangeKind = 'note' | 'score' | 'tofSession' | 'executionSession' | 'skill' | 'routine';
 
 function listPathForChange(kind: ChangeKind): string {
   switch (kind) {
@@ -251,6 +252,8 @@ function listPathForChange(kind: ChangeKind): string {
     case 'score': return '/api/scores';
     case 'tofSession': return '/api/tof-sessions';
     case 'executionSession': return '/api/execution-sessions';
+    case 'skill': return '/api/skills';
+    case 'routine': return '/api/routines';
   }
 }
 
@@ -260,6 +263,8 @@ function cacheKeyForChange(kind: ChangeKind): string {
     case 'score': return 'scores';
     case 'tofSession': return 'tofSessions';
     case 'executionSession': return 'executionSessions';
+    case 'skill': return 'skills';
+    case 'routine': return 'routines';
   }
 }
 
@@ -268,7 +273,7 @@ function cacheKeyForChange(kind: ChangeKind): string {
  * (IndexedDB, so it survives reloads while offline) and every mounted
  * react-query list query (plain arrays and the paged notes shape).
  */
-async function applyOptimisticListChange(
+export async function applyOptimisticListChange(
   kind: ChangeKind,
   id: number,
   method: 'PUT' | 'DELETE',
@@ -363,6 +368,71 @@ export async function tryNetworkOrEnqueueChange<T>(
   } catch (err) {
     if (offline && isNetworkOrAbortError(err)) {
       return enqueueEntityChange(kind, id, method, body);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Queue a skills-reorder PATCH while collapsing any prior queued reorder
+ * (last order wins). Also patches sortOrder in the IndexedDB skills mirror
+ * so the new order survives reloads while offline.
+ */
+export async function enqueueSkillsReorder(orderedIds: number[]): Promise<OfflineQueuedResult> {
+  const existing = await queueAll();
+  for (const item of existing) {
+    if (item.kind === 'skill' && item.url === '/api/skills/reorder' && item.id != null) {
+      await queueDelete(item.id);
+    }
+  }
+  await queueAdd({
+    kind: 'skill',
+    url: '/api/skills/reorder',
+    method: 'PATCH',
+    body: { orderedIds },
+    tempId: 0,
+    createdAt: Date.now(),
+  });
+  try {
+    const cached = await cacheGet<Array<Record<string, unknown> & { id?: number }>>('skills');
+    if (Array.isArray(cached)) {
+      await cacheSet(
+        'skills',
+        cached.map((s) => {
+          const idx = typeof s.id === 'number' ? orderedIds.indexOf(s.id) : -1;
+          return idx !== -1 ? { ...s, sortOrder: idx } : s;
+        }),
+      );
+    }
+  } catch {
+    // ignore — in-memory optimistic update is handled by the caller
+  }
+  notifyQueueChange();
+  return { _queuedOffline: true, tempId: 0 };
+}
+
+/** Reorder skills over the network, or queue the reorder when offline. */
+export async function tryNetworkOrEnqueueReorder(
+  orderedIds: number[],
+  doFetch: (signal: AbortSignal) => Promise<void>,
+  timeoutMs = 8000,
+): Promise<void | OfflineQueuedResult> {
+  const offline = getOfflineModeEnabled();
+  const onLine = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  if (offline && !onLine) {
+    return enqueueSkillsReorder(orderedIds);
+  }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => {
+    try { ctrl.abort(); } catch { /* ignore */ }
+  }, timeoutMs);
+  try {
+    return await doFetch(ctrl.signal);
+  } catch (err) {
+    if (offline && isNetworkOrAbortError(err)) {
+      return enqueueSkillsReorder(orderedIds);
     }
     throw err;
   } finally {
@@ -468,6 +538,16 @@ export function remapBody(kind: QueueKind, body: any, idMap: Map<number, number>
     // source routine via sourceRoutineId — remap it once the routine has synced.
     if (kind === 'skill' && typeof body.sourceRoutineId === 'number' && idMap.has(body.sourceRoutineId)) {
       next = { ...next, sourceRoutineId: idMap.get(body.sourceRoutineId) };
+    }
+    // A queued reorder may reference skills created offline — remap them and
+    // drop any that never synced (negative ids would be rejected).
+    if (Array.isArray(body.orderedIds)) {
+      next = {
+        ...next,
+        orderedIds: body.orderedIds
+          .map((id: number) => idMap.get(id) ?? id)
+          .filter((id: number) => id > 0),
+      };
     }
     return next;
   }
@@ -666,6 +746,78 @@ export async function enqueueDebutsHiddenUpdate(debutsHidden: string): Promise<v
 }
 
 /**
+ * Queue a menu-settings PATCH while collapsing (merging) any prior queued
+ * menu-settings update. Mirrors the change into the cached user optimistically.
+ */
+export async function enqueueMenuSettingsUpdate(
+  body: { menuGuide?: string; menuRowConnections?: boolean },
+): Promise<any> {
+  const existing = await queueAll();
+  let merged: Record<string, unknown> = {};
+  for (const item of existing) {
+    if (item.kind === 'menuSettings') {
+      if (item.body && typeof item.body === 'object') {
+        merged = { ...merged, ...(item.body as Record<string, unknown>) };
+      }
+      if (item.id != null) await queueDelete(item.id);
+    }
+  }
+  merged = { ...merged, ...body };
+  await queueAdd({
+    kind: 'menuSettings',
+    url: urlForKind('menuSettings'),
+    method: 'PATCH',
+    body: merged,
+    tempId: 0,
+    createdAt: Date.now(),
+  });
+  let optimistic: any = null;
+  try {
+    const cached = await cacheGet<any>('user');
+    if (cached) {
+      optimistic = { ...cached, ...merged };
+      await cacheSet('user', optimistic);
+    }
+  } catch {
+    // ignore
+  }
+  const current = queryClient.getQueryData<any>(['/api/auth/user']);
+  if (current) {
+    optimistic = { ...current, ...merged };
+    queryClient.setQueryData(['/api/auth/user'], optimistic);
+  }
+  notifyQueueChange();
+  return optimistic ?? merged;
+}
+
+/** PATCH menu settings over the network, or queue the update when offline. */
+export async function tryNetworkOrEnqueueMenuSettings<T extends object>(
+  body: { menuGuide?: string; menuRowConnections?: boolean },
+  doFetch: (signal: AbortSignal) => Promise<T>,
+  timeoutMs = 8000,
+): Promise<T | (T & { _queuedOffline: true })> {
+  const offline = getOfflineModeEnabled();
+  const onLine = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  const enqueue = async (): Promise<T & { _queuedOffline: true }> => {
+    const u = await enqueueMenuSettingsUpdate(body);
+    return { ...(u as object), _queuedOffline: true } as T & { _queuedOffline: true };
+  };
+  if (offline && !onLine) return enqueue();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => {
+    try { ctrl.abort(); } catch { /* ignore */ }
+  }, timeoutMs);
+  try {
+    return await doFetch(ctrl.signal);
+  } catch (err) {
+    if (offline && isNetworkOrAbortError(err)) return enqueue();
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
  * Try to PATCH the focus memo over the network; if offline, queue the
  * update and return the optimistic user. Mirrors the offline-create
  * helpers used for skills/routines.
@@ -810,7 +962,7 @@ export async function drainQueue(): Promise<DrainResult> {
         // For focus-memo, refresh the cached user so the server's
         // canonical state (including any timestamps it sets) lands in
         // both caches and replaces any optimistic local copy.
-        if (item.kind === 'focusMemo' || item.kind === 'debutsHidden') {
+        if (item.kind === 'focusMemo' || item.kind === 'debutsHidden' || item.kind === 'menuSettings') {
           try {
             const data = await res.clone().json();
             if (data) {
@@ -887,11 +1039,20 @@ export async function updateQueuedByTempId(
   const items = await queueAll();
   const target = items.find((i) => i.tempId === tempId);
   if (!target || target.id == null) return false;
+  // Callers often pass a PARTIAL patch (valid for a PUT), but the queued
+  // item is usually the original POST create, which must keep its full
+  // shape to be accepted by the server on drain. Merge the patch into the
+  // existing body instead of replacing it wholesale.
+  const nextBody =
+    target.body && typeof target.body === 'object' && !Array.isArray(target.body) &&
+    body && typeof body === 'object' && !Array.isArray(body)
+      ? { ...(target.body as Record<string, unknown>), ...(body as Record<string, unknown>) }
+      : body;
   await queueAdd({
     kind: target.kind,
     url: target.url,
     method: target.method,
-    body,
+    body: nextBody,
     tempId: target.tempId,
     createdAt: target.createdAt,
   });

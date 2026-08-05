@@ -4,7 +4,14 @@ import { queryClient } from "@/lib/queryClient";
 import { type Routine, type InsertRoutine } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { tryNetworkOrEnqueueWithOptimistic } from "@/lib/offline-queue";
+import {
+  tryNetworkOrEnqueueWithOptimistic,
+  tryNetworkOrEnqueueChange,
+  isQueuedOfflineResult,
+  applyOptimisticListChange,
+  deleteQueuedByTempId,
+  updateQueuedByTempId,
+} from "@/lib/offline-queue";
 
 export function useRoutines() {
   const { toast } = useToast();
@@ -62,20 +69,45 @@ export function useRoutines() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("DELETE", buildUrl(api.routines.delete.path, { id }));
+      if (id < 0) {
+        await deleteQueuedByTempId(id);
+        await applyOptimisticListChange("routine", id, "DELETE");
+        return { _queuedOffline: true } as const;
+      }
+      return await tryNetworkOrEnqueueChange("routine", id, "DELETE", null, async (signal) => {
+        await apiRequest("DELETE", buildUrl(api.routines.delete.path, { id }), undefined, { signal });
+        return null;
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.routines.list.path] });
-      toast({ title: "Routine deleted successfully" });
+    onSuccess: (result) => {
+      const queued = isQueuedOfflineResult(result) || (result as any)?._queuedOffline === true;
+      if (!queued) {
+        queryClient.invalidateQueries({ queryKey: [api.routines.list.path] });
+        toast({ title: "Routine deleted successfully" });
+      } else {
+        toast({ title: "Deleted offline", description: "Will sync when reconnected." });
+      }
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...routine }: { id: number } & Partial<InsertRoutine>) => {
-      const res = await apiRequest("PUT", buildUrl(api.routines.update.path, { id }), routine);
-      return res.json();
+      if (id < 0) {
+        await updateQueuedByTempId(id, routine);
+        await applyOptimisticListChange("routine", id, "PUT", routine);
+        return { ...routine, id, _queuedOffline: true };
+      }
+      return await tryNetworkOrEnqueueChange("routine", id, "PUT", routine, async (signal) => {
+        const res = await apiRequest("PUT", buildUrl(api.routines.update.path, { id }), routine, { signal });
+        return res.json();
+      });
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      const queued = isQueuedOfflineResult(result) || (result as any)?._queuedOffline === true;
+      if (queued) {
+        toast({ title: "Saved offline", description: "Will sync when reconnected." });
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: [api.routines.list.path] });
       // A rename cascades to auto-named routine parts (skills with isDrill 3),
       // so refresh the skills cache too.

@@ -7,27 +7,54 @@ import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import { lazy, Suspense } from "react";
 
-const Home = lazy(() => import("@/pages/home"));
-const SkillsPage = lazy(() => import("@/pages/skills"));
-const SkillDetailPage = lazy(() => import("@/pages/skill-detail"));
-const RoutinesPage = lazy(() => import("@/pages/routines"));
-const RoutineDetailPage = lazy(() => import("@/pages/routine-detail"));
-const StatsPage = lazy(() => import("@/pages/stats"));
-const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password"));
-const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
-const PrivacyPage = lazy(() => import("@/pages/privacy"));
-const ScorePage = lazy(() => import("@/pages/score"));
-const SettingsPage = lazy(() => import("@/pages/settings"));
-const WhoopPage = lazy(() => import("@/pages/whoop"));
-const CoachPage = lazy(() => import("@/pages/coach"));
-const TofPage = lazy(() => import("@/pages/tof"));
-const TofSkillPage = lazy(() => import("@/pages/tof-skill"));
-const TofRoutinePage = lazy(() => import("@/pages/tof-routine"));
-const TofSessionPage = lazy(() => import("@/pages/tof-session"));
-const ExecutionSessionPage = lazy(() => import("@/pages/execution-session"));
-const DebutsPage = lazy(() => import("@/pages/debuts"));
-const ExecutionPage = lazy(() => import("@/pages/execution"));
-const ExecutionRoutinePage = lazy(() => import("@/pages/execution-routine"));
+// Lazy route loader that doesn't blank the whole app when a page's JS chunk
+// can't be fetched (e.g. navigating offline to a page that was never loaded).
+// Instead it renders a small "not downloaded yet" screen with a retry button.
+function lazyPage(load: () => Promise<{ default: React.ComponentType<any> }>) {
+  return lazy(() =>
+    load().catch(() => ({
+      default: function ChunkLoadFallback() {
+        return (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 px-6 text-center" data-testid="card-chunk-offline">
+            <p className="text-lg font-medium">This page isn't available offline yet</p>
+            <p className="text-sm text-muted-foreground">
+              It hasn't been downloaded to this device. Reconnect and try again.
+            </p>
+            <button
+              className="mt-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm"
+              onClick={() => window.location.reload()}
+              data-testid="button-chunk-retry"
+            >
+              Retry
+            </button>
+          </div>
+        );
+      },
+    })),
+  );
+}
+
+const Home = lazyPage(() => import("@/pages/home"));
+const SkillsPage = lazyPage(() => import("@/pages/skills"));
+const SkillDetailPage = lazyPage(() => import("@/pages/skill-detail"));
+const RoutinesPage = lazyPage(() => import("@/pages/routines"));
+const RoutineDetailPage = lazyPage(() => import("@/pages/routine-detail"));
+const StatsPage = lazyPage(() => import("@/pages/stats"));
+const ForgotPasswordPage = lazyPage(() => import("@/pages/forgot-password"));
+const ResetPasswordPage = lazyPage(() => import("@/pages/reset-password"));
+const PrivacyPage = lazyPage(() => import("@/pages/privacy"));
+const ScorePage = lazyPage(() => import("@/pages/score"));
+const SettingsPage = lazyPage(() => import("@/pages/settings"));
+const WhoopPage = lazyPage(() => import("@/pages/whoop"));
+const CoachPage = lazyPage(() => import("@/pages/coach"));
+const TofPage = lazyPage(() => import("@/pages/tof"));
+const TofSkillPage = lazyPage(() => import("@/pages/tof-skill"));
+const TofRoutinePage = lazyPage(() => import("@/pages/tof-routine"));
+const TofSessionPage = lazyPage(() => import("@/pages/tof-session"));
+const ExecutionSessionPage = lazyPage(() => import("@/pages/execution-session"));
+const DebutsPage = lazyPage(() => import("@/pages/debuts"));
+const ExecutionPage = lazyPage(() => import("@/pages/execution"));
+const ExecutionRoutinePage = lazyPage(() => import("@/pages/execution-routine"));
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Target, Layers, BarChart3, Trophy, Loader2, Settings, HeartPulse, Bot, MoreHorizontal, Timer, ClipboardCheck } from "lucide-react";

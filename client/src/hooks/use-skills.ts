@@ -4,7 +4,15 @@ import { queryClient } from "@/lib/queryClient";
 import { type Skill, type InsertSkill } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { tryNetworkOrEnqueueWithOptimistic } from "@/lib/offline-queue";
+import {
+  tryNetworkOrEnqueueWithOptimistic,
+  tryNetworkOrEnqueueChange,
+  tryNetworkOrEnqueueReorder,
+  isQueuedOfflineResult,
+  applyOptimisticListChange,
+  deleteQueuedByTempId,
+  updateQueuedByTempId,
+} from "@/lib/offline-queue";
 
 export function useSkills() {
   const { toast } = useToast();
@@ -69,22 +77,49 @@ export function useSkills() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("DELETE", buildUrl(api.skills.delete.path, { id }));
+      if (id < 0) {
+        // Pending offline-created skill: drop the queued create instead.
+        await deleteQueuedByTempId(id);
+        await applyOptimisticListChange("skill", id, "DELETE");
+        return { _queuedOffline: true } as const;
+      }
+      return await tryNetworkOrEnqueueChange("skill", id, "DELETE", null, async (signal) => {
+        await apiRequest("DELETE", buildUrl(api.skills.delete.path, { id }), undefined, { signal });
+        return null;
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
-      toast({ title: "Skill deleted successfully" });
+    onSuccess: (result) => {
+      const queued = isQueuedOfflineResult(result) || (result as any)?._queuedOffline === true;
+      if (!queued) {
+        queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
+        toast({ title: "Skill deleted successfully" });
+      } else {
+        toast({ title: "Deleted offline", description: "Will sync when reconnected." });
+      }
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...skill }: { id: number } & Partial<InsertSkill>) => {
-      const res = await apiRequest("PUT", buildUrl(api.skills.update.path, { id }), skill);
-      return res.json();
+      if (id < 0) {
+        // Pending offline-created skill: rewrite the queued create body.
+        await updateQueuedByTempId(id, skill);
+        await applyOptimisticListChange("skill", id, "PUT", skill);
+        return { ...skill, id, _queuedOffline: true };
+      }
+      return await tryNetworkOrEnqueueChange("skill", id, "PUT", skill, async (signal) => {
+        const res = await apiRequest("PUT", buildUrl(api.skills.update.path, { id }), skill, { signal });
+        return res.json();
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
-      toast({ title: "Skill updated successfully" });
+    onSuccess: (result) => {
+      const queued = isQueuedOfflineResult(result) || (result as any)?._queuedOffline === true;
+      if (!queued) {
+        queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
+        toast({ title: "Skill updated successfully" });
+      } else {
+        toast({ title: "Saved offline", description: "Will sync when reconnected." });
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -97,7 +132,9 @@ export function useSkills() {
 
   const reorderMutation = useMutation({
     mutationFn: async (orderedIds: number[]) => {
-      await apiRequest("PATCH", "/api/skills/reorder", { orderedIds });
+      await tryNetworkOrEnqueueReorder(orderedIds, async (signal) => {
+        await apiRequest("PATCH", "/api/skills/reorder", { orderedIds }, { signal });
+      });
     },
     onMutate: async (orderedIds: number[]) => {
       await queryClient.cancelQueries({ queryKey: [api.skills.list.path] });

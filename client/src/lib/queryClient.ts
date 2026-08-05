@@ -13,12 +13,14 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
+  init?: { signal?: AbortSignal },
 ): Promise<Response> {
   const res = await fetch(url, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
+    signal: init?.signal,
   });
 
   await throwIfResNotOk(res);
@@ -35,6 +37,17 @@ const OFFLINE_CACHE_KEYS: Record<string, string> = {
   "/api/execution-sessions": "executionSessions",
 };
 
+// Any other /api GET (history endpoints, WHOOP daily, etc.) is mirrored
+// generically under `get:<full path>` so pages you've visited stay readable
+// offline. AI endpoints are excluded — they must stay online-only — and
+// /api/auth is handled by its own fetchers.
+function genericOfflineCacheKey(fullPath: string): string | null {
+  if (!fullPath.startsWith("/api/")) return null;
+  if (fullPath.startsWith("/api/auth")) return null;
+  if (fullPath.startsWith("/api/coach")) return null;
+  return `get:${fullPath}`;
+}
+
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
@@ -42,10 +55,12 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async <T>({ queryKey }: { queryKey: readonly unknown[] }) => {
     const path = String(queryKey[0]);
-    const cacheKey = OFFLINE_CACHE_KEYS[path];
+    const fullPath = queryKey.join("/") as string;
+    const cacheKey = OFFLINE_CACHE_KEYS[path] ?? genericOfflineCacheKey(fullPath);
+    const isGenericKey = !OFFLINE_CACHE_KEYS[path];
     const offlineModeOn = getOfflineModeEnabled();
     try {
-      const res = await fetch(queryKey.join("/") as string, {
+      const res = await fetch(fullPath, {
         credentials: "include",
       });
 
@@ -61,11 +76,14 @@ export const getQueryFn: <T>(options: {
       // could leak data on a shared device.
       if (cacheKey && offlineModeOn) {
         // Don't waste storage on archived items — they aren't needed offline.
-        const toCache = Array.isArray(data)
-          ? (data as Array<Record<string, unknown>>).filter(
-              (item) => item?.archived !== 1,
-            )
-          : data;
+        // (Applies only to the known list mirrors; generic GETs are cached
+        // verbatim since their shape is arbitrary.)
+        const toCache =
+          !isGenericKey && Array.isArray(data)
+            ? (data as Array<Record<string, unknown>>).filter(
+                (item) => item?.archived !== 1,
+              )
+            : data;
         await cacheSet(cacheKey, toCache);
       }
       return data;
@@ -73,8 +91,9 @@ export const getQueryFn: <T>(options: {
       if (cacheKey && offlineModeOn) {
         const cached = await cacheGet<T>(cacheKey);
         if (cached !== null && cached !== undefined) return cached;
-        // Sane offline default for list endpoints so the UI does not crash.
-        return [] as unknown as T;
+        // Sane offline default for known list endpoints so the UI does not
+        // crash. Generic endpoints have arbitrary shapes — rethrow instead.
+        if (!isGenericKey) return [] as unknown as T;
       }
       throw err;
     }

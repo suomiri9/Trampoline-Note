@@ -112,7 +112,6 @@ export default function WhoopPage() {
 
   const { data, isLoading, error, refetch, isRefetching } = useQuery<WhoopData>({
     queryKey: ["/api/whoop/data", range],
-    enabled: !offlineView,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -136,13 +135,15 @@ export default function WhoopPage() {
     />
   );
 
-  if (offlineView) {
+  // Offline: previously-loaded WHOOP data is served from the offline mirror;
+  // only show the placeholder when nothing was ever cached for this range.
+  if (offlineView && !data && !isLoading) {
     return (
       <PageLayout>
         {header}
         <OfflinePlaceholder
           testId="card-offline-whoop"
-          hint="WHOOP data is live-only. It will be back when you reconnect."
+          hint="WHOOP data hasn't been downloaded yet. It will be back when you reconnect."
         />
       </PageLayout>
     );

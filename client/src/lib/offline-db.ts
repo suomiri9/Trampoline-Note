@@ -107,7 +107,7 @@ export async function cacheClearAll(): Promise<void> {
   }
 }
 
-export type QueueKind = 'note' | 'score' | 'skill' | 'routine' | 'focusMemo' | 'debutsHidden' | 'tofSession' | 'executionSession';
+export type QueueKind = 'note' | 'score' | 'skill' | 'routine' | 'focusMemo' | 'debutsHidden' | 'menuSettings' | 'tofSession' | 'executionSession';
 
 export interface QueuedItem {
   id?: number;

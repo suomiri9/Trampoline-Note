@@ -56,6 +56,7 @@ import {
   discardFailedItem,
   discardAllFailedItems,
   subscribeQueueChange,
+  tryNetworkOrEnqueueMenuSettings,
 } from "@/lib/offline-queue";
 import type { FailedItem } from "@/lib/offline-db";
 import { enableOfflineMode, disableOfflineMode, registerServiceWorker } from "@/lib/offline-control";
@@ -102,10 +103,16 @@ export default function SettingsPage() {
   const [menuGuideDraft, setMenuGuideDraft] = useState<string | null>(null);
   const menuSettingsMutation = useMutation({
     mutationFn: async (body: { menuGuide?: string; menuRowConnections?: boolean }) => {
-      const res = await apiRequest("PATCH", "/api/auth/menu-settings", body);
-      return res.json();
+      return await tryNetworkOrEnqueueMenuSettings(body, async (signal) => {
+        const res = await apiRequest("PATCH", "/api/auth/menu-settings", body, { signal });
+        return res.json();
+      });
     },
-    onSuccess: (updated) => {
+    onSuccess: (updated: any) => {
+      if (updated?._queuedOffline) {
+        toast({ title: "Saved offline", description: "Will sync when reconnected." });
+        return;
+      }
       queryClient.setQueryData(["/api/auth/user"], updated);
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     },
