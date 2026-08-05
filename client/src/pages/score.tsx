@@ -875,13 +875,20 @@ export default function ScorePage() {
 
   const deleteCompMutation = useMutation({
     mutationFn: async (ids: number[]) => {
+      let anyQueued = false;
       for (const id of ids) {
-        await apiRequest("DELETE", `/api/scores/${id}`);
+        const result = await tryNetworkOrEnqueueChange("score", id, "DELETE", undefined, async (signal) => {
+          const res = await fetch(`/api/scores/${id}`, { method: "DELETE", credentials: "include", signal });
+          // 404 = already deleted (e.g. by a previously drained queued delete) — treat as success.
+          if (!res.ok && res.status !== 404) throw new Error((await res.text()) || res.statusText);
+        });
+        if (isQueuedOfflineResult(result)) anyQueued = true;
       }
+      return anyQueued;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
-      toast({ title: "Competition deleted" });
+    onSuccess: (anyQueued) => {
+      if (!anyQueued) queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
+      toast({ title: anyQueued ? "Deleted offline. Will sync when reconnected." : "Competition deleted" });
     },
     onError: (err) => {
       queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
