@@ -58,7 +58,7 @@ import {
   subscribeQueueChange,
 } from "@/lib/offline-queue";
 import type { FailedItem } from "@/lib/offline-db";
-import { enableOfflineMode, disableOfflineMode } from "@/lib/offline-control";
+import { enableOfflineMode, disableOfflineMode, registerServiceWorker } from "@/lib/offline-control";
 import { pushAccountSettings } from "@/lib/settings-sync";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -292,12 +292,13 @@ export default function SettingsPage() {
       } catch {
         // ignore
       }
-      // Safety net: if reference data still isn't mirrored (e.g. offline mode
-      // was enabled before the active-prefetch fix), fetch it now while
-      // online instead of waiting for the user to visit those pages.
+      // Safety net: if ANY step is still not downloaded after a while online,
+      // retry it directly instead of waiting forever. Covers reference data,
+      // the account, and the app-shell files.
+      const shellIncomplete = !sw || shellProgress < 1;
       if (
         isOnline &&
-        (skillsCount === null || routinesCount === null || !accountReady) &&
+        (skillsCount === null || routinesCount === null || !accountReady || shellIncomplete) &&
         Date.now() - lastPrefetchRef.current > 10000
       ) {
         lastPrefetchRef.current = Date.now();
@@ -307,6 +308,34 @@ export default function SettingsPage() {
           void queryClient.prefetchQuery({ queryKey: ["/api/routines"], staleTime: 0 });
         if (!accountReady)
           void queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
+        if (shellIncomplete) {
+          // Re-register the service worker and backfill any missing shell
+          // files straight into its cache from the page.
+          void registerServiceWorker();
+          void (async () => {
+            try {
+              if (typeof caches === "undefined") return;
+              const cache = await caches.open("tn-shell-v10");
+              const shellUrls = [
+                "/",
+                "/manifest.webmanifest",
+                "/favicon.png",
+                "/icon-192.png",
+                "/icon-512.png",
+                "/apple-touch-icon.png",
+              ];
+              await Promise.all(
+                shellUrls.map(async (u) => {
+                  if (await cache.match(u)) return;
+                  const res = await fetch(u, { cache: "reload", credentials: "same-origin" });
+                  if (res.ok) await cache.put(u, res);
+                }),
+              );
+            } catch {
+              // best-effort
+            }
+          })();
+        }
       }
       if (!alive) return;
       setDownloadStatus({
