@@ -115,6 +115,11 @@ export interface IStorage {
   getCoachMessages(userId: string): Promise<CoachMessage[]>;
   getCoachMessage(userId: string, id: number): Promise<CoachMessage | undefined>;
   createCoachMessage(userId: string, role: "user" | "assistant", content: string, extras?: { images?: string | null; draft?: string | null; proposals?: string | null; suggestions?: string | null }): Promise<CoachMessage>;
+  commitCoachExchange(userId: string, exchange: {
+    menuGuide?: string | null;
+    userMessage: { content: string; images?: string | null };
+    assistantMessage: { content: string; draft?: string | null; proposals?: string | null; suggestions?: string | null };
+  }): Promise<void>;
   clearCoachMessages(userId: string): Promise<void>;
 }
 
@@ -680,6 +685,39 @@ export class DatabaseStorage implements IStorage {
 
   async clearCoachMessages(userId: string): Promise<void> {
     await db.delete(coachMessages).where(eq(coachMessages.userId, userId));
+  }
+
+  // One coach chat turn = one atomic commit: the optional menu-guide update
+  // plus BOTH message rows land in a single database transaction. Used by the
+  // streaming chat so a stopped reply can never leave partial state (an
+  // orphaned user turn or a guide change without its visible reply).
+  async commitCoachExchange(
+    userId: string,
+    exchange: {
+      menuGuide?: string | null;
+      userMessage: { content: string; images?: string | null };
+      assistantMessage: { content: string; draft?: string | null; proposals?: string | null; suggestions?: string | null };
+    },
+  ): Promise<void> {
+    await db.transaction(async (tx) => {
+      if (exchange.menuGuide != null) {
+        await tx.update(users).set({ menuGuide: exchange.menuGuide, updatedAt: new Date() }).where(eq(users.id, userId));
+      }
+      await tx.insert(coachMessages).values({
+        userId,
+        role: "user",
+        content: exchange.userMessage.content,
+        images: exchange.userMessage.images ?? null,
+      });
+      await tx.insert(coachMessages).values({
+        userId,
+        role: "assistant",
+        content: exchange.assistantMessage.content,
+        draft: exchange.assistantMessage.draft ?? null,
+        proposals: exchange.assistantMessage.proposals ?? null,
+        suggestions: exchange.assistantMessage.suggestions ?? null,
+      });
+    });
   }
 }
 

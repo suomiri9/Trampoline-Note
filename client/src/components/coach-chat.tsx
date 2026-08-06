@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCreateNote } from "@/hooks/use-notes";
 import { isPointCategory } from "@shared/points";
 import type { SafeUser } from "@shared/models/auth";
-import { Bot, Send, Loader2, Trash2, ImagePlus, X, CalendarPlus, Check, Plus, Wrench } from "lucide-react";
+import { Bot, Send, Loader2, Trash2, ImagePlus, X, CalendarPlus, Check, Plus, Wrench, Square } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -886,6 +886,10 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
   const [streamText, setStreamText] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Aborts the in-flight SSE fetch when the athlete taps Stop; the server
+  // sees the disconnect and aborts the OpenAI stream too. Nothing is
+  // persisted for a stopped reply — the question is restored to the input.
+  const abortRef = useRef<AbortController | null>(null);
 
   // Paced typewriter for the coach reply. The upstream model often delivers
   // the whole answer in one burst at the end of the SSE stream (it "thinks",
@@ -942,8 +946,11 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
       setStreamText("");
       stopReveal();
       startReveal();
+      const aborter = new AbortController();
+      abortRef.current = aborter;
       const res = await fetch("/api/coach/messages", {
         method: "POST",
+        signal: aborter.signal,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content,
@@ -1024,10 +1031,16 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
         });
       }
     },
+    onSettled: () => {
+      abortRef.current = null;
+    },
     onError: (err: Error) => {
       stopReveal();
       setPendingUser(null);
       setStreamText("");
+      // A stop is deliberate — no error toast; send()'s onError restores the
+      // question into the input so it can be rephrased and re-sent.
+      if (err.name === "AbortError") return;
       toast({
         title: "The coach didn't answer",
         description: err.message.includes("503")
@@ -1297,19 +1310,28 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
           className="min-h-[44px] max-h-32 resize-none"
           data-testid="input-coach-message"
         />
-        <Button
-          size="icon"
-          className="h-[44px] w-[44px] shrink-0"
-          onClick={() => send()}
-          disabled={(!input.trim() && attachments.length === 0) || sendMutation.isPending || compressing}
-          data-testid="button-send-message"
-        >
-          {sendMutation.isPending ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
+        {sendMutation.isPending ? (
+          <Button
+            size="icon"
+            variant="destructive"
+            className="h-[44px] w-[44px] shrink-0"
+            onClick={() => abortRef.current?.abort()}
+            aria-label="Stop reply"
+            data-testid="button-stop-reply"
+          >
+            <Square className="w-4 h-4 fill-current" />
+          </Button>
+        ) : (
+          <Button
+            size="icon"
+            className="h-[44px] w-[44px] shrink-0"
+            onClick={() => send()}
+            disabled={(!input.trim() && attachments.length === 0) || compressing}
+            data-testid="button-send-message"
+          >
             <Send className="w-4 h-4" />
-          )}
-        </Button>
+          </Button>
+        )}
       </div>
     </>
   );

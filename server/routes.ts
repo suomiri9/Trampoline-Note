@@ -4,7 +4,7 @@ import { storage, SkillLinkError, TofRoutineError } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { isAuthenticated, getUserId, getBaseUrl } from "./auth";
-import { getPushRecommendation, coachChat, parseMenuPhoto, parseTofScreenshot, parseExecutionSheet, parseScoreSheet, menuChat, CoachUnavailableError } from "./coach";
+import { getPushRecommendation, coachChat, parseMenuPhoto, parseTofScreenshot, parseExecutionSheet, parseScoreSheet, menuChat, CoachUnavailableError, CoachStoppedError } from "./coach";
 import { serveCoachImage } from "./coach-images";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
@@ -892,6 +892,15 @@ export async function registerRoutes(
         res.write(`data: ${JSON.stringify(payload)}\n\n`);
       };
 
+      // Stop support: if the client aborts the fetch mid-stream (the Stop
+      // button), abort the upstream OpenAI stream too and persist nothing —
+      // a stopped question can simply be re-asked.
+      const aborter = new AbortController();
+      let finished = false;
+      res.on("close", () => {
+        if (!finished) aborter.abort();
+      });
+
       try {
         const { reply, draft, guideUpdated, skillProposal, pointProposal, suggestions } = await coachChat(
           getUserId(req),
@@ -900,12 +909,21 @@ export async function registerRoutes(
           images,
           (chunk) => sendEvent({ delta: chunk }),
           date,
+          aborter.signal,
         );
+        finished = true;
         // Chips are persisted on the assistant message row inside coachChat,
         // so reopening the chat later re-shows them.
         sendEvent({ done: true, reply, draft, guideUpdated, suggestions, skillProposal, pointProposal });
         res.end();
       } catch (err) {
+        finished = true;
+        if (err instanceof CoachStoppedError) {
+          // The athlete stopped the reply — the connection is already gone;
+          // nothing was persisted. Just make sure the response is closed.
+          res.end();
+          return;
+        }
         const message =
           err instanceof CoachUnavailableError
             ? err.message

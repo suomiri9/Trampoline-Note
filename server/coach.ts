@@ -7,7 +7,7 @@
 
 import OpenAI from "openai";
 import { storage } from "./storage";
-import { storeCoachImages } from "./coach-images";
+import { storeCoachImages, deleteCoachImages, type CoachImageRef } from "./coach-images";
 import { getWhoopDashboardDataCached, WhoopNotConnectedError } from "./whoop";
 import { resolveClientDate, pickTodayRecovery } from "./coach-dates";
 import type { Skill, Routine, NoteResponse } from "@shared/schema";
@@ -37,6 +37,17 @@ export class CoachUnavailableError extends Error {
   constructor(message = "The AI coach is unavailable right now.") {
     super(message);
     this.name = "CoachUnavailableError";
+  }
+}
+
+// Thrown when the athlete stops a streaming reply mid-flight. The partial
+// reply is DISCARDED: neither the user turn nor the assistant turn is
+// persisted, so a stopped question can simply be re-asked (same contract as
+// a failed send).
+export class CoachStoppedError extends Error {
+  constructor() {
+    super("Coach reply stopped by the user.");
+    this.name = "CoachStoppedError";
   }
 }
 
@@ -594,6 +605,7 @@ export async function coachChat(
   images?: string[],
   onDelta?: (chunk: string) => void,
   clientDate?: unknown,
+  signal?: AbortSignal,
 ): Promise<{
   reply: string;
   draft: CoachDraft | null;
@@ -665,12 +677,18 @@ export async function coachChat(
   let reply: string;
   try {
     if (onDelta) {
-      const stream = await openai.chat.completions.create({
-        model: MODEL,
-        messages,
-        max_completion_tokens: 4096,
-        stream: true,
-      });
+      // `signal` aborts the upstream OpenAI stream when the athlete taps
+      // Stop (the SSE client disconnects), so tokens stop being generated
+      // and billed server-side too.
+      const stream = await openai.chat.completions.create(
+        {
+          model: MODEL,
+          messages,
+          max_completion_tokens: 4096,
+          stream: true,
+        },
+        { signal },
+      );
       let acc = "";
       for await (const part of stream) {
         const delta = part.choices[0]?.delta?.content ?? "";
@@ -679,6 +697,7 @@ export async function coachChat(
           onDelta(delta);
         }
       }
+      if (signal?.aborted) throw new CoachStoppedError();
       reply = acc.trim();
     } else {
       const response = await openai.chat.completions.create({
@@ -689,22 +708,30 @@ export async function coachChat(
       reply = (response.choices[0]?.message?.content ?? "").trim();
     }
   } catch (err) {
+    // A stop (client disconnect) surfaces either as our own CoachStoppedError
+    // or as the SDK's abort error — both mean "discard, don't persist".
+    if (err instanceof CoachStoppedError || signal?.aborted) {
+      throw new CoachStoppedError();
+    }
     console.error("[coach] chat failed:", err);
     throw new CoachUnavailableError();
   }
+  // Cancellation is a transaction boundary: a stop must persist NOTHING, so
+  // re-check the signal immediately before every side effect below (the
+  // abort can land while any of these awaits is in flight).
+  const ensureNotStopped = () => {
+    if (signal?.aborted) throw new CoachStoppedError();
+  };
+  ensureNotStopped();
   if (!reply) throw new CoachUnavailableError();
 
   // Pull any draft_entry block out of the reply and match it against the
   // athlete's real loggable skills; the visible reply has the block stripped.
   const { stripped, draft } = extractDraft(reply, allSkills, routines);
   // Pull any menu_guide block (the coach updating the athlete's notation
-  // guide) and apply it before persisting the visible reply.
+  // guide); the update itself is deferred to the single commit below.
   const guideResult = extractMenuGuideUpdate(stripped || reply);
-  let guideUpdated = false;
-  if (guideResult.guide !== null) {
-    await storage.updateUserMenuGuide(userId, guideResult.guide);
-    guideUpdated = true;
-  }
+  const guideUpdated = guideResult.guide !== null;
   let working = guideResult.stripped || stripped || reply;
 
   // Confirm-first proposals (skill addition / point to fix), emitted only on
@@ -721,42 +748,66 @@ export async function coachChat(
     (pointRes.proposal ? "Here's the proposed Point to Fix — review and confirm below." : working);
   const finalReply = working;
 
-  // Persist both turns only after a successful model reply so a failed send
-  // can simply be retried without duplicate user messages in history.
-  // Photos go to object storage (DB keeps only refs); if the upload fails we
-  // fall back to the legacy inline data-URL storage so the chat isn't lost.
+  // ---- Commit boundary ----
+  // Everything above is read-only. All database writes for this turn (the
+  // optional menu-guide update + both message rows) happen in ONE
+  // transaction, guarded by ONE final stop check right before it. Before the
+  // commit a stop persists nothing; after it the reply is committed and a
+  // late abort is ignored. The only pre-commit side effect is the photo
+  // upload to object storage — a stop there can at worst orphan an
+  // unreferenced blob, never visible state.
   let storedImages: string | null = null;
-  if (images && images.length > 0) {
-    try {
-      storedImages = JSON.stringify(await storeCoachImages(userId, images));
-    } catch (err) {
-      console.error("[coach] image upload to object storage failed, storing inline:", err);
-      storedImages = JSON.stringify(images);
+  // Uploaded blobs are the one pre-commit side effect; if a stop lands after
+  // the upload but before the commit, they are deleted again (compensation),
+  // so cancellation leaves no durable state anywhere.
+  let uploadedRefs: CoachImageRef[] = [];
+  let suggestions: string[] = [];
+  try {
+    ensureNotStopped();
+    if (images && images.length > 0) {
+      try {
+        uploadedRefs = await storeCoachImages(userId, images);
+        storedImages = JSON.stringify(uploadedRefs);
+      } catch (err) {
+        console.error("[coach] image upload to object storage failed, storing inline:", err);
+        uploadedRefs = [];
+        storedImages = JSON.stringify(images);
+      }
     }
+    const proposals =
+      skillRes.proposal || pointRes.proposal
+        ? JSON.stringify({
+            ...(skillRes.proposal ? { skill: skillRes.proposal } : {}),
+            ...(pointRes.proposal ? { point: pointRes.proposal } : {}),
+          })
+        : null;
+    // Quick-reply chips are generated before the save so they persist on the
+    // message row — reopening the chat re-shows them (they used to live only in
+    // the client's memory). Card turns (draft/proposal) skip chips because the
+    // card's confirm/dismiss IS the next action. generateSuggestions never throws.
+    suggestions = await generateSuggestions(
+      finalReply,
+      !!draft || !!skillRes.proposal || !!pointRes.proposal,
+    );
+    ensureNotStopped();
+    await storage.commitCoachExchange(userId, {
+      menuGuide: guideResult.guide,
+      userMessage: { content: userMessage, images: storedImages },
+      assistantMessage: {
+        content: finalReply,
+        draft: draft ? JSON.stringify(draft) : null,
+        proposals,
+        suggestions: suggestions.length > 0 ? JSON.stringify(suggestions) : null,
+      },
+    });
+  } catch (err) {
+    if (err instanceof CoachStoppedError && uploadedRefs.length > 0) {
+      // Stopped after upload but before commit — remove the now-orphaned
+      // blobs so cancellation truly persists nothing.
+      await deleteCoachImages(uploadedRefs);
+    }
+    throw err;
   }
-  await storage.createCoachMessage(userId, "user", userMessage, {
-    images: storedImages,
-  });
-  const proposals =
-    skillRes.proposal || pointRes.proposal
-      ? JSON.stringify({
-          ...(skillRes.proposal ? { skill: skillRes.proposal } : {}),
-          ...(pointRes.proposal ? { point: pointRes.proposal } : {}),
-        })
-      : null;
-  // Quick-reply chips are generated before the save so they persist on the
-  // message row — reopening the chat re-shows them (they used to live only in
-  // the client's memory). Card turns (draft/proposal) skip chips because the
-  // card's confirm/dismiss IS the next action. generateSuggestions never throws.
-  const suggestions = await generateSuggestions(
-    finalReply,
-    !!draft || !!skillRes.proposal || !!pointRes.proposal,
-  );
-  await storage.createCoachMessage(userId, "assistant", finalReply, {
-    draft: draft ? JSON.stringify(draft) : null,
-    proposals,
-    suggestions: suggestions.length > 0 ? JSON.stringify(suggestions) : null,
-  });
 
   return {
     reply: finalReply,

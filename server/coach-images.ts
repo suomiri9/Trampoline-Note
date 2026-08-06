@@ -66,6 +66,20 @@ export async function storeCoachImages(
   return refs;
 }
 
+// Best-effort removal of uploaded coach images — used to compensate when a
+// stopped reply already uploaded photos that will never be referenced by a
+// DB row. Failures are logged, never thrown (the blobs are private and
+// unreferenced either way).
+export async function deleteCoachImages(refs: CoachImageRef[]): Promise<void> {
+  for (const ref of refs) {
+    try {
+      await objectFileFor(ref.key).delete({ ignoreNotFound: true });
+    } catch (err) {
+      console.error(`[coach-images] cleanup failed for ${ref.key}:`, err);
+    }
+  }
+}
+
 // Streams one stored image entry to the response. Handles both legacy
 // base64 data URLs and object-storage refs. Returns false when the entry
 // is missing/invalid (caller sends 404).
