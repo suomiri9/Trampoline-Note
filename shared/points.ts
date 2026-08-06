@@ -11,6 +11,9 @@ export type PointToFix = {
   /** Sub-category for unlinked points. Ignored when the point is linked to
       any skill or routine. Defaults to "General" for legacy points. */
   category?: string;
+  /** True once the user marked the point as fixed. Resolved points are kept
+      for history instead of being deleted. Absent/false = still active. */
+  resolved?: boolean;
 };
 
 export const POINT_CATEGORIES = [
@@ -33,6 +36,7 @@ function pointFingerprint(p: PointToFix): string {
     skillIds: p.skillIds,
     routineIds: p.routineIds,
     category: p.category ?? null,
+    resolved: p.resolved === true,
   });
 }
 
@@ -125,6 +129,7 @@ export function parsePoints(raw: string | null | undefined): PointToFix[] {
             )
           : [],
         category: isPointCategory(p.category) ? p.category : undefined,
+        ...(p.resolved === true ? { resolved: true } : {}),
       }));
   } catch {
     // Legacy plain-text focus memo — migrate each non-empty line into a point.

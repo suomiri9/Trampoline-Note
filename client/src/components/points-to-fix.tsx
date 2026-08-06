@@ -6,7 +6,7 @@ import { useSkills } from "@/hooks/use-skills";
 import { useQueuedFocusMemoPointIds } from "@/hooks/use-queued-focus-memo-point-ids";
 import { useToast } from "@/hooks/use-toast";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
-import { Wrench, Plus, X, Trash2, Loader2, Search, Pencil, Check, MoreVertical } from "lucide-react";
+import { Wrench, Plus, X, Trash2, Loader2, Search, Pencil, Check, MoreVertical, CheckCircle2, RotateCcw, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -91,6 +91,8 @@ export function PointsToFix({
   const queuedPointIds = useQueuedFocusMemoPointIds();
 
   const points = useMemo(() => parsePoints(user?.focusMemo), [user?.focusMemo]);
+  const activeCount = useMemo(() => points.filter((p) => !p.resolved).length, [points]);
+  const resolvedCount = points.length - activeCount;
 
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = openProp !== undefined;
@@ -108,6 +110,7 @@ export function PointsToFix({
   const [filterKind, setFilterKind] = useState<"skill" | "routine" | null>(null);
   const [filterId, setFilterId] = useState<number | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [showResolved, setShowResolved] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
@@ -133,6 +136,7 @@ export function PointsToFix({
       setFilterKind(null);
       setFilterId(null);
       setFilterOpen(false);
+      setShowResolved(false);
       setLinkOpen(false);
       setAddOpen(false);
       setEditingId(null);
@@ -349,6 +353,20 @@ export function PointsToFix({
     mutation.mutate({ next, pendingIds: [id] });
   };
 
+  const togglePointResolved = (id: string) => {
+    if (isSaving) return;
+    const target = points.find((p) => p.id === id);
+    if (!target) return;
+    const next = points.map((p) =>
+      p.id === id
+        ? p.resolved
+          ? (({ resolved, ...rest }) => rest)(p)
+          : { ...p, resolved: true }
+        : p,
+    );
+    mutation.mutate({ next, pendingIds: [id] });
+  };
+
   const removePoint = (
     id: string,
     fromSkillId: number | null,
@@ -414,6 +432,27 @@ export function PointsToFix({
             <DialogTitle className="flex items-center gap-2">
               <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               Points to Fix
+              {points.length > 0 && (
+                <span className="flex items-center gap-1">
+                  <Badge
+                    variant="secondary"
+                    className="h-5 px-1.5 text-[11px] font-semibold"
+                    data-testid="badge-active-count"
+                  >
+                    {activeCount}
+                  </Badge>
+                  {resolvedCount > 0 && (
+                    <Badge
+                      variant="outline"
+                      className="h-5 px-1.5 text-[11px] font-normal text-muted-foreground gap-1"
+                      data-testid="badge-resolved-count"
+                    >
+                      <CheckCircle2 className="w-3 h-3" />
+                      {resolvedCount}
+                    </Badge>
+                  )}
+                </span>
+              )}
               {isSaving && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
               )}
@@ -440,7 +479,10 @@ export function PointsToFix({
                 // While the lists are still loading, keep the raw grouping
                 // to avoid a flash of everything collapsing into General.
                 const canResolve = skills !== undefined && routines !== undefined;
-                for (const p of points) {
+                const visiblePoints = showResolved
+                  ? points
+                  : points.filter((p) => !p.resolved);
+                for (const p of visiblePoints) {
                   const liveSkillIds = canResolve
                     ? p.skillIds.filter((sid) => !!skillById(sid))
                     : p.skillIds;
@@ -489,8 +531,12 @@ export function PointsToFix({
                       ? []
                       : orderedRoutineIds;
                 const showUnlinked = !hasFilter && unlinked.length > 0;
+                const allHidden = visiblePoints.length === 0;
                 const noResults =
-                  hasFilter && filteredSkillIds.length === 0 && filteredRoutineIds.length === 0;
+                  !allHidden &&
+                  hasFilter &&
+                  filteredSkillIds.length === 0 &&
+                  filteredRoutineIds.length === 0;
 
                 const filterSkill =
                   filterKind === "skill" && filterId !== null ? skillById(filterId) : null;
@@ -560,9 +606,16 @@ export function PointsToFix({
                       ) : (
                         <>
                           <p
-                            className="text-sm flex-1 min-w-0 break-words"
+                            className={`text-sm flex-1 min-w-0 break-words ${
+                              p.resolved
+                                ? "line-through text-muted-foreground opacity-60"
+                                : ""
+                            }`}
                             data-testid={`text-point-name-${p.id}`}
                           >
+                            {p.resolved && (
+                              <CheckCircle2 className="w-3.5 h-3.5 inline-block align-[-2px] mr-1.5 text-emerald-600 dark:text-emerald-400" />
+                            )}
                             {p.name}
                             {queuedPointIds.has(p.id) && (
                               <>
@@ -589,6 +642,21 @@ export function PointsToFix({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                              <DropdownMenuItem
+                                className="cursor-pointer gap-2 text-xs"
+                                onClick={() => togglePointResolved(p.id)}
+                                data-testid={`button-resolve-point-${p.id}`}
+                              >
+                                {p.resolved ? (
+                                  <>
+                                    <RotateCcw className="h-3.5 w-3.5" /> Mark active
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Mark resolved
+                                  </>
+                                )}
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="cursor-pointer gap-2 text-xs"
                                 onClick={() => startEdit(p)}
@@ -808,6 +876,24 @@ export function PointsToFix({
                           data-testid="button-clear-filter"
                         >
                           <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {resolvedCount > 0 && (
+                        <Button
+                          type="button"
+                          variant={showResolved ? "secondary" : "outline"}
+                          size="sm"
+                          className="h-11 shrink-0 rounded-xl px-3"
+                          onClick={() => setShowResolved((v) => !v)}
+                          title={showResolved ? "Hide resolved points" : "Show resolved points"}
+                          data-testid="button-toggle-resolved"
+                        >
+                          {showResolved ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                          <CheckCircle2 className="h-3.5 w-3.5 -ml-1 text-emerald-600 dark:text-emerald-400" />
                         </Button>
                       )}
                       <Button
@@ -1062,7 +1148,14 @@ export function PointsToFix({
                         </DialogContent>
                       </Dialog>
                     </div>
-                    {noResults ? (
+                    {allHidden ? (
+                      <p
+                        className="text-sm text-muted-foreground italic py-4 text-center"
+                        data-testid="text-all-resolved"
+                      >
+                        All points resolved. Tap the eye button to show them.
+                      </p>
+                    ) : noResults ? (
                       <p className="text-sm text-muted-foreground italic py-4 text-center">
                         No matches for "{filterLabel}".
                       </p>

@@ -292,7 +292,7 @@ export default function SkillDetailPage() {
                       type="button"
                       onClick={() => setPointsOpen(true)}
                       data-testid={`button-skill-point-${p.id}`}
-                      className="text-left text-sm py-2 px-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors break-words"
+                      className={`text-left text-sm py-2 px-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors break-words ${p.resolved ? "line-through text-muted-foreground opacity-60" : ""}`}
                     >
                       {p.name}
                     </button>
@@ -410,7 +410,7 @@ export default function SkillDetailPage() {
                     type="button"
                     onClick={() => setPointsOpen(true)}
                     data-testid={`button-skill-point-${p.id}`}
-                    className="text-left text-sm py-2 px-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors break-words"
+                    className={`text-left text-sm py-2 px-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors break-words ${p.resolved ? "line-through text-muted-foreground opacity-60" : ""}`}
                   >
                     {p.name}
                   </button>
