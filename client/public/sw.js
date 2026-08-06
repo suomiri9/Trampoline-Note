@@ -197,8 +197,11 @@ self.addEventListener('fetch', (event) => {
   // Hashed build assets are immutable — cache-first, filling the cache from
   // the network on a miss (covers anything the precache didn't know about).
   if (url.origin === self.location.origin && url.pathname.startsWith('/assets/')) {
+    // ignoreSearch: chunk-retry imports append ?retry=N to bust the module
+    // map — the cached hashed asset must still match, or offline retries of
+    // a precached chunk fail.
     event.respondWith(
-      caches.match(req).then(
+      caches.match(req, { ignoreSearch: true }).then(
         (cached) =>
           cached ||
           fetch(req).then((res) => {

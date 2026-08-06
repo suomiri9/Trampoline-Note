@@ -12,7 +12,7 @@ The rule: **never rebuild a React.lazy component while its route is suspended.**
 Working design (in `lazyPage`):
 1. `React.lazy` resolves ONCE; on failure it resolves to a `ChunkRecovery` component (never rejects, never rebuilt).
 2. `ChunkRecovery` owns retries: on every mount (and Retry taps) it re-runs the import and swaps the real page in place — SPA recovery, no reload.
-3. **Never call `import()` while `navigator.onLine === false`.** A failed fetch poisons Chrome's module map — including all `modulepreload`ed dependency chunks — after which even online imports reject instantly from cache. Skip the attempt offline; the first online retry then succeeds normally.
+3. **Only skip `import()` offline when NO service worker controls the page.** With a controlling SW, precached chunks make offline imports succeed; blocking them breaks every not-yet-imported page at 100% download. Without one, a failed fetch poisons Chrome's module map (chunk + modulepreloaded deps) so even later online imports reject from cache. SW asset matching must ignore query strings or cache-busted retries miss.
 4. Best-effort for flaky-network poisoning: extract the chunk URL from the import error and re-import with `?retry=N` (fresh module-map entry). This only cures the parent chunk, not poisoned deps — prevention (rule 3) is the real fix.
 
 **Why:** verified offline→online real-browser flow; simulation/unit reasoning missed both the remount loop and module-map poisoning.

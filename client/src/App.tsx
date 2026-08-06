@@ -27,12 +27,19 @@ function lazyPage(load: () => Promise<{ default: React.ComponentType<any> }>) {
   let retrySeq = 0;
 
   const attemptLoad = async (): Promise<{ default: React.ComponentType<any> }> => {
-    // Never attempt the import while the browser knows it's offline: a failed
-    // fetch poisons the browser's module map (both the chunk itself and its
+    // While the browser knows it's offline, only attempt the import when a
+    // service worker controls the page — the SW serves precached chunks from
+    // its cache, so the import succeeds with zero network. Without a
+    // controller the fetch is guaranteed to fail, and a failed fetch poisons
+    // the browser's module map (both the chunk itself and its
     // modulepreload'ed dependencies), after which even online imports of the
-    // same URLs reject instantly from cache. Skipping the attempt keeps the
+    // same URLs reject instantly from cache. Skipping that attempt keeps the
     // module map clean so the first online retry succeeds normally.
-    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    if (
+      typeof navigator !== "undefined" &&
+      navigator.onLine === false &&
+      !navigator.serviceWorker?.controller
+    ) {
       throw new Error("offline: skipping chunk import");
     }
     try {
