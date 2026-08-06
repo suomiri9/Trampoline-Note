@@ -12,3 +12,5 @@ When the testing subagent repeatedly reports browser-notebook instability, run e
 - `ctx.setOffline(true)` works as expected for offline flows.
 
 **Why:** the tester was down for an extended period; this path reproduced and diagnosed a bug the tester couldn't.
+
+Offline-delete flows for *synced* scores: when truly offline the score page hides synced cards behind OfflinePlaceholder, so the queued-delete path only triggers when navigator.onLine is true but the network fails ("onLine lies"). Test it with `page.route(..., route.abort('internetdisconnected'))` on the DELETE requests, not `ctx.setOffline(true)`; use setOffline only for the reload-persistence and reconnect-drain phases.
