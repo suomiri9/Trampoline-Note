@@ -190,7 +190,11 @@ export function clearCoachPushCache(userId: string): void {
   }
 }
 
-export async function getPushRecommendation(userId: string, clientDate?: unknown): Promise<PushRecommendation> {
+export async function getPushRecommendation(
+  userId: string,
+  clientDate?: unknown,
+  forceRefresh = false,
+): Promise<PushRecommendation> {
   const dateKey = resolveClientDate(clientDate);
   // The cache key includes today's recovery state so the card regenerates
   // the moment WHOOP syncs the day's recovery — a rec computed at 7am
@@ -208,8 +212,10 @@ export async function getPushRecommendation(userId: string, clientDate?: unknown
     recFingerprint = err instanceof WhoopNotConnectedError ? "nolink" : "unavail";
   }
   const cacheKey = `${userId}:${dateKey}:${recFingerprint}`;
-  const hit = pushCache.get(cacheKey);
-  if (hit) return hit;
+  if (!forceRefresh) {
+    const hit = pushCache.get(cacheKey);
+    if (hit) return hit;
+  }
 
   const ctx = await buildCoachContext(userId, dateKey);
 

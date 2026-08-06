@@ -3,6 +3,7 @@ import { api, buildUrl, type NoteInput, type NoteUpdateInput } from "@shared/rou
 import { isQueuedOfflineResult, tryNetworkOrEnqueue, tryNetworkOrEnqueueChange, type OfflineQueuedResult } from "@/lib/offline-queue";
 import { cacheGet, cacheSet } from "@/lib/offline-db";
 import { getOfflineModeEnabled } from "@/lib/offline-mode";
+import { invalidateCoachPush } from "@/lib/coach-push";
 import type { z } from "zod";
 
 // Utility to parse standard error responses if needed
@@ -126,6 +127,7 @@ export function useCreateNote() {
       if (isQueuedOfflineResult(result)) return;
       invalidateAllNotes(queryClient);
       invalidateAllHistory(queryClient);
+      invalidateCoachPush(queryClient);
     },
   });
 }
@@ -151,6 +153,7 @@ export function useUpdateNote() {
       invalidateAllNotes(queryClient);
       queryClient.invalidateQueries({ queryKey: [api.notes.get.path, variables.id] });
       invalidateAllHistory(queryClient);
+      invalidateCoachPush(queryClient);
     },
   });
 }
@@ -173,6 +176,7 @@ export function useDeleteNote() {
       if (isQueuedOfflineResult(result)) return;
       invalidateAllNotes(queryClient);
       invalidateAllHistory(queryClient);
+      invalidateCoachPush(queryClient);
     },
   });
 }

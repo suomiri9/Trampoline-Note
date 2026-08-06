@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageLayout } from "@/components/page-layout";
 import { PageHeader } from "@/components/page-header";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
@@ -59,10 +59,27 @@ function PushCard() {
   // runs up to half a day behind (e.g. NZ mornings). "en-CA" formats as
   // YYYY-MM-DD. Having the date in the key also refetches after midnight.
   const localDate = new Date().toLocaleDateString("en-CA");
+  const queryKey = [`/api/coach/push?date=${localDate}`];
+  const queryClient = useQueryClient();
   const { data, isLoading, error, refetch, isRefetching } = useQuery<PushRecommendation>({
-    queryKey: [`/api/coach/push?date=${localDate}`],
+    queryKey,
     staleTime: 10 * 60 * 1000,
     retry: 1,
+  });
+
+  // Manual refresh: bypass the server's per-day cache so the coach re-reads
+  // today's data (new sessions, fresh WHOOP sync) and makes a new AI call.
+  const refresh = useMutation({
+    mutationFn: async (): Promise<PushRecommendation> => {
+      const res = await fetch(`/api/coach/push?date=${localDate}&refresh=1`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("refresh failed");
+      return res.json();
+    },
+    onSuccess: (rec) => {
+      queryClient.setQueryData(queryKey, rec);
+    },
   });
 
   if (isLoading) {
@@ -97,7 +114,20 @@ function PushCard() {
   return (
     <div className="card-3d rounded-2xl p-5 relative overflow-hidden" data-testid="card-coach-push">
       <div className={cn("absolute left-0 top-0 bottom-0 w-1", lvl.barClass)} />
-      <div className="eyebrow mb-2">Today's push level</div>
+      <div className="flex items-center justify-between mb-2">
+        <div className="eyebrow">Today's push level</div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-muted-foreground"
+          onClick={() => refresh.mutate()}
+          disabled={refresh.isPending}
+          data-testid="button-coach-push-refresh"
+          aria-label="Refresh recommendation"
+        >
+          <RefreshCw className={cn("w-4 h-4", refresh.isPending && "animate-spin")} />
+        </Button>
+      </div>
       <div className="flex items-center gap-3 mb-2">
         <span
           className={cn(

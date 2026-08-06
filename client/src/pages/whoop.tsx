@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { invalidateCoachPush } from "@/lib/coach-push";
 import { PageLayout } from "@/components/page-layout";
 import { PageHeader } from "@/components/page-header";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
@@ -101,6 +102,9 @@ export default function WhoopPage() {
     if (!status) return;
     if (status === "connected") {
       toast({ title: "WHOOP connected", description: "Your WHOOP data is loading." });
+      // Recovery data just became available — make the Coach card refetch a
+      // freshly generated recommendation instead of its cached copy.
+      invalidateCoachPush(queryClient);
     } else if (OAUTH_MESSAGES[status]) {
       setOauthError(OAUTH_MESSAGES[status]);
     }
@@ -122,6 +126,7 @@ export default function WhoopPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whoop/data"] });
       queryClient.invalidateQueries({ queryKey: ["/api/whoop/daily"] });
+      invalidateCoachPush(queryClient);
       toast({ title: "WHOOP disconnected", description: "Your WHOOP account was unlinked." });
     },
   });

@@ -21,6 +21,7 @@ import {
   completeWhoopLink,
   disconnectWhoop,
 } from "./whoop";
+import { getPushRecommendation, clearCoachPushCache, coachChat, parseMenuPhoto, parseTofScreenshot, parseExecutionSheet, parseScoreSheet, menuChat, CoachUnavailableError } from "./coach";
 
 class PointsMemoTooLargeError extends Error {}
 
@@ -74,6 +75,9 @@ export async function registerRoutes(
       });
       const input = bodySchema.parse(req.body);
       const note = await storage.createNote(getUserId(req), input);
+      // A new session changes today's training load — regenerate the coach's
+      // daily push recommendation on next fetch.
+      clearCoachPushCache(getUserId(req));
       res.status(201).json(note);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -88,6 +92,7 @@ export async function registerRoutes(
 
   app.delete(api.notes.delete.path, isAuthenticated, async (req, res) => {
     await storage.deleteNote(Number(req.params.id), getUserId(req));
+    clearCoachPushCache(getUserId(req));
     res.status(204).send();
   });
 
@@ -101,6 +106,7 @@ export async function registerRoutes(
       if (!note) {
         return res.status(404).json({ message: "Note not found" });
       }
+      clearCoachPushCache(getUserId(req));
       res.json(note);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -696,6 +702,8 @@ export async function registerRoutes(
     }
     try {
       await completeWhoopLink(getUserId(req), code, whoopRedirectUri(req));
+      // Recovery data just became available — regenerate the push card.
+      clearCoachPushCache(getUserId(req));
       res.redirect("/whoop?whoop=connected");
     } catch (err) {
       console.error("WHOOP link error:", err);
@@ -707,6 +715,7 @@ export async function registerRoutes(
   app.post("/api/whoop/disconnect", isAuthenticated, async (req, res) => {
     try {
       await disconnectWhoop(getUserId(req));
+      clearCoachPushCache(getUserId(req));
       res.status(204).end();
     } catch (err) {
       console.error("WHOOP disconnect error:", err);
@@ -779,6 +788,7 @@ export async function registerRoutes(
       const rec = await getPushRecommendation(
         getUserId(req),
         typeof req.query.date === "string" ? req.query.date : undefined,
+        req.query.refresh === "1",
       );
       res.json(rec);
     } catch (err) {
