@@ -12,6 +12,7 @@ import { getWhoopDashboardDataCached, WhoopNotConnectedError } from "./whoop";
 import { resolveClientDate, pickTodayRecovery } from "./coach-dates";
 import type { Skill, Routine, NoteResponse } from "@shared/schema";
 import { sanitizeDeductionValues } from "@shared/execution";
+import { parseNoteSkills, calculateTotalDD } from "@shared/dd";
 import {
   normalizeKey,
   loggableSkills,
@@ -52,61 +53,6 @@ export class CoachStoppedError extends Error {
 }
 
 // ---- Server-side DD computation (mirrors client training-utils) ----
-
-interface SkillItem {
-  id: number;
-  reps?: number;
-  routineId?: number;
-  fcId?: number;
-  customSkillIds?: number[];
-  attempt?: number;
-}
-
-function parseNoteSkills(skillsString: string | null | undefined): SkillItem[] {
-  if (!skillsString) return [];
-  try {
-    const parsed = JSON.parse(skillsString);
-    if (Array.isArray(parsed)) {
-      return parsed.map((item: unknown) =>
-        typeof item === "number" ? { id: item } : (item as SkillItem),
-      );
-    }
-  } catch {}
-  return skillsString.split(",").map((s) => ({ id: parseInt(s) })).filter((i) => Number.isFinite(i.id));
-}
-
-function calculateTotalDD(items: SkillItem[], allSkills: Skill[], routines: Routine[]): number {
-  let total = 0;
-  let groupDD = 0;
-  let groupReps = 1;
-  const ddOf = (ids: number[]) =>
-    ids.reduce((acc, sId) => acc + (allSkills.find((s) => s.id === sId)?.difficulty || 0), 0);
-
-  for (const item of items) {
-    if (item.id === -1) {
-      total += groupDD * groupReps;
-      groupDD = 0;
-      groupReps = 1;
-    } else if (item.id === -2) {
-      const routine = routines.find((r) => r.id === item.routineId);
-      const skillIds = item.customSkillIds ?? routine?.skillIds ?? [];
-      const count = item.attempt ?? skillIds.length;
-      groupDD += ddOf(skillIds.slice(0, count));
-      groupReps = item.reps || 1;
-    } else if (item.id === -3) {
-      const fc = allSkills.find((s) => s.id === item.fcId);
-      groupDD += ddOf(item.customSkillIds ?? fc?.skillIds ?? []);
-      groupReps = item.reps || 1;
-    } else {
-      groupDD += allSkills.find((s) => s.id === item.id)?.difficulty || 0;
-      groupReps = item.reps || 1;
-    }
-  }
-  total += groupDD * groupReps;
-  return total;
-}
-
-// ---- Compact per-user context ----
 
 export interface CoachContext {
   whoopLinked: boolean;
