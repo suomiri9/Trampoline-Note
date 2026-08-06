@@ -4,6 +4,7 @@ description: How lazy route chunk loading fails offline and the recovery design 
 ---
 
 - Blank-app-offline = failed dynamic chunk import, not app logic; all routes must use `lazyPage()`; preload pages online before offline e2e.
+- Since Aug 2026 the SW precaches ALL route chunks (build-injected manifest — see sw-shell-cache.md), so ChunkRecovery is a rare-path safety net, not the primary offline story; keep it anyway (partial installs, evictions).
 
 ## Recovery design (verified in real browser, prod build)
 The rule: **never rebuild a React.lazy component while its route is suspended.** On retry React re-mounts the suspended subtree, so "rebuild fresh lazy on failure" loops forever (thousands of import attempts, eternal spinner, fallback never shows).

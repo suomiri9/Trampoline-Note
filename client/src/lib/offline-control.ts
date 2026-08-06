@@ -12,6 +12,77 @@ export const APP_SHELL_URLS = [
   "/apple-touch-icon.png",
 ];
 
+/** URL of the build-generated list of every hashed build asset (route
+ * chunks, CSS, fonts). Emitted by script/build.ts; absent in dev. */
+export const OFFLINE_MANIFEST_URL = "/offline-manifest.json";
+
+let manifestMemo: { at: number; urls: string[] | null } | null = null;
+
+async function parseManifest(res: Response | null | undefined): Promise<string[] | null> {
+  if (!res || !res.ok) return null;
+  try {
+    const data = (await res.json()) as { urls?: unknown };
+    if (!Array.isArray(data.urls)) return null;
+    const urls = data.urls.filter((u): u is string => typeof u === "string" && u.startsWith("/"));
+    return urls.length > 0 ? urls : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The full set of URLs the offline download must contain for EVERY page to
+ * work offline (lazy route chunks, CSS, fonts — plus the manifest itself).
+ * Network first, cached copy as the offline fallback. Returns null in dev or
+ * when no manifest can be found; callers then fall back to the core shell
+ * list. A null result is retried after a short TTL, a real list is kept for
+ * the rest of the page load. */
+export async function getOfflineAssetUrls(): Promise<string[] | null> {
+  const now = Date.now();
+  if (manifestMemo && (manifestMemo.urls !== null || now - manifestMemo.at < 30_000)) {
+    return manifestMemo.urls;
+  }
+  let urls: string[] | null = null;
+  try {
+    urls = await parseManifest(
+      await fetch(OFFLINE_MANIFEST_URL, { cache: "no-store", credentials: "same-origin" }).catch(
+        () => null,
+      ),
+    );
+  } catch {
+    urls = null;
+  }
+  if (!urls && typeof caches !== "undefined") {
+    try {
+      urls = await parseManifest(await caches.match(OFFLINE_MANIFEST_URL));
+    } catch {
+      urls = null;
+    }
+  }
+  manifestMemo = { at: now, urls };
+  return urls;
+}
+
+/** Pathnames of everything in the given cache (query strings ignored, so
+ * chunk-retry variants like `foo.js?retry=1` still count as cached). */
+export async function getCachedPathnames(cache: Cache): Promise<Set<string>> {
+  const paths = new Set<string>();
+  for (const req of await cache.keys()) {
+    try {
+      paths.add(new URL(req.url).pathname);
+    } catch {
+      // ignore malformed entries
+    }
+  }
+  return paths;
+}
+
+/** How many of `targets` are present in the cached pathname set. */
+export function countCachedTargets(targets: string[], cachedPaths: Set<string>): number {
+  let n = 0;
+  for (const t of targets) if (cachedPaths.has(t)) n += 1;
+  return n;
+}
+
 /** Finds the service worker's current shell cache (the highest-numbered
  * `tn-shell-vN`). Returns null when no shell cache exists yet. Page code must
  * NEVER hardcode the version — sw.js bumps its CACHE name on every shell

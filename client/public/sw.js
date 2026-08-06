@@ -1,9 +1,17 @@
 /* Trampoline Note offline service worker.
- * Pre-caches the navigation shell and lazily caches built JS/CSS/fonts/icons
- * so an installed PWA can launch with zero network. API requests are NOT
- * intercepted — offline behaviour for data is handled at the React layer. */
+ * Pre-caches the navigation shell AND every built asset (route JS chunks,
+ * CSS, fonts) so an installed PWA can launch — and reach every page — with
+ * zero network. API requests are NOT intercepted — offline behaviour for
+ * data is handled at the React layer. */
 
 const CACHE = 'tn-shell-v11';
+
+// Replaced at build time (script/build.ts) with the full list of built files
+// under /assets/ plus /offline-manifest.json. Route chunks are lazy-loaded,
+// so without precaching them a page never visited while online failed with
+// "This page isn't available offline yet" even when Settings showed 100%.
+// Stays empty in dev, where modules are served from /src/ instead.
+const BUILD_ASSETS = [];
 
 // How long a navigation waits on a slow network before falling back to the
 // cached shell. Keeps the app openable on flaky/slow wifi (school wifi etc.)
@@ -22,6 +30,34 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE).then(async (cache) => {
+      // Phase 1 — built assets, BEFORE the shell is touched. Hashed /assets/
+      // URLs are immutable, so copies already in a cache (runtime-cached, or
+      // left by a previously failed install) are salvaged instead of
+      // refetched — a retried install resumes where it stopped. Any failure
+      // throws, aborting the install while the old service worker still
+      // serves a coherent old app (old '/' + old chunks).
+      await Promise.all(
+        BUILD_ASSETS.map(async (url) => {
+          const immutable = url.startsWith('/assets/');
+          if (immutable) {
+            if (await cache.match(url)) return;
+            const prior = await caches.match(url);
+            if (prior) {
+              await cache.put(url, prior);
+              return;
+            }
+          }
+          const res = await fetch(
+            url,
+            immutable
+              ? { credentials: 'same-origin' }
+              : { cache: 'reload', credentials: 'same-origin' },
+          );
+          if (!res || !res.ok) throw new Error('asset precache failed: ' + url);
+          await cache.put(url, res);
+        }),
+      );
+      // Phase 2 — the navigation shell (unchanged salvage-or-abort rules).
       await Promise.all(
         APP_SHELL.map(async (url) => {
           try {
@@ -61,6 +97,20 @@ self.addEventListener('activate', (event) => {
       if (!(await cache.match('/'))) {
         const prior = await caches.match('/');
         if (prior) await cache.put('/', prior);
+      }
+      // Prune old builds' hashed assets from THIS cache (its name is stable
+      // across deploys). Skipped when BUILD_ASSETS is empty (dev) so a
+      // dev-served worker can never wipe a production preview's chunks on
+      // the same origin.
+      if (BUILD_ASSETS.length > 0) {
+        const valid = new Set(BUILD_ASSETS);
+        const reqs = await cache.keys();
+        await Promise.all(
+          reqs.map(async (req) => {
+            const path = new URL(req.url).pathname;
+            if (path.startsWith('/assets/') && !valid.has(path)) await cache.delete(req);
+          }),
+        );
       }
       const keys = await caches.keys();
       await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
@@ -144,7 +194,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Same-origin assets and cross-origin (Google Fonts, etc.):
+  // Hashed build assets are immutable — cache-first, filling the cache from
+  // the network on a miss (covers anything the precache didn't know about).
+  if (url.origin === self.location.origin && url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.match(req).then(
+        (cached) =>
+          cached ||
+          fetch(req).then((res) => {
+            if (res && res.status === 200) {
+              const copy = res.clone();
+              caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+            }
+            return res;
+          }),
+      ),
+    );
+    return;
+  }
+
+  // Other same-origin files and cross-origin (Google Fonts, etc.):
   // stale-while-revalidate.
   event.respondWith(
     caches.match(req).then((cached) => {

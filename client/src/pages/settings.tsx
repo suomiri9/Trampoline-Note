@@ -65,6 +65,9 @@ import {
   registerServiceWorker,
   findShellCacheName,
   APP_SHELL_URLS,
+  getOfflineAssetUrls,
+  getCachedPathnames,
+  countCachedTargets,
 } from "@/lib/offline-control";
 import { pushAccountSettings } from "@/lib/settings-sync";
 import { useToast } from "@/hooks/use-toast";
@@ -194,7 +197,7 @@ export default function SettingsPage() {
     (allSkills ?? []).find((s) => skillDisplayCode(s, allSkills ?? []) === code);
   const [downloadStatus, setDownloadStatus] = useState<{
     sw: boolean;
-    shellProgress: number; // 0..1 — fraction of app-shell files cached
+    shellProgress: number; // 0..1 — fraction of shell + built asset files cached
     accountReady: boolean;
     skillsCount: number | null;
     drillsCount: number | null;
@@ -267,18 +270,23 @@ export default function SettingsPage() {
       } catch {
         // ignore
       }
-      // Fine-grained shell progress: fraction of app-shell files already in
-      // the service worker's CURRENT cache. The cache name is discovered at
-      // runtime (never hardcoded — sw.js bumps it on every shell change).
+      // Fine-grained shell progress: fraction of the app-shell files AND
+      // every built asset (lazy route chunks, CSS, fonts) already in the
+      // service worker's CURRENT cache. Chunks must be counted — they used
+      // to be cached only when a page was visited online, so this card said
+      // 100% while unvisited pages still failed offline. The cache name is
+      // discovered at runtime (never hardcoded — sw.js bumps it on shell
+      // changes).
       let shellProgress = sw ? 1 : 0;
       try {
         if (typeof caches !== "undefined") {
           const shellCacheName = await findShellCacheName();
           if (shellCacheName) {
+            const assetUrls = await getOfflineAssetUrls();
+            const targets = [...APP_SHELL_URLS, ...(assetUrls ?? [])];
             const cache = await caches.open(shellCacheName);
-            const hits = await Promise.all(APP_SHELL_URLS.map((u) => cache.match(u)));
-            const cachedCount = hits.filter(Boolean).length;
-            shellProgress = cachedCount / APP_SHELL_URLS.length;
+            const cachedPaths = await getCachedPathnames(cache);
+            shellProgress = countCachedTargets(targets, cachedPaths) / targets.length;
           } else {
             shellProgress = 0;
           }
@@ -341,10 +349,19 @@ export default function SettingsPage() {
               const shellCacheName = await findShellCacheName();
               if (!shellCacheName) return;
               const cache = await caches.open(shellCacheName);
+              const assetUrls = await getOfflineAssetUrls();
+              const targets = [...APP_SHELL_URLS, ...(assetUrls ?? [])];
               await Promise.all(
-                APP_SHELL_URLS.map(async (u) => {
+                targets.map(async (u) => {
                   if (await cache.match(u)) return;
-                  const res = await fetch(u, { cache: "reload", credentials: "same-origin" });
+                  // Hashed /assets/ files are immutable — let the HTTP cache
+                  // help; everything else must bypass it.
+                  const res = await fetch(
+                    u,
+                    u.startsWith("/assets/")
+                      ? { credentials: "same-origin" }
+                      : { cache: "reload", credentials: "same-origin" },
+                  );
                   if (res.ok) await cache.put(u, res);
                 }),
               );
@@ -368,6 +385,7 @@ export default function SettingsPage() {
       // moves promptly; slow down once everything is ready.
       const allReady =
         sw &&
+        shellProgress >= 1 &&
         accountReady &&
         skillsCount !== null &&
         drillsCount !== null &&
@@ -739,7 +757,7 @@ export default function SettingsPage() {
                 const connectionsLoaded = connectionsCount !== null;
                 const routinesReady = routinesCount !== null;
                 const steps: Array<{ testId: string; label: string; ready: boolean; count?: number | null }> = [
-                  { testId: "status-app-shell", label: "App ready to launch offline", ready: sw },
+                  { testId: "status-app-shell", label: "App ready to launch offline", ready: sw && shellProgress >= 1 },
                   { testId: "status-account", label: "Account & points to fix", ready: accountReady },
                   { testId: "status-skills", label: "Skills", ready: skillsLoaded, count: skillsCount },
                   { testId: "status-drills", label: "Drills", ready: drillsLoaded, count: drillsCount },
