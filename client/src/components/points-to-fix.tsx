@@ -889,9 +889,9 @@ export function PointsToFix({
                           data-testid="button-toggle-resolved"
                         >
                           {showResolved ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
                             <Eye className="h-4 w-4" />
+                          ) : (
+                            <EyeOff className="h-4 w-4" />
                           )}
                           <CheckCircle2 className="h-3.5 w-3.5 -ml-1 text-emerald-600 dark:text-emerald-400" />
                         </Button>
