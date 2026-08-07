@@ -34,8 +34,22 @@ export const routines = pgTable("routines", {
   userId: varchar("user_id"),
   name: text("name").notNull(),
   code: text("code"),
-  skillIds: integer("skill_ids").array().notNull(), // Array of 10 skill IDs
+  skillIds: integer("skill_ids").array().notNull(), // Array of 10 skill IDs (the CURRENT lineup)
   archived: integer("archived").notNull().default(0), // 0 = active, 1 = archived
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Past lineups of a routine ("change from this day" versioning). Each row is a
+// lineup that applied to training dates strictly BEFORE effective_until (an
+// athlete-local yyyy-mm-dd day); the routines row itself always holds the
+// CURRENT lineup, so all "current routine" surfaces keep working unchanged.
+// Resolution rules live in shared/routine-versions.ts.
+export const routineVersions = pgTable("routine_versions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id"),
+  routineId: integer("routine_id").notNull(),
+  skillIds: integer("skill_ids").array().notNull(),
+  effectiveUntil: date("effective_until").notNull(), // exclusive end day
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -181,6 +195,13 @@ export type InsertSkill = z.infer<typeof insertSkillSchema>;
 
 export type Routine = typeof routines.$inferSelect;
 export type InsertRoutine = z.infer<typeof insertRoutineSchema>;
+
+export type RoutineVersion = typeof routineVersions.$inferSelect;
+// Minimal snapshot shape shared by server rows and client-computed optimistic
+// versions (offline edits precompute these before the server row exists).
+export type RoutineVersionSnapshot = { id?: number; skillIds: number[]; effectiveUntil: string };
+// Routines travel with their past versions everywhere (API + offline mirror).
+export type RoutineWithVersions = Routine & { versions?: RoutineVersionSnapshot[] };
 
 export type Score = typeof scores.$inferSelect;
 export type InsertScore = z.infer<typeof insertScoreSchema>;

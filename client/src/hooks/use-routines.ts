@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { queryClient } from "@/lib/queryClient";
-import { type Routine, type InsertRoutine } from "@shared/schema";
+import { type Routine, type InsertRoutine, type RoutineWithVersions, type RoutineVersionSnapshot } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -16,7 +16,7 @@ import {
 export function useRoutines() {
   const { toast } = useToast();
 
-  const query = useQuery<Routine[]>({
+  const query = useQuery<RoutineWithVersions[]>({
     queryKey: [api.routines.list.path],
   });
 
@@ -32,7 +32,8 @@ export function useRoutines() {
           code: routine.code ?? null,
           skillIds: routine.skillIds,
           archived: 0,
-        }) as Routine & { id: number },
+          versions: [],
+        }) as unknown as Routine & { id: number },
         async (signal) => {
           const res = await fetch(api.routines.create.path, {
             method: "POST",
@@ -91,11 +92,27 @@ export function useRoutines() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, ...routine }: { id: number } & Partial<InsertRoutine>) => {
+    mutationFn: async ({
+      id,
+      ...routine
+    }: { id: number } & Partial<InsertRoutine> & {
+      // "Change from this day" lineup edit: applyFromDay tells the server to
+      // snapshot the old lineup for dates before that day; `versions` is the
+      // client-precomputed result of the same change so the offline mirror
+      // stays correct while the edit is queued (the server recomputes it and
+      // zod strips the extra key from the request).
+      applyFromDay?: string;
+      versions?: RoutineVersionSnapshot[];
+    }) => {
       if (id < 0) {
-        await updateQueuedByTempId(id, routine);
-        await applyOptimisticListChange("routine", id, "PUT", routine);
-        return { ...routine, id, _queuedOffline: true };
+        // Never-synced routine: it has no server history to version, so drop
+        // the applyFromDay marker AND the precomputed versions before merging
+        // into the queued create — otherwise the local mirror would show a
+        // lineup split that will never exist on the server.
+        const { applyFromDay: _drop, versions: _dropVersions, ...optimistic } = routine;
+        await updateQueuedByTempId(id, optimistic);
+        await applyOptimisticListChange("routine", id, "PUT", optimistic);
+        return { ...optimistic, id, _queuedOffline: true };
       }
       return await tryNetworkOrEnqueueChange("routine", id, "PUT", routine, async (signal) => {
         const res = await apiRequest("PUT", buildUrl(api.routines.update.path, { id }), routine, { signal });

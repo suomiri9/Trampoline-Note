@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertNoteSchema, notes, skills, routines, scores, tofSessions, executionSessions, insertSkillSchema, insertRoutineSchema, insertScoreSchema, insertTofSessionSchema, insertExecutionSessionSchema } from './schema';
+import { insertNoteSchema, notes, skills, routines, scores, tofSessions, executionSessions, insertSkillSchema, insertRoutineSchema, insertScoreSchema, insertTofSessionSchema, insertExecutionSessionSchema, type RoutineWithVersions } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -100,7 +100,9 @@ export const api = {
       method: 'GET' as const,
       path: '/api/routines' as const,
       responses: {
-        200: z.array(z.custom<typeof routines.$inferSelect>()),
+        // Routines embed their past lineup versions so every consumer (and
+        // the offline mirror) can resolve date-appropriate lineups.
+        200: z.array(z.custom<RoutineWithVersions>()),
       },
     },
     create: {
@@ -123,9 +125,16 @@ export const api = {
     update: {
       method: 'PUT' as const,
       path: '/api/routines/:id' as const,
-      input: insertRoutineSchema.partial(),
+      // applyFromDay: when the lineup changed, snapshot the previous lineup as
+      // a version applying to athlete-local dates BEFORE this day ("change
+      // from this day"); omitted = rewrite all history (versions cleared).
+      // Unknown extra keys (e.g. a client-precomputed optimistic `versions`
+      // array for the offline cache) are stripped by zod.
+      input: insertRoutineSchema.partial().extend({
+        applyFromDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      }),
       responses: {
-        200: z.custom<typeof routines.$inferSelect>(),
+        200: z.custom<RoutineWithVersions>(),
         400: errorSchemas.validation,
         404: errorSchemas.notFound,
       },

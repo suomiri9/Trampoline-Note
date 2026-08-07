@@ -79,7 +79,8 @@ export default function StatsPage() {
 
   notes?.forEach(note => {
     const skillsData = parseNoteSkills(note.skills);
-    const noteDD = calculateTotalDD(skillsData, allItems, routines);
+    // Pass the note's date so routine entries count the lineup trained that day.
+    const noteDD = calculateTotalDD(skillsData, allItems, routines, note.date);
 
     const key = note.date.substring(0, 10);
     if (!ddByDate[key]) ddByDate[key] = { difficulty: 0, sessions: 0, turns: 0, timedTurns: 0, timedMinutes: 0 };
@@ -253,7 +254,7 @@ export default function StatsPage() {
   const activeDays = chartData.reduce((n, d) => n + (d.sessions > 0 ? 1 : 0), 0);
   const periodTotalDD = totalDDInRange;
   const periodAvgDD = sessionsInPeriod > 0 ? periodTotalDD / sessionsInPeriod : 0;
-  const periodBest = notesInPeriod.reduce((m, n) => Math.max(m, calculateTotalDD(parseNoteSkills(n.skills), allItems, routines)), 0);
+  const periodBest = notesInPeriod.reduce((m, n) => Math.max(m, calculateTotalDD(parseNoteSkills(n.skills), allItems, routines, n.date)), 0);
 
   // ---- Turn efficiency (period-scoped, gated by the Track Turns preference) ----
   let periodTurns = 0;
@@ -278,7 +279,7 @@ export default function StatsPage() {
 
   // ---- All-time overview (not period-scoped) ----
   const allNotes = notes ?? [];
-  const allTimeTotalDD = allNotes.reduce((sum, n) => sum + calculateTotalDD(parseNoteSkills(n.skills), allItems, routines), 0);
+  const allTimeTotalDD = allNotes.reduce((sum, n) => sum + calculateTotalDD(parseNoteSkills(n.skills), allItems, routines, n.date), 0);
   const allTimeSessions = allNotes.length;
   const earliestNoteDate = allNotes.reduce<string | null>((min, n) => {
     const d = n.date.substring(0, 10);

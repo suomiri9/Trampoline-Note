@@ -90,7 +90,7 @@ export async function buildCoachContext(userId: string, clientDate?: unknown): P
     lines.push("  (no sessions logged)");
   }
   for (const note of recentNotes.slice(0, 30)) {
-    const dd = calculateTotalDD(parseNoteSkills(note.skills), skills, routines);
+    const dd = calculateTotalDD(parseNoteSkills(note.skills), skills, routines, note.date);
     const noteText = (note.content || "").replace(/\s+/g, " ").trim();
     lines.push(
       `  ${note.date.substring(0, 10)} · DD ${dd.toFixed(1)} · rating ${note.rating ?? "-"}/5` +

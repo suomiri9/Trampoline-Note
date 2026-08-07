@@ -11,6 +11,7 @@ import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
 import crypto from "crypto";
 import { parsePoints, mergePoints, isPointCategory, type PointToFix } from "@shared/points";
+import { lineupOnDate, versionIndexOnDate } from "@shared/routine-versions";
 import {
   getWhoopDashboardDataCached,
   WhoopNotConnectedError,
@@ -513,7 +514,11 @@ export async function registerRoutes(
           } else if (item.id === -2 && raw.routineId) {
             const customIds: number[] | undefined = raw.customSkillIds;
             const routine = userRoutines.find(r => r.id === raw.routineId);
-            const routineSkillIds = customIds ?? routine?.skillIds ?? [];
+            // Resolve against the lineup in effect on the note's date, so a
+            // skill swapped out stops accruing reps after the change day and
+            // a swapped-in skill only counts from it.
+            const routineSkillIds = customIds ??
+              (routine ? lineupOnDate(routine.skillIds, routine.versions, note.date) : []);
             const attempt = raw.attempt ?? routineSkillIds.length;
             const activeSkills = routineSkillIds.slice(0, attempt);
             const count = activeSkills.filter((sid: number) => sid === skillId).length;
@@ -562,7 +567,7 @@ export async function registerRoutes(
       const allNotes = await storage.getNotes(userId);
       const allRoutines = await storage.getRoutines(userId);
       const routine = allRoutines.find(r => r.id === routineId);
-      const expectedCount = routine?.skillIds?.length ?? 10;
+      const versions = routine?.versions ?? [];
 
       const entries: Array<{
         noteId: number;
@@ -571,6 +576,12 @@ export async function registerRoutes(
         attempt: number | null;
         skillCount: number;
         reps: number;
+        // Which lineup was in effect on the note's date: 0..n-1 = past
+        // versions (oldest first), n = current lineup. Lets the client split
+        // stats per version.
+        version: number;
+        // Length of that lineup — full-vs-attempt is judged against it.
+        expected: number;
       }> = [];
 
       for (const note of allNotes) {
@@ -580,6 +591,13 @@ export async function registerRoutes(
         for (const item of items) {
           const raw = item as any;
           if (item.id === -2 && raw.routineId === routineId) {
+            // Classify against the lineup in effect on the note's date, not
+            // today's lineup — historical entries stay true to what was
+            // actually trained.
+            const effectiveLineup = routine
+              ? lineupOnDate(routine.skillIds, versions, note.date)
+              : undefined;
+            const expectedCount = effectiveLineup?.length ?? 10;
             const customIds: number[] | undefined = raw.customSkillIds;
             const explicitAttempt: number | undefined = raw.attempt;
             const reps: number = Number.isFinite(raw.reps) && raw.reps > 0 ? raw.reps : 1;
@@ -598,6 +616,8 @@ export async function registerRoutes(
               attempt: skillCount !== expectedCount ? skillCount : null,
               skillCount,
               reps,
+              version: versionIndexOnDate(versions, note.date),
+              expected: expectedCount,
             });
           }
         }

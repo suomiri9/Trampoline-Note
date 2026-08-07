@@ -20,7 +20,10 @@ import { Trash2, Pencil, X, Layers, Archive, ArchiveRestore, MoreVertical, Searc
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
-import { type Routine, type Skill } from "@shared/schema";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { format } from "date-fns";
+import { type Routine, type RoutineWithVersions, type Skill } from "@shared/schema";
+import { sameLineup, applyLineupChange } from "@shared/routine-versions";
 import { api } from "@shared/routes";
 import { queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
@@ -52,8 +55,13 @@ export default function RoutinesPage() {
     return map;
   }, [notes]);
 
-  const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
+  const [editingRoutine, setEditingRoutine] = useState<RoutineWithVersions | null>(null);
   const [name, setName] = useState("");
+  // "When does this change apply?" dialog for lineup edits on a routine with
+  // training history (from-a-day vs rewrite-all).
+  const [applyChangeOpen, setApplyChangeOpen] = useState(false);
+  const [applyMode, setApplyMode] = useState<"fromDay" | "rewrite">("fromDay");
+  const [applyFromDay, setApplyFromDay] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<{ id: number; name: string } | null>(null);
   const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
@@ -123,6 +131,17 @@ export default function RoutinesPage() {
     if (!name || selectedSkillIds.length !== 10) return;
 
     if (editingRoutine) {
+      const lineupChanged = !sameLineup(selectedSkillIds, editingRoutine.skillIds);
+      // Changing the lineup of a routine that's already been trained would
+      // silently rewrite history — ask when the change applies first.
+      // Name-only edits (and unpracticed routines) save straight through.
+      if (lineupChanged && firstPracticedByRoutine.has(editingRoutine.id)) {
+        setApplyMode("fromDay");
+        // Athlete-local today (never the server clock).
+        setApplyFromDay(format(new Date(), "yyyy-MM-dd"));
+        setApplyChangeOpen(true);
+        return;
+      }
       await updateRoutine({
         id: editingRoutine.id,
         name,
@@ -143,7 +162,37 @@ export default function RoutinesPage() {
     setShowBuilder(false);
   };
 
-  const startEditing = (routine: Routine) => {
+  const confirmApplyChange = async () => {
+    if (!editingRoutine) return;
+    const payload: Parameters<typeof updateRoutine>[0] = {
+      id: editingRoutine.id,
+      name,
+      code: name,
+      skillIds: selectedSkillIds,
+    };
+    if (applyMode === "fromDay" && applyFromDay) {
+      payload.applyFromDay = applyFromDay;
+      // Precompute the resulting version list so the offline mirror shows the
+      // right historical lineups even while the edit is still queued. The
+      // server runs the identical pure function and remains the authority.
+      payload.versions = applyLineupChange(
+        editingRoutine.skillIds,
+        editingRoutine.versions,
+        applyFromDay,
+      );
+    } else {
+      // Rewrite all history: the new lineup applies everywhere.
+      payload.versions = [];
+    }
+    setApplyChangeOpen(false);
+    await updateRoutine(payload);
+    setEditingRoutine(null);
+    setName("");
+    setSelectedSkillIds([]);
+    setShowBuilder(false);
+  };
+
+  const startEditing = (routine: RoutineWithVersions) => {
     setEditingRoutine(routine);
     setName(routine.name);
     setSelectedSkillIds(routine.skillIds.slice(0, 10));
@@ -304,6 +353,73 @@ export default function RoutinesPage() {
                 <Button variant="outline" className="h-11" onClick={cancelEditing}>Cancel</Button>
               )}
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={applyChangeOpen} onOpenChange={(o) => { if (!o) setApplyChangeOpen(false); }}>
+        <DialogContent aria-describedby={undefined} className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>When does this change apply?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-2">
+            “{editingRoutine?.name}” already has training history. Choose when the new lineup takes effect.
+          </p>
+          <RadioGroup
+            value={applyMode}
+            onValueChange={(v) => setApplyMode(v as "fromDay" | "rewrite")}
+            className="gap-2"
+          >
+            <label
+              className={cn(
+                "flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors",
+                applyMode === "fromDay" ? "border-primary/60 bg-primary/5" : "border-border/60",
+              )}
+            >
+              <RadioGroupItem value="fromDay" className="mt-0.5" data-testid="radio-apply-from-day" />
+              <div className="flex-1 space-y-1.5">
+                <div className="text-sm font-medium leading-none">From a day…</div>
+                <p className="text-xs text-muted-foreground">
+                  Sessions before this day keep the old lineup; this day onward uses the new one.
+                </p>
+                <Input
+                  type="date"
+                  value={applyFromDay}
+                  onChange={(e) => setApplyFromDay(e.target.value)}
+                  disabled={applyMode !== "fromDay"}
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-9 mt-1"
+                  data-testid="input-apply-from-day"
+                />
+              </div>
+            </label>
+            <label
+              className={cn(
+                "flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors",
+                applyMode === "rewrite" ? "border-primary/60 bg-primary/5" : "border-border/60",
+              )}
+            >
+              <RadioGroupItem value="rewrite" className="mt-0.5" data-testid="radio-apply-rewrite" />
+              <div className="flex-1 space-y-1">
+                <div className="text-sm font-medium leading-none">Rewrite all history</div>
+                <p className="text-xs text-muted-foreground">
+                  Every past session counts against the new lineup, as if it was always this way.
+                </p>
+              </div>
+            </label>
+          </RadioGroup>
+          <div className="flex gap-2 pt-1">
+            <Button
+              className="flex-1 h-11"
+              onClick={confirmApplyChange}
+              disabled={isUpdating || (applyMode === "fromDay" && !applyFromDay)}
+              data-testid="button-confirm-apply-change"
+            >
+              {isUpdating ? "Saving..." : "Save Change"}
+            </Button>
+            <Button variant="outline" className="h-11" onClick={() => setApplyChangeOpen(false)}>
+              Back
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

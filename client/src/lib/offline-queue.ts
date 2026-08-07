@@ -309,10 +309,26 @@ export async function applyOptimisticListChange(
   );
 }
 
+/** Body carries a routine "change from this day" marker (ordered mutation). */
+function hasApplyFromDay(body: unknown): boolean {
+  return (
+    !!body &&
+    typeof body === 'object' &&
+    (body as Record<string, unknown>).applyFromDay != null
+  );
+}
+
 /**
  * Queue an offline UPDATE or DELETE of an already-synced entity (positive id).
  * Collapses any prior queued change for the same entity — only the latest
- * state needs to reach the server (a DELETE supersedes earlier PUTs).
+ * state needs to reach the server (a DELETE supersedes earlier PUTs) —
+ * EXCEPT around routine lineup edits marked `applyFromDay`. Those are ORDERED
+ * mutations: the server snapshots whatever lineup is current when each one
+ * lands, so a queued applyFromDay PUT must never be collapsed away by a later
+ * edit (the boundary it creates would be lost), and an incoming applyFromDay
+ * PUT must apply AFTER everything already queued (its snapshot depends on the
+ * state those produce). Only plain-PUT-over-plain-PUT collapses; drain replays
+ * the rest one by one in enqueue order.
  * Pending offline entries (negative tempIds) are handled elsewhere via
  * updateQueuedByTempId / deleteQueuedByTempId.
  */
@@ -322,9 +338,12 @@ export async function enqueueEntityChange(
   method: 'PUT' | 'DELETE',
   body?: unknown,
 ): Promise<OfflineQueuedResult> {
+  const incomingOrdered = method === 'PUT' && hasApplyFromDay(body);
   const existing = await queueAll();
   for (const item of existing) {
     if (item.kind === kind && item.method !== 'POST' && item.tempId === id && item.id != null) {
+      // A DELETE supersedes the entity's whole queued history.
+      if (method !== 'DELETE' && (incomingOrdered || hasApplyFromDay(item.body))) continue;
       await queueDelete(item.id);
     }
   }

@@ -3,6 +3,7 @@ import { Calendar, MoreVertical, Pencil, Trash2, Clock, HeartPulse } from "lucid
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { type Note } from "@shared/schema";
 import { parseNoteSkills, calculateTotalDD, computeTurns } from "@/lib/training-utils";
+import { lineupOnDate } from "@shared/routine-versions";
 import { useTrackTurns } from "@/hooks/use-track-turns";
 import { SkillCode } from "@/components/skill-code";
 import { StarRating } from "./star-rating";
@@ -66,7 +67,10 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
   };
 
   const skillsData = parseNoteSkills(note.skills);
-  const totalDifficulty = calculateTotalDD(skillsData, allItems, routines);
+  // Resolve routine references against the lineup in effect on the note's
+  // date, so past sessions keep showing what was actually trained.
+  const noteDay = String(note.date).slice(0, 10);
+  const totalDifficulty = calculateTotalDD(skillsData, allItems, routines, noteDay);
   const [trackTurns] = useTrackTurns();
   const turnInfo = computeTurns(skillsData);
   const [expandedMath, setExpandedMath] = useState<Set<number>>(new Set());
@@ -240,7 +244,9 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                     if (group.length === 1 && (group[0] as any).id === -2) {
                       const item = group[0] as any;
                       const routine = routines?.find(r => r.id === item.routineId);
-                      const baseSkillIds: number[] = routine?.skillIds ?? [];
+                      const baseSkillIds: number[] = routine
+                        ? lineupOnDate(routine.skillIds, routine.versions, noteDay)
+                        : [];
                       const displaySkillIds: number[] = item.customSkillIds ?? (item.attempt != null ? baseSkillIds.slice(0, item.attempt) : baseSkillIds);
                       const routineDD = displaySkillIds.reduce((acc: number, sId: number) => {
                         const skill = allItems?.find(s => s.id === sId);
@@ -332,7 +338,8 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                     const lineDD = group.reduce((acc, gItem: any) => {
                       if (gItem.id === -2) {
                         const r = routines?.find(rt => rt.id === gItem.routineId);
-                        const sIds = gItem.customSkillIds ?? r?.skillIds ?? [];
+                        const sIds = gItem.customSkillIds ??
+                          (r ? lineupOnDate(r.skillIds, r.versions, noteDay) : []);
                         const count = gItem.attempt ?? sIds.length;
                         return acc + sIds.slice(0, count).reduce((a: number, sId: number) => {
                           const sk = allItems?.find(s => s.id === sId);

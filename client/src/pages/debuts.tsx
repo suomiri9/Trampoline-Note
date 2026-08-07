@@ -21,7 +21,8 @@ import { cn } from "@/lib/utils";
 import { resolveHidden, saveHiddenLocal, type HiddenMap } from "@/lib/debuts-hidden";
 import { enqueueDebutsHiddenUpdate } from "@/lib/offline-queue";
 import { getOfflineModeEnabled } from "@/lib/offline-mode";
-import type { Score, Skill, Routine } from "@shared/schema";
+import type { Score, Skill, RoutineWithVersions } from "@shared/schema";
+import { lineupOnDate, versionBoundaries } from "@shared/routine-versions";
 
 interface DebutRow {
   key: string;
@@ -31,7 +32,20 @@ interface DebutRow {
   firstComp: string | null; // ISO date
   compName?: string | null;
   days: number | null; // first trained -> first comp
+  // Color overrides for routine lineup-version segments — a changed routine's
+  // new segment renders in a visibly different color from the original.
+  barClass?: string;
+  badgeClass?: string;
+  dotClass?: string;
 }
+
+// Palette for lineup-version segments (segment 1, 2, 3… after the original).
+// Deliberately distinct from the amber bars / violet badges used elsewhere.
+const VERSION_SEGMENT_COLORS = [
+  { bar: "bg-sky-500/70", badge: "bg-sky-500/15 text-sky-600 dark:text-sky-400", dot: "bg-sky-500" },
+  { bar: "bg-emerald-500/70", badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500" },
+  { bar: "bg-fuchsia-500/70", badge: "bg-fuchsia-500/15 text-fuchsia-600 dark:text-fuchsia-400", dot: "bg-fuchsia-500" },
+];
 
 function fmtD(iso: string | null): string {
   return iso ? format(parseISO(iso), "dd-MM-yyyy") : "—";
@@ -98,6 +112,7 @@ function DebutList({
                   data-testid={`toggle-${testPrefix}-${r.key}`}
                 >
                   <span className={cn("flex-1 min-w-0 truncate text-xs font-mono font-bold", on ? "text-foreground" : "text-muted-foreground/60")}>
+                    {r.dotClass && <span className={cn("inline-block w-2 h-2 rounded-full mr-1.5", r.dotClass)} aria-hidden="true" />}
                     {r.label}
                     {r.sub && <span className="font-normal text-muted-foreground/70 ml-1.5">{r.sub}</span>}
                   </span>
@@ -130,15 +145,16 @@ function DebutList({
         <div key={r.key} className="rounded-lg bg-secondary/30 border border-border/50 px-3 py-2" data-testid={`row-${testPrefix}-${r.key}`}>
           <div className="flex items-center gap-3 text-xs font-mono">
             <span className="font-bold text-foreground flex-1 truncate">
+              {r.dotClass && <span className={cn("inline-block w-2 h-2 rounded-full mr-1.5", r.dotClass)} aria-hidden="true" />}
               {r.label}
               {r.sub && <span className="font-normal text-muted-foreground/70 ml-1.5">{r.sub}</span>}
             </span>
-            <Badge variant="outline" className={cn("text-[10px] font-mono px-1.5 py-0 h-4 border-transparent shrink-0", r.days! < 0 ? "bg-muted text-muted-foreground" : accent)}>
+            <Badge variant="outline" className={cn("text-[10px] font-mono px-1.5 py-0 h-4 border-transparent shrink-0", r.days! < 0 ? "bg-muted text-muted-foreground" : (r.badgeClass ?? accent))}>
               {r.days! < 0 ? "comped before first log" : r.days === 0 ? "same day" : `${r.days} day${r.days === 1 ? "" : "s"}`}
             </Badge>
           </div>
           <div className="mt-1.5 h-1.5 rounded-full bg-border/40 overflow-hidden">
-            <div className="h-full rounded-full bg-amber-500/70" style={{ width: `${Math.max(2, (Math.max(0, r.days!) / maxDays) * 100)}%` }} />
+            <div className={cn("h-full rounded-full", r.barClass ?? "bg-amber-500/70")} style={{ width: `${Math.max(2, (Math.max(0, r.days!) / maxDays) * 100)}%` }} />
           </div>
           <div className="flex items-center justify-between mt-1 text-[10px] font-mono text-muted-foreground">
             <span>trained {fmtD(r.firstTrained)}</span>
@@ -155,6 +171,7 @@ function DebutList({
           {pending.map(r => (
             <div key={r.key} className="flex items-center gap-3 text-xs font-mono rounded-lg bg-secondary/10 border border-dashed border-border/50 px-3 py-2" data-testid={`row-${testPrefix}-pending-${r.key}`}>
               <span className="font-bold text-foreground/80 flex-1 truncate">
+                {r.dotClass && <span className={cn("inline-block w-2 h-2 rounded-full mr-1.5", r.dotClass)} aria-hidden="true" />}
                 {r.label}
                 {r.sub && <span className="font-normal text-muted-foreground/70 ml-1.5">{r.sub}</span>}
               </span>
@@ -236,11 +253,19 @@ export default function DebutsPage() {
 
   const { skillRows, routineRows } = useMemo(() => {
     const skillById = new Map<number, Skill>((allSkills ?? []).map(s => [s.id, s]));
-    const routineById = new Map<number, Routine>((routines ?? []).map(r => [r.id, r]));
+    const routineById = new Map<number, RoutineWithVersions>((routines ?? []).map(r => [r.id, r]));
+    // Lineup in effect on a given day — past entries expand to the skills
+    // that were actually in the routine then, not today's lineup.
+    const routineLineupOn = (rid: number, date: string): number[] => {
+      const r = routineById.get(rid);
+      return r ? lineupOnDate(r.skillIds, r.versions, date) : [];
+    };
 
     // ---- First time each skill / routine appears in a training note ----
     const skillFirstTrained = new Map<number, string>();
-    const routineFirstTrained = new Map<number, string>();
+    // All trained dates per routine (sorted later) so each lineup-version
+    // segment can find its own first training date.
+    const routineTrainedDates = new Map<number, string[]>();
 
     const markSkill = (id: number, date: string) => {
       const sk = skillById.get(id);
@@ -260,8 +285,12 @@ export default function DebutsPage() {
       for (const item of parseNoteSkills(n.skills)) {
         if (item.id === -1) continue;
         if (item.id === -2) {
-          if (item.routineId != null) routineFirstTrained.set(item.routineId, minDate(routineFirstTrained.get(item.routineId), date));
-          let ids = item.customSkillIds ?? (item.routineId != null ? routineById.get(item.routineId)?.skillIds : undefined) ?? [];
+          if (item.routineId != null) {
+            const list = routineTrainedDates.get(item.routineId);
+            if (list) list.push(date);
+            else routineTrainedDates.set(item.routineId, [date]);
+          }
+          let ids = item.customSkillIds ?? (item.routineId != null ? routineLineupOn(item.routineId, date) : []);
           // A partial attempt (no custom list) only performed the first `attempt` skills.
           if (item.customSkillIds == null && item.attempt != null) ids = ids.slice(0, item.attempt);
           for (const id of ids) markSkill(id, date);
@@ -281,13 +310,17 @@ export default function DebutsPage() {
       .sort((a, b) => a.date.localeCompare(b.date));
 
     const skillFirstComp = new Map<number, { date: string; compName: string | null }>();
-    const routineFirstComp = new Map<number, { date: string; compName: string | null }>();
+    // All comp appearances per routine (compScores already date-ascending) so
+    // each lineup-version segment can find its own first competition.
+    const routineCompDates = new Map<number, { date: string; compName: string | null }[]>();
 
     for (const sc of compScores) {
       for (const rid of [sc.routineId, sc.routineIdVol]) {
         if (rid == null) continue;
-        if (!routineFirstComp.has(rid)) routineFirstComp.set(rid, { date: sc.date, compName: sc.competitionName });
-        for (const id of routineById.get(rid)?.skillIds ?? []) {
+        const list = routineCompDates.get(rid);
+        if (list) list.push({ date: sc.date, compName: sc.competitionName });
+        else routineCompDates.set(rid, [{ date: sc.date, compName: sc.competitionName }]);
+        for (const id of routineLineupOn(rid, sc.date)) {
           const sk = skillById.get(id);
           if (!sk) continue;
           const targets = sk.isDrill === 2 || sk.isDrill === 3 ? (sk.skillIds ?? []) : [id];
@@ -319,19 +352,49 @@ export default function DebutsPage() {
     }
 
     const routineRows: DebutRow[] = [];
-    const routineIds = new Set<number>([...Array.from(routineFirstTrained.keys()), ...Array.from(routineFirstComp.keys())]);
+    const routineIds = new Set<number>([...Array.from(routineTrainedDates.keys()), ...Array.from(routineCompDates.keys())]);
     for (const id of Array.from(routineIds)) {
       const r = routineById.get(id);
       if (!r) continue;
-      const trained = routineFirstTrained.get(id) ?? null;
-      const comp = routineFirstComp.get(id) ?? null;
-      routineRows.push({
-        key: String(id),
-        label: r.name,
-        firstTrained: trained,
-        firstComp: comp?.date ?? null,
-        compName: comp?.compName,
-        days: trained && comp ? differenceInCalendarDays(parseISO(comp.date), parseISO(trained)) : null,
+      const trainedDates = (routineTrainedDates.get(id) ?? []).slice().sort();
+      const comps = routineCompDates.get(id) ?? [];
+      const bounds = versionBoundaries(r.versions);
+
+      // One row per lineup-version segment: [start, bounds[0]), [bounds[0],
+      // bounds[1]), …, [last bound, ∞). Unversioned routines have a single
+      // segment and keep the original row key/colors (hidden prefs stay valid).
+      const segments: { from: string | null; to: string | null }[] = [
+        { from: null, to: bounds[0] ?? null },
+        ...bounds.map((b, i) => ({ from: b, to: bounds[i + 1] ?? null })),
+      ];
+
+      segments.forEach((seg, i) => {
+        const within = (d: string) => (seg.from == null || d >= seg.from) && (seg.to == null || d < seg.to);
+        const trained = trainedDates.find(within) ?? null;
+        const comp = comps.find(c => within(c.date)) ?? null;
+        // Skip segments with no activity at all, except the very first (the
+        // original row always shows so a never-trained routine still lists).
+        if (i > 0 && !trained && !comp) return;
+        const palette = i === 0 ? null : VERSION_SEGMENT_COLORS[(i - 1) % VERSION_SEGMENT_COLORS.length];
+        routineRows.push({
+          key: i === 0 ? String(id) : `${id}@${i}`,
+          label: r.name,
+          sub:
+            segments.length === 1
+              ? undefined
+              : seg.from == null
+                ? `until ${fmtD(seg.to)}`
+                : seg.to == null
+                  ? `since ${fmtD(seg.from)}`
+                  : `${fmtD(seg.from)} – ${fmtD(seg.to)}`,
+          firstTrained: trained,
+          firstComp: comp?.date ?? null,
+          compName: comp?.compName,
+          days: trained && comp ? differenceInCalendarDays(parseISO(comp.date), parseISO(trained)) : null,
+          dotClass: segments.length === 1 ? undefined : i === 0 ? "bg-amber-500" : palette!.dot,
+          barClass: palette?.bar,
+          badgeClass: palette?.badge,
+        });
       });
     }
 

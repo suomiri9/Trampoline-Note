@@ -9,6 +9,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, rectSortingS
 import { CSS } from "@dnd-kit/utilities";
 import { type Note, type Skill } from "@shared/schema";
 import { parseNoteSkills, calculateTotalDD, suggestRoutinePartName, skillDisplayCode, skillDisplayName, swapSkillIdToShape, swapSkillIdsToShape, shapeSwapInfo, isShapeableSkill, pickableSkills, buildRowsWithIndices, computeTurns, type SkillItem } from "@/lib/training-utils";
+import { lineupOnDate } from "@shared/routine-versions";
 import { useTrackTurns } from "@/hooks/use-track-turns";
 import { SkillCode } from "@/components/skill-code";
 import { ShapeSwapPicker } from "@/components/shape-swap-picker";
@@ -1029,7 +1030,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     }, 60);
   };
 
-  const totalDifficulty = calculateTotalDD(selectedSkills, allItems, routines);
+  // Routine lineups are resolved against the session's own day (athlete-local),
+  // so editing an old note shows the lineup that was actually trained then —
+  // not today's version of the routine.
+  const watchedDate = form.watch("date");
+  const noteDay = watchedDate instanceof Date && !isNaN(watchedDate.getTime())
+    ? format(watchedDate, "yyyy-MM-dd")
+    : undefined;
+  const routineLineupFor = (routineId: number | undefined): number[] => {
+    const r = routines?.find(rt => rt.id === routineId);
+    return r ? lineupOnDate(r.skillIds, r.versions, noteDay) : [];
+  };
+
+  const totalDifficulty = calculateTotalDD(selectedSkills, allItems, routines, noteDay);
 
   const onSubmit = (values: FormValues) => {
     let payload: any;
@@ -1690,7 +1703,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         <CommandGroup heading="Routines">
                                           {routineList.map(r => (
                                             <CommandItem key={`r-${r.id}`} value={`${r.name} routine`}
-                                              onSelect={() => addReviewEntry({ skillIds: [], codes: [r.name], names: [r.name], routineId: r.id, customSkillIds: r.skillIds ?? [] })}
+                                              onSelect={() => addReviewEntry({ skillIds: [], codes: [r.name], names: [r.name], routineId: r.id, customSkillIds: routineLineupFor(r.id) })}
                                               data-testid={`review-pick-routine-${r.id}`}>
                                               <span className="font-mono text-xs font-semibold text-foreground mr-2">{r.name}</span>
                                               <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-blue-600 dark:text-blue-400">Routine</span>
@@ -2438,8 +2451,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               const grpNoteIdx = group.indices[0];
                               const lineDD = group.items.reduce((acc, it) => {
                                 if (it.id === -2) {
-                                  const r = routines?.find(rt => rt.id === it.routineId);
-                                  const sIds = it.customSkillIds ?? r?.skillIds ?? [];
+                                  const sIds = it.customSkillIds ?? routineLineupFor(it.routineId);
                                   const cnt = it.attempt ?? sIds.length;
                                   return acc + sIds.slice(0, cnt).reduce((a, sId) => a + (allItems?.find(s => s.id === sId)?.difficulty || 0), 0);
                                 }
@@ -2552,7 +2564,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               const idx = group.indices[iIdx];
                               if (item.id === -2) {
                                 const routine = routines?.find(r => r.id === item.routineId);
-                                const baseSkillIds = routine?.skillIds ?? [];
+                                const baseSkillIds = routineLineupFor(item.routineId);
                                 const displaySkillIds = item.customSkillIds ?? baseSkillIds;
                                 return (
                                   <div key={idx} className={cn(
@@ -3040,7 +3052,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
           const isPart = fcSkill?.isDrill === 3;
           const baseSkillIds = isFC
             ? (fcSkill?.skillIds ?? [])
-            : (routines?.find(r => r.id === rItem.routineId)?.skillIds ?? []);
+            : routineLineupFor(rItem.routineId);
           const displaySkillIds = rItem.customSkillIds ?? baseSkillIds;
           const liveName = isFC
             ? fcSkill?.name

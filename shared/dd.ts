@@ -4,6 +4,7 @@
 // longer drift out of sync with what the athlete sees in the app.
 
 import type { Skill } from "./schema";
+import { lineupOnDate, type RoutineVersionLite } from "./routine-versions";
 
 export interface SkillItem {
   id: number;
@@ -47,7 +48,10 @@ export function calcDDFromSkillIds(skillIds: number[], skills: Skill[]): number 
 export function calculateTotalDD(
   items: SkillItem[],
   allSkills: Skill[] | undefined,
-  routines: { id: number; skillIds: number[] }[] | undefined
+  routines: { id: number; skillIds: number[]; versions?: RoutineVersionLite[] }[] | undefined,
+  // Athlete-local yyyy-mm-dd of the entry being valued: routine refs resolve
+  // to the lineup in effect on that day (omitted = current lineup).
+  date?: string | null,
 ): number {
   let total = 0;
   let currentGroupDD = 0;
@@ -60,7 +64,8 @@ export function calculateTotalDD(
       currentGroupReps = 1;
     } else if (item.id === -2) {
       const routine = routines?.find(r => r.id === item.routineId);
-      const skillIds = item.customSkillIds ?? routine?.skillIds ?? [];
+      const skillIds = item.customSkillIds ??
+        (routine ? lineupOnDate(routine.skillIds, routine.versions, date) : []);
       const count = item.attempt ?? skillIds.length;
       const routineDD = skillIds.slice(0, count).reduce((acc: number, sId: number) => {
         const skill = allSkills?.find(s => s.id === sId);

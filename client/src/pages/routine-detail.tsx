@@ -10,10 +10,11 @@ import { PointsToFix, parsePoints } from "@/components/points-to-fix";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, Star, TrendingUp, Loader2, Layers, ChevronLeft, ChevronRight, Wrench } from "lucide-react";
+import { ArrowLeft, Calendar, Star, TrendingUp, Loader2, Layers, ChevronLeft, ChevronRight, Wrench, History } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useRef, useCallback, useMemo, useState } from "react";
 import { CompletionChart, buildDailyCompletion } from "@/lib/history-chart";
+import { sortedVersions, versionBoundaries, currentLineupSince } from "@shared/routine-versions";
 
 interface RoutineHistoryEntry {
   noteId: number;
@@ -22,6 +23,11 @@ interface RoutineHistoryEntry {
   attempt: number | null;
   skillCount: number;
   reps?: number;
+  // Lineup version in effect on the entry's date (0..n-1 past, n current);
+  // absent on responses cached before versioning existed.
+  version?: number;
+  // Length of that lineup — what full-vs-attempt was judged against.
+  expected?: number;
 }
 
 export default function RoutineDetailPage() {
@@ -104,11 +110,36 @@ export default function RoutineDetailPage() {
   const totalSessions = entries.reduce((s, e) => s + repsOf(e), 0);
   const firstPracticed = entries.length > 0 ? entries[0].date : null;
   const lastPracticed = entries.length > 0 ? entries[entries.length - 1].date : null;
-  const fullRunCount = entries.filter(e => e.attempt == null).reduce((s, e) => s + repsOf(e), 0);
-  const partialCount = entries.filter(e => e.attempt != null).reduce((s, e) => s + repsOf(e), 0);
   const totalDD = calcDDFromSkillIds(routine.skillIds, allSkills || []);
 
+  // Per-version stats: full-run percentages are split at each lineup-change
+  // day, so an old lineup's runs never count against the current one.
+  const pastVersions = sortedVersions(routine.versions);
+  const hasVersions = pastVersions.length > 0;
+  const currentIdx = pastVersions.length;
+  const currentSince = currentLineupSince(routine.versions);
+  const perVersion = Array.from({ length: currentIdx + 1 }, () => ({ sessions: 0, full: 0, partial: 0 }));
+  for (const e of entries) {
+    const v = Math.min(e.version ?? currentIdx, currentIdx);
+    const reps = repsOf(e);
+    perVersion[v].sessions += reps;
+    if (e.attempt == null) perVersion[v].full += reps;
+    else perVersion[v].partial += reps;
+  }
+  // With no versions this equals the overall stats (all entries are "current").
+  const cur = perVersion[currentIdx];
+  const fullRunCount = cur.full;
+  const partialCount = cur.partial;
+  const currentSessions = cur.sessions;
+  const sinceLabel = currentSince ? format(parseISO(currentSince), "MMM d") : null;
+
   const weeklyData = buildDailyCompletion(entries);
+  // Mark each lineup-change day in the chart (snap to the first practiced day
+  // on/after the boundary, since empty days aren't plotted).
+  const changeMarkers = versionBoundaries(routine.versions)
+    .map((b) => weeklyData.find((d) => d.date >= b)?.label)
+    .filter((l): l is string => !!l)
+    .filter((l, i, arr) => arr.indexOf(l) === i);
 
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < orderedIds.length - 1;
@@ -166,6 +197,11 @@ export default function RoutineDetailPage() {
 
         <Card className="mb-6">
           <CardContent className="p-4">
+            {hasVersions && currentSince && (
+              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-2" data-testid="text-current-lineup-since">
+                Current lineup · since {format(parseISO(currentSince), "MMM d, yyyy")}
+              </div>
+            )}
             <div className="flex flex-wrap gap-3">
               {routine.skillIds.map((id, idx) => {
                 const skill = skills?.find(s => s.id === id);
@@ -184,6 +220,51 @@ export default function RoutineDetailPage() {
           </CardContent>
         </Card>
 
+        {hasVersions && (
+          <Card className="mb-6">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <History className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                Previous Lineups
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {pastVersions.map((v, i) => {
+                const stats = perVersion[i];
+                const from = i === 0 ? null : pastVersions[i - 1].effectiveUntil;
+                const rangeLabel = from
+                  ? `${format(parseISO(from), "MMM d, yyyy")} – ${format(parseISO(v.effectiveUntil), "MMM d, yyyy")}`
+                  : `until ${format(parseISO(v.effectiveUntil), "MMM d, yyyy")}`;
+                const pct = stats.sessions > 0 ? Math.round((stats.full / stats.sessions) * 100) : 0;
+                return (
+                  <div key={`${v.effectiveUntil}-${i}`} className="rounded-lg bg-muted/30 p-3" data-testid={`row-version-${i}`}>
+                    <div className="flex items-center justify-between gap-2 flex-wrap mb-2 text-xs font-mono">
+                      <span className="text-muted-foreground">{rangeLabel}</span>
+                      <span data-testid={`text-version-stats-${i}`}>
+                        <span className="text-primary font-semibold">{stats.full}</span>
+                        {stats.sessions > 0 ? ` full (${pct}%)` : " full"} · {stats.partial} attempts · {stats.sessions} sessions
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {v.skillIds.map((sid, idx) => {
+                        const skill = skills?.find(s => s.id === sid);
+                        return (
+                          <Badge key={idx} variant="outline" className="px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                            <SkillCode skill={skill} allSkills={allSkills} fallback="???" />
+                          </Badge>
+                        );
+                      })}
+                      <span className="text-[10px] font-mono text-muted-foreground self-center ml-1">
+                        DD {calcDDFromSkillIds(v.skillIds, allSkills || []).toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
           <StatCard
             icon={<Calendar className="w-4 h-4" />}
@@ -193,13 +274,13 @@ export default function RoutineDetailPage() {
           />
           <StatCard
             icon={<TrendingUp className="w-4 h-4" />}
-            label={`Full Runs (${routine.skillIds.length}/${routine.skillIds.length})`}
-            value={totalSessions > 0 ? `${fullRunCount} (${Math.round((fullRunCount / totalSessions) * 100)}%)` : fullRunCount.toString()}
+            label={`Full Runs (${routine.skillIds.length}/${routine.skillIds.length})${sinceLabel ? ` · since ${sinceLabel}` : ""}`}
+            value={currentSessions > 0 ? `${fullRunCount} (${Math.round((fullRunCount / currentSessions) * 100)}%)` : fullRunCount.toString()}
             testId="stat-full-runs"
           />
           <StatCard
             icon={<TrendingUp className="w-4 h-4" />}
-            label="Attempts"
+            label={`Attempts${sinceLabel ? ` · since ${sinceLabel}` : ""}`}
             value={partialCount.toString()}
             testId="stat-partial-attempts"
           />
@@ -243,7 +324,7 @@ export default function RoutineDetailPage() {
           </Card>
         )}
 
-        <CompletionChart title="Practice Frequency" data={weeklyData} />
+        <CompletionChart title="Practice Frequency" data={weeklyData} markers={changeMarkers} />
 
         <Card>
           <CardHeader className="pb-2">
@@ -258,6 +339,9 @@ export default function RoutineDetailPage() {
               <div className="space-y-2 max-h-[50vh] overflow-y-auto" data-testid="list-session-history">
                 {[...entries].reverse().map((entry) => {
                   const reps = entry.reps && entry.reps > 0 ? entry.reps : 1;
+                  // Judge each entry against the lineup in effect on its date.
+                  const expectedLen = entry.expected ?? routine.skillIds.length;
+                  const isOldLineup = hasVersions && (entry.version ?? currentIdx) < currentIdx;
                   return (
                   <div
                     key={`${entry.noteId}-${entry.date}`}
@@ -268,6 +352,11 @@ export default function RoutineDetailPage() {
                       <span className="text-sm font-medium font-mono" data-testid={`text-date-${entry.noteId}`}>
                         {format(parseISO(entry.date), "MMM d, yyyy")}
                       </span>
+                      {isOldLineup && (
+                        <span className="text-[9px] font-mono uppercase tracking-wider text-sky-600 dark:text-sky-400" data-testid={`tag-old-lineup-${entry.noteId}`}>
+                          old lineup
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       {reps > 1 && (
@@ -279,10 +368,10 @@ export default function RoutineDetailPage() {
                         data-testid={`badge-attempt-${entry.noteId}`}
                       >
                         {entry.attempt != null
-                          ? `attempt ${entry.skillCount}/${routine.skillIds.length}`
-                          : entry.skillCount > routine.skillIds.length
+                          ? `attempt ${entry.skillCount}/${expectedLen}`
+                          : entry.skillCount > expectedLen
                             ? `${entry.skillCount} skills`
-                            : `${routine.skillIds.length}/${routine.skillIds.length} Full run`}
+                            : `${expectedLen}/${expectedLen} Full run`}
                       </Badge>
                     </div>
                   </div>

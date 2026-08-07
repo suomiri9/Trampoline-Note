@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { format, parseISO, eachDayOfInterval } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -58,6 +58,7 @@ export function buildDailyCompletion(entries: CompletionEntry[]) {
     .filter(([, v]) => v.full > 0 || v.partial > 0)
     .map(([key, v]) => ({
       label: format(parseISO(key), "MMM d"),
+      date: key,
       full: v.full,
       partial: v.partial,
     }));
@@ -97,7 +98,17 @@ const tooltipStyle = {
   fontSize: "12px",
 };
 
-export function CompletionChart({ title, data }: { title: string; data: ReturnType<typeof buildDailyCompletion> }) {
+export function CompletionChart({
+  title,
+  data,
+  markers,
+}: {
+  title: string;
+  data: ReturnType<typeof buildDailyCompletion>;
+  // Category-axis labels (matching data[].label) to mark with a dashed
+  // vertical line — used for routine lineup-change days.
+  markers?: string[];
+}) {
   if (data.length === 0) return null;
   return (
     <Card className="mb-6">
@@ -124,6 +135,16 @@ export function CompletionChart({ title, data }: { title: string; data: ReturnTy
               <XAxis dataKey="label" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval="preserveStartEnd" minTickGap={40} />
               <YAxis allowDecimals={false} tick={{ fontSize: 11 }} className="fill-muted-foreground" />
               <Tooltip contentStyle={tooltipStyle} />
+              {markers?.map((m) => (
+                <ReferenceLine
+                  key={m}
+                  x={m}
+                  stroke="hsl(var(--primary))"
+                  strokeDasharray="4 4"
+                  strokeOpacity={0.7}
+                  label={{ value: "lineup change", position: "insideTopLeft", fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+                />
+              ))}
               <Bar dataKey="partial" stackId="runs" name="Attempts" fill="hsl(var(--muted-foreground))" shape={<PartialBar />} />
               <Bar dataKey="full" stackId="runs" name="Full runs" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
             </BarChart>

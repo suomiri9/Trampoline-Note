@@ -11,6 +11,9 @@ import {
   type InsertSkill,
   type Routine,
   type InsertRoutine,
+  routineVersions,
+  type RoutineVersion,
+  type RoutineWithVersions,
   type Score,
   type InsertScore,
   tofSessions,
@@ -31,7 +34,8 @@ import {
   type User,
   type PasswordResetToken,
 } from "@shared/models/auth";
-import { eq, desc, and, isNull, sql, gte, gt, inArray } from "drizzle-orm";
+import { eq, desc, asc, and, isNull, sql, gte, gt, inArray } from "drizzle-orm";
+import { applyLineupChange, sameLineup } from "@shared/routine-versions";
 
 // Thrown when a shape grouping link (parentSkillId) is invalid. Routes map this
 // to a 400 so bad links never silently persist.
@@ -66,10 +70,11 @@ export interface IStorage {
   updateSkill(id: number, userId: string, updates: Partial<InsertSkill>): Promise<Skill | undefined>;
   deleteSkill(id: number, userId: string): Promise<void>;
 
-  // Routines
-  getRoutines(userId: string): Promise<Routine[]>;
-  createRoutine(userId: string, routine: InsertRoutine): Promise<Routine>;
-  updateRoutine(id: number, userId: string, updates: Partial<InsertRoutine>): Promise<Routine | undefined>;
+  // Routines (always returned with their past lineup versions embedded)
+  getRoutines(userId: string): Promise<RoutineWithVersions[]>;
+  getRoutineVersions(userId: string, routineId: number): Promise<RoutineVersion[]>;
+  createRoutine(userId: string, routine: InsertRoutine): Promise<RoutineWithVersions>;
+  updateRoutine(id: number, userId: string, updates: Partial<InsertRoutine> & { applyFromDay?: string }): Promise<RoutineWithVersions | undefined>;
   deleteRoutine(id: number, userId: string): Promise<void>;
 
   // Scores
@@ -291,30 +296,75 @@ export class DatabaseStorage implements IStorage {
     await db.delete(skills).where(and(eq(skills.id, id), eq(skills.userId, userId)));
   }
 
-  async getRoutines(userId: string): Promise<Routine[]> {
-    return await db.select().from(routines).where(eq(routines.userId, userId));
+  async getRoutines(userId: string): Promise<RoutineWithVersions[]> {
+    const [rows, versionRows] = await Promise.all([
+      db.select().from(routines).where(eq(routines.userId, userId)),
+      db.select().from(routineVersions)
+        .where(eq(routineVersions.userId, userId))
+        .orderBy(asc(routineVersions.effectiveUntil), asc(routineVersions.id)),
+    ]);
+    const byRoutine = new Map<number, RoutineVersion[]>();
+    for (const v of versionRows) {
+      const list = byRoutine.get(v.routineId);
+      if (list) list.push(v);
+      else byRoutine.set(v.routineId, [v]);
+    }
+    return rows.map((r) => ({ ...r, versions: byRoutine.get(r.id) ?? [] }));
   }
 
-  async createRoutine(userId: string, insertRoutine: InsertRoutine): Promise<Routine> {
+  async getRoutineVersions(userId: string, routineId: number): Promise<RoutineVersion[]> {
+    return await db.select().from(routineVersions)
+      .where(and(eq(routineVersions.userId, userId), eq(routineVersions.routineId, routineId)))
+      .orderBy(asc(routineVersions.effectiveUntil), asc(routineVersions.id));
+  }
+
+  async createRoutine(userId: string, insertRoutine: InsertRoutine): Promise<RoutineWithVersions> {
     const [routine] = await db.insert(routines).values({ ...insertRoutine, userId }).returning();
-    return routine;
+    return { ...routine, versions: [] };
   }
 
-  async updateRoutine(id: number, userId: string, updates: Partial<InsertRoutine>): Promise<Routine | undefined> {
-    let previousName: string | undefined;
-    if (updates.name !== undefined) {
-      const [existing] = await db.select().from(routines)
-        .where(and(eq(routines.id, id), eq(routines.userId, userId)));
-      previousName = existing?.name;
+  async updateRoutine(
+    id: number,
+    userId: string,
+    updates: Partial<InsertRoutine> & { applyFromDay?: string },
+  ): Promise<RoutineWithVersions | undefined> {
+    const { applyFromDay, ...fields } = updates;
+    const [existing] = await db.select().from(routines)
+      .where(and(eq(routines.id, id), eq(routines.userId, userId)));
+    if (!existing) return undefined;
+
+    // Lineup versioning: only a real lineup change touches versions. With
+    // applyFromDay ("change from this day") the pre-edit lineup is preserved
+    // for dates before that day; without it, the edit rewrites all history,
+    // so any past versions are cleared. Name-only edits (or archive toggles)
+    // leave versions untouched.
+    const lineupChanged = fields.skillIds != null && !sameLineup(fields.skillIds, existing.skillIds);
+    if (lineupChanged) {
+      const next = applyFromDay
+        ? applyLineupChange(existing.skillIds, await this.getRoutineVersions(userId, id), applyFromDay)
+        : [];
+      await db.delete(routineVersions)
+        .where(and(eq(routineVersions.userId, userId), eq(routineVersions.routineId, id)));
+      if (next.length > 0) {
+        // Insert oldest-first so serial ids preserve the sort order ties rely on.
+        await db.insert(routineVersions).values(
+          next.map((v) => ({ userId, routineId: id, skillIds: v.skillIds, effectiveUntil: v.effectiveUntil })),
+        );
+      }
     }
-    const [updated] = await db.update(routines)
-      .set(updates)
-      .where(and(eq(routines.id, id), eq(routines.userId, userId)))
-      .returning();
-    if (updated && previousName !== undefined && updates.name !== undefined && previousName !== updates.name) {
-      await this.renameRoutineParts(userId, id, previousName, updates.name);
+
+    let updated: Routine | undefined = existing;
+    if (Object.keys(fields).length > 0) {
+      [updated] = await db.update(routines)
+        .set(fields)
+        .where(and(eq(routines.id, id), eq(routines.userId, userId)))
+        .returning();
     }
-    return updated;
+    if (updated && fields.name !== undefined && existing.name !== fields.name) {
+      await this.renameRoutineParts(userId, id, existing.name, fields.name);
+    }
+    if (!updated) return undefined;
+    return { ...updated, versions: await this.getRoutineVersions(userId, id) };
   }
 
   // When a routine is renamed, keep ITS OWN auto-named routine parts (isDrill === 3)
@@ -348,6 +398,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteRoutine(id: number, userId: string): Promise<void> {
+    await db.delete(routineVersions)
+      .where(and(eq(routineVersions.userId, userId), eq(routineVersions.routineId, id)));
     await db.delete(routines).where(and(eq(routines.id, id), eq(routines.userId, userId)));
   }
 
