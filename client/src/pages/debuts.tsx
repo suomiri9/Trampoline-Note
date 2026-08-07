@@ -32,11 +32,13 @@ interface DebutRow {
   firstComp: string | null; // ISO date
   compName?: string | null;
   days: number | null; // first trained -> first comp
-  // Color overrides for routine lineup-version segments — a changed routine's
-  // new segment renders in a visibly different color from the original.
+  // Color overrides for routine lineup versions — the dot shows the current
+  // version's color; barSegments splits the debut bar at each change day so
+  // the color only switches from the day the routine changed.
   barClass?: string;
   badgeClass?: string;
   dotClass?: string;
+  barSegments?: { frac: number; cls: string }[];
 }
 
 // Palette keyed by how many lineup changes a routine has had — the row keeps
@@ -155,7 +157,15 @@ function DebutList({
             </Badge>
           </div>
           <div className="mt-1.5 h-1.5 rounded-full bg-border/40 overflow-hidden">
-            <div className={cn("h-full rounded-full", r.barClass ?? "bg-amber-500/70")} style={{ width: `${Math.max(2, (Math.max(0, r.days!) / maxDays) * 100)}%` }} />
+            {r.barSegments ? (
+              <div className="h-full rounded-full overflow-hidden flex" style={{ width: `${Math.max(2, (Math.max(0, r.days!) / maxDays) * 100)}%` }}>
+                {r.barSegments.map((s, i) => (
+                  <div key={i} className={cn("h-full shrink-0", s.cls)} style={{ width: `${s.frac * 100}%` }} />
+                ))}
+              </div>
+            ) : (
+              <div className={cn("h-full rounded-full", r.barClass ?? "bg-amber-500/70")} style={{ width: `${Math.max(2, (Math.max(0, r.days!) / maxDays) * 100)}%` }} />
+            )}
           </div>
           <div className="flex items-center justify-between mt-1 text-[10px] font-mono text-muted-foreground">
             <span>trained {fmtD(r.firstTrained)}</span>
@@ -360,14 +370,32 @@ export default function DebutsPage() {
       const comps = routineCompDates.get(id) ?? [];
       const bounds = versionBoundaries(r.versions);
 
-      // One row per routine — a lineup change never adds a second row, it
-      // just recolors the dot/bar to the current version's palette color
-      // (user preference: "don't separate it, just change the color").
-      // Days run from the first-ever training to the first-ever comp; the
+      // One row per routine — a lineup change never adds a second row. The
+      // dot shows the CURRENT version's color, and the debut bar switches
+      // color exactly at each change day (amber before the first change) —
+      // user preference: "change the color only from the day the routine
+      // changed". Days run first-ever training → first-ever comp; the
       // stable String(id) key keeps hidden prefs valid.
       const trained = trainedDates[0] ?? null;
       const comp = comps[0] ?? null;
-      const palette =
+      // Palette of the lineup version in effect on a day (null = original/amber).
+      const colorAt = (d: string) => {
+        const v = bounds.filter(b => b <= d).length;
+        return v === 0 ? null : VERSION_SEGMENT_COLORS[(v - 1) % VERSION_SEGMENT_COLORS.length];
+      };
+      const days =
+        trained && comp ? differenceInCalendarDays(parseISO(comp.date), parseISO(trained)) : null;
+      let barSegments: { frac: number; cls: string }[] | undefined;
+      if (trained && comp && days != null && days > 0) {
+        const cuts = [trained, ...bounds.filter(b => b > trained && b < comp.date), comp.date];
+        if (cuts.length > 2) {
+          barSegments = cuts.slice(0, -1).map((from, i) => ({
+            frac: differenceInCalendarDays(parseISO(cuts[i + 1]), parseISO(from)) / days,
+            cls: colorAt(from)?.bar ?? "bg-amber-500/70",
+          }));
+        }
+      }
+      const current =
         bounds.length === 0
           ? null
           : VERSION_SEGMENT_COLORS[(bounds.length - 1) % VERSION_SEGMENT_COLORS.length];
@@ -377,10 +405,11 @@ export default function DebutsPage() {
         firstTrained: trained,
         firstComp: comp?.date ?? null,
         compName: comp?.compName,
-        days: trained && comp ? differenceInCalendarDays(parseISO(comp.date), parseISO(trained)) : null,
-        dotClass: palette?.dot,
-        barClass: palette?.bar,
-        badgeClass: palette?.badge,
+        days,
+        dotClass: current?.dot,
+        barClass: trained ? colorAt(trained)?.bar : undefined,
+        badgeClass: comp ? colorAt(comp.date)?.badge : undefined,
+        barSegments,
       });
     }
 
