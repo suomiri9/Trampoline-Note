@@ -225,7 +225,7 @@ export default function RoutineDetailPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <History className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                Previous Lineups
+                Previous Routines
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
