@@ -10,11 +10,15 @@ import { PointsToFix, parsePoints } from "@/components/points-to-fix";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, Star, TrendingUp, Loader2, Layers, ChevronLeft, ChevronRight, Wrench, History } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ArrowLeft, Calendar, Star, TrendingUp, Loader2, Layers, ChevronLeft, ChevronRight, Wrench, History, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useRef, useCallback, useMemo, useState } from "react";
 import { CompletionChart, buildDailyCompletion } from "@/lib/history-chart";
-import { sortedVersions, versionBoundaries, currentLineupSince } from "@shared/routine-versions";
+import { sortedVersions, versionBoundaries, currentLineupSince, normalizeVersions } from "@shared/routine-versions";
 
 interface RoutineHistoryEntry {
   noteId: number;
@@ -37,11 +41,16 @@ export default function RoutineDetailPage() {
 
   const { data: allSkills, isLoading: skillsLoading } = useSkills();
   const skills = allSkills?.filter(s => s.isDrill === 0);
-  const { data: routines, isLoading: routinesLoading } = useRoutines();
+  const { data: routines, isLoading: routinesLoading, updateRoutine, isUpdating } = useRoutines();
   const { user } = useAuth();
   const routine = routines?.find(r => r.id === routineId);
 
   const [pointsOpen, setPointsOpen] = useState(false);
+  // Past-version management: correct a change day, or delete a version (its
+  // date range merges into the neighbor). Indexes refer to sortedVersions.
+  const [editVersionIdx, setEditVersionIdx] = useState<number | null>(null);
+  const [editVersionDay, setEditVersionDay] = useState("");
+  const [deleteVersionIdx, setDeleteVersionIdx] = useState<number | null>(null);
   const routinePoints = useMemo(
     () => parsePoints(user?.focusMemo).filter(p => p.routineIds.includes(routineId)),
     [user?.focusMemo, routineId],
@@ -116,6 +125,32 @@ export default function RoutineDetailPage() {
   // day, so an old lineup's runs never count against the current one.
   const pastVersions = sortedVersions(routine.versions);
   const hasVersions = pastVersions.length > 0;
+
+  // Persist an edited past-version list through the same offline-queue-friendly
+  // update path as lineup edits. The lineup itself is untouched, so the server
+  // applies the explicit `versions` list (normalized to keep the invariant).
+  const saveVersions = async (next: { skillIds: number[]; effectiveUntil: string }[]) => {
+    await updateRoutine({ id: routineId, versions: normalizeVersions(next) });
+  };
+
+  const confirmEditVersionDay = async () => {
+    if (editVersionIdx == null || !editVersionDay) return;
+    const next = pastVersions.map((v, i) => ({
+      skillIds: v.skillIds,
+      effectiveUntil: i === editVersionIdx ? editVersionDay : v.effectiveUntil,
+    }));
+    setEditVersionIdx(null);
+    await saveVersions(next);
+  };
+
+  const confirmDeleteVersion = async () => {
+    if (deleteVersionIdx == null) return;
+    const next = pastVersions
+      .filter((_, i) => i !== deleteVersionIdx)
+      .map((v) => ({ skillIds: v.skillIds, effectiveUntil: v.effectiveUntil }));
+    setDeleteVersionIdx(null);
+    await saveVersions(next);
+  };
   const currentIdx = pastVersions.length;
   const currentSince = currentLineupSince(routine.versions);
   const perVersion = Array.from({ length: currentIdx + 1 }, () => ({ sessions: 0, full: 0, partial: 0 }));
@@ -240,9 +275,39 @@ export default function RoutineDetailPage() {
                   <div key={`${v.effectiveUntil}-${i}`} className="rounded-lg bg-muted/30 p-3" data-testid={`row-version-${i}`}>
                     <div className="flex items-center justify-between gap-2 flex-wrap mb-2 text-xs font-mono">
                       <span className="text-muted-foreground">{rangeLabel}</span>
-                      <span data-testid={`text-version-stats-${i}`}>
-                        <span className="text-primary font-semibold">{stats.full}</span>
-                        {stats.sessions > 0 ? ` full (${pct}%)` : " full"} · {stats.partial} attempts · {stats.sessions} sessions
+                      <span className="flex items-center gap-1">
+                        <span data-testid={`text-version-stats-${i}`}>
+                          <span className="text-primary font-semibold">{stats.full}</span>
+                          {stats.sessions > 0 ? ` full (${pct}%)` : " full"} · {stats.partial} attempts · {stats.sessions} sessions
+                        </span>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 -mr-1 text-muted-foreground/50 hover:text-foreground"
+                              data-testid={`button-version-actions-${i}`}
+                            >
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44 rounded-xl">
+                            <DropdownMenuItem
+                              className="cursor-pointer gap-2 text-xs"
+                              onClick={() => { setEditVersionDay(v.effectiveUntil); setEditVersionIdx(i); }}
+                              data-testid={`button-version-edit-day-${i}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5" /> Change day
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive"
+                              onClick={() => setDeleteVersionIdx(i)}
+                              data-testid={`button-version-delete-${i}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" /> Delete version
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
@@ -402,6 +467,47 @@ export default function RoutineDetailPage() {
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
+
+        <Dialog open={editVersionIdx != null} onOpenChange={(o) => { if (!o) setEditVersionIdx(null); }}>
+          <DialogContent aria-describedby={undefined} className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Change lineup change day</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground -mt-2">
+              This lineup applied to sessions <span className="font-medium text-foreground">before</span> the
+              chosen day. Moving the day re-classifies history and stats around the new boundary.
+            </p>
+            <Input
+              type="date"
+              value={editVersionDay}
+              onChange={(e) => setEditVersionDay(e.target.value)}
+              className="h-10"
+              data-testid="input-version-day"
+            />
+            <div className="flex gap-2 pt-1">
+              <Button
+                className="flex-1 h-11"
+                onClick={confirmEditVersionDay}
+                disabled={isUpdating || !editVersionDay}
+                data-testid="button-confirm-version-day"
+              >
+                {isUpdating ? "Saving..." : "Save Day"}
+              </Button>
+              <Button variant="outline" className="h-11" onClick={() => setEditVersionIdx(null)}>
+                Cancel
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <ConfirmDialog
+          open={deleteVersionIdx != null}
+          onOpenChange={(o) => { if (!o) setDeleteVersionIdx(null); }}
+          title="Delete this past lineup?"
+          description="Its date range merges into the neighboring lineup (or the current one), and history and stats re-classify against that lineup. This cannot be undone."
+          confirmLabel="Delete version"
+          onConfirm={confirmDeleteVersion}
+        />
 
         <PointsToFix
           hideTrigger

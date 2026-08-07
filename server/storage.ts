@@ -35,7 +35,7 @@ import {
   type PasswordResetToken,
 } from "@shared/models/auth";
 import { eq, desc, asc, and, isNull, sql, gte, gt, inArray } from "drizzle-orm";
-import { applyLineupChange, sameLineup } from "@shared/routine-versions";
+import { applyLineupChange, normalizeVersions, sameLineup } from "@shared/routine-versions";
 
 // Thrown when a shape grouping link (parentSkillId) is invalid. Routes map this
 // to a 400 so bad links never silently persist.
@@ -74,7 +74,7 @@ export interface IStorage {
   getRoutines(userId: string): Promise<RoutineWithVersions[]>;
   getRoutineVersions(userId: string, routineId: number): Promise<RoutineVersion[]>;
   createRoutine(userId: string, routine: InsertRoutine): Promise<RoutineWithVersions>;
-  updateRoutine(id: number, userId: string, updates: Partial<InsertRoutine> & { applyFromDay?: string }): Promise<RoutineWithVersions | undefined>;
+  updateRoutine(id: number, userId: string, updates: Partial<InsertRoutine> & { applyFromDay?: string; versions?: { skillIds: number[]; effectiveUntil: string }[] }): Promise<RoutineWithVersions | undefined>;
   deleteRoutine(id: number, userId: string): Promise<void>;
 
   // Scores
@@ -326,9 +326,12 @@ export class DatabaseStorage implements IStorage {
   async updateRoutine(
     id: number,
     userId: string,
-    updates: Partial<InsertRoutine> & { applyFromDay?: string },
+    updates: Partial<InsertRoutine> & {
+      applyFromDay?: string;
+      versions?: { skillIds: number[]; effectiveUntil: string }[];
+    },
   ): Promise<RoutineWithVersions | undefined> {
-    const { applyFromDay, ...fields } = updates;
+    const { applyFromDay, versions: explicitVersions, ...fields } = updates;
     const [existing] = await db.select().from(routines)
       .where(and(eq(routines.id, id), eq(routines.userId, userId)));
     if (!existing) return undefined;
@@ -347,6 +350,21 @@ export class DatabaseStorage implements IStorage {
         .where(and(eq(routineVersions.userId, userId), eq(routineVersions.routineId, id)));
       if (next.length > 0) {
         // Insert oldest-first so serial ids preserve the sort order ties rely on.
+        await db.insert(routineVersions).values(
+          next.map((v) => ({ userId, routineId: id, skillIds: v.skillIds, effectiveUntil: v.effectiveUntil })),
+        );
+      }
+    } else if (explicitVersions !== undefined) {
+      // Explicit past-version management (correct a change day / delete a
+      // version) with an unchanged current lineup. Normalizing keeps the
+      // one-version-per-end-day invariant; a deleted version's date range
+      // merges into its neighbor via exclusive-end-day semantics. When a
+      // lineup change is in flight, this field is IGNORED above — the server
+      // recomputes versions from applyFromDay and stays authoritative.
+      const next = normalizeVersions(explicitVersions);
+      await db.delete(routineVersions)
+        .where(and(eq(routineVersions.userId, userId), eq(routineVersions.routineId, id)));
+      if (next.length > 0) {
         await db.insert(routineVersions).values(
           next.map((v) => ({ userId, routineId: id, skillIds: v.skillIds, effectiveUntil: v.effectiveUntil })),
         );

@@ -99,8 +99,10 @@ export function useRoutines() {
       // "Change from this day" lineup edit: applyFromDay tells the server to
       // snapshot the old lineup for dates before that day; `versions` is the
       // client-precomputed result of the same change so the offline mirror
-      // stays correct while the edit is queued (the server recomputes it and
-      // zod strips the extra key from the request).
+      // stays correct while the edit is queued (during a lineup change the
+      // server recomputes and ignores it). When the lineup is NOT changing,
+      // `versions` is applied verbatim (normalized) — the explicit
+      // version-management path (correct a change day / delete a version).
       applyFromDay?: string;
       versions?: RoutineVersionSnapshot[];
     }) => {

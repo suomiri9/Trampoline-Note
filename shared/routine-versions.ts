@@ -80,6 +80,28 @@ export function versionBoundaries(
   return out;
 }
 
+/**
+ * Normalize an explicitly-managed version list (change a version's day /
+ * delete a version) back into invariant form: sorted oldest-first with at
+ * most ONE version per distinct end day (the oldest per day survives, since
+ * it still covers the earlier dates). Deleting a version simply means
+ * omitting it — its date range merges into the neighbor automatically thanks
+ * to exclusive-end-day semantics.
+ *
+ * Pure + deterministic so the client can precompute the same list the server
+ * persists (offline-queue mirror parity with applyLineupChange).
+ */
+export function normalizeVersions(
+  versions: readonly RoutineVersionLite[] | null | undefined,
+): { skillIds: number[]; effectiveUntil: string }[] {
+  const result: { skillIds: number[]; effectiveUntil: string }[] = [];
+  for (const v of sortedVersions(versions)) {
+    if (result.some((r) => r.effectiveUntil === v.effectiveUntil)) continue;
+    result.push({ skillIds: [...v.skillIds], effectiveUntil: v.effectiveUntil });
+  }
+  return result;
+}
+
 export function sameLineup(
   a: readonly number[] | null | undefined,
   b: readonly number[] | null | undefined,

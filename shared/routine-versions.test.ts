@@ -7,6 +7,7 @@ import {
   versionBoundaries,
   sameLineup,
   applyLineupChange,
+  normalizeVersions,
   type RoutineVersionLite,
 } from "./routine-versions";
 
@@ -151,5 +152,45 @@ describe("applyLineupChange", () => {
     const versions = [v([1], "2026-03-01")];
     applyLineupChange([2], versions, "2026-02-01");
     expect(versions[0].effectiveUntil).toBe("2026-03-01");
+  });
+});
+
+describe("normalizeVersions (explicit version management)", () => {
+  it("returns [] for null/undefined/empty", () => {
+    expect(normalizeVersions(null)).toEqual([]);
+    expect(normalizeVersions(undefined)).toEqual([]);
+    expect(normalizeVersions([])).toEqual([]);
+  });
+
+  it("sorts oldest-first and copies arrays", () => {
+    const input = [v([2], "2026-03-01"), v([1], "2026-01-01")];
+    const out = normalizeVersions(input);
+    expect(out).toEqual([
+      { skillIds: [1], effectiveUntil: "2026-01-01" },
+      { skillIds: [2], effectiveUntil: "2026-03-01" },
+    ]);
+    out[0].skillIds.push(99);
+    expect(input[1].skillIds).toEqual([1]);
+  });
+
+  it("keeps only the oldest version per distinct end day", () => {
+    const input = [v([1], "2026-02-01", 1), v([2], "2026-02-01", 5), v([3], "2026-03-01", 7)];
+    expect(normalizeVersions(input)).toEqual([
+      { skillIds: [1], effectiveUntil: "2026-02-01" },
+      { skillIds: [3], effectiveUntil: "2026-03-01" },
+    ]);
+  });
+
+  it("moving a change day past a neighbor collapses them (oldest wins)", () => {
+    // v1 originally ended 2026-02-01; user corrects it to 2026-03-01 which
+    // equals v2's end day — v2's covered range becomes empty and is dropped.
+    const input = [v([1], "2026-03-01", 1), v([2], "2026-03-01", 2)];
+    expect(normalizeVersions(input)).toEqual([{ skillIds: [1], effectiveUntil: "2026-03-01" }]);
+  });
+
+  it("deleting a version merges its range into the neighbor by omission", () => {
+    const kept = normalizeVersions([v([1], "2026-01-01"), v([3], "2026-05-01")]);
+    // Dates formerly covered by the deleted middle version now resolve to [3].
+    expect(kept.map((x) => x.effectiveUntil)).toEqual(["2026-01-01", "2026-05-01"]);
   });
 });

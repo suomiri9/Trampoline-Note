@@ -128,10 +128,23 @@ export const api = {
       // applyFromDay: when the lineup changed, snapshot the previous lineup as
       // a version applying to athlete-local dates BEFORE this day ("change
       // from this day"); omitted = rewrite all history (versions cleared).
-      // Unknown extra keys (e.g. a client-precomputed optimistic `versions`
-      // array for the offline cache) are stripped by zod.
+      // versions: explicit past-version management (correct a change day /
+      // delete a version) — the FULL desired list; only applied when the
+      // lineup itself is NOT changing (a lineup change recomputes versions
+      // server-side from applyFromDay and ignores this field, so the same
+      // key doubles as the client's optimistic precompute during lineup
+      // edits without risk of divergence).
       input: insertRoutineSchema.partial().extend({
         applyFromDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        versions: z
+          .array(
+            z.object({
+              skillIds: z.array(z.number().int().positive()).max(10),
+              effectiveUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+            }),
+          )
+          .max(100)
+          .optional(),
       }),
       responses: {
         200: z.custom<RoutineWithVersions>(),
