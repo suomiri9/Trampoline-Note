@@ -39,7 +39,8 @@ interface DebutRow {
   dotClass?: string;
 }
 
-// Palette for lineup-version segments (segment 1, 2, 3… after the original).
+// Palette keyed by how many lineup changes a routine has had — the row keeps
+// one line and its dot/bar recolors to the current version's color.
 // Deliberately distinct from the amber bars / violet badges used elsewhere.
 const VERSION_SEGMENT_COLORS = [
   { bar: "bg-sky-500/70", badge: "bg-sky-500/15 text-sky-600 dark:text-sky-400", dot: "bg-sky-500" },
@@ -263,8 +264,7 @@ export default function DebutsPage() {
 
     // ---- First time each skill / routine appears in a training note ----
     const skillFirstTrained = new Map<number, string>();
-    // All trained dates per routine (sorted later) so each lineup-version
-    // segment can find its own first training date.
+    // All trained dates per routine (sorted later); the row uses the earliest.
     const routineTrainedDates = new Map<number, string[]>();
 
     const markSkill = (id: number, date: string) => {
@@ -310,8 +310,8 @@ export default function DebutsPage() {
       .sort((a, b) => a.date.localeCompare(b.date));
 
     const skillFirstComp = new Map<number, { date: string; compName: string | null }>();
-    // All comp appearances per routine (compScores already date-ascending) so
-    // each lineup-version segment can find its own first competition.
+    // All comp appearances per routine (compScores already date-ascending);
+    // the row uses the earliest.
     const routineCompDates = new Map<number, { date: string; compName: string | null }[]>();
 
     for (const sc of compScores) {
@@ -360,41 +360,27 @@ export default function DebutsPage() {
       const comps = routineCompDates.get(id) ?? [];
       const bounds = versionBoundaries(r.versions);
 
-      // One row per lineup-version segment: [start, bounds[0]), [bounds[0],
-      // bounds[1]), …, [last bound, ∞). Unversioned routines have a single
-      // segment and keep the original row key/colors (hidden prefs stay valid).
-      const segments: { from: string | null; to: string | null }[] = [
-        { from: null, to: bounds[0] ?? null },
-        ...bounds.map((b, i) => ({ from: b, to: bounds[i + 1] ?? null })),
-      ];
-
-      segments.forEach((seg, i) => {
-        const within = (d: string) => (seg.from == null || d >= seg.from) && (seg.to == null || d < seg.to);
-        const trained = trainedDates.find(within) ?? null;
-        const comp = comps.find(c => within(c.date)) ?? null;
-        // Skip segments with no activity at all, except the very first (the
-        // original row always shows so a never-trained routine still lists).
-        if (i > 0 && !trained && !comp) return;
-        const palette = i === 0 ? null : VERSION_SEGMENT_COLORS[(i - 1) % VERSION_SEGMENT_COLORS.length];
-        routineRows.push({
-          key: i === 0 ? String(id) : `${id}@${i}`,
-          label: r.name,
-          sub:
-            segments.length === 1
-              ? undefined
-              : seg.from == null
-                ? `until ${fmtD(seg.to)}`
-                : seg.to == null
-                  ? `since ${fmtD(seg.from)}`
-                  : `${fmtD(seg.from)} – ${fmtD(seg.to)}`,
-          firstTrained: trained,
-          firstComp: comp?.date ?? null,
-          compName: comp?.compName,
-          days: trained && comp ? differenceInCalendarDays(parseISO(comp.date), parseISO(trained)) : null,
-          dotClass: segments.length === 1 ? undefined : i === 0 ? "bg-amber-500" : palette!.dot,
-          barClass: palette?.bar,
-          badgeClass: palette?.badge,
-        });
+      // One row per routine — a lineup change never adds a second row, it
+      // just recolors the dot/bar to the current version's palette color
+      // (user preference: "don't separate it, just change the color").
+      // Days run from the first-ever training to the first-ever comp; the
+      // stable String(id) key keeps hidden prefs valid.
+      const trained = trainedDates[0] ?? null;
+      const comp = comps[0] ?? null;
+      const palette =
+        bounds.length === 0
+          ? null
+          : VERSION_SEGMENT_COLORS[(bounds.length - 1) % VERSION_SEGMENT_COLORS.length];
+      routineRows.push({
+        key: String(id),
+        label: r.name,
+        firstTrained: trained,
+        firstComp: comp?.date ?? null,
+        compName: comp?.compName,
+        days: trained && comp ? differenceInCalendarDays(parseISO(comp.date), parseISO(trained)) : null,
+        dotClass: palette?.dot,
+        barClass: palette?.bar,
+        badgeClass: palette?.badge,
       });
     }
 
