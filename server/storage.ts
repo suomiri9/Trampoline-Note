@@ -341,6 +341,18 @@ export class DatabaseStorage implements IStorage {
     // for dates before that day; without it, the edit rewrites all history,
     // so any past versions are cleared. Name-only edits (or archive toggles)
     // leave versions untouched.
+    //
+    // Concurrency (verified end-to-end with the offline queue): the server
+    // always recomputes versions from ITS OWN current state, ignoring any
+    // client-precomputed list. If another session edits the routine between an
+    // offline edit being queued and drained:
+    // - a conflicting lineup edit with an EARLIER from-day survives as a
+    //   version covering its (non-empty) window;
+    // - a conflicting lineup edit with the SAME from-day is dropped by
+    //   applyLineupChange because its covered range is empty (exclusive end
+    //   days) — correct, not data loss;
+    // - non-lineup fields (e.g. a rename) follow last-writer-wins, since the
+    //   queued PUT carries the full routine body.
     const lineupChanged = fields.skillIds != null && !sameLineup(fields.skillIds, existing.skillIds);
     if (lineupChanged) {
       const next = applyFromDay
