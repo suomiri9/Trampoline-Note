@@ -39,16 +39,22 @@ interface DebutRow {
   badgeClass?: string;
   dotClass?: string;
   barSegments?: { frac: number; cls: string }[];
+  // Day counts per lineup era within the debut span, e.g. 37 (amber) + 1
+  // (blue) = 38 days — shown in the badge when a change falls in the span.
+  daySplits?: { days: number; textCls: string }[];
 }
 
 // Palette keyed by how many lineup changes a routine has had — the row keeps
 // one line and its dot/bar recolors to the current version's color.
 // Deliberately distinct from the amber bars / violet badges used elsewhere.
 const VERSION_SEGMENT_COLORS = [
-  { bar: "bg-sky-500/70", badge: "bg-sky-500/15 text-sky-600 dark:text-sky-400", dot: "bg-sky-500" },
-  { bar: "bg-emerald-500/70", badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500" },
-  { bar: "bg-fuchsia-500/70", badge: "bg-fuchsia-500/15 text-fuchsia-600 dark:text-fuchsia-400", dot: "bg-fuchsia-500" },
+  { bar: "bg-sky-500/70", badge: "bg-sky-500/15 text-sky-600 dark:text-sky-400", dot: "bg-sky-500", text: "text-sky-600 dark:text-sky-400" },
+  { bar: "bg-emerald-500/70", badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" },
+  { bar: "bg-fuchsia-500/70", badge: "bg-fuchsia-500/15 text-fuchsia-600 dark:text-fuchsia-400", dot: "bg-fuchsia-500", text: "text-fuchsia-600 dark:text-fuchsia-400" },
 ];
+
+// Original-lineup color for the pre-change part of the day-count split.
+const ORIGINAL_TEXT = "text-amber-600 dark:text-amber-400";
 
 function fmtD(iso: string | null): string {
   return iso ? format(parseISO(iso), "dd-MM-yyyy") : "—";
@@ -153,7 +159,24 @@ function DebutList({
               {r.sub && <span className="font-normal text-muted-foreground/70 ml-1.5">{r.sub}</span>}
             </span>
             <Badge variant="outline" className={cn("text-[10px] font-mono px-1.5 py-0 h-4 border-transparent shrink-0", r.days! < 0 ? "bg-muted text-muted-foreground" : (r.badgeClass ?? accent))}>
-              {r.days! < 0 ? "comped before first log" : r.days === 0 ? "same day" : `${r.days} day${r.days === 1 ? "" : "s"}`}
+              {r.days! < 0 ? (
+                "comped before first log"
+              ) : r.days === 0 ? (
+                "same day"
+              ) : r.daySplits ? (
+                <>
+                  {r.daySplits.map((p, i) => (
+                    <span key={i}>
+                      {i > 0 && <span className="opacity-60">+</span>}
+                      <span className={p.textCls}>{p.days}</span>
+                    </span>
+                  ))}
+                  <span className="opacity-60">=</span>
+                  {r.days} day{r.days === 1 ? "" : "s"}
+                </>
+              ) : (
+                `${r.days} day${r.days === 1 ? "" : "s"}`
+              )}
             </Badge>
           </div>
           <div className="mt-1.5 h-1.5 rounded-full bg-border/40 overflow-hidden">
@@ -386,12 +409,17 @@ export default function DebutsPage() {
       const days =
         trained && comp ? differenceInCalendarDays(parseISO(comp.date), parseISO(trained)) : null;
       let barSegments: { frac: number; cls: string }[] | undefined;
+      let daySplits: { days: number; textCls: string }[] | undefined;
       if (trained && comp && days != null && days > 0) {
         const cuts = [trained, ...bounds.filter(b => b > trained && b < comp.date), comp.date];
         if (cuts.length > 2) {
           barSegments = cuts.slice(0, -1).map((from, i) => ({
             frac: differenceInCalendarDays(parseISO(cuts[i + 1]), parseISO(from)) / days,
             cls: colorAt(from)?.bar ?? "bg-amber-500/70",
+          }));
+          daySplits = cuts.slice(0, -1).map((from, i) => ({
+            days: differenceInCalendarDays(parseISO(cuts[i + 1]), parseISO(from)),
+            textCls: colorAt(from)?.text ?? ORIGINAL_TEXT,
           }));
         }
       }
