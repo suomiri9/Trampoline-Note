@@ -138,20 +138,20 @@ export function PageHeader({
         "sticky top-0 z-30 full-bleed-bar page-header-safe mb-6 bg-background/90 backdrop-blur-md border-b border-border/60",
         "flex flex-col sm:flex-row sm:items-end sm:justify-between",
         "transition-all duration-300 motion-reduce:transition-none",
-        collapsed ? "pb-3 gap-2" : "pb-5 gap-4",
+        collapsed ? "pb-3 gap-2" : "pb-4 sm:pb-5 gap-3 sm:gap-4",
         className,
       )}
     >
       <div className="min-w-0">
         <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
           <div className="overflow-hidden">
-            <div className="eyebrow mb-2">// {eyebrow}</div>
+            <div className="eyebrow mb-1.5 sm:mb-2">// {eyebrow}</div>
           </div>
         </div>
         <h1
           className={cn(
             "page-title transition-[font-size] duration-300 motion-reduce:transition-none",
-            collapsed ? "text-2xl sm:text-3xl" : "text-5xl sm:text-6xl",
+            collapsed ? "text-xl sm:text-3xl" : "text-4xl sm:text-6xl",
           )}
         >
           {lead && <span>{lead} </span>}
@@ -159,7 +159,7 @@ export function PageHeader({
         </h1>
         {subtitle && (
           <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
-            <p className="overflow-hidden text-muted-foreground text-sm pt-3">{subtitle}</p>
+            <p className="overflow-hidden text-muted-foreground text-xs sm:text-sm pt-2 sm:pt-3">{subtitle}</p>
           </div>
         )}
       </div>
