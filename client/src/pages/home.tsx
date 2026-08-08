@@ -1,12 +1,11 @@
-import { useState } from "react";
-import { Plus, BookOpen, Loader2, ChevronDown } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus, BookOpen, Loader2, ChevronDown, Wrench } from "lucide-react";
 import { useNotesPage } from "@/hooks/use-notes";
 import { useQueuedNotes } from "@/hooks/use-queued-notes";
 import { NoteCard } from "@/components/note-card";
 import { NoteDialog } from "@/components/note-dialog";
 import { PointsToFix } from "@/components/points-to-fix";
 import { PageLayout } from "@/components/page-layout";
-import { PageHeader, primaryActionClass } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
@@ -39,29 +38,117 @@ export default function Home() {
   const hasMore = data?.hasMore ?? false;
   const total = data?.total ?? visibleNotes.length;
 
+  // Stats strip — derived from available data
+  const thisWeek = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 7);
+    return visibleNotes.filter(n => new Date(n.date) >= cutoff).length;
+  }, [visibleNotes]);
+
+  const STATS = [
+    { label: "Sessions", value: total > 0 ? String(total) : "—" },
+    { label: "This week", value: String(thisWeek) },
+  ];
+
   return (
     <PageLayout>
-      <PageHeader
-        eyebrow="Training Log"
-        title="Training Log"
-        accent="Log"
-        subtitle="Track your trampoline sessions, skills, and progress."
-        actions={
-          <>
-            <PointsToFix />
-            <Button onClick={handleCreateNew} className={primaryActionClass}>
-              <Plus className="w-5 h-5" />
-              Start Training
-            </Button>
-          </>
-        }
-      />
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <div className="relative -mx-4 sm:-mx-6 px-4 sm:px-6 pt-safe-top pb-6 overflow-hidden">
+        {/* Blue glow */}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-72"
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 60% at 50% -10%, hsl(var(--primary)/0.22) 0%, transparent 70%)",
+          }}
+        />
+
+        {/* Eyebrow pill */}
+        <div className="relative flex justify-center mb-5 pt-4">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border/40 bg-background/60 text-[10px] font-mono text-muted-foreground tracking-widest uppercase">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+            Training Log
+          </span>
+        </div>
+
+        {/* Headline */}
+        <h1
+          className="relative text-center font-black tracking-tight leading-[1.05] text-[36px] sm:text-[52px] mb-3"
+          style={{
+            background: "linear-gradient(160deg, hsl(var(--foreground)) 30%, hsl(var(--foreground)/0.5) 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}
+        >
+          Track every{" "}
+          <span
+            style={{
+              background: "linear-gradient(135deg, hsl(var(--primary)) 0%, #818cf8 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            jump.
+          </span>
+        </h1>
+
+        <p className="relative text-center text-xs sm:text-sm text-muted-foreground mb-6 max-w-[260px] mx-auto leading-relaxed">
+          Every session, skill, and difficulty point — in one place.
+        </p>
+
+        {/* Actions */}
+        <div className="relative flex items-center justify-center gap-2 mb-6">
+          <PointsToFix />
+          <Button
+            onClick={handleCreateNew}
+            className="flex items-center gap-1.5 px-4 h-9 sm:h-10 rounded-xl text-sm font-semibold text-white transition-colors"
+            style={{
+              background: "linear-gradient(135deg, hsl(var(--primary)) 0%, #818cf8 100%)",
+              boxShadow: "0 0 24px hsl(var(--primary)/0.35)",
+            }}
+          >
+            <Plus className="w-4 h-4" />
+            Start Training
+          </Button>
+        </div>
+
+        {/* Stats strip */}
+        {total > 0 && (
+          <div
+            className="relative grid mx-auto max-w-xs rounded-2xl overflow-hidden divide-x divide-border/30"
+            style={{
+              gridTemplateColumns: `repeat(${STATS.length}, 1fr)`,
+              background: "hsl(var(--card)/0.6)",
+              border: "1px solid hsl(var(--border)/0.4)",
+              backdropFilter: "blur(12px)",
+            }}
+          >
+            {STATS.map(s => (
+              <div key={s.label} className="flex flex-col items-center py-3 gap-0.5">
+                <span
+                  className="text-xl font-bold tabular-nums leading-none"
+                  style={{
+                    background: "linear-gradient(135deg, hsl(var(--primary)), #818cf8)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}
+                >
+                  {s.value}
+                </span>
+                <span className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground/60">
+                  {s.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <main>
         {offlineView && visibleNotes.length === 0 && !isLoading ? (
           <div className="space-y-4">
             {queuedNotes.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="list-pending-notes">
+              <div data-testid="list-pending-notes" className="flex flex-col">
                 {queuedNotes.map((note, index) => (
                   <NoteCard
                     key={note.id}
@@ -93,24 +180,38 @@ export default function Home() {
             <p className="text-sm opacity-90">{(error as Error).message}</p>
           </div>
         ) : visibleNotes.length === 0 ? (
-          <div className="py-24 px-6 flex flex-col items-center justify-center text-center rounded-2xl card-3d">
-            <div className="w-16 h-16 mb-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
-              <BookOpen className="w-8 h-8 text-primary" />
+          <div className="py-24 px-6 flex flex-col items-center justify-center text-center">
+            <div className="w-14 h-14 mb-5 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <BookOpen className="w-7 h-7 text-primary" />
             </div>
-            <div className="eyebrow mb-3">// No Entries</div>
-            <h3 className="text-3xl font-display font-normal mb-2">No sessions logged yet</h3>
-            <p className="text-muted-foreground max-w-md mb-8">
-              Start building your training history. Record your skills, write down reflections, and rate your performance.
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50 mb-2">No entries yet</p>
+            <h3 className="text-2xl font-black tracking-tight mb-2">Start your log.</h3>
+            <p className="text-sm text-muted-foreground max-w-xs mb-8 leading-relaxed">
+              Record skills, reflections, and DD — and watch your progress build.
             </p>
-            <Button onClick={handleCreateNew} className={primaryActionClass}>
-              <Plus className="w-5 h-5" />
+            <Button
+              onClick={handleCreateNew}
+              className="flex items-center gap-1.5 px-5 h-10 rounded-xl text-sm font-semibold text-white"
+              style={{ background: "linear-gradient(135deg, hsl(var(--primary)) 0%, #818cf8 100%)" }}
+            >
+              <Plus className="w-4 h-4" />
               Start Training
             </Button>
           </div>
         ) : (
           <>
+            {/* Section label */}
+            <div className="flex items-center justify-between mb-1 sticky top-0 z-10 bg-background/90 backdrop-blur-sm py-2 -mx-1 px-1">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/40">
+                Recent Sessions
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground/30" data-testid="text-notes-count">
+                {visibleNotes.length} of {total}
+              </span>
+            </div>
+
             {queuedNotes.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4" data-testid="list-pending-notes">
+              <div data-testid="list-pending-notes" className="flex flex-col mb-2">
                 {queuedNotes.map((note, index) => (
                   <NoteCard
                     key={note.id}
@@ -122,7 +223,8 @@ export default function Home() {
                 ))}
               </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div className="flex flex-col">
               {visibleNotes.map((note, index) => (
                 <NoteCard
                   key={note.id}
@@ -132,28 +234,26 @@ export default function Home() {
                 />
               ))}
             </div>
-            <div className="mt-6 flex flex-col items-center gap-2">
-              {hasMore && (
+
+            {hasMore && (
+              <div className="mt-4 flex flex-col items-center gap-2">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setLimit((l) => l + PAGE_SIZE)}
                   disabled={isFetching}
-                  className="rounded-xl h-11 px-6 font-medium gap-2"
+                  className="w-full rounded-xl h-10 text-[11px] font-mono text-muted-foreground/40 border border-border/20 hover:border-border/40 hover:text-muted-foreground/60 gap-2"
                   data-testid="btn-load-more-notes"
                 >
                   {isFetching ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="w-3.5 h-3.5" />
                   )}
                   Load {PAGE_SIZE} more
                 </Button>
-              )}
-              <span className="text-xs text-muted-foreground" data-testid="text-notes-count">
-                Showing {visibleNotes.length} of {total}
-              </span>
-            </div>
+              </div>
+            )}
           </>
         )}
       </main>

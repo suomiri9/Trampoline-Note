@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Calendar, MoreVertical, Pencil, Trash2, Clock, HeartPulse } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, HeartPulse } from "lucide-react";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { type Note } from "@shared/schema";
 import { parseNoteSkills, calculateTotalDD, computeTurns } from "@/lib/training-utils";
@@ -87,66 +87,75 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
   return (
     <>
       <div
-        className={`group relative card-3d card-3d-hover p-4 sm:p-5 pl-5 sm:pl-6 rounded-2xl overflow-hidden transition-all animate-fade-in-up opacity-0 cursor-pointer ${staggerClass}`}
+        className={`group relative flex items-stretch gap-2.5 py-3.5 border-t border-border/30 cursor-pointer transition-colors hover:bg-foreground/[0.02] animate-fade-in-up opacity-0 ${staggerClass}`}
         onClick={() => onEdit(note)}
         data-testid={`card-note-${note.id}`}
       >
-        <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-full" aria-hidden="true" />
-        <div className="flex justify-between items-stretch gap-3 mb-3">
-          <div className="min-w-0 flex flex-col gap-1 pt-0.5">
-            <div className="flex items-center flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] text-muted-foreground">
-              <span className="flex items-center gap-1.5 whitespace-nowrap">
-                <Calendar className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
-                {format(new Date(note.date), "EEE, d MMM yyyy")}
-              </span>
-              <span className="flex items-center gap-1.5 whitespace-nowrap">
-                <Clock className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
-                {formatTime(note.startTime, timeFormat)} - {formatTime(note.endTime, timeFormat)}
-              </span>
-            </div>
-            {(note.rating || (whoopDay && (whoopDay.recovery != null || whoopDay.strain != null))) ? (
-              <div className="flex items-center flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] text-muted-foreground">
-                {note.rating ? (
-                  <StarRating value={note.rating} onChange={() => {}} readonly size="sm" />
-                ) : null}
+        {/* Left accent bar */}
+        <div className="w-0.5 shrink-0 rounded-full self-stretch"
+          style={{ background: "linear-gradient(to bottom, hsl(var(--primary)), hsl(var(--primary)/0.2))" }}
+          aria-hidden="true"
+        />
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {/* Top row: meta + stats + menu */}
+          <div className="flex items-start gap-2 mb-0.5">
+            {/* Meta */}
+            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+              <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px] text-muted-foreground/50">
+                <span className="whitespace-nowrap">{format(new Date(note.date), "EEE, d MMM yyyy")}</span>
+                <span className="whitespace-nowrap">{formatTime(note.startTime, timeFormat)} – {formatTime(note.endTime, timeFormat)}</span>
+                {note.rating ? <StarRating value={note.rating} onChange={() => {}} readonly size="sm" /> : null}
                 {whoopDay && (whoopDay.recovery != null || whoopDay.strain != null) ? (
                   <span
-                    className="flex items-center gap-1.5 whitespace-nowrap"
+                    className="flex items-center gap-1 whitespace-nowrap"
                     title="WHOOP recovery / day strain"
                     data-testid={`whoop-day-${note.id}`}
                   >
-                    <HeartPulse className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
+                    <HeartPulse className="w-3 h-3 shrink-0" />
                     {whoopDay.recovery != null && (
                       <span className={cn("font-bold", recoveryColorClass(whoopDay.recovery))}>
                         {Math.round(whoopDay.recovery)}%
                       </span>
                     )}
                     {whoopDay.strain != null && (
-                      <span className="text-muted-foreground">
-                        {whoopDay.strain.toFixed(1)} strain
-                      </span>
+                      <span>{whoopDay.strain.toFixed(1)} strain</span>
                     )}
                   </span>
                 ) : null}
               </div>
-            ) : null}
-          </div>
-          <div className="flex items-start gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-            {isPending && <PendingSyncBadge testId={`badge-pending-sync-${note.id}`} />}
-            {skillsData.length > 0 && (
-              <div className="flex items-center gap-3 self-center">
-                {trackTurns && turnInfo.totalTurns > 0 && (
+              <p className="text-[13px] font-semibold text-foreground/80 leading-snug truncate">
+                {note.content}
+              </p>
+            </div>
+
+            {/* Stats + menu */}
+            <div className="flex items-center gap-3 shrink-0 self-center" onClick={(e) => e.stopPropagation()}>
+              {isPending && <PendingSyncBadge testId={`badge-pending-sync-${note.id}`} />}
+              {skillsData.length > 0 && (
+                <div className="flex items-center gap-3">
+                  {trackTurns && turnInfo.totalTurns > 0 && (
+                    <div className="text-right leading-none">
+                      <div className="text-[20px] font-bold tabular-nums text-foreground/40 leading-none" data-testid={`text-turns-${note.id}`}>{turnInfo.totalTurns}</div>
+                      <div className="text-[8px] font-mono uppercase tracking-widest text-muted-foreground/30 mt-0.5">Turns</div>
+                    </div>
+                  )}
                   <div className="text-right leading-none">
-                    <div className="text-[28px] font-display font-normal text-foreground/80 tracking-tight leading-none" data-testid={`text-turns-${note.id}`}>{turnInfo.totalTurns}</div>
-                    <div className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60 mt-1.5">Turns</div>
+                    <div
+                      className="text-[20px] font-bold tabular-nums leading-none"
+                      style={{
+                        background: "linear-gradient(135deg, hsl(var(--primary)), #818cf8)",
+                        WebkitBackgroundClip: "text",
+                        WebkitTextFillColor: "transparent",
+                      }}
+                    >
+                      {totalDifficulty.toFixed(1)}
+                    </div>
+                    <div className="text-[8px] font-mono uppercase tracking-widest text-muted-foreground/30 mt-0.5">DD</div>
                   </div>
-                )}
-                <div className="text-right leading-none">
-                  <div className="text-[28px] font-display font-normal text-primary tracking-tight leading-none">{totalDifficulty.toFixed(1)}</div>
-                  <div className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60 mt-1.5">Total DD</div>
                 </div>
-              </div>
-            )}
+              )}
             {isPending ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -198,11 +207,8 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
           </div>
         </div>
 
-        <div className="space-y-4">
-          <p className="text-[15px] font-semibold text-foreground leading-snug whitespace-pre-wrap">{note.content}</p>
-          
-          {skillsData.length > 0 && (
-            <div className="space-y-2 pt-3 border-t border-border/40">
+        {skillsData.length > 0 && (
+          <div className="mt-2 ml-0 pl-3 border-l border-border/30">
               <div className="flex flex-col gap-1.5">
                 {(() => {
                   const groups: ({ id: number; reps?: number } | { id: number; reps?: number }[])[] = [];
@@ -452,10 +458,10 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                   });
                 })()}
               </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
+    </div>
 
       <ConfirmDialog
         open={showDeleteAlert}

@@ -2,11 +2,12 @@
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/TrainingLogFull.tsx": () => import("../components/mockups/TrainingLogFull.tsx"),
+  "./components/mockups/TrainingLogFullVariant.tsx": () => import("../components/mockups/TrainingLogFullVariant.tsx"),
   "./components/mockups/TrainingLogRedesign.tsx": () => import("../components/mockups/TrainingLogRedesign.tsx"),
+  "./components/mockups/training/TrainingCommandCenter.tsx": () => import("../components/mockups/training/TrainingCommandCenter.tsx"),
   "./components/mockups/templates/GrungeInteriorDesignFileManager-aW9VN_/App.tsx": () => import("../components/mockups/templates/GrungeInteriorDesignFileManager-aW9VN_/App.tsx"),
+  "./components/mockups/templates/MissionControlBentoDashboard-FIWPBj/Dashboard.tsx": () => import("../components/mockups/templates/MissionControlBentoDashboard-FIWPBj/Dashboard.tsx"),
   "./components/mockups/templates/MissionControlBentoDashboard-aA7_vj/Dashboard.tsx": () => import("../components/mockups/templates/MissionControlBentoDashboard-aA7_vj/Dashboard.tsx"),
   "./components/mockups/templates/NeonHorizonsTravelCarousel-_DJVqT/App.tsx": () => import("../components/mockups/templates/NeonHorizonsTravelCarousel-_DJVqT/App.tsx"),
-  "./components/mockups/templates/MissionControlBentoDashboard-FIWPBj/Dashboard.tsx": () => import("../components/mockups/templates/MissionControlBentoDashboard-FIWPBj/Dashboard.tsx"),
-  "./components/mockups/templates/SwissLearningApp-uRYU7h/App.tsx": () => import("../components/mockups/templates/SwissLearningApp-uRYU7h/App.tsx"),
-  "./components/mockups/training/TrainingCommandCenter.tsx": () => import("../components/mockups/training/TrainingCommandCenter.tsx")
+  "./components/mockups/templates/SwissLearningApp-uRYU7h/App.tsx": () => import("../components/mockups/templates/SwissLearningApp-uRYU7h/App.tsx")
 };
