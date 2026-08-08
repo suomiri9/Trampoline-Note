@@ -29,6 +29,8 @@ import { useRoutines } from "@/hooks/use-routines";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
+import { compressDataUrl } from "@/lib/image-file";
+import { PhotoAreaSelect, type PhotoAreaSelectHandle } from "@/components/photo-area-select";
 import {
   Dialog,
   DialogContent,
@@ -79,47 +81,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { StarRating } from "./star-rating";
 
-// Compress any image (File or existing data-url) before sending to the server.
-// Max long-side 1280px, max output length 3.5 MB (base64 string, not binary),
-// so that the full JSON body stays well within the server's 20 MB limit.
-const MAX_MENU_DATA_URL = 3.5 * 1024 * 1024;
-
-async function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((res, rej) => {
-    const el = new Image();
-    el.onload = () => res(el);
-    el.onerror = () => rej(new Error("not a readable image"));
-    el.src = src;
-  });
-}
-
-async function compressMenuImage(file: File): Promise<string> {
-  const dataUrl: string = await new Promise((res, rej) => {
-    const reader = new FileReader();
-    reader.onload = () => res(String(reader.result));
-    reader.onerror = () => rej(new Error("read failed"));
-    reader.readAsDataURL(file);
-  });
-  return compressDataUrl(dataUrl);
-}
-
-async function compressDataUrl(dataUrl: string): Promise<string> {
-  const img = await loadImage(dataUrl);
-  const scale = Math.min(1, 1280 / Math.max(img.width, img.height, 1));
-  const w = Math.max(1, Math.round(img.width * scale));
-  const h = Math.max(1, Math.round(img.height * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("canvas unavailable");
-  ctx.drawImage(img, 0, 0, w, h);
-  for (const q of [0.82, 0.65, 0.48, 0.35]) {
-    const out = canvas.toDataURL("image/jpeg", q);
-    if (out.length <= MAX_MENU_DATA_URL) return out;
-  }
-  throw new Error("image too large even after compression — try a smaller photo");
-}
+// Menu crops are compressed before sending (max long-side 1280px, max output
+// 3.5 MB base64) so the full JSON body stays well within the server's limits.
+const MENU_COMPRESS = { maxChars: 3.5 * 1024 * 1024, maxSide: 1280, qualities: [0.82, 0.65, 0.48, 0.35] };
 
 const formSchema = z.object({
   date: z.date({
@@ -234,14 +198,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [menuPhotoFile, setMenuPhotoFile] = useState<File | null>(null);
   const [menuPhotoDataUrl, setMenuPhotoDataUrl] = useState<string | null>(null);
   const [menuCropDataUrl, setMenuCropDataUrl] = useState<string | null>(null);
-  // crop rect as fraction of natural image size (0–1)
-  type CropRect = { x: number; y: number; w: number; h: number };
-  const [cropRects, setCropRects] = useState<CropRect[]>([]);
-  const [currentCropRect, setCurrentCropRect] = useState<CropRect | null>(null);
-  const [isDraggingCrop, setIsDraggingCrop] = useState(false);
-  const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
-  const cropCanvasRef = useRef<HTMLCanvasElement>(null);
-  const cropImgRef = useRef<HTMLImageElement>(null);
+  const menuCropRef = useRef<PhotoAreaSelectHandle>(null);
+  const [menuCropCount, setMenuCropCount] = useState(0);
   type MenuChatMsg = { role: "user" | "assistant"; content: string };
   const [menuMessages, setMenuMessages] = useState<MenuChatMsg[]>([]);
   const [menuInput, setMenuInput] = useState("");
@@ -541,8 +499,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     setMenuPhotoFile(null);
     setMenuPhotoDataUrl(null);
     setMenuCropDataUrl(null);
-    setCropRects([]);
-    setCurrentCropRect(null);
     setMenuMessages([]);
     setMenuInput("");
     setMenuDraft(null);
@@ -555,97 +511,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     const reader = new FileReader();
     reader.onload = () => {
       setMenuPhotoDataUrl(String(reader.result));
-      setCropRects([]);
-      setCurrentCropRect(null);
       setMenuStep("crop");
     };
     reader.readAsDataURL(file);
   };
 
-  // Crop helpers — coords are relative to the displayed canvas element
-  const getCropEventPos = (
-    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>,
-    canvas: HTMLCanvasElement,
-  ) => {
-    const rect = canvas.getBoundingClientRect();
-    const src = "touches" in e ? e.touches[0] : (e as React.MouseEvent);
-    return {
-      x: Math.max(0, Math.min(1, (src.clientX - rect.left) / rect.width)),
-      y: Math.max(0, Math.min(1, (src.clientY - rect.top) / rect.height)),
-    };
-  };
-
-  const onCropPointerDown = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    const canvas = cropCanvasRef.current;
-    if (!canvas) return;
-    e.preventDefault();
-    const pos = getCropEventPos(e, canvas);
-    setCropStart(pos);
-    setCurrentCropRect({ x: pos.x, y: pos.y, w: 0, h: 0 });
-    setIsDraggingCrop(true);
-  };
-
-  const onCropPointerMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDraggingCrop || !cropStart) return;
-    const canvas = cropCanvasRef.current;
-    if (!canvas) return;
-    e.preventDefault();
-    const pos = getCropEventPos(e, canvas);
-    const x = Math.min(cropStart.x, pos.x);
-    const y = Math.min(cropStart.y, pos.y);
-    const w = Math.abs(pos.x - cropStart.x);
-    const h = Math.abs(pos.y - cropStart.y);
-    setCurrentCropRect({ x, y, w, h });
-  };
-
-  const onCropPointerUp = () => {
-    setIsDraggingCrop(false);
-    setCropStart(null);
-    // Commit the current rect if it's big enough
-    setCurrentCropRect(prev => {
-      if (prev && prev.w > 0.01 && prev.h > 0.01) {
-        setCropRects(rs => [...rs, prev]);
-      }
-      return null;
-    });
-  };
-
-  // Stitches all selected regions vertically into a single canvas data-url.
-  // Falls back to the full photo if no regions are selected.
-  const buildCropDataUrl = (): string | null => {
-    const img = cropImgRef.current;
-    if (!img) return menuPhotoDataUrl;
-    const valid = cropRects.filter(r => r.w > 0.01 && r.h > 0.01);
-    if (valid.length === 0) return menuPhotoDataUrl;
-    const nw = img.naturalWidth;
-    const nh = img.naturalHeight;
-    const GAP = 4;
-    const outW = Math.max(...valid.map(r => Math.round(r.w * nw)));
-    const outH = valid.reduce((sum, r) => sum + Math.round(r.h * nh), 0) + GAP * (valid.length - 1);
-    const c = document.createElement("canvas");
-    c.width = outW;
-    c.height = outH;
-    const ctx = c.getContext("2d");
-    if (!ctx) return menuPhotoDataUrl;
-    let y = 0;
-    for (const r of valid) {
-      const sx = Math.round(r.x * nw);
-      const sy = Math.round(r.y * nh);
-      const sw = Math.round(r.w * nw);
-      const sh = Math.round(r.h * nh);
-      ctx.drawImage(img, sx, sy, sw, sh, 0, y, sw, sh);
-      y += sh + GAP;
-    }
-    return c.toDataURL("image/jpeg", 0.9);
-  };
-
   const proceedToChat = async () => {
-    const raw = buildCropDataUrl();
+    const raw = menuCropRef.current?.buildCropDataUrl() ?? menuPhotoDataUrl;
     if (!raw) return;
     setMenuPhotoLoading(true);
     let cropUrl: string;
     try {
-      cropUrl = await compressDataUrl(raw);
+      cropUrl = await compressDataUrl(raw, MENU_COMPRESS);
     } catch (e: any) {
       toast({ title: "Image error", description: e.message, variant: "destructive" });
       setMenuPhotoLoading(false);
@@ -776,69 +653,6 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     setMenuReviewOpen(false);
     setMenuPhotoDialogOpen(false);
   };
-
-  // Draw the photo + crop overlays onto the canvas whenever state changes
-  useEffect(() => {
-    const canvas = cropCanvasRef.current;
-    const img = cropImgRef.current;
-    if (!canvas || !img || menuStep !== "crop" || !menuPhotoDataUrl) return;
-    const COLORS = ["#6366f1", "#f59e0b", "#10b981", "#ef4444", "#3b82f6"];
-    const drawFrame = () => {
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      const displayW = canvas.offsetWidth || 320;
-      const scale = displayW / img.naturalWidth;
-      const displayH = Math.round(img.naturalHeight * scale);
-      canvas.width = displayW;
-      canvas.height = displayH;
-      // Draw base image
-      ctx.drawImage(img, 0, 0, displayW, displayH);
-      // Collect all rects to display (committed + current in-progress)
-      const allRects = [
-        ...cropRects,
-        ...(currentCropRect && currentCropRect.w > 0.005 && currentCropRect.h > 0.005 ? [currentCropRect] : []),
-      ];
-      if (allRects.length > 0) {
-        // Dim the whole image
-        ctx.fillStyle = "rgba(0,0,0,0.45)";
-        ctx.fillRect(0, 0, displayW, displayH);
-        // For each rect: restore the image underneath, then draw border + number
-        allRects.forEach((r, i) => {
-          const rx = r.x * displayW;
-          const ry = r.y * displayH;
-          const rw = r.w * displayW;
-          const rh = r.h * displayH;
-          // Re-draw just the selected region from the source image
-          ctx.drawImage(img, r.x * img.naturalWidth, r.y * img.naturalHeight,
-            r.w * img.naturalWidth, r.h * img.naturalHeight,
-            rx, ry, rw, rh);
-          const color = COLORS[i % COLORS.length];
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 2;
-          ctx.strokeRect(rx, ry, rw, rh);
-          // Number badge
-          if (allRects.length > 1) {
-            const label = String(i + 1);
-            const pad = 4;
-            const fontSize = 11;
-            ctx.font = `bold ${fontSize}px sans-serif`;
-            const tw = ctx.measureText(label).width;
-            const bw = tw + pad * 2;
-            const bh = fontSize + pad * 2;
-            ctx.fillStyle = color;
-            ctx.fillRect(rx + 1, ry + 1, bw, bh);
-            ctx.fillStyle = "#fff";
-            ctx.fillText(label, rx + 1 + pad, ry + 1 + pad + fontSize - 2);
-          }
-        });
-      }
-    };
-    if (img.complete && img.naturalWidth > 0) {
-      drawFrame();
-    } else {
-      img.onload = drawFrame;
-    }
-  }, [menuStep, menuPhotoDataUrl, cropRects, currentCropRect]);
 
   const removeSkill = (index: number) => {
     setSelectedSkills(prev => {
@@ -1421,45 +1235,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         )}
 
                         {/* ── Step 2: Crop ── */}
-                        {menuStep === "crop" && menuPhotoDataUrl && (
-                          <div className="p-4 flex flex-col gap-3">
-                            <p className="text-xs text-muted-foreground">Draw a rectangle over the part of the menu you want the AI to read. Skip to use the whole photo.</p>
-                            <div className="relative select-none touch-none">
-                              {/* Hidden natural-size img for dimension reference */}
-                              <img ref={cropImgRef} src={menuPhotoDataUrl} alt="" className="hidden" />
-                              <canvas
-                                ref={cropCanvasRef}
-                                className="w-full rounded-xl border cursor-crosshair"
-                                style={{ touchAction: "none" }}
-                                onMouseDown={onCropPointerDown}
-                                onMouseMove={onCropPointerMove}
-                                onMouseUp={onCropPointerUp}
-                                onMouseLeave={onCropPointerUp}
-                                onTouchStart={onCropPointerDown}
-                                onTouchMove={onCropPointerMove}
-                                onTouchEnd={onCropPointerUp}
-                                data-testid="menu-crop-canvas"
-                              />
-                              {/* We draw the image + overlay rect onto the canvas via useEffect below */}
-                            </div>
-                            {cropRects.length > 0 && (
-                              <div className="flex items-center justify-between gap-2">
-                                <p className="text-xs text-primary font-medium">
-                                  {cropRects.length} area{cropRects.length !== 1 ? "s" : ""} selected — draw more or proceed
-                                </p>
-                                <button
-                                  type="button"
-                                  className="text-xs text-muted-foreground hover:text-destructive underline"
-                                  onClick={() => setCropRects([])}
-                                  data-testid="btn-menu-crop-clear"
-                                >
-                                  Clear all
-                                </button>
-                              </div>
-                            )}
-                            {cropRects.length === 0 && (
-                              <p className="text-xs text-muted-foreground">Draw rectangles on the photo to select the areas you want the AI to read. You can select multiple.</p>
-                            )}
+                        {/* Stays mounted (hidden) during the chat step so "← Back" keeps the drawn areas. */}
+                        {menuPhotoDataUrl && (menuStep === "crop" || menuStep === "chat") && (
+                          <div className={menuStep === "crop" ? "p-4" : "hidden"}>
+                            <PhotoAreaSelect
+                              ref={menuCropRef}
+                              photoDataUrl={menuPhotoDataUrl}
+                              active={menuStep === "crop"}
+                              testIdPrefix="menu-crop"
+                              topHint="Draw a rectangle over the part of the menu you want the AI to read. Skip to use the whole photo."
+                              bottomHint="Draw rectangles on the photo to select the areas you want the AI to read. You can select multiple."
+                              onSelectionChange={setMenuCropCount}
+                            />
                           </div>
                         )}
 
@@ -1558,7 +1345,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             data-testid="btn-menu-proceed"
                           >
                             <Camera className="h-3.5 w-3.5" />
-                            {cropRects.length > 1 ? `Use ${cropRects.length} areas` : cropRects.length === 1 ? "Use selection" : "Use whole photo"}
+                            {menuCropCount > 1 ? `Use ${menuCropCount} areas` : menuCropCount === 1 ? "Use selection" : "Use whole photo"}
                           </Button>
                         )}
                         {menuStep === "chat" && !(menuDraft && menuDraft.items.length > 0) && (

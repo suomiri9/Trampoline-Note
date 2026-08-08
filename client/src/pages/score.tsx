@@ -32,7 +32,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { fileToDataUrl } from "@/lib/image-file";
+import { fileToDataUrl, compressDataUrl } from "@/lib/image-file";
+import { PhotoAreaSelect, type PhotoAreaSelectHandle } from "@/components/photo-area-select";
 import { SheetPhotoPreview } from "@/components/sheet-photo-preview";
 import { emptyTenths, parseTenthsRow, tenthsRowToInsert, TenthsGrid, TenthsRowSummary } from "@/components/execution-tenths";
 import { EXECUTION_SKILL_COUNT } from "@shared/execution";
@@ -745,9 +746,13 @@ export default function ScorePage() {
 
   // ---- Scoresheet photo flow (parse → review → details → save) ----
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetStep, setSheetStep] = useState<"review" | "details" | "executions">("review");
+  const [sheetStep, setSheetStep] = useState<"crop" | "review" | "details" | "executions">("review");
   const [sheetRows, setSheetRows] = useState<SheetRow[]>([]);
   const [sheetPhotoUrl, setSheetPhotoUrl] = useState<string | null>(null);
+  // Full uploaded photo (before area selection) shown in the crop step.
+  const [sheetPhotoOriginal, setSheetPhotoOriginal] = useState<string | null>(null);
+  const sheetCropRef = useRef<PhotoAreaSelectHandle>(null);
+  const [sheetCropCount, setSheetCropCount] = useState(0);
   // Draft execution sessions parsed from the same photo, offered after the
   // score saves ("add the deductions too" step).
   const [execDrafts, setExecDrafts] = useState<ExecDraft[]>([]);
@@ -905,6 +910,7 @@ export default function ScorePage() {
     setSheetStep("review");
     setSheetRows([]);
     setSheetPhotoUrl(null);
+    setSheetPhotoOriginal(null);
     setExecDrafts([]);
     setSavingExecDrafts(false);
     setSheetFinishing(false);
@@ -917,17 +923,43 @@ export default function ScorePage() {
     setSheetDate(new Date().toISOString().split("T")[0]);
   };
 
-  const handleSheetPhoto = async (file: File) => {
+  // Step 0: photo picked → open the dialog on the area-select step (no AI call yet).
+  const openSheetCrop = async (file: File) => {
     setParsingSheet(true);
     try {
       const dataUrl = await fileToDataUrl(file);
-      // In parallel, try reading per-skill deduction rows from the same photo
-      // — offered as Execution-tracker drafts after the score is saved.
-      execParseRef.current = apiRequest("POST", "/api/execution-sessions/parse-photo", { images: [dataUrl] })
+      closeSheet(); // reset any leftover state from a previous sheet
+      setSheetPhotoOriginal(dataUrl);
+      setSheetStep("crop");
+      setSheetOpen(true);
+    } catch (e) {
+      toast({
+        title: "Couldn't read that photo",
+        description: e instanceof Error ? e.message : "Try a different image.",
+        variant: "destructive",
+      });
+    } finally {
+      setParsingSheet(false);
+      if (sheetInputRef.current) sheetInputRef.current.value = "";
+    }
+  };
+
+  // Step 1: read the selected area (or the whole photo if nothing was drawn).
+  const readSheetSelection = async () => {
+    if (!sheetPhotoOriginal || parsingSheet) return;
+    setParsingSheet(true);
+    try {
+      const raw = sheetCropRef.current?.buildCropDataUrl() ?? sheetPhotoOriginal;
+      // The original already fits the API cap; only re-compress fresh crops.
+      const cropUrl = raw === sheetPhotoOriginal ? raw : await compressDataUrl(raw);
+      // In parallel, try reading per-skill deduction rows — from the FULL photo,
+      // since the judges' deduction table often sits outside the selected area.
+      // Offered as Execution-tracker drafts after the score is saved.
+      execParseRef.current = apiRequest("POST", "/api/execution-sessions/parse-photo", { images: [sheetPhotoOriginal] })
         .then(res => res.json())
         .then((p: { rows: ParsedExecRow[] }) => (p.rows && p.rows.length > 0 ? p.rows : null))
         .catch(() => null);
-      const res = await apiRequest("POST", "/api/scores/parse-photo", { images: [dataUrl] });
+      const res = await apiRequest("POST", "/api/scores/parse-photo", { images: [cropUrl] });
       const parsed = (await res.json()) as {
         routines: { label: string; execution: number | null; difficulty: number | null; horizontal: number | null; timeOfFlight: number | null; total: number | null }[];
         competitionName: string | null;
@@ -937,10 +969,10 @@ export default function ScorePage() {
       if (!parsed.routines || parsed.routines.length === 0) {
         toast({
           title: "No routine scores found",
-          description: "Couldn't read E/D/H/T lines from that photo. Try a closer crop, or enter the score manually.",
+          description: "Couldn't read E/D/H/T lines there. Select a tighter area around the score lines and try again.",
           variant: "destructive",
         });
-        return;
+        return; // stay on the crop step so the selection can be adjusted
       }
       const rows: SheetRow[] = parsed.routines.map((r, idx) => ({
         key: idx,
@@ -954,7 +986,7 @@ export default function ScorePage() {
         routineId: "",
       }));
       setSheetRows(rows);
-      setSheetPhotoUrl(dataUrl);
+      setSheetPhotoUrl(cropUrl);
       setSheetDate(parsed.date ?? new Date().toISOString().split("T")[0]);
       setSheetCompName(parsed.competitionName ?? "");
       setSheetRound(parsed.round === "final" ? "final" : "prelims");
@@ -966,7 +998,6 @@ export default function ScorePage() {
       // (e.g. a final); a blank/0 DD on R1 means the classic set + voluntary pair.
       setSheetPairCategory(rows.length === 2 && first.difficulty != null && first.difficulty > 0 ? "vol_vol" : "both");
       setSheetStep("review");
-      setSheetOpen(true);
     } catch (e) {
       toast({
         title: "Photo reading failed",
@@ -975,7 +1006,6 @@ export default function ScorePage() {
       });
     } finally {
       setParsingSheet(false);
-      if (sheetInputRef.current) sheetInputRef.current.value = "";
     }
   };
 
@@ -1371,7 +1401,7 @@ export default function ScorePage() {
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleSheetPhoto(f); }}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) openSheetCrop(f); }}
               data-testid="input-scoresheet-photo"
             />
             <Button
@@ -1797,17 +1827,46 @@ export default function ScorePage() {
       </Dialog>
 
       {/* ---- Scoresheet photo confirmation (review → details) ---- */}
-      <Dialog open={sheetOpen} onOpenChange={(o) => { if (!o && !createMutation.isPending && !sheetFinishing && !savingExecDrafts) closeSheet(); }}>
+      <Dialog open={sheetOpen} onOpenChange={(o) => { if (!o && !createMutation.isPending && !sheetFinishing && !savingExecDrafts && !parsingSheet) closeSheet(); }}>
         <DialogContent aria-describedby={undefined} className="sm:max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {sheetStep === "review" ? "Check the scores" : sheetStep === "details" ? "Score details" : "Add the deductions too?"}
-              {sheetStep !== "executions" && (
+              {sheetStep === "crop" ? "Select the scores to read" : sheetStep === "review" ? "Check the scores" : sheetStep === "details" ? "Score details" : "Add the deductions too?"}
+              {(sheetStep === "review" || sheetStep === "details") && (
                 <span className="ml-2 text-xs font-mono font-normal text-muted-foreground">{sheetStep === "review" ? "1/2" : "2/2"}</span>
               )}
             </DialogTitle>
           </DialogHeader>
-          {sheetStep === "review" ? (
+          {sheetStep === "crop" ? (
+            sheetPhotoOriginal && (
+              <div className="space-y-3">
+                <PhotoAreaSelect
+                  ref={sheetCropRef}
+                  photoDataUrl={sheetPhotoOriginal}
+                  testIdPrefix="sheet-crop"
+                  topHint="Draw a rectangle over your scores — the lines with the E / D / H / T numbers. Skip to read the whole photo."
+                  bottomHint="You can select multiple areas, e.g. the header with the competition name plus your score lines."
+                  selectedHint="draw more or read"
+                  onSelectionChange={setSheetCropCount}
+                />
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" onClick={closeSheet} disabled={parsingSheet} data-testid="button-sheet-crop-cancel">
+                    Cancel
+                  </Button>
+                  <Button onClick={readSheetSelection} disabled={parsingSheet} className="gap-2" data-testid="button-sheet-crop-read">
+                    {parsingSheet ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageUp className="w-4 h-4" />}
+                    {parsingSheet
+                      ? "Reading..."
+                      : sheetCropCount > 1
+                        ? `Read ${sheetCropCount} areas`
+                        : sheetCropCount === 1
+                          ? "Read selection"
+                          : "Read whole photo"}
+                  </Button>
+                </div>
+              </div>
+            )
+          ) : sheetStep === "review" ? (
             <div className="space-y-4">
               <p className="text-xs text-muted-foreground">
                 These are the values read from the scoresheet — fix anything that's wrong before continuing. A blank DD usually means a set routine.
