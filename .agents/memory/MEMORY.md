@@ -23,6 +23,7 @@
 - [Offline lazy route chunks](offline-lazy-chunks.md) — never rebuild a suspended React.lazy (infinite remount loop) and never import() while offline (module-map poisoning); recovery component owns retries.
 - [Local headless e2e fallback](local-headless-e2e.md) — when the testing subagent's browser is down, run playwright-core locally via LD_LIBRARY_PATH + $REPLIT_DEV_DOMAIN (Secure cookies fail on http).
 - [PageHeader must be first](page-header-first-element.md) — sticky PageHeader has a negative top margin (page-header-safe); anything rendered above it gets covered — move it below, or pass `className="static !mt-0"`.
+- [#root is the scroll container](root-scroll-container.md) — html/body are overflow:hidden; window.scrollY is always 0 — bind scroll features to the nearest overflow-y:auto ancestor and read scrollTop.
 - [Server UTC vs local "today"](utc-vs-local-today.md) — NZ athlete is up to half a day ahead of server UTC; "today" logic needs a client-sent local date, and day-keyed caches must fingerprint the data too.
 - [Routine lineup versioning](routine-versioning-model.md) — routine row holds the CURRENT lineup; past versions end EXCLUSIVE on the change day; always resolve dated entries via lineupOnDate, never reimplement.
 - [Dev preview data = prod clone](dev-demo-data.md) — user wants their REAL account data in preview, not synthetic; same user id in both DBs, clone with ids preserved, prod read-only.
