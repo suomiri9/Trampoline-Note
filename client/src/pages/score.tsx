@@ -1475,7 +1475,7 @@ export default function ScorePage() {
             />
             <Button
               variant="outline"
-              className="rounded-xl h-12 px-4 font-semibold gap-2"
+              className="rounded-xl h-10 px-3 sm:h-12 sm:px-4 font-semibold gap-2"
               onClick={() => navigate("/score/debuts")}
               data-testid="button-comp-debuts"
             >
@@ -1483,7 +1483,7 @@ export default function ScorePage() {
             </Button>
             <Button
               variant="outline"
-              className="rounded-xl h-12 px-4 font-semibold gap-2"
+              className="rounded-xl h-10 px-3 sm:h-12 sm:px-4 font-semibold gap-2"
               disabled={parsingSheet}
               onClick={() => { pendingFinalForRef.current = null; sheetInputRef.current?.click(); }}
               data-testid="button-upload-scoresheet"

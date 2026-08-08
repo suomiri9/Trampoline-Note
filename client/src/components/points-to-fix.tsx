@@ -410,7 +410,7 @@ export function PointsToFix({
           variant="outline"
           onClick={() => setOpen(true)}
           data-testid="button-points-to-fix"
-          className="rounded-xl h-12 px-4 font-medium flex items-center gap-2 relative text-muted-foreground hover:text-foreground"
+          className="rounded-xl h-10 px-3 sm:h-12 sm:px-4 font-medium flex items-center gap-2 relative text-muted-foreground hover:text-foreground"
         >
           <Wrench className="w-5 h-5" />
           Points to Fix

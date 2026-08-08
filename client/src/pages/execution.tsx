@@ -646,7 +646,7 @@ export default function ExecutionPage() {
             />
             <Button
               variant="outline"
-              className="rounded-xl h-12 px-4 font-semibold gap-2"
+              className="rounded-xl h-10 px-3 sm:h-12 sm:px-4 font-semibold gap-2"
               disabled={parsingPhoto}
               onClick={() => photoInputRef.current?.click()}
               data-testid="button-upload-execution-photo"

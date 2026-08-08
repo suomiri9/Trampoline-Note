@@ -228,7 +228,7 @@ export default function RoutinesPage() {
               variant={showArchived ? "default" : "outline"}
               size="sm"
               onClick={() => { setShowArchived(v => !v); cancelEditing(); }}
-              className={cn("gap-1.5 shrink-0 h-12 rounded-xl", !showArchived && "text-muted-foreground hover:text-foreground")}
+              className={cn("gap-1.5 shrink-0 h-10 sm:h-12 rounded-xl", !showArchived && "text-muted-foreground hover:text-foreground")}
               data-testid="button-toggle-archived"
             >
               {showArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}

@@ -3,11 +3,11 @@ import { cn } from "@/lib/utils";
 
 /** Glowing solid-blue primary action (e.g. "Start Training"). */
 export const primaryActionClass =
-  "rounded-xl h-12 px-6 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition-all btn-3d flex items-center gap-2";
+  "rounded-xl h-10 px-4 sm:h-12 sm:px-6 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition-all btn-3d flex items-center gap-2";
 
 /** Outlined amber/gold secondary action (e.g. "Points to Fix"). */
 export const goldActionClass =
-  "rounded-xl h-12 px-4 font-semibold btn-gold flex items-center gap-2 relative";
+  "rounded-xl h-10 px-3 sm:h-12 sm:px-4 font-semibold btn-gold flex items-center gap-2 relative";
 
 /** Collapse once scrolled past this point… */
 const COLLAPSE_AT = 48;
@@ -136,14 +136,14 @@ export function PageHeader({
       ref={headerRef}
       className={cn(
         "sticky top-0 z-30 full-bleed-bar page-header-safe mb-6 bg-background/90 backdrop-blur-md border-b border-border/60",
-        "flex flex-row flex-wrap items-center justify-between sm:flex-nowrap sm:items-end",
+        "flex flex-col sm:flex-row sm:items-end sm:justify-between",
         "transition-all duration-300 motion-reduce:transition-none",
         collapsed ? "pb-3 gap-2" : "pb-4 sm:pb-5 gap-3 sm:gap-4",
         className,
       )}
     >
       <div className="min-w-0">
-        <div className={cn(collapsibleRow(!collapsed), "hidden sm:grid")} aria-hidden={collapsed}>
+        <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
           <div className="overflow-hidden">
             <div className="eyebrow mb-1.5 sm:mb-2">// {eyebrow}</div>
           </div>
@@ -151,14 +151,14 @@ export function PageHeader({
         <h1
           className={cn(
             "page-title transition-[font-size] duration-300 motion-reduce:transition-none",
-            collapsed ? "text-xl sm:text-3xl" : "text-3xl sm:text-6xl",
+            collapsed ? "text-xl sm:text-3xl" : "text-4xl sm:text-6xl",
           )}
         >
           {lead && <span>{lead} </span>}
           <span className="title-accent">{accentPart}</span>
         </h1>
         {subtitle && (
-          <div className={cn(collapsibleRow(!collapsed), "hidden sm:grid")} aria-hidden={collapsed}>
+          <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
             <p className="overflow-hidden text-muted-foreground text-xs sm:text-sm pt-2 sm:pt-3">{subtitle}</p>
           </div>
         )}
