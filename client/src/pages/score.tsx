@@ -786,6 +786,27 @@ export default function ScorePage() {
   });
   const queuedScores = useQueuedScores();
   const { data: routines } = useQuery<Routine[]>({ queryKey: ["/api/routines"] });
+  // Routine pickers hide archived routines unless toggled on (an already-linked
+  // archived routine always stays visible so edits display correctly).
+  const [showArchivedRoutines, setShowArchivedRoutines] = useState(false);
+  const archivedRoutineCount = (routines ?? []).filter(r => r.archived === 1).length;
+  const routineOptions = (selected?: number | string | null) => {
+    const sel = selected == null || selected === "" || selected === "none" ? null : Number(selected);
+    const opts = (routines ?? []).filter(r => r.archived !== 1 || showArchivedRoutines || r.id === sel);
+    return [...opts.filter(r => r.archived !== 1), ...opts.filter(r => r.archived === 1)];
+  };
+  // Rendered at the bottom of each routine SelectContent (only one is mounted at a time).
+  const archivedToggleRow = archivedRoutineCount > 0 ? (
+    <button
+      type="button"
+      className="w-full px-2 py-1.5 text-left text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded-sm"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowArchivedRoutines(v => !v); }}
+      data-testid="button-toggle-archived-routines"
+    >
+      {showArchivedRoutines ? "Hide archived routines" : `Show archived routines (${archivedRoutineCount})`}
+    </button>
+  ) : null;
   const { data: allSkills } = useQuery<Skill[]>({ queryKey: ["/api/skills"] });
   const { data: notes } = useNotes();
   const firstPracticedByRoutine = useMemo(() => {
@@ -1695,7 +1716,8 @@ export default function ScorePage() {
                         <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value?.toString()}>
                           <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
                           <SelectContent>
-                            {routines?.filter(r => r.archived !== 1 || r.id === field.value).map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>)}
+                            {routineOptions(field.value).map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.archived === 1 ? `${r.name} · archived` : r.name}</SelectItem>)}
+                            {archivedToggleRow}
                           </SelectContent>
                         </Select>
                       </FormItem>
@@ -1786,7 +1808,8 @@ export default function ScorePage() {
                           <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value?.toString()}>
                             <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
                             <SelectContent>
-                              {routines?.filter(r => r.archived !== 1 || r.id === field.value).map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>)}
+                              {routineOptions(field.value).map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.archived === 1 ? `${r.name} · archived` : r.name}</SelectItem>)}
+                            {archivedToggleRow}
                             </SelectContent>
                           </Select>
                         </FormItem>
@@ -2034,9 +2057,10 @@ export default function ScorePage() {
                             <Select value={d.routineId} onValueChange={val => setExecDrafts(prev => prev.map(r => r.key === d.key ? { ...r, routineId: val } : r))}>
                               <SelectTrigger data-testid={`select-exec-draft-routine-${d.key}`}><SelectValue placeholder="Pick a routine" /></SelectTrigger>
                               <SelectContent>
-                                {(routines ?? []).filter(r => r.archived !== 1).map(r => (
-                                  <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                                {routineOptions(d.routineId).map(r => (
+                                  <SelectItem key={r.id} value={String(r.id)}>{r.archived === 1 ? `${r.name} · archived` : r.name}</SelectItem>
                                 ))}
+                                {archivedToggleRow}
                               </SelectContent>
                             </Select>
                           </div>
@@ -2170,9 +2194,10 @@ export default function ScorePage() {
                     <SelectTrigger data-testid={`select-sheet-routine-${row.key}`}><SelectValue placeholder="No routine" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No routine</SelectItem>
-                      {(routines ?? []).filter(r => r.archived !== 1).map(r => (
-                        <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                      {routineOptions(row.routineId).map(r => (
+                        <SelectItem key={r.id} value={String(r.id)}>{r.archived === 1 ? `${r.name} · archived` : r.name}</SelectItem>
                       ))}
+                      {archivedToggleRow}
                     </SelectContent>
                   </Select>
                 </div>
