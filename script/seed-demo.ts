@@ -9,7 +9,8 @@
  */
 import { eq } from "drizzle-orm";
 import { db, pool } from "../server/db";
-import { skills, notes, routines, scores } from "@shared/schema";
+import { skills, notes, routines, scores, routineVersions, tofSessions, executionSessions } from "@shared/schema";
+import { users } from "@shared/models/auth";
 
 const UID = "55504735";
 
@@ -56,6 +57,9 @@ async function main() {
   console.log("Wiping existing demo data…");
   await db.delete(scores).where(eq(scores.userId, UID));
   await db.delete(notes).where(eq(notes.userId, UID));
+  await db.delete(routineVersions).where(eq(routineVersions.userId, UID));
+  await db.delete(tofSessions).where(eq(tofSessions.userId, UID));
+  await db.delete(executionSessions).where(eq(executionSessions.userId, UID));
   await db.delete(routines).where(eq(routines.userId, UID));
   await db.delete(skills).where(eq(skills.userId, UID));
 
@@ -127,6 +131,15 @@ async function main() {
     skillIds: volIds.slice(5),
   });
 
+  // ----- Vol lineup history (Previous Routines + colored debut split) -----
+  // Lineup A applied before 2026-03-20, B before 2026-08-01, current since.
+  const volB = [...volIds]; volB[6] = dblFull;      // randy replaced dbl full on 2026-08-01
+  const volA = [...volB]; volA[1] = back.straight;  // miller came in on 2026-03-20
+  await db.insert(routineVersions).values([
+    { userId: UID, routineId: volRoutine, skillIds: volA, effectiveUntil: "2026-03-20" },
+    { userId: UID, routineId: volRoutine, skillIds: volB, effectiveUntil: "2026-08-01" },
+  ]);
+
   console.log("Inserting notes…");
 
   // note-building helpers (groups are separated by {id:-1})
@@ -170,8 +183,8 @@ async function main() {
       content: "Vol build. First half then last 5 separately.",
       lines: [[fc(partLast5Vol, "Last 5 of Vol", volIds.slice(5), 2)], [s(miller, 3)], [s(randy, 4)]] },
     { date: "2026-03-02", start: "17:00", end: "19:00", rating: 4,
-      content: "Full vol attempts. Miller still needs height.",
-      lines: [[rt(volRoutine, "Vol", volIds)], [s(miller, 5)]] },
+      content: "Full vol attempts. Miller still needs height before it goes in.",
+      lines: [[rt(volRoutine, "Vol", volA)], [s(miller, 5)]] },
     { date: "2026-03-09", start: "16:30", end: "18:00", rating: 2, sleep: 60,
       content: "Tired day. Just basics and shapes.",
       lines: [[s(back.tuck, 8)], [s(back.straight, 6)], [s(barani, 6)]] },
@@ -180,13 +193,13 @@ async function main() {
       lines: [[s(baraniBallOut, 5)], [s(rudyBallOut, 4)], [fc(connFullRudy, "Full → Rudy", [full, rudy], 3)]] },
     { date: "2026-03-23", start: "17:00", end: "19:00", rating: 5, sleep: 88,
       content: "Best vol of the block. Clean through 8 skills.",
-      lines: [[rt(volRoutine, "Vol", volIds)], [rt(volRoutine, "Vol", volIds)]] },
+      lines: [[rt(volRoutine, "Vol", volB)], [rt(volRoutine, "Vol", volB)]] },
     { date: "2026-03-30", start: "16:30", end: "18:00", rating: 3,
       content: "Recovery. Drills and shaping only.",
       lines: [[s(tuckJump, 10)], [s(pikeJump, 10)], [s(straddleJump, 8)], [s(somDrill.tuck, 6)]] },
     { date: "2026-04-06", start: "17:00", end: "18:45", rating: 4, sleep: 79,
       content: "Comp prep — set then vol.",
-      lines: [[rt(setRoutine, "Set", setIds)], [rt(volRoutine, "Vol", volIds)]] },
+      lines: [[rt(setRoutine, "Set", setIds)], [rt(volRoutine, "Vol", volB)]] },
     { date: "2026-04-13", start: "17:00", end: "18:30", rating: 4,
       content: "Twisting volume. Double full attempts.",
       lines: [[s(full, 6)], [s(dblFull, 5)], [s(randy, 3)]] },
@@ -198,7 +211,7 @@ async function main() {
       lines: [[s(fullOut, 5)], [s(halfOut.straight, 5)], [s(miller, 4)]] },
     { date: "2026-05-04", start: "17:00", end: "18:30", rating: 4, sleep: 81,
       content: "Vol run plus extra millers.",
-      lines: [[rt(volRoutine, "Vol", volIds)], [s(miller, 4)], [s(dbl.pike, 3)]] },
+      lines: [[rt(volRoutine, "Vol", volB)], [s(miller, 4)], [s(dbl.pike, 3)]] },
     { date: "2026-05-11", start: "16:30", end: "18:00", rating: 3,
       content: "Shapes refinement across all three positions.",
       lines: [[s(back.tuck, 5)], [s(back.pike, 5)], [s(back.straight, 5)], [s(halfOut.straight, 4)]] },
@@ -207,13 +220,22 @@ async function main() {
       lines: [[fc(partLast5Vol, "Last 5 of Vol", volIds.slice(5), 3)]] },
     { date: "2026-05-25", start: "17:00", end: "19:00", rating: 5, sleep: 86,
       content: "Peak day before trial. Two clean vols.",
-      lines: [[rt(volRoutine, "Vol", volIds)], [rt(volRoutine, "Vol", volIds)], [s(randy, 2)]] },
+      lines: [[rt(volRoutine, "Vol", volB)], [rt(volRoutine, "Vol", volB)], [s(randy, 2)]] },
     { date: "2026-06-01", start: "17:00", end: "18:30", rating: 4,
       content: "Easy spin after trial. Barani / back combos.",
       lines: [[fc(connBaraniBack, "Barani → Back Tuck", [barani, back.tuck], 4)], [s(back.straight, 5)]] },
     { date: "2026-06-08", start: "16:30", end: "18:00", rating: 3, sleep: 70,
       content: "Shaping drills and basic twists.",
       lines: [[s(somDrill.tuck, 8)], [s(somDrill.pike, 8)], [s(barani, 6)], [s(full, 5)]] },
+    { date: "2026-07-27", start: "17:00", end: "18:30", rating: 4, sleep: 83,
+      content: "Back into vol volume after the winter block.",
+      lines: [[rt(volRoutine, "Vol", volB)], [s(dblFull, 4)], [s(miller, 3)]] },
+    { date: "2026-08-03", start: "17:00", end: "19:00", rating: 4, sleep: 84,
+      content: "First runs of the new lineup with the randy in.",
+      lines: [[rt(volRoutine, "Vol", volIds)], [s(randy, 5)]] },
+    { date: "2026-08-06", start: "16:30", end: "18:00", rating: 3, sleep: 75,
+      content: "Lighter day. Shapes and the barani–back connection.",
+      lines: [[s(back.tuck, 6)], [s(back.straight, 5)], [fc(connBaraniBack, "Barani → Back Tuck", [barani, back.tuck], 3)]] },
   ];
 
   for (const n of noteSpecs) {
@@ -266,11 +288,47 @@ async function main() {
     { date: "2026-06-03", routineId: volRoutine, routineIdVol: volRoutine, type: "practice", category: "vol_vol",
       execution: 16.5, difficulty: 12.2, horizontal: 9.2, timeOfFlight: 14.5, total: tot(16.5, 12.2, 9.2, 14.5),
       executionVol: 16.3, difficultyVol: 12.2, horizontalVol: 9.1, timeOfFlightVol: 14.4, totalVol: tot(16.3, 12.2, 9.1, 14.4) },
+    // practice — vol, first score with the new lineup
+    { date: "2026-08-05", routineId: volRoutine, type: "practice", category: "vol",
+      execution: 16.6, difficulty: 12.5, horizontal: 9.3, timeOfFlight: 14.5, total: tot(16.6, 12.5, 9.3, 14.5) },
   ];
 
   for (const r of scoreRows) {
     await db.insert(scores).values({ userId: UID, ...r } as any);
   }
+
+  console.log("Inserting ToF + execution tracker sessions…");
+  await db.insert(tofSessions).values([
+    { userId: UID, date: "2026-07-30", routineId: volRoutine,
+      tofValues: [1.62, 1.58, 1.55, 1.6, 1.52, 1.57, 1.5, 1.54, 1.48, 1.66],
+      preJumpTof: 1.7, note: "Veriflite — solid run" },
+    { userId: UID, date: "2026-08-04", skillId: dbl.tuck,
+      tofValues: [1.55, 1.57, 1.53, 1.58, 1.56], note: "Swing series" },
+    { userId: UID, date: "2026-08-06", skillIds: [barani, back.tuck, full],
+      tofValues: [1.5, 1.47, 1.44] },
+  ]);
+  await db.insert(executionSessions).values([
+    { userId: UID, date: "2026-07-30", routineId: volRoutine, category: "vol",
+      deductions: [0.2, 0.1, 0.2, 0.3, 0.1, 0.2, 0.4, 0.2, 0.3, 0.2],
+      landingDeduction: 0.2, note: "Judge sheet from squad night" },
+    { userId: UID, date: "2026-08-05", routineId: setRoutine, category: "set",
+      deductions: [0.1, 0.1, 0.2, 0.1, 0.2, 0.1, 0.1, 0.2, 0.1, 0.1],
+      landingDeduction: 0 },
+    { userId: UID, date: "2026-08-06", skillId: halfOut.straight,
+      deductions: [0.3, 0.2, 0.2, 0.1] },
+  ]);
+
+  console.log("Setting Points to Fix…");
+  await db.update(users).set({
+    focusMemo: JSON.stringify([
+      { id: "seed-p1", name: "Keep chest up out of the miller", skillIds: [miller], routineIds: [], category: "Twisting" },
+      { id: "seed-p2", name: "Travel on the randy — stay centred", skillIds: [randy], routineIds: [], category: "Twisting" },
+      { id: "seed-p3", name: "Tighter pike shape in double back", skillIds: [dbl.pike], routineIds: [], category: "Backward" },
+      { id: "seed-p4", name: "Hold the last three of Vol together", skillIds: [], routineIds: [volRoutine], category: "Connection" },
+      { id: "seed-p5", name: "Quiet landing after full out", skillIds: [fullOut], routineIds: [], category: "Landing", resolved: true },
+      { id: "seed-p6", name: "Stop dropping shoulders in barani", skillIds: [barani], routineIds: [], category: "Forward", resolved: true },
+    ]),
+  }).where(eq(users.id, UID));
 
   console.log("Done. Summary:");
   const counts = await Promise.all([
@@ -278,8 +336,11 @@ async function main() {
     db.select().from(routines).where(eq(routines.userId, UID)),
     db.select().from(notes).where(eq(notes.userId, UID)),
     db.select().from(scores).where(eq(scores.userId, UID)),
+    db.select().from(routineVersions).where(eq(routineVersions.userId, UID)),
+    db.select().from(tofSessions).where(eq(tofSessions.userId, UID)),
+    db.select().from(executionSessions).where(eq(executionSessions.userId, UID)),
   ]);
-  console.log(`  skills=${counts[0].length} routines=${counts[1].length} notes=${counts[2].length} scores=${counts[3].length}`);
+  console.log(`  skills=${counts[0].length} routines=${counts[1].length} notes=${counts[2].length} scores=${counts[3].length} lineupVersions=${counts[4].length} tof=${counts[5].length} exec=${counts[6].length}`);
 }
 
 main()
