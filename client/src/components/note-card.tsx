@@ -31,11 +31,13 @@ interface NoteCardProps {
   onEdit: (note: Note) => void;
   index: number;
   isPending?: boolean;
+  /** Start expanded (home decides which single card across all lists opens). */
+  defaultOpen?: boolean;
 }
 
-export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardProps) {
+export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen = false }: NoteCardProps) {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
-  const [open, setOpen] = useState(index === 0);
+  const [open, setOpen] = useState(defaultOpen);
   const deleteNote = useDeleteNote();
   const { data: allItems } = useSkills();
   const { data: routines } = useRoutines();

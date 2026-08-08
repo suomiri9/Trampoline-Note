@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
-import { Plus, BookOpen, Loader2, ChevronDown, Wrench } from "lucide-react";
+import { format } from "date-fns";
+import { Plus, BookOpen, Loader2, ChevronDown } from "lucide-react";
 import { useNotesPage } from "@/hooks/use-notes";
 import { useQueuedNotes } from "@/hooks/use-queued-notes";
 import { NoteCard } from "@/components/note-card";
@@ -38,32 +39,29 @@ export default function Home() {
   const hasMore = data?.hasMore ?? false;
   const total = data?.total ?? visibleNotes.length;
 
+  // All date math below is local-calendar only (never UTC/toISOString):
+  // note.date is a YYYY-MM-DD string and the athlete may be far ahead of UTC.
   const thisWeek = useMemo(() => {
     const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 7);
-    return visibleNotes.filter(n => new Date(n.date) >= cutoff).length;
+    cutoff.setDate(cutoff.getDate() - 6); // rolling 7 days incl. today
+    const cutoffStr = format(cutoff, "yyyy-MM-dd");
+    return visibleNotes.filter(n => String(n.date).slice(0, 10) >= cutoffStr).length;
   }, [visibleNotes]);
 
   const streak = useMemo(() => {
     const uniqueDates = Array.from(new Set(visibleNotes.map(n => String(n.date).slice(0, 10)))).sort().reverse();
     if (!uniqueDates.length) return 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().slice(0, 10);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().slice(0, 10);
-    const startStr = uniqueDates[0] === todayStr ? todayStr
-      : uniqueDates[0] === yesterdayStr ? yesterdayStr
-      : null;
-    if (!startStr) return 0;
-    const start = new Date(startStr);
+    const fmt = (d: Date) => format(d, "yyyy-MM-dd");
+    const cursor = new Date();
+    if (uniqueDates[0] !== fmt(cursor)) {
+      cursor.setDate(cursor.getDate() - 1); // a streak may still be alive from yesterday
+      if (uniqueDates[0] !== fmt(cursor)) return 0;
+    }
     let count = 0;
-    for (let i = 0; i < uniqueDates.length; i++) {
-      const expected = new Date(start);
-      expected.setDate(expected.getDate() - i);
-      if (uniqueDates[i] === expected.toISOString().slice(0, 10)) count++;
-      else break;
+    for (const d of uniqueDates) {
+      if (d !== fmt(cursor)) break;
+      count++;
+      cursor.setDate(cursor.getDate() - 1);
     }
     return count;
   }, [visibleNotes]);
@@ -159,7 +157,7 @@ export default function Home() {
             {queuedNotes.length > 0 && (
               <div data-testid="list-pending-notes" className="flex flex-col">
                 {queuedNotes.map((note, index) => (
-                  <NoteCard key={note.id} note={note} index={index} onEdit={handleEdit} isPending />
+                  <NoteCard key={note.id} note={note} index={index} onEdit={handleEdit} isPending defaultOpen={index === 0} />
                 ))}
               </div>
             )}
@@ -219,14 +217,14 @@ export default function Home() {
             {queuedNotes.length > 0 && (
               <div data-testid="list-pending-notes" className="flex flex-col">
                 {queuedNotes.map((note, index) => (
-                  <NoteCard key={note.id} note={note} index={index} onEdit={handleEdit} isPending />
+                  <NoteCard key={note.id} note={note} index={index} onEdit={handleEdit} isPending defaultOpen={index === 0} />
                 ))}
               </div>
             )}
 
             <div className="flex flex-col">
               {visibleNotes.map((note, index) => (
-                <NoteCard key={note.id} note={note} index={index} onEdit={handleEdit} />
+                <NoteCard key={note.id} note={note} index={index} onEdit={handleEdit} defaultOpen={index === 0 && queuedNotes.length === 0} />
               ))}
             </div>
 

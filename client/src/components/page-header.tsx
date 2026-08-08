@@ -152,7 +152,9 @@ export function PageHeader({
     >
       <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
         <div className="overflow-hidden">
-          <div className="eyebrow eyebrow-compact mb-1.5 sm:mb-2">// {eyebrow}</div>
+          <div className="font-mono text-[10px] font-semibold tracking-[0.22em] uppercase text-muted-foreground/75 mb-2.5 sm:mb-3">
+            Training / {eyebrow}
+          </div>
         </div>
       </div>
       {/* Title and actions share one row; buttons sit on the right and only
@@ -160,12 +162,12 @@ export function PageHeader({
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <h1
           className={cn(
-            "page-title shrink-0 transition-[font-size] duration-300 motion-reduce:transition-none",
-            collapsed ? "text-lg sm:text-3xl" : "text-2xl sm:text-6xl",
+            "font-black tracking-[-0.04em] leading-[0.95] shrink-0 transition-[font-size] duration-300 motion-reduce:transition-none",
+            collapsed ? "text-lg sm:text-3xl" : "text-[27px] sm:text-5xl",
           )}
         >
           {lead && <span>{lead} </span>}
-          <span className="title-accent">{accentPart}</span>
+          <span className="text-gradient-primary">{accentPart}</span>
         </h1>
         {actions && (
           <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">{actions}</div>
@@ -173,7 +175,7 @@ export function PageHeader({
       </div>
       {subtitle && (
         <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
-          <p className="overflow-hidden text-muted-foreground text-[11px] leading-snug sm:text-sm pt-2 sm:pt-3">{subtitle}</p>
+          <p className="overflow-hidden text-muted-foreground/70 text-[11px] leading-snug sm:text-sm pt-2 sm:pt-3">{subtitle}</p>
         </div>
       )}
     </div>

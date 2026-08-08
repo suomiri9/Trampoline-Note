@@ -6,11 +6,9 @@ import { parseNoteSkills, calculateTotalDD, computeTurns } from "@/lib/training-
 import { useTrackTurns } from "@/hooks/use-track-turns";
 import { PageLayout } from "@/components/page-layout";
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Loader2, TrendingUp, ChevronLeft, ChevronRight, ArrowUp, ArrowDown } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { Loader2, ChevronLeft, ChevronRight, ArrowUp, ArrowDown } from "lucide-react";
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { cn } from "@/lib/utils";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
@@ -337,69 +335,68 @@ export default function StatsPage() {
       />
 
       <div className="grid gap-6">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <div>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-3">
             <div className="flex items-baseline gap-2">
-              <span className="eyebrow" data-testid="text-stats-scope">{periodTitle}</span>
-              <span className="text-xs font-mono text-muted-foreground" data-testid="text-stats-period">{periodLabel}</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/35" data-testid="text-stats-scope">{periodTitle}</span>
+              <span className="font-mono text-[10px] text-muted-foreground/25" data-testid="text-stats-period">{periodLabel}</span>
             </div>
-            <span className="text-[11px] text-muted-foreground/70">Totals reflect the selected range</span>
           </div>
-          <div className="grid grid-cols-4 gap-2 sm:gap-4">
-            <div className="relative card-3d rounded-2xl p-3 pl-4 sm:p-5 sm:pl-6 overflow-hidden">
-              <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-full" aria-hidden="true" />
-              <div className="eyebrow eyebrow-compact mb-1.5 sm:mb-2">Sessions</div>
-              <div className="text-2xl sm:text-4xl lg:text-5xl font-display font-normal text-primary tracking-tight" data-testid="stat-sessions">{sessionsInPeriod}</div>
-              <div className="text-[9px] sm:text-[11px] leading-tight text-muted-foreground/70 mt-1 sm:mt-1.5" data-testid="text-sessions-caption">over {activeDays} day{activeDays === 1 ? "" : "s"}</div>
-            </div>
-            <div className="relative card-3d rounded-2xl p-3 pl-4 sm:p-5 sm:pl-6 overflow-hidden">
-              <span className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-full" aria-hidden="true" />
-              <div className="eyebrow eyebrow-compact mb-1.5 sm:mb-2">Total DD</div>
-              <div className="text-2xl sm:text-4xl lg:text-5xl font-display font-normal text-emerald-400 tracking-tight" data-testid="stat-total-dd">{periodTotalDD.toFixed(1)}</div>
-              <div className="text-[9px] sm:text-[11px] leading-tight text-muted-foreground/70 mt-1 sm:mt-1.5">total difficulty</div>
-            </div>
-            <div className="relative card-3d rounded-2xl p-3 pl-4 sm:p-5 sm:pl-6 overflow-hidden">
-              <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 rounded-full" aria-hidden="true" />
-              <div className="eyebrow eyebrow-compact mb-1.5 sm:mb-2">Avg DD</div>
-              <div className="text-2xl sm:text-4xl lg:text-5xl font-display font-normal text-amber-400 tracking-tight" data-testid="stat-avg-dd">{periodAvgDD.toFixed(1)}</div>
-              <div className="text-[9px] sm:text-[11px] leading-tight text-muted-foreground/70 mt-1 sm:mt-1.5">DD per session</div>
-            </div>
-            <div className="relative card-3d rounded-2xl p-3 pl-4 sm:p-5 sm:pl-6 overflow-hidden">
-              <span className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500 rounded-full" aria-hidden="true" />
-              <div className="eyebrow eyebrow-compact mb-1.5 sm:mb-2">Best DD</div>
-              <div className="text-2xl sm:text-4xl lg:text-5xl font-display font-normal text-rose-400 tracking-tight" data-testid="stat-best">{periodBest.toFixed(1)}</div>
-              <div className="text-[9px] sm:text-[11px] leading-tight text-muted-foreground/70 mt-1 sm:mt-1.5">highest single session</div>
-            </div>
+          {/* Range selector — Apple Stocks style segmented control */}
+          <div className="flex rounded-xl border border-border/20 p-0.5 font-mono text-[10px] mb-4">
+            {(["week", "month", "year", "all"] as Range[]).map(r => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => { setRange(r); setOffset(0); }}
+                className={cn(
+                  "flex-1 rounded-[10px] px-2.5 py-1.5 uppercase tracking-wider transition-colors",
+                  range === r
+                    ? "bg-foreground/[0.08] text-foreground"
+                    : "text-muted-foreground/40 hover:text-muted-foreground/70"
+                )}
+                data-testid={`range-${r}`}
+              >
+                {r === "week" ? "1W" : r === "month" ? "1M" : r === "year" ? "1Y" : "All"}
+              </button>
+            ))}
+          </div>
+          {/* Stat strip */}
+          <div className="-mx-4 sm:-mx-6 grid grid-cols-4 border-y border-border/20 py-4 px-4 sm:px-6">
+            {[
+              { label: "Sessions", value: String(sessionsInPeriod), testId: "stat-sessions" },
+              { label: "Total DD", value: periodTotalDD.toFixed(1), testId: "stat-total-dd" },
+              { label: "Avg DD", value: periodAvgDD.toFixed(1), testId: "stat-avg-dd" },
+              { label: "Best DD", value: periodBest.toFixed(1), testId: "stat-best" },
+            ].map((s, i) => (
+              <div key={s.label} className={cn("space-y-1 min-w-0", i > 0 && "border-l border-border/20 pl-3")}>
+                <div className="text-[20px] sm:text-[26px] font-medium tracking-[-0.05em] leading-none tabular-nums text-gradient-primary" data-testid={s.testId}>
+                  {s.value}
+                </div>
+                <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/40">
+                  {s.label}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
-          <div className="card-3d rounded-2xl p-5 lg:col-span-3">
+          <div className="rounded-2xl border border-border/10 p-5 lg:col-span-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="eyebrow mb-2">{periodTitle} <span className="text-emerald-400">/ DD</span></div>
-                <div className="text-4xl font-display font-normal tracking-tight" data-testid="text-period-total">{totalDDInRange.toFixed(1)}</div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/35 mb-2">{periodTitle} <span className="text-primary/70">/ DD</span></div>
+                <div className="text-4xl font-medium tracking-[-0.05em] tabular-nums" data-testid="text-period-total">{totalDDInRange.toFixed(1)}</div>
               </div>
-              <div className="flex items-start gap-2 shrink-0">
-                {showDelta && (
-                  <div className="text-right">
-                    <div className={cn("flex items-center justify-end gap-0.5 text-sm font-semibold", deltaPct >= 0 ? "text-emerald-400" : "text-rose-400")} data-testid="text-delta">
-                      {deltaPct >= 0 ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
-                      {deltaPct >= 0 ? "+" : ""}{Math.round(deltaPct)}%
-                    </div>
-                    {prevLabel && <div className="text-[11px] text-muted-foreground mt-0.5">{prevLabel}</div>}
+              {showDelta && (
+                <div className="text-right shrink-0">
+                  <div className={cn("flex items-center justify-end gap-0.5 text-sm font-semibold tabular-nums", deltaPct >= 0 ? "text-emerald-400" : "text-rose-400")} data-testid="text-delta">
+                    {deltaPct >= 0 ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+                    {deltaPct >= 0 ? "+" : ""}{Math.round(deltaPct)}%
                   </div>
-                )}
-                <Select value={range} onValueChange={(v) => { setRange(v as Range); setOffset(0); }}>
-                  <SelectTrigger className="w-[120px] h-8 rounded-xl text-xs border-border/50 font-mono" data-testid="select-range"><SelectValue /></SelectTrigger>
-                  <SelectContent className="font-mono">
-                    <SelectItem value="week">Week</SelectItem>
-                    <SelectItem value="month">Month</SelectItem>
-                    <SelectItem value="year">Year</SelectItem>
-                    <SelectItem value="all">All Time</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                  {prevLabel && <div className="text-[11px] text-muted-foreground/50 mt-0.5">{prevLabel}</div>}
+                </div>
+              )}
             </div>
 
             <div
@@ -408,7 +405,13 @@ export default function StatsPage() {
               onTouchEnd={handleTouchEnd}
             >
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+                <AreaChart data={chartData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="ddFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.28} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                   <XAxis
                     dataKey="date"
                     axisLine={false}
@@ -444,16 +447,17 @@ export default function StatsPage() {
                     }
                     cursor={{ stroke: 'hsl(var(--primary) / 0.3)', strokeWidth: 1 }}
                   />
-                  <Line
+                  <Area
                     type="linear"
                     dataKey="difficulty"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
+                    fill="url(#ddFill)"
                     connectNulls
-                    dot={{ r: chartData.length > 60 ? 2 : 3, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
+                    dot={chartData.length > 35 ? false : { r: 2.5, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
                     activeDot={{ r: 5, fill: 'hsl(var(--primary))', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             </div>
 
@@ -472,18 +476,18 @@ export default function StatsPage() {
             )}
           </div>
 
-          <div className="card-3d rounded-2xl p-5 lg:col-span-1">
-            <div className="eyebrow mb-2">All-Time</div>
-            <div className="divide-y divide-border/50">
+          <div className="rounded-2xl border border-border/10 p-5 lg:col-span-1">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/35 mb-2">All-Time</div>
+            <div>
               {[
                 { label: "Total DD Trained", value: allTimeTotalDD.toFixed(1), testId: "overview-total-dd" },
                 { label: "Sessions Logged", value: String(allTimeSessions), testId: "overview-sessions" },
                 { label: "Active Since", value: activeSince, testId: "overview-active-since" },
                 { label: "Skills in Library", value: String(skillsInLibrary), testId: "overview-skills" },
               ].map((row) => (
-                <div key={row.label} className="flex items-center justify-between py-3.5">
-                  <span className="text-sm text-muted-foreground">{row.label}</span>
-                  <span className="font-mono text-base text-foreground" data-testid={row.testId}>{row.value}</span>
+                <div key={row.label} className="flex items-center justify-between py-3.5 border-b border-border/[0.07] last:border-b-0">
+                  <span className="text-[13px] text-muted-foreground/70">{row.label}</span>
+                  <span className="font-mono text-sm tabular-nums text-foreground/90" data-testid={row.testId}>{row.value}</span>
                 </div>
               ))}
             </div>
@@ -493,12 +497,12 @@ export default function StatsPage() {
 
         {trackTurns && (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
-            <div className="card-3d rounded-2xl p-5 lg:col-span-3">
+            <div className="rounded-2xl border border-border/10 p-5 lg:col-span-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="eyebrow mb-2">{periodTitle} <span className="text-sky-400">/ Turns</span></div>
-                  <div className="text-4xl font-display font-normal tracking-tight" data-testid="text-period-turns">{periodTurns}</div>
-                  <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground mt-1.5" data-testid="legend-turns-chart">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/35 mb-2">{periodTitle} <span className="text-sky-400/80">/ Turns</span></div>
+                  <div className="text-4xl font-medium tracking-[-0.05em] tabular-nums" data-testid="text-period-turns">{periodTurns}</div>
+                  <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground/50 mt-1.5" data-testid="legend-turns-chart">
                     <span className="flex items-center gap-1.5">
                       <span className="inline-block w-4 border-t-2" style={{ borderColor: 'hsl(200 90% 60%)' }} />
                       turns
@@ -513,26 +517,15 @@ export default function StatsPage() {
                     </span>
                   </div>
                 </div>
-                <div className="flex items-start gap-2 shrink-0">
-                  {showTurnsDelta && (
-                    <div className="text-right">
-                      <div className={cn("flex items-center justify-end gap-0.5 text-sm font-semibold", turnsDeltaPct >= 0 ? "text-emerald-400" : "text-rose-400")} data-testid="text-turns-delta">
-                        {turnsDeltaPct >= 0 ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
-                        {turnsDeltaPct >= 0 ? "+" : ""}{Math.round(turnsDeltaPct)}%
-                      </div>
-                      {prevLabel && <div className="text-[11px] text-muted-foreground mt-0.5">{prevLabel}</div>}
+                {showTurnsDelta && (
+                  <div className="text-right shrink-0">
+                    <div className={cn("flex items-center justify-end gap-0.5 text-sm font-semibold tabular-nums", turnsDeltaPct >= 0 ? "text-emerald-400" : "text-rose-400")} data-testid="text-turns-delta">
+                      {turnsDeltaPct >= 0 ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+                      {turnsDeltaPct >= 0 ? "+" : ""}{Math.round(turnsDeltaPct)}%
                     </div>
-                  )}
-                  <Select value={range} onValueChange={(v) => { setRange(v as Range); setOffset(0); }}>
-                    <SelectTrigger className="w-[120px] h-8 rounded-xl text-xs border-border/50 font-mono" data-testid="select-range-turns"><SelectValue /></SelectTrigger>
-                    <SelectContent className="font-mono">
-                      <SelectItem value="week">Week</SelectItem>
-                      <SelectItem value="month">Month</SelectItem>
-                      <SelectItem value="year">Year</SelectItem>
-                      <SelectItem value="all">All Time</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                    {prevLabel && <div className="text-[11px] text-muted-foreground/50 mt-0.5">{prevLabel}</div>}
+                  </div>
+                )}
               </div>
               <div
                 className="h-[200px] w-full mt-4"
@@ -592,7 +585,7 @@ export default function StatsPage() {
                       stroke="hsl(200 90% 60%)"
                       strokeWidth={2}
                       connectNulls
-                      dot={{ r: chartData.length > 60 ? 2 : 3, fill: 'hsl(200 90% 60%)', strokeWidth: 0 }}
+                      dot={chartData.length > 35 ? false : { r: 2.5, fill: 'hsl(200 90% 60%)', strokeWidth: 0 }}
                       activeDot={{ r: 5, fill: 'hsl(200 90% 60%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                     />
                     <Line
@@ -603,7 +596,7 @@ export default function StatsPage() {
                       strokeWidth={1.5}
                       strokeDasharray="4 3"
                       connectNulls
-                      dot={{ r: chartData.length > 60 ? 1.5 : 2.5, fill: 'hsl(150 70% 55%)', strokeWidth: 0 }}
+                      dot={chartData.length > 35 ? false : { r: 2, fill: 'hsl(150 70% 55%)', strokeWidth: 0 }}
                       activeDot={{ r: 4, fill: 'hsl(150 70% 55%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                     />
                     <Line
@@ -614,7 +607,7 @@ export default function StatsPage() {
                       strokeWidth={1.5}
                       strokeDasharray="1 3"
                       connectNulls
-                      dot={{ r: chartData.length > 60 ? 1.5 : 2.5, fill: 'hsl(35 90% 60%)', strokeWidth: 0 }}
+                      dot={chartData.length > 35 ? false : { r: 2, fill: 'hsl(35 90% 60%)', strokeWidth: 0 }}
                       activeDot={{ r: 4, fill: 'hsl(35 90% 60%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                     />
                   </LineChart>
@@ -635,21 +628,21 @@ export default function StatsPage() {
               )}
             </div>
 
-            <div className="card-3d rounded-2xl p-5 lg:col-span-1">
-              <div className="eyebrow mb-2">Efficiency</div>
-              <div className="divide-y divide-border/50">
+            <div className="rounded-2xl border border-border/10 p-5 lg:col-span-1">
+              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/35 mb-2">Efficiency</div>
+              <div>
                 {[
                   { label: "Turns", value: String(periodTurns), testId: "stat-turns" },
                   { label: "Time / Turn", value: timePerTurn ?? "—", testId: "stat-time-per-turn" },
                   { label: "Avg DD / Turn", value: avgDDPerTurn != null ? avgDDPerTurn.toFixed(1) : "—", testId: "stat-avg-dd-per-turn" },
                 ].map((row) => (
-                  <div key={row.label} className="flex items-center justify-between py-3.5">
-                    <span className="text-sm text-muted-foreground">{row.label}</span>
-                    <span className="font-mono text-base text-foreground" data-testid={row.testId}>{row.value}</span>
+                  <div key={row.label} className="flex items-center justify-between py-3.5 border-b border-border/[0.07] last:border-b-0">
+                    <span className="text-[13px] text-muted-foreground/70">{row.label}</span>
+                    <span className="font-mono text-sm tabular-nums text-foreground/90" data-testid={row.testId}>{row.value}</span>
                   </div>
                 ))}
               </div>
-              <p className="text-[11px] text-muted-foreground/70 mt-3 leading-snug">
+              <p className="text-[11px] text-muted-foreground/50 mt-3 leading-snug">
                 Time per turn counts only sessions with start and end times.
               </p>
             </div>

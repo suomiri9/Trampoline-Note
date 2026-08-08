@@ -197,6 +197,15 @@
   color: hsl(var(--primary));
 }
 
+/* Blue→indigo gradient text — headlines, stat figures, accent words. */
+.text-gradient-primary {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, #818cf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
 /* Custom subtle animations for clean minimal feel */
 @keyframes fade-in-up {
   from {
