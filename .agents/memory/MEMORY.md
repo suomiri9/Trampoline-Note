@@ -2,6 +2,7 @@
 - [Schema changes need three touchpoints](schema-migration-touchpoints.md) — drizzle schema + startup ALTER block (prod migrates at boot, not db:push) + any client-local row interfaces.
 - [Follow-up task cancellation is irreversible](followup-task-irreversible.md) — markFollowUpTaskObsolete is terminal; verify a follow-up's real title/content before retracting it.
 - [Radix portaled menu clicks bubble to ancestor onClick](radix-portal-event-bubbling.md) — clickable card + Radix menu: items are portaled but React events bubble the component tree; stopPropagation on the Content.
+- [Bottom nav overlays popovers](bottom-nav-popover-clearance.md) — nav strip z-[60] beats popper z-50; pass collisionPadding via bottomNavClearance() or dropdown tails hide under the bar.
 - [Tailwind font-display utility must be registered](tailwind-font-display-utility.md) — `font-*` custom families silently no-op unless added to tailwind.config fontFamily; config needs a workflow restart.
 - [SkillEditorOverlay top-anchoring](skill-editor-overlay-anchoring.md) — note-dialog skill editor uses items-start (not items-center) so deleting rows doesn't re-center and shift the ✕ off the cursor.
 - [Radix Tabs forceMount does not auto-hide](radix-tabs-forcemount.md) — to keep a portaled Dialog working across tabs, give its tab `forceMount` + `data-[state=inactive]:hidden`.
