@@ -3,7 +3,7 @@ name: Bottom nav overlays popovers
 description: Floating bottom nav strip (z-[60]) paints over Radix popper layers (z-50); dropdown tails end up hidden and unscrollable unless collision padding reserves the nav zone.
 ---
 
-**Rule:** Any Radix popper content (Select, DropdownMenu, and if reported: Popover, Tooltip, ContextMenu) must pass `collisionPadding` with `bottom: bottomNavClearance()` (helper in `client/src/lib/utils.ts`, measures `[data-bottom-nav]` top vs viewport height, so it includes the iOS safe area). Select and DropdownMenu UI wrappers already default to this.
+**Rule:** Any Radix popper content must pass `collisionPadding` with `bottom: bottomNavClearance()` (helper in `client/src/lib/utils.ts`, measures `[data-bottom-nav]` top vs viewport height, so it includes the iOS safe area). Select, DropdownMenu (incl. SubContent), and Popover UI wrappers default to this and cap height via the `--radix-*-available-height` var; note-dialog's reactive `useBottomNavCoverPx` hook delegates to the same helper. Tooltip/ContextMenu/HoverCard/Menubar are unused — extend the same way if they get adopted.
 
 **Why:** The floating nav+coach strip is `fixed ... z-[60]` while shadcn popover layers are `z-50` — the strip paints on top even over dialogs. Popper collision detection only avoids the viewport edge, so a bottom-anchored dropdown legitimately positions its tail under the strip; its internal scroll limit sits in the hidden zone, so the last options can never be seen (user-reported with the tracker target picker).
 

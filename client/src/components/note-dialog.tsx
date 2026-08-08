@@ -28,7 +28,7 @@ import { useTypeToSearch } from "@/hooks/use-type-to-search";
 import { useRoutines } from "@/hooks/use-routines";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { cn } from "@/lib/utils";
+import { bottomNavClearance, cn } from "@/lib/utils";
 import { compressDataUrl } from "@/lib/image-file";
 import { PhotoAreaSelect, type PhotoAreaSelectHandle } from "@/components/photo-area-select";
 import {
@@ -114,12 +114,7 @@ interface NoteDialogProps {
 function useBottomNavCoverPx(): number {
   const [px, setPx] = useState(96);
   useEffect(() => {
-    const measure = () => {
-      const nav = document.querySelector("[data-bottom-nav]");
-      if (!nav) return;
-      const top = nav.getBoundingClientRect().top;
-      setPx(Math.max(0, Math.round(window.innerHeight - top)) + 8);
-    };
+    const measure = () => setPx(bottomNavClearance());
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
