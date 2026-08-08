@@ -6,6 +6,8 @@ import { useSkills } from "@/hooks/use-skills";
 import { useQueuedFocusMemoPointIds } from "@/hooks/use-queued-focus-memo-point-ids";
 import { useToast } from "@/hooks/use-toast";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
+import { headerActionClass } from "@/components/page-header";
+import { cn } from "@/lib/utils";
 import { Wrench, Plus, X, Trash2, Loader2, Search, Pencil, Check, MoreVertical, CheckCircle2, RotateCcw, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -410,7 +412,7 @@ export function PointsToFix({
           variant="outline"
           onClick={() => setOpen(true)}
           data-testid="button-points-to-fix"
-          className="rounded-xl h-10 px-3 sm:h-12 sm:px-4 font-medium flex items-center gap-2 relative text-muted-foreground hover:text-foreground"
+          className={cn(headerActionClass, "font-medium relative text-muted-foreground hover:text-foreground")}
         >
           <Wrench className="w-5 h-5" />
           Points to Fix

@@ -20,7 +20,7 @@ import {
 import { TrackerTargetSelect } from "@/components/tracker-target-select";
 import { AdhocSkillsBuilder } from "@/components/adhoc-skills-builder";
 import { PageLayout } from "@/components/page-layout";
-import { PageHeader, primaryActionClass } from "@/components/page-header";
+import { PageHeader, primaryActionClass, headerActionClass } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -646,7 +646,7 @@ export default function ExecutionPage() {
             />
             <Button
               variant="outline"
-              className="rounded-xl h-10 px-3 sm:h-12 sm:px-4 font-semibold gap-2"
+              className={headerActionClass}
               disabled={parsingPhoto}
               onClick={() => photoInputRef.current?.click()}
               data-testid="button-upload-execution-photo"

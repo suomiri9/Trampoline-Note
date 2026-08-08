@@ -6,7 +6,7 @@ import { insertScoreSchema, type Score, type Routine, type Skill, type InsertSco
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { calcDDFromSkillIds, parseNoteSkills } from "@/lib/training-utils";
 import { PageLayout } from "@/components/page-layout";
-import { PageHeader, primaryActionClass } from "@/components/page-header";
+import { PageHeader, primaryActionClass, headerActionClass } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
@@ -1475,7 +1475,7 @@ export default function ScorePage() {
             />
             <Button
               variant="outline"
-              className="rounded-xl h-10 px-3 sm:h-12 sm:px-4 font-semibold gap-2"
+              className={headerActionClass}
               onClick={() => navigate("/score/debuts")}
               data-testid="button-comp-debuts"
             >
@@ -1483,7 +1483,7 @@ export default function ScorePage() {
             </Button>
             <Button
               variant="outline"
-              className="rounded-xl h-10 px-3 sm:h-12 sm:px-4 font-semibold gap-2"
+              className={headerActionClass}
               disabled={parsingSheet}
               onClick={() => { pendingFinalForRef.current = null; sheetInputRef.current?.click(); }}
               data-testid="button-upload-scoresheet"

@@ -1,13 +1,22 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
+/**
+ * One sizing scheme for EVERY header action button, on every page:
+ * compact on phones, comfortable on sm+. Import this for any custom
+ * button placed in a PageHeader `actions` slot so all headers match.
+ */
+export const headerActionClass =
+  "rounded-xl h-8 px-2.5 text-xs sm:h-10 sm:px-4 sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2";
+
 /** Glowing solid-blue primary action (e.g. "Start Training"). */
-export const primaryActionClass =
-  "rounded-xl h-10 px-4 sm:h-12 sm:px-6 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition-all btn-3d flex items-center gap-2";
+export const primaryActionClass = cn(
+  headerActionClass,
+  "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition-all btn-3d",
+);
 
 /** Outlined amber/gold secondary action (e.g. "Points to Fix"). */
-export const goldActionClass =
-  "rounded-xl h-10 px-3 sm:h-12 sm:px-4 font-semibold btn-gold flex items-center gap-2 relative";
+export const goldActionClass = cn(headerActionClass, "btn-gold relative");
 
 /** Collapse once scrolled past this point… */
 const COLLAPSE_AT = 48;
@@ -41,7 +50,7 @@ export function PageHeader({
   const isStatic = className?.includes("static") ?? false;
 
   // NRC-style collapse: full header at the top of the page, compact once
-  // scrolled. Buttons (actions) stay full size in both states.
+  // scrolled. Buttons (actions) stay the same size in both states.
   const [collapsed, setCollapsed] = useState(false);
   const collapsedRef = useRef(false);
 
@@ -136,35 +145,36 @@ export function PageHeader({
       ref={headerRef}
       className={cn(
         "sticky top-0 z-30 full-bleed-bar page-header-safe mb-6 bg-background/90 backdrop-blur-md border-b border-border/60",
-        "flex flex-col sm:flex-row sm:items-end sm:justify-between",
         "transition-all duration-300 motion-reduce:transition-none",
-        collapsed ? "pb-3 gap-2" : "pb-4 sm:pb-5 gap-3 sm:gap-4",
+        collapsed ? "pb-3" : "pb-4 sm:pb-5",
         className,
       )}
     >
-      <div className="min-w-0">
-        <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
-          <div className="overflow-hidden">
-            <div className="eyebrow mb-1.5 sm:mb-2">// {eyebrow}</div>
-          </div>
+      <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
+        <div className="overflow-hidden">
+          <div className="eyebrow mb-1.5 sm:mb-2">// {eyebrow}</div>
         </div>
+      </div>
+      {/* Title and actions share one row; buttons sit on the right and only
+          wrap below on screens too narrow to fit both. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <h1
           className={cn(
-            "page-title transition-[font-size] duration-300 motion-reduce:transition-none",
-            collapsed ? "text-xl sm:text-3xl" : "text-4xl sm:text-6xl",
+            "page-title shrink-0 transition-[font-size] duration-300 motion-reduce:transition-none",
+            collapsed ? "text-lg sm:text-3xl" : "text-2xl sm:text-6xl",
           )}
         >
           {lead && <span>{lead} </span>}
           <span className="title-accent">{accentPart}</span>
         </h1>
-        {subtitle && (
-          <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
-            <p className="overflow-hidden text-muted-foreground text-xs sm:text-sm pt-2 sm:pt-3">{subtitle}</p>
-          </div>
+        {actions && (
+          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">{actions}</div>
         )}
       </div>
-      {actions && (
-        <div className="flex items-center gap-2 flex-wrap shrink-0">{actions}</div>
+      {subtitle && (
+        <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
+          <p className="overflow-hidden text-muted-foreground text-xs sm:text-sm pt-2 sm:pt-3">{subtitle}</p>
+        </div>
       )}
     </div>
   );

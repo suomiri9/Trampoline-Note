@@ -10,7 +10,7 @@ import { ShapeSwapPicker } from "@/components/shape-swap-picker";
 import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { useTypeToSearch } from "@/hooks/use-type-to-search";
 import { SortableChip } from "@/components/sortable-chip";
-import { PageHeader, primaryActionClass } from "@/components/page-header";
+import { PageHeader, primaryActionClass, headerActionClass } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -517,7 +517,7 @@ export default function SkillsPage() {
               variant={showArchived ? "default" : "outline"}
               size="sm"
               onClick={() => { setShowArchived(v => !v); cancelEditing(); setReorderMode(false); }}
-              className={cn("gap-1.5 shrink-0 h-10 sm:h-12 rounded-xl", !showArchived && "text-muted-foreground hover:text-foreground")}
+              className={cn(headerActionClass, "shrink-0", !showArchived && "text-muted-foreground hover:text-foreground")}
               data-testid="button-toggle-archived"
             >
               {showArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
