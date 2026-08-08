@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Routine, Skill } from "@shared/schema";
 import {
   Select,
@@ -39,6 +39,8 @@ export function TrackerTargetSelect({
   testId?: string;
   placeholder?: string;
 }) {
+  const [showArchived, setShowArchived] = useState(false);
+  const archivedRoutines = (routines ?? []).filter(r => r.archived === 1);
   const groups = useMemo(() => {
     const bySort = (a: Skill, b: Skill) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
     const itemLabel = (s: Skill) => {
@@ -56,16 +58,23 @@ export function TrackerTargetSelect({
     return [
       {
         label: "Routines",
-        items: (routines ?? [])
-          .filter(r => r.archived !== 1)
-          .map(r => ({ value: encodeTarget("routine", r.id), label: r.name })),
+        items: [
+          ...(routines ?? [])
+            .filter(r => r.archived !== 1)
+            .map(r => ({ value: encodeTarget("routine", r.id), label: r.name })),
+          ...(showArchived
+            ? (routines ?? [])
+                .filter(r => r.archived === 1)
+                .map(r => ({ value: encodeTarget("routine", r.id), label: `${r.name} · archived` }))
+            : []),
+        ],
       },
       skillGroup("Skills", 0),
       skillGroup("Drills", 1),
       skillGroup("Connections", 2),
       skillGroup("Routine Parts", 3),
     ].filter(g => g.items.length > 0);
-  }, [routines, allSkills]);
+  }, [routines, allSkills, showArchived]);
 
   const known = groups.some(g => g.items.some(i => i.value === value));
 
@@ -85,6 +94,17 @@ export function TrackerTargetSelect({
             ))}
           </SelectGroup>
         ))}
+        {archivedRoutines.length > 0 && (
+          <button
+            type="button"
+            className="w-full px-2 py-1.5 text-left text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded-sm"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowArchived(v => !v); }}
+            data-testid="button-toggle-archived-routines"
+          >
+            {showArchived ? "Hide archived routines" : `Show archived routines (${archivedRoutines.length})`}
+          </button>
+        )}
         {/* Hidden item so SelectValue reads sensibly while the ad-hoc target
             (set via the "Connect skills" button) is active. Picking any real
             option above still switches the target away from ad-hoc. */}
