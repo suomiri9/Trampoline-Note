@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { MoreVertical, Pencil, Trash2, HeartPulse } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, HeartPulse, ChevronDown } from "lucide-react";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { type Note } from "@shared/schema";
 import { parseNoteSkills, calculateTotalDD, computeTurns } from "@/lib/training-utils";
@@ -7,12 +7,12 @@ import { lineupOnDate } from "@shared/routine-versions";
 import { useTrackTurns } from "@/hooks/use-track-turns";
 import { SkillCode } from "@/components/skill-code";
 import { StarRating } from "./star-rating";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useDeleteNote } from "@/hooks/use-notes";
@@ -25,7 +25,6 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
 
 interface NoteCardProps {
   note: Note;
@@ -36,6 +35,7 @@ interface NoteCardProps {
 
 export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardProps) {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const [open, setOpen] = useState(index === 0);
   const deleteNote = useDeleteNote();
   const { data: allItems } = useSkills();
   const { data: routines } = useRoutines();
@@ -62,13 +62,11 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
         toast(queued
           ? { title: "Deleted offline. Will sync when reconnected." }
           : { title: "Session deleted", description: "Your training note has been removed." });
-      }
+      },
     });
   };
 
   const skillsData = parseNoteSkills(note.skills);
-  // Resolve routine references against the lineup in effect on the note's
-  // date, so past sessions keep showing what was actually trained.
   const noteDay = String(note.date).slice(0, 10);
   const totalDifficulty = calculateTotalDD(skillsData, allItems, routines, noteDay);
   const [trackTurns] = useTrackTurns();
@@ -86,28 +84,56 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
 
   return (
     <>
-      <div
-        className={`group relative flex items-stretch gap-2.5 py-3.5 border-t border-border/30 cursor-pointer transition-colors hover:bg-foreground/[0.02] animate-fade-in-up opacity-0 ${staggerClass}`}
-        onClick={() => onEdit(note)}
+      <article
+        className={`border-b border-border/[0.07] py-4 animate-fade-in-up opacity-0 ${staggerClass}`}
         data-testid={`card-note-${note.id}`}
       >
-        {/* Left accent bar */}
-        <div className="w-0.5 shrink-0 rounded-full self-stretch"
-          style={{ background: "linear-gradient(to bottom, hsl(var(--primary)), hsl(var(--primary)/0.2))" }}
-          aria-hidden="true"
-        />
+        {/* Main row: expand button + menu */}
+        <div className="flex items-start gap-1">
+          <button
+            className="group flex flex-1 items-start gap-3 text-left min-w-0"
+            onClick={() => setOpen(v => !v)}
+            aria-expanded={open}
+          >
+            {/* Index badge */}
+            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] border border-border/20 bg-foreground/[0.05] font-mono text-[10px] text-muted-foreground/40">
+              {index + 1}
+            </div>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          {/* Top row: meta + stats + menu */}
-          <div className="flex items-start gap-2 mb-0.5">
-            {/* Meta */}
-            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-              <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px] text-muted-foreground/50">
-                <span className="whitespace-nowrap">{format(new Date(note.date), "EEE, d MMM yyyy")}</span>
-                <span className="whitespace-nowrap">{formatTime(note.startTime, timeFormat)} – {formatTime(note.endTime, timeFormat)}</span>
+            {/* Content */}
+            <div className="min-w-0 flex-1">
+              {/* Date + time */}
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/40 whitespace-nowrap">
+                  {format(new Date(note.date), "EEE, d MMM yyyy")}
+                </span>
+                <span className="font-mono text-[10px] tabular-nums text-muted-foreground/25 whitespace-nowrap shrink-0">
+                  {formatTime(note.startTime, timeFormat)} – {formatTime(note.endTime, timeFormat)}
+                </span>
+              </div>
+
+              {/* Session label */}
+              <h3 className="mt-1 truncate text-[14px] font-medium tracking-[-0.02em] text-foreground/90 leading-snug">
+                {note.content || "Training session"}
+              </h3>
+
+              {/* Stats row */}
+              <div className="mt-2 flex items-center gap-3 flex-wrap">
+                {trackTurns && turnInfo.totalTurns > 0 && (
+                  <>
+                    <span className="font-mono text-[10px] text-muted-foreground/35" data-testid={`text-turns-${note.id}`}>
+                      {turnInfo.totalTurns} turns
+                    </span>
+                    <span className="h-1 w-1 rounded-full bg-foreground/20" aria-hidden />
+                  </>
+                )}
+                {skillsData.length > 0 && (
+                  <span className="font-mono text-[10px] text-primary/80">
+                    {totalDifficulty.toFixed(1)} DD
+                  </span>
+                )}
                 {note.rating ? <StarRating value={note.rating} onChange={() => {}} readonly size="sm" /> : null}
-                {whoopDay && (whoopDay.recovery != null || whoopDay.strain != null) ? (
+                {whoopDay && (whoopDay.recovery != null || whoopDay.strain != null) && (
                   <span
                     className="flex items-center gap-1 whitespace-nowrap"
                     title="WHOOP recovery / day strain"
@@ -115,54 +141,37 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                   >
                     <HeartPulse className="w-3 h-3 shrink-0" />
                     {whoopDay.recovery != null && (
-                      <span className={cn("font-bold", recoveryColorClass(whoopDay.recovery))}>
+                      <span className={cn("font-mono text-[10px] font-bold", recoveryColorClass(whoopDay.recovery))}>
                         {Math.round(whoopDay.recovery)}%
                       </span>
                     )}
                     {whoopDay.strain != null && (
-                      <span>{whoopDay.strain.toFixed(1)} strain</span>
+                      <span className="font-mono text-[10px] text-muted-foreground/35">{whoopDay.strain.toFixed(1)} strain</span>
                     )}
                   </span>
-                ) : null}
+                )}
+                {isPending && <PendingSyncBadge testId={`badge-pending-sync-${note.id}`} />}
               </div>
-              <p className="text-[13px] font-semibold text-foreground/80 leading-snug truncate">
-                {note.content}
-              </p>
             </div>
 
-            {/* Stats + menu */}
-            <div className="flex items-center gap-3 shrink-0 self-center" onClick={(e) => e.stopPropagation()}>
-              {isPending && <PendingSyncBadge testId={`badge-pending-sync-${note.id}`} />}
-              {skillsData.length > 0 && (
-                <div className="flex items-center gap-3">
-                  {trackTurns && turnInfo.totalTurns > 0 && (
-                    <div className="text-right leading-none">
-                      <div className="text-[20px] font-bold tabular-nums text-foreground/40 leading-none" data-testid={`text-turns-${note.id}`}>{turnInfo.totalTurns}</div>
-                      <div className="text-[8px] font-mono uppercase tracking-widest text-muted-foreground/30 mt-0.5">Turns</div>
-                    </div>
-                  )}
-                  <div className="text-right leading-none">
-                    <div
-                      className="text-[20px] font-bold tabular-nums leading-none"
-                      style={{
-                        background: "linear-gradient(135deg, hsl(var(--primary)), #818cf8)",
-                        WebkitBackgroundClip: "text",
-                        WebkitTextFillColor: "transparent",
-                      }}
-                    >
-                      {totalDifficulty.toFixed(1)}
-                    </div>
-                    <div className="text-[8px] font-mono uppercase tracking-widest text-muted-foreground/30 mt-0.5">DD</div>
-                  </div>
-                </div>
+            {/* Chevron */}
+            <ChevronDown
+              className={cn(
+                "mt-2 h-4 w-4 shrink-0 text-muted-foreground/25 transition-transform duration-200",
+                open && "rotate-180"
               )}
+            />
+          </button>
+
+          {/* ⋮ Menu — outside the expand button */}
+          <div className="mt-0.5 shrink-0" onClick={e => e.stopPropagation()}>
             {isPending ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 -mr-1 text-muted-foreground shrink-0"
+                    className="h-7 w-7 text-muted-foreground"
                     data-testid={`btn-pending-actions-${note.id}`}
                   >
                     <MoreVertical className="h-4 w-4" />
@@ -189,7 +198,7 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
             ) : (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 -mr-1 text-muted-foreground shrink-0">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -198,7 +207,10 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
                     <Pencil className="h-4 w-4" /> Edit Session
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setShowDeleteAlert(true)} className="cursor-pointer gap-2 text-destructive focus:text-destructive">
+                  <DropdownMenuItem
+                    onClick={() => setShowDeleteAlert(true)}
+                    className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                  >
                     <Trash2 className="h-4 w-4" /> Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -207,261 +219,284 @@ export function NoteCard({ note, onEdit, index, isPending = false }: NoteCardPro
           </div>
         </div>
 
-        {skillsData.length > 0 && (
-          <div className="mt-2 ml-0 pl-3 border-l border-border/30">
-              <div className="flex flex-col gap-1.5">
-                {(() => {
-                  const groups: ({ id: number; reps?: number } | { id: number; reps?: number }[])[] = [];
-                  let currentGroup: { id: number; reps?: number }[] = [];
+        {/* Expanded skills section */}
+        {open && skillsData.length > 0 && (
+          <div className="ml-10 mt-3 border-l border-border/10 pl-3">
+            <div className="flex flex-col gap-0.5">
+              {(() => {
+                const groups: ({ id: number; reps?: number } | { id: number; reps?: number }[])[] = [];
+                let currentGroup: { id: number; reps?: number }[] = [];
 
-                  skillsData.forEach(item => {
-                    if (item.id === -1) {
-                      if (currentGroup.length > 0) {
-                        groups.push(currentGroup);
-                        currentGroup = [];
-                      }
-                      groups.push({ id: -1 });
-                    } else {
-                      currentGroup.push(item);
-                    }
-                  });
-                  if (currentGroup.length > 0) groups.push(currentGroup);
+                skillsData.forEach(item => {
+                  if (item.id === -1) {
+                    if (currentGroup.length > 0) { groups.push(currentGroup); currentGroup = []; }
+                    groups.push({ id: -1 });
+                  } else {
+                    currentGroup.push(item);
+                  }
+                });
+                if (currentGroup.length > 0) groups.push(currentGroup);
 
-                  let rowCounter = -1;
-                  return groups.map((group, groupIdx) => {
-                    if (!Array.isArray(group)) return null;
-                    rowCounter++;
-                    const rowIdx = rowCounter;
-                    const rowTurn = turnInfo.rowTurns[rowIdx];
-                    const isFirstOfTurn = rowIdx === 0 || turnInfo.rowTurns[rowIdx - 1] !== rowTurn;
-                    const wrapRow = (el: React.ReactNode) => trackTurns ? (
-                      <div key={`turnrow-${groupIdx}`} className="flex items-stretch gap-1.5">
-                        <div className="w-5 shrink-0 flex items-center justify-center">
-                          {isFirstOfTurn ? (
-                            <span className="text-[11px] font-mono font-bold text-muted-foreground/70" data-testid={`text-note-turn-${note.id}-${rowIdx}`}>{rowTurn}</span>
-                          ) : (
-                            <span className="w-px self-stretch bg-border/50 mx-auto" aria-hidden="true" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">{el}</div>
+                let rowCounter = -1;
+                return groups.map((group, groupIdx) => {
+                  if (!Array.isArray(group)) return null;
+                  rowCounter++;
+                  const rowIdx = rowCounter;
+                  const rowTurn = turnInfo.rowTurns[rowIdx];
+                  const isFirstOfTurn = rowIdx === 0 || turnInfo.rowTurns[rowIdx - 1] !== rowTurn;
+
+                  const wrapRow = (el: React.ReactNode) => trackTurns ? (
+                    <div key={`turnrow-${groupIdx}`} className="flex items-stretch gap-1.5">
+                      <div className="w-5 shrink-0 flex items-center justify-center">
+                        {isFirstOfTurn ? (
+                          <span className="text-[11px] font-mono font-bold text-muted-foreground/70" data-testid={`text-note-turn-${note.id}-${rowIdx}`}>{rowTurn}</span>
+                        ) : (
+                          <span className="w-px self-stretch bg-border/50 mx-auto" aria-hidden="true" />
+                        )}
                       </div>
-                    ) : el;
+                      <div className="flex-1 min-w-0">{el}</div>
+                    </div>
+                  ) : el;
 
-                    if (group.length === 1 && (group[0] as any).id === -2) {
-                      const item = group[0] as any;
-                      const routine = routines?.find(r => r.id === item.routineId);
-                      const baseSkillIds: number[] = routine
-                        ? lineupOnDate(routine.skillIds, routine.versions, noteDay)
-                        : [];
-                      const displaySkillIds: number[] = item.customSkillIds ?? (item.attempt != null ? baseSkillIds.slice(0, item.attempt) : baseSkillIds);
-                      const routineDD = displaySkillIds.reduce((acc: number, sId: number) => {
-                        const skill = allItems?.find(s => s.id === sId);
-                        return acc + (skill?.difficulty || 0);
-                      }, 0);
-                      const reps = item.reps || 1;
-
-                      return wrapRow(
-                        <div key={`routine-${groupIdx}`} className="rounded-xl bg-primary/5">
-                          <div className="flex items-center justify-between py-2 px-3">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none">ROUTINE</Badge>
-                              <span className="text-sm font-bold text-primary">{routine?.name || item.routineName || "Routine"}</span>
-                              {displaySkillIds.length > baseSkillIds.length && (
-                                <span className="text-[11px] font-mono text-muted-foreground">{displaySkillIds.length} skills</span>
-                              )}
-                              {displaySkillIds.length < baseSkillIds.length && (
-                                <span className="text-[11px] font-mono text-muted-foreground">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              className="flex items-center gap-1 text-[10px] font-mono font-bold"
-                              onClick={(e) => { e.stopPropagation(); if (reps > 1) toggleMath(groupIdx); }}
-                              data-testid={`math-toggle-${note.id}-${groupIdx}`}
-                            >
-                              {reps > 1 && expandedMath.has(groupIdx) ? (
-                                <><span className="text-muted-foreground">{routineDD.toFixed(1)}</span><span className="text-primary/40">×</span><span className="text-primary">{reps}</span><span className="text-primary/40">=</span><span className="text-primary">{(routineDD * reps).toFixed(1)}</span></>
-                              ) : reps > 1 ? (
-                                <><span className="text-primary">{(routineDD * reps).toFixed(1)}</span><span className="text-primary/40">×{reps}</span></>
-                              ) : (
-                                <span className="text-muted-foreground">{routineDD.toFixed(1)}</span>
-                              )}
-                            </button>
-                          </div>
-                          {item.note && <div className="px-3 pb-2"><span className="text-[11px] text-muted-foreground italic">{item.note}</span></div>}
-                        </div>
-                      );
-                    }
-
-                    if (group.length === 1 && (group[0] as any).id === -3) {
-                      const item = group[0] as any;
-                      const fc = allItems?.find(s => s.id === item.fcId);
-                      const baseSkillIds: number[] = fc?.skillIds ?? [];
-                      const displaySkillIds: number[] = item.customSkillIds ?? baseSkillIds;
-                      const fcDD = displaySkillIds.reduce((acc: number, sId: number) => {
-                        const skill = allItems?.find(s => s.id === sId);
-                        return acc + (skill?.difficulty || 0);
-                      }, 0);
-                      const reps = item.reps || 1;
-
-                      return wrapRow(
-                        <div key={`fc-${groupIdx}`} className={cn("rounded-xl", fc?.isDrill === 3 ? "bg-gray-100/60 dark:bg-gray-900/10" : "bg-red-50/60 dark:bg-red-900/10")}>
-                          <div className="flex items-center justify-between py-2 px-3">
-                            <div className="flex items-center gap-2">
-                              {fc?.isDrill === 3 ? (
-                                <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-secondary text-secondary-foreground border-none">PART</Badge>
-                              ) : (
-                                <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-red-500 text-white border-none">CONN</Badge>
-                              )}
-                              <span className={cn("text-sm font-bold", fc?.isDrill === 3 ? "text-gray-700 dark:text-gray-300" : "text-red-600 dark:text-red-400")}>{fc?.name || item.fcName || "Connection"}</span>
-                              {displaySkillIds.length < baseSkillIds.length && (
-                                <span className="text-[11px] font-mono text-muted-foreground">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              className="flex items-center gap-1 text-[10px] font-mono font-bold"
-                              onClick={(e) => { e.stopPropagation(); if (reps > 1) toggleMath(groupIdx); }}
-                              data-testid={`math-toggle-${note.id}-${groupIdx}`}
-                            >
-                              {reps > 1 && expandedMath.has(groupIdx) ? (
-                                <><span className="text-muted-foreground">{fcDD.toFixed(1)}</span><span className="text-red-400/70">×</span><span className="text-red-600 dark:text-red-400">{reps}</span><span className="text-red-400/70">=</span><span className="text-red-600 dark:text-red-400">{(fcDD * reps).toFixed(1)}</span></>
-                              ) : reps > 1 ? (
-                                <><span className="text-red-600 dark:text-red-400">{(fcDD * reps).toFixed(1)}</span><span className="text-red-400/70">×{reps}</span></>
-                              ) : (
-                                <span className="text-muted-foreground">{fcDD.toFixed(1)}</span>
-                              )}
-                            </button>
-                          </div>
-                          {item.note && <div className="px-3 pb-2"><span className="text-[11px] text-muted-foreground italic">{item.note}</span></div>}
-                        </div>
-                      );
-                    }
-
-                    const isSingle = group.length === 1;
-                    const reps = group[0]?.reps || 1;
-
-                    const lineDD = group.reduce((acc, gItem: any) => {
-                      if (gItem.id === -2) {
-                        const r = routines?.find(rt => rt.id === gItem.routineId);
-                        const sIds = gItem.customSkillIds ??
-                          (r ? lineupOnDate(r.skillIds, r.versions, noteDay) : []);
-                        const count = gItem.attempt ?? sIds.length;
-                        return acc + sIds.slice(0, count).reduce((a: number, sId: number) => {
-                          const sk = allItems?.find(s => s.id === sId);
-                          return a + (sk?.difficulty || 0);
-                        }, 0);
-                      }
-                      if (gItem.id === -3) {
-                        const fc = allItems?.find(s => s.id === gItem.fcId);
-                        const sIds = gItem.customSkillIds ?? fc?.skillIds ?? [];
-                        return acc + sIds.reduce((a: number, sId: number) => {
-                          const sk = allItems?.find(s => s.id === sId);
-                          return a + (sk?.difficulty || 0);
-                        }, 0);
-                      }
-                      const skill = allItems?.find(s => s.id === gItem.id);
+                  // ── Routine row ──────────────────────────────────────────
+                  if (group.length === 1 && (group[0] as any).id === -2) {
+                    const item = group[0] as any;
+                    const routine = routines?.find(r => r.id === item.routineId);
+                    const baseSkillIds: number[] = routine
+                      ? lineupOnDate(routine.skillIds, routine.versions, noteDay)
+                      : [];
+                    const displaySkillIds: number[] = item.customSkillIds ?? (item.attempt != null ? baseSkillIds.slice(0, item.attempt) : baseSkillIds);
+                    const routineDD = displaySkillIds.reduce((acc: number, sId: number) => {
+                      const skill = allItems?.find(s => s.id === sId);
                       return acc + (skill?.difficulty || 0);
                     }, 0);
+                    const reps = item.reps || 1;
 
                     return wrapRow(
-                      <div key={`group-${groupIdx}`} className={cn(
-                        "flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl",
-                        isSingle
-                          ? "bg-secondary/30"
-                          : "bg-red-50/60 dark:bg-red-900/10"
-                      )}>
-                        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
-                          {group.map((gItem: any, skillIdx) => {
-                            const sep = skillIdx < group.length - 1 ? (
-                              <span className="text-muted-foreground/60 font-bold text-xs">+</span>
-                            ) : null;
-                            if (gItem.id === -2) {
-                              const r = routines?.find(rt => rt.id === gItem.routineId);
-                              return (
-                                <div key={skillIdx} className="flex items-center gap-1.5">
-                                  <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none shrink-0">ROUTINE</Badge>
-                                  <span className="text-[11px] font-bold text-primary truncate max-w-[120px]">{r?.name || gItem.routineName}</span>
-                                  {sep}
-                                </div>
-                              );
-                            }
-                            if (gItem.id === -3) {
-                              const fc = allItems?.find(s => s.id === gItem.fcId);
-                              const isPart = fc?.isDrill === 3;
-                              return (
-                                <div key={skillIdx} className="flex items-center gap-1.5">
-                                  <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] border-none shrink-0", isPart ? "bg-secondary text-secondary-foreground" : "bg-red-500 text-white")}>{isPart ? "PART" : "CONN"}</Badge>
-                                  <span className={cn("text-[11px] font-bold truncate max-w-[120px]", isPart ? "text-muted-foreground" : "text-red-500 dark:text-red-400")}>{fc?.name || gItem.fcName}</span>
-                                  {sep}
-                                </div>
-                              );
-                            }
-                            const skill = allItems?.find(s => s.id === gItem.id);
-                            if (!skill) return null;
-                            if (skill.isDrill === 3) {
-                              return (
-                                <div key={skillIdx} className="flex items-center gap-1.5">
-                                  <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-secondary text-secondary-foreground border-none shrink-0">PART</Badge>
-                                  <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 truncate max-w-[140px]">{skill.name}</span>
-                                  {sep}
-                                </div>
-                              );
-                            }
-                            return (
-                              <div key={skillIdx} className="flex items-center gap-1.5">
-                                <Badge variant="outline" className={cn(
-                                  "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
-                                  skill.isDrill === 1
-                                    ? "border-yellow-400/60 text-yellow-600 dark:border-yellow-600/60 dark:text-yellow-400"
-                                    : !isSingle
-                                      ? "border-border/70 text-foreground/70"
-                                      : skill.isDrill === 2
-                                        ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
-                                        : "border-border/60 text-muted-foreground"
-                                )}>
-                                  <SkillCode skill={skill} allSkills={allItems} />
-                                </Badge>
-                                {sep}
-                              </div>
-                            );
-                          })}
+                      <div key={`routine-${groupIdx}`} className="flex items-center justify-between gap-3 py-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 font-mono text-[9px] tracking-tight text-primary">
+                            ROUTINE
+                          </span>
+                          <span className="truncate text-[12px] font-medium text-primary/80">
+                            {routine?.name || item.routineName || "Routine"}
+                          </span>
+                          {displaySkillIds.length > baseSkillIds.length && (
+                            <span className="font-mono text-[10px] text-muted-foreground/50">{displaySkillIds.length} skills</span>
+                          )}
+                          {displaySkillIds.length < baseSkillIds.length && (
+                            <span className="font-mono text-[10px] text-muted-foreground/50">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
+                          )}
                         </div>
                         <button
                           type="button"
-                          className="flex items-center gap-1 text-[10px] font-mono font-bold"
-                          onClick={(e) => { e.stopPropagation(); toggleMath(groupIdx); }}
+                          className="shrink-0 flex items-center gap-1 font-mono text-[10px] font-bold"
+                          onClick={(e) => { e.stopPropagation(); if (reps > 1) toggleMath(groupIdx); }}
                           data-testid={`math-toggle-${note.id}-${groupIdx}`}
                         >
-                          {expandedMath.has(groupIdx) ? (
-                            <>
-                              <span className="text-muted-foreground">{lineDD.toFixed(1)}</span>
-                              <span className={isSingle ? "text-muted-foreground/40" : "text-red-400/70"}>×</span>
-                              <span className="text-foreground">{reps}</span>
-                              <span className={isSingle ? "text-muted-foreground/40" : "text-red-400/70"}>=</span>
-                              <span className={isSingle ? "text-foreground" : "text-red-600 dark:text-red-400"}>{(lineDD * reps).toFixed(1)}</span>
-                            </>
+                          {reps > 1 && expandedMath.has(groupIdx) ? (
+                            <><span className="text-muted-foreground/50">{routineDD.toFixed(1)}</span><span className="text-primary/40">×</span><span className="text-primary">{reps}</span><span className="text-primary/40">=</span><span className="text-primary">{(routineDD * reps).toFixed(1)}</span></>
+                          ) : reps > 1 ? (
+                            <><span className="text-muted-foreground/60">{(routineDD * reps).toFixed(1)}</span><span className="text-muted-foreground/30">×{reps}</span></>
                           ) : (
-                            <>
-                              <span className={isSingle ? "text-foreground" : "text-red-600 dark:text-red-400"}>{(lineDD * reps).toFixed(1)}</span>
-                              {reps > 1 && <span className={isSingle ? "text-muted-foreground/40" : "text-red-400/70"}>×{reps}</span>}
-                            </>
+                            <span className="text-muted-foreground/50">{routineDD.toFixed(1)}</span>
                           )}
                         </button>
-                        {group[0]?.note && (
-                          <div className="w-full mt-1">
-                            <span className="text-[11px] text-muted-foreground italic">{group[0].note}</span>
+                        {item.note && (
+                          <div className="w-full mt-1 col-span-2">
+                            <span className="text-[11px] text-muted-foreground italic">{item.note}</span>
                           </div>
                         )}
                       </div>
                     );
-                  });
-                })()}
-              </div>
+                  }
+
+                  // ── FC / CONN / PART row ─────────────────────────────────
+                  if (group.length === 1 && (group[0] as any).id === -3) {
+                    const item = group[0] as any;
+                    const fc = allItems?.find(s => s.id === item.fcId);
+                    const isPart = fc?.isDrill === 3;
+                    const baseSkillIds: number[] = fc?.skillIds ?? [];
+                    const displaySkillIds: number[] = item.customSkillIds ?? baseSkillIds;
+                    const fcDD = displaySkillIds.reduce((acc: number, sId: number) => {
+                      const skill = allItems?.find(s => s.id === sId);
+                      return acc + (skill?.difficulty || 0);
+                    }, 0);
+                    const reps = item.reps || 1;
+
+                    return wrapRow(
+                      <div key={`fc-${groupIdx}`} className="flex items-center justify-between gap-3 py-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {isPart ? (
+                            <span className="shrink-0 rounded-full border border-border/30 bg-foreground/[0.05] px-2 py-0.5 font-mono text-[9px] tracking-tight text-muted-foreground">
+                              PART
+                            </span>
+                          ) : (
+                            <span className="shrink-0 rounded-full border border-rose-400/25 bg-rose-400/10 px-2 py-0.5 font-mono text-[9px] tracking-tight text-rose-400 dark:text-rose-300">
+                              CONN
+                            </span>
+                          )}
+                          <span className={cn("truncate text-[12px] font-medium", isPart ? "text-muted-foreground/70" : "text-rose-500 dark:text-rose-400")}>
+                            {fc?.name || item.fcName || "Connection"}
+                          </span>
+                          {displaySkillIds.length < baseSkillIds.length && (
+                            <span className="font-mono text-[10px] text-muted-foreground/50">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className="shrink-0 flex items-center gap-1 font-mono text-[10px] font-bold"
+                          onClick={(e) => { e.stopPropagation(); if (reps > 1) toggleMath(groupIdx); }}
+                          data-testid={`math-toggle-${note.id}-${groupIdx}`}
+                        >
+                          {reps > 1 && expandedMath.has(groupIdx) ? (
+                            <><span className="text-muted-foreground/50">{fcDD.toFixed(1)}</span><span className="text-rose-400/70">×</span><span className={isPart ? "text-muted-foreground" : "text-rose-400"}>{reps}</span><span className="text-rose-400/70">=</span><span className={isPart ? "text-muted-foreground" : "text-rose-400"}>{(fcDD * reps).toFixed(1)}</span></>
+                          ) : reps > 1 ? (
+                            <><span className={isPart ? "text-muted-foreground/60" : "text-rose-400/80"}>{(fcDD * reps).toFixed(1)}</span><span className="text-muted-foreground/30">×{reps}</span></>
+                          ) : (
+                            <span className="text-muted-foreground/50">{fcDD.toFixed(1)}</span>
+                          )}
+                        </button>
+                        {item.note && (
+                          <div className="w-full mt-1">
+                            <span className="text-[11px] text-muted-foreground italic">{item.note}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // ── Skill group row ──────────────────────────────────────
+                  const isSingle = group.length === 1;
+                  const reps = group[0]?.reps || 1;
+
+                  const lineDD = group.reduce((acc, gItem: any) => {
+                    if (gItem.id === -2) {
+                      const r = routines?.find(rt => rt.id === gItem.routineId);
+                      const sIds = gItem.customSkillIds ?? (r ? lineupOnDate(r.skillIds, r.versions, noteDay) : []);
+                      const count = gItem.attempt ?? sIds.length;
+                      return acc + sIds.slice(0, count).reduce((a: number, sId: number) => {
+                        const sk = allItems?.find(s => s.id === sId);
+                        return a + (sk?.difficulty || 0);
+                      }, 0);
+                    }
+                    if (gItem.id === -3) {
+                      const fc = allItems?.find(s => s.id === gItem.fcId);
+                      const sIds = gItem.customSkillIds ?? fc?.skillIds ?? [];
+                      return acc + sIds.reduce((a: number, sId: number) => {
+                        const sk = allItems?.find(s => s.id === sId);
+                        return a + (sk?.difficulty || 0);
+                      }, 0);
+                    }
+                    const skill = allItems?.find(s => s.id === gItem.id);
+                    return acc + (skill?.difficulty || 0);
+                  }, 0);
+
+                  return wrapRow(
+                    <div key={`group-${groupIdx}`} className={cn(
+                      "flex flex-wrap items-center gap-2 py-1.5",
+                      !isSingle && "pl-0"
+                    )}>
+                      <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+                        {group.map((gItem: any, skillIdx) => {
+                          const sep = skillIdx < group.length - 1
+                            ? <span key={`sep-${skillIdx}`} className="text-muted-foreground/40 text-xs font-bold">+</span>
+                            : null;
+
+                          if (gItem.id === -2) {
+                            const r = routines?.find(rt => rt.id === gItem.routineId);
+                            return (
+                              <div key={skillIdx} className="flex items-center gap-1.5">
+                                <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 font-mono text-[9px] tracking-tight text-primary shrink-0">ROUTINE</span>
+                                <span className="text-[11px] font-medium text-primary/80 truncate max-w-[120px]">{r?.name || gItem.routineName}</span>
+                                {sep}
+                              </div>
+                            );
+                          }
+                          if (gItem.id === -3) {
+                            const fc = allItems?.find(s => s.id === gItem.fcId);
+                            const isPart = fc?.isDrill === 3;
+                            return (
+                              <div key={skillIdx} className="flex items-center gap-1.5">
+                                {isPart ? (
+                                  <span className="rounded-full border border-border/30 bg-foreground/[0.05] px-2 py-0.5 font-mono text-[9px] tracking-tight text-muted-foreground shrink-0">PART</span>
+                                ) : (
+                                  <span className="rounded-full border border-rose-400/25 bg-rose-400/10 px-2 py-0.5 font-mono text-[9px] tracking-tight text-rose-400 dark:text-rose-300 shrink-0">CONN</span>
+                                )}
+                                <span className={cn("text-[11px] font-medium truncate max-w-[120px]", isPart ? "text-muted-foreground/70" : "text-rose-500 dark:text-rose-400")}>{fc?.name || gItem.fcName}</span>
+                                {sep}
+                              </div>
+                            );
+                          }
+
+                          const skill = allItems?.find(s => s.id === gItem.id);
+                          if (!skill) return null;
+
+                          if (skill.isDrill === 3) {
+                            return (
+                              <div key={skillIdx} className="flex items-center gap-1.5">
+                                <span className="rounded-full border border-border/30 bg-foreground/[0.05] px-2 py-0.5 font-mono text-[9px] tracking-tight text-muted-foreground shrink-0">PART</span>
+                                <span className="text-[11px] font-medium text-muted-foreground/70 truncate max-w-[140px]">{skill.name}</span>
+                                {sep}
+                              </div>
+                            );
+                          }
+
+                          const chipTone = skill.isDrill === 1
+                            ? "border-amber-400/40 bg-amber-400/10 text-amber-600 dark:text-amber-400"
+                            : !isSingle
+                              ? "border-rose-400/25 bg-rose-400/10 text-rose-500 dark:text-rose-400"
+                              : skill.isDrill === 2
+                                ? "border-red-300/40 bg-red-400/10 text-red-500 dark:text-red-400"
+                                : "border-border/20 bg-foreground/[0.04] text-muted-foreground/70";
+
+                          return (
+                            <div key={skillIdx} className="flex items-center gap-1.5">
+                              <span className={cn("rounded-full border px-2 py-0.5 font-mono text-[10px] tracking-tight", chipTone)}>
+                                <SkillCode skill={skill} allSkills={allItems} />
+                              </span>
+                              {sep}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* DD / math toggle */}
+                      <button
+                        type="button"
+                        className="shrink-0 flex items-center gap-1 font-mono text-[10px] font-bold"
+                        onClick={(e) => { e.stopPropagation(); toggleMath(groupIdx); }}
+                        data-testid={`math-toggle-${note.id}-${groupIdx}`}
+                      >
+                        {expandedMath.has(groupIdx) ? (
+                          <>
+                            <span className="text-muted-foreground/50">{lineDD.toFixed(1)}</span>
+                            <span className={isSingle ? "text-muted-foreground/30" : "text-rose-400/70"}>×</span>
+                            <span className="text-foreground/70">{reps}</span>
+                            <span className={isSingle ? "text-muted-foreground/30" : "text-rose-400/70"}>=</span>
+                            <span className={isSingle ? "text-foreground/70" : "text-rose-500 dark:text-rose-400"}>{(lineDD * reps).toFixed(1)}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className={isSingle ? "text-muted-foreground/60" : "text-rose-500 dark:text-rose-400"}>{(lineDD * reps).toFixed(1)}</span>
+                            {reps > 1 && <span className={isSingle ? "text-muted-foreground/30" : "text-rose-400/60"}>×{reps}</span>}
+                          </>
+                        )}
+                      </button>
+
+                      {(group[0] as any)?.note && (
+                        <div className="w-full mt-1">
+                          <span className="text-[11px] text-muted-foreground italic">{(group[0] as any).note}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
+            </div>
           </div>
         )}
-      </div>
-    </div>
+      </article>
 
       <ConfirmDialog
         open={showDeleteAlert}
