@@ -1,0 +1,19 @@
+kind = "design-system"
+previewPath = "/__intent/"
+title = "Intent Design System"
+description = "Dark performance-ledger design system extracted from the Training Log mockup: near-black surfaces, IBM Plex Mono micro-labels, sky→indigo gradient accents, hairline borders, tabular numerals."
+version = "1.0.0"
+id = "artifacts/intent"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/__intent/" ]
+localPort = 22400
+
+[services.development]
+run = "pnpm --filter @workspace/intent run dev"
+
+[services.env]
+PORT = "22400"
+BASE_PATH = "/__intent/"

@@ -30,3 +30,4 @@
 - [Dev preview data = prod clone](dev-demo-data.md) — user wants their REAL account data in preview, not synthetic; same user id in both DBs, clone with ids preserved, prod read-only.
 - [Bulk rows via executeSql](executesql-bulk-transport.md) — CSV output mangles free text; export as sliced base64 json_agg (deterministic ORDER BY), no Buffer in sandbox, snake→camel for drizzle.
 - [Mockup sandbox serving](mockup-sandbox-serving.md) — frame shows main app = sandbox not scaffolded/installed; its cartographer imports root tailwind.config.ts, so a pruned root node_modules overlays every mockup.
+- [Artifact package wiring](artifact-package-wiring.md) — root is NOT a pnpm workspace; install each artifact standalone in its dir; cross-artifact deps use file:../<slug>, never workspace:*.
