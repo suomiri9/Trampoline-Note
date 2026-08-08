@@ -137,6 +137,7 @@ const ExecutionSessionPage = lazyPage(() => import("@/pages/execution-session"))
 const DebutsPage = lazyPage(() => import("@/pages/debuts"));
 const ExecutionPage = lazyPage(() => import("@/pages/execution"));
 const ExecutionRoutinePage = lazyPage(() => import("@/pages/execution-routine"));
+const ExecutionSkillPage = lazyPage(() => import("@/pages/execution-skill"));
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Target, Layers, BarChart3, Trophy, Loader2, Settings, HeartPulse, Bot, MoreHorizontal, Timer, ClipboardCheck } from "lucide-react";
@@ -301,6 +302,7 @@ function Router() {
         <Route path="/tof/routine/:id" component={TofRoutinePage} />
         <Route path="/tof/session/:id" component={TofSessionPage} />
         <Route path="/execution" component={ExecutionPage} />
+        <Route path="/execution/skill/:id" component={ExecutionSkillPage} />
         <Route path="/execution/routine/:id" component={ExecutionRoutinePage} />
         <Route path="/execution/session/:id" component={ExecutionSessionPage} />
         <Route path="/settings" component={SettingsPage} />

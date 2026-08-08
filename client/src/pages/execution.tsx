@@ -946,7 +946,11 @@ export default function ExecutionPage() {
               return (
                 <div
                   key={a.skillId}
-                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-secondary/30 border border-border/50 px-3 py-2"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/execution/skill/${a.skillId}`)}
+                  onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/execution/skill/${a.skillId}`); } }}
+                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-secondary/30 border border-border/50 px-3 py-2 cursor-pointer transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   data-testid={`row-exec-analysis-${a.skillId}`}
                 >
                   <span className="font-bold text-foreground w-16 truncate shrink-0">{sk ? skillDisplayCode(sk, allSkills) : "?"}</span>
@@ -955,6 +959,7 @@ export default function ExecutionPage() {
                     −{a.avg.toFixed(2)}
                   </span>
                   <span className="text-muted-foreground/60 shrink-0 w-10 text-right" title="Judged attempts this is based on">n={a.samples}</span>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
                 </div>
               );
             })}
