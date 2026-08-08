@@ -530,7 +530,9 @@ export default function ExecutionPage() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-7 w-7 -mr-2 text-muted-foreground/50 hover:text-foreground" onClick={e => e.stopPropagation()} data-testid={`button-actions-execution-${s.id}`}><MoreVertical className="h-4 w-4" /></Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-36 rounded-xl">
+              {/* Clicks inside the portaled menu still bubble through the React tree
+                  to the card's onClick — stop them here so Edit/Delete don't open the card. */}
+              <DropdownMenuContent align="end" className="w-36 rounded-xl" onClick={e => e.stopPropagation()}>
                 {pending ? (
                   <DropdownMenuItem
                     className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive"
