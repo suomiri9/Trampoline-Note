@@ -152,7 +152,7 @@ export function PageHeader({
     >
       <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
         <div className="overflow-hidden">
-          <div className="eyebrow mb-1.5 sm:mb-2">// {eyebrow}</div>
+          <div className="eyebrow eyebrow-compact mb-1.5 sm:mb-2">// {eyebrow}</div>
         </div>
       </div>
       {/* Title and actions share one row; buttons sit on the right and only
@@ -173,7 +173,7 @@ export function PageHeader({
       </div>
       {subtitle && (
         <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
-          <p className="overflow-hidden text-muted-foreground text-xs sm:text-sm pt-2 sm:pt-3">{subtitle}</p>
+          <p className="overflow-hidden text-muted-foreground text-[11px] leading-snug sm:text-sm pt-2 sm:pt-3">{subtitle}</p>
         </div>
       )}
     </div>
