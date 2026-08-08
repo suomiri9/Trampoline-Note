@@ -429,6 +429,7 @@ function CompetitionCard({
   onDeleteRound,
   onDeleteComp,
   onAddFinal,
+  onAddFinalPhoto,
   testId,
   routines,
   firstPracticedByRoutine,
@@ -439,6 +440,7 @@ function CompetitionCard({
   onDeleteRound: (id: number) => void;
   onDeleteComp: (ids: number[]) => void;
   onAddFinal: (prelims: Score) => void;
+  onAddFinalPhoto: (prelims: Score) => void;
   testId?: string;
   routines?: Routine[];
   firstPracticedByRoutine?: Map<number, string>;
@@ -485,9 +487,14 @@ function CompetitionCard({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44 rounded-xl">
                 {!finalRound && (
-                  <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => onAddFinal(prelimsRound)} data-testid={`btn-comp-add-final-${first.id}`}>
-                    <Plus className="h-3.5 w-3.5" /> Add final round
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => onAddFinal(prelimsRound)} data-testid={`btn-comp-add-final-${first.id}`}>
+                      <Plus className="h-3.5 w-3.5" /> Add final round
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => onAddFinalPhoto(prelimsRound)} data-testid={`btn-comp-add-final-photo-${first.id}`}>
+                      <ImageUp className="h-3.5 w-3.5" /> Final from photo
+                    </DropdownMenuItem>
+                  </>
                 )}
                 <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => onDeleteComp(rounds.map((r) => r.id))} data-testid={`btn-comp-delete-${first.id}`}>
                   <Trash2 className="h-3.5 w-3.5" /> {isTrial ? "Delete trial" : "Delete competition"}
@@ -768,6 +775,10 @@ export default function ScorePage() {
   const [sheetPairCategory, setSheetPairCategory] = useState<"both" | "vol_vol">("both");
   const [parsingSheet, setParsingSheet] = useState(false);
   const sheetInputRef = useRef<HTMLInputElement>(null);
+  // "Final from photo": the prelims score the scanned sheet attaches a final to.
+  const [sheetFinalFor, setSheetFinalFor] = useState<Score | null>(null);
+  // Carries the target across the native file picker (the input's onChange).
+  const pendingFinalForRef = useRef<Score | null>(null);
 
   const { data: scores } = useQuery<Score[]>({
     queryKey: ["/api/scores"],
@@ -911,6 +922,7 @@ export default function ScorePage() {
     setSheetRows([]);
     setSheetPhotoUrl(null);
     setSheetPhotoOriginal(null);
+    setSheetFinalFor(null);
     setExecDrafts([]);
     setSavingExecDrafts(false);
     setSheetFinishing(false);
@@ -926,9 +938,13 @@ export default function ScorePage() {
   // Step 0: photo picked → open the dialog on the area-select step (no AI call yet).
   const openSheetCrop = async (file: File) => {
     setParsingSheet(true);
+    // Consume the pending "final for this comp" target set by the card menu.
+    const finalFor = pendingFinalForRef.current;
+    pendingFinalForRef.current = null;
     try {
       const dataUrl = await fileToDataUrl(file);
       closeSheet(); // reset any leftover state from a previous sheet
+      setSheetFinalFor(finalFor);
       setSheetPhotoOriginal(dataUrl);
       setSheetStep("crop");
       setSheetOpen(true);
@@ -987,16 +1003,27 @@ export default function ScorePage() {
       }));
       setSheetRows(rows);
       setSheetPhotoUrl(cropUrl);
-      setSheetDate(parsed.date ?? new Date().toISOString().split("T")[0]);
-      setSheetCompName(parsed.competitionName ?? "");
-      setSheetRound(parsed.round === "final" ? "final" : "prelims");
-      setSheetType(parsed.competitionName || parsed.round ? "competition" : "practice");
-      // Single-routine sheet: a blank DD line usually means the set routine.
-      const first = parsed.routines[0];
-      setSheetCategory(rows.length === 1 && (first.difficulty == null || first.difficulty === 0) ? "set" : "vol");
-      // Two-routine sheet: a printed DD on the first routine suggests two voluntaries
-      // (e.g. a final); a blank/0 DD on R1 means the classic set + voluntary pair.
-      setSheetPairCategory(rows.length === 2 && first.difficulty != null && first.difficulty > 0 ? "vol_vol" : "both");
+      if (sheetFinalFor) {
+        // Attaching a final to an existing competition — details come from it.
+        setSheetDate(parsed.date ?? sheetFinalFor.date);
+        setSheetCompName(sheetFinalFor.competitionName ?? "");
+        setSheetRound("final");
+        setSheetType(sheetFinalFor.type === "trial" ? "trial" : "competition");
+        // Finals are voluntary routines (two rows = e.g. semi + final voluntary).
+        setSheetCategory("vol");
+        setSheetPairCategory(rows.length === 2 ? "vol_vol" : "both");
+      } else {
+        setSheetDate(parsed.date ?? new Date().toISOString().split("T")[0]);
+        setSheetCompName(parsed.competitionName ?? "");
+        setSheetRound(parsed.round === "final" ? "final" : "prelims");
+        setSheetType(parsed.competitionName || parsed.round ? "competition" : "practice");
+        // Single-routine sheet: a blank DD line usually means the set routine.
+        const first = parsed.routines[0];
+        setSheetCategory(rows.length === 1 && (first.difficulty == null || first.difficulty === 0) ? "set" : "vol");
+        // Two-routine sheet: a printed DD on the first routine suggests two voluntaries
+        // (e.g. a final); a blank/0 DD on R1 means the classic set + voluntary pair.
+        setSheetPairCategory(rows.length === 2 && first.difficulty != null && first.difficulty > 0 ? "vol_vol" : "both");
+      }
       setSheetStep("review");
     } catch (e) {
       toast({
@@ -1012,7 +1039,8 @@ export default function ScorePage() {
   const keptSheetRows = sheetRows.filter(r => r.kept);
   const sheetReviewValid = keptSheetRows.length > 0 && keptSheetRows.length <= 2 && keptSheetRows.every(sheetRowValid);
   const isSheetComp = sheetType === "competition" || sheetType === "trial";
-  const sheetDetailsValid = !!sheetDate && (!isSheetComp || sheetCompName.trim() !== "");
+  // In "final from photo" mode the name comes from the existing comp (may be blank on legacy rows).
+  const sheetDetailsValid = !!sheetDate && (!isSheetComp || sheetFinalFor != null || sheetCompName.trim() !== "");
 
   const routineIdOrUndef = (v: string) => (v && v !== "none" ? Number(v) : undefined);
 
@@ -1044,10 +1072,17 @@ export default function ScorePage() {
       };
     }
     values = isSheetComp
-      ? { ...values, competitionName: sheetCompName.trim(), round: sheetRound || "prelims", competitionId: newCompetitionId() }
+      ? { ...values, competitionName: sheetCompName.trim(), round: sheetRound || "prelims", competitionId: sheetFinalFor?.competitionId ?? newCompetitionId() }
       : { ...values, round: null, competitionId: null, competitionName: "", rank: null };
     setSheetFinishing(true);
     try {
+      if (isSheetComp && sheetFinalFor && !sheetFinalFor.competitionId) {
+        // Legacy prelims row without a competitionId — backfill it first so the
+        // final lands in the same comp group.
+        const compId = await ensureCompetitionId(sheetFinalFor);
+        if (!compId) return; // toast already shown; dialog stays open for retry
+        values = { ...values, competitionId: compId };
+      }
       await createMutation.mutateAsync(values);
       // Score saved — if the same photo also carries per-skill deduction rows
       // (competition sheets usually do), offer them as Execution-tracker
@@ -1213,23 +1248,36 @@ export default function ScorePage() {
     }
   }
 
+  // Returns the competition id, backfilling legacy prelims rows that lack one —
+  // it MUST be set before the final is created, otherwise the final saves as
+  // its own standalone one-round group.
+  async function ensureCompetitionId(prelims: Score): Promise<string | null> {
+    if (prelims.competitionId) return prelims.competitionId;
+    const compId = newCompetitionId();
+    try {
+      await apiRequest("PUT", `/api/scores/${prelims.id}`, { competitionId: compId, round: prelims.round || "prelims" });
+      queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
+      return compId;
+    } catch {
+      toast({ title: "Couldn't add a final round", description: "Please try again.", variant: "destructive" });
+      return null;
+    }
+  }
+
+  // "Final from photo" on a comp card: run the sheet-photo flow attached to that comp.
+  // Must stay synchronous — iOS only opens the file picker inside the tap gesture.
+  function startAddFinalPhoto(prelims: Score) {
+    pendingFinalForRef.current = prelims;
+    sheetInputRef.current?.click();
+  }
+
   async function startAddFinal(prelims: Score) {
     skipDDAutoFill.current = true;
     setEditingScore(null);
     setCustomSkillIds(null);
     setCustomSkillIdsVol(null);
-    const compId = prelims.competitionId ?? newCompetitionId();
-    if (!prelims.competitionId) {
-      // Legacy prelims row has no competitionId — it MUST be backfilled before the final
-      // is created, otherwise the final saves as its own standalone one-round group.
-      try {
-        await apiRequest("PUT", `/api/scores/${prelims.id}`, { competitionId: compId, round: prelims.round || "prelims" });
-        queryClient.invalidateQueries({ queryKey: ["/api/scores"] });
-      } catch {
-        toast({ title: "Couldn't add a final round", description: "Please try again.", variant: "destructive" });
-        return;
-      }
-    }
+    const compId = await ensureCompetitionId(prelims);
+    if (!compId) return;
     setIsAdding(true);
     form.reset({
       ...scoreDefaults,
@@ -1416,7 +1464,7 @@ export default function ScorePage() {
               variant="outline"
               className="rounded-xl h-12 px-4 font-semibold gap-2"
               disabled={parsingSheet}
-              onClick={() => sheetInputRef.current?.click()}
+              onClick={() => { pendingFinalForRef.current = null; sheetInputRef.current?.click(); }}
               data-testid="button-upload-scoresheet"
             >
               {parsingSheet ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageUp className="w-4 h-4" />}
@@ -1831,7 +1879,7 @@ export default function ScorePage() {
         <DialogContent aria-describedby={undefined} className="sm:max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {sheetStep === "crop" ? "Select the scores to read" : sheetStep === "review" ? "Check the scores" : sheetStep === "details" ? "Score details" : "Add the deductions too?"}
+              {sheetStep === "crop" ? (sheetFinalFor ? "Select the final's scores" : "Select the scores to read") : sheetStep === "review" ? "Check the scores" : sheetStep === "details" ? "Score details" : "Add the deductions too?"}
               {(sheetStep === "review" || sheetStep === "details") && (
                 <span className="ml-2 text-xs font-mono font-normal text-muted-foreground">{sheetStep === "review" ? "1/2" : "2/2"}</span>
               )}
@@ -2047,40 +2095,55 @@ export default function ScorePage() {
                   </p>
                 </div>
               )}
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
-                  <Select value={sheetType} onValueChange={setSheetType}>
-                    <SelectTrigger data-testid="select-sheet-type"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="practice">Practice</SelectItem>
-                      <SelectItem value="competition">Competition</SelectItem>
-                      <SelectItem value="trial">Trial</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex-1">
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
-                  <Input type="date" value={sheetDate} onChange={(e) => setSheetDate(e.target.value)} data-testid="input-sheet-date" />
-                </div>
-              </div>
-              {isSheetComp && (
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Competition name</label>
-                    <Input value={sheetCompName} onChange={(e) => setSheetCompName(e.target.value)} placeholder="e.g. Regional Cup" data-testid="input-sheet-comp-name" />
+              {sheetFinalFor ? (
+                <>
+                  <div className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2.5 text-xs" data-testid="text-sheet-final-target">
+                    Saving as the <span className="font-semibold">final round</span> of{" "}
+                    <span className="font-semibold">{sheetFinalFor.competitionName || (sheetFinalFor.type === "trial" ? "this trial" : "this competition")}</span>
                   </div>
-                  <div className="w-32">
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Round</label>
-                    <Select value={sheetRound} onValueChange={setSheetRound}>
-                      <SelectTrigger data-testid="select-sheet-round"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="prelims">Prelims</SelectItem>
-                        <SelectItem value="final">Final</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
+                    <Input type="date" value={sheetDate} onChange={(e) => setSheetDate(e.target.value)} data-testid="input-sheet-date" />
                   </div>
-                </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
+                      <Select value={sheetType} onValueChange={setSheetType}>
+                        <SelectTrigger data-testid="select-sheet-type"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="practice">Practice</SelectItem>
+                          <SelectItem value="competition">Competition</SelectItem>
+                          <SelectItem value="trial">Trial</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
+                      <Input type="date" value={sheetDate} onChange={(e) => setSheetDate(e.target.value)} data-testid="input-sheet-date" />
+                    </div>
+                  </div>
+                  {isSheetComp && (
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Competition name</label>
+                        <Input value={sheetCompName} onChange={(e) => setSheetCompName(e.target.value)} placeholder="e.g. Regional Cup" data-testid="input-sheet-comp-name" />
+                      </div>
+                      <div className="w-32">
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Round</label>
+                        <Select value={sheetRound} onValueChange={setSheetRound}>
+                          <SelectTrigger data-testid="select-sheet-round"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="prelims">Prelims</SelectItem>
+                            <SelectItem value="final">Final</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
               {keptSheetRows.length === 1 && (
                 <div>
@@ -2181,6 +2244,7 @@ export default function ScorePage() {
               onDeleteRound={setDeleteScoreId}
               onDeleteComp={setDeleteCompIds}
               onAddFinal={startAddFinal}
+              onAddFinalPhoto={startAddFinalPhoto}
               routines={routines}
               firstPracticedByRoutine={firstPracticedByRoutine}
             />
@@ -2194,6 +2258,7 @@ export default function ScorePage() {
               onDeleteRound={setDeleteScoreId}
               onDeleteComp={setDeleteCompIds}
               onAddFinal={startAddFinal}
+              onAddFinalPhoto={startAddFinalPhoto}
               routines={routines}
               firstPracticedByRoutine={firstPracticedByRoutine}
             />
