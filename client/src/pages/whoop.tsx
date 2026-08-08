@@ -319,12 +319,12 @@ export default function WhoopPage() {
                   formatter={(v: any) => [`${Math.round(Number(v))} %`, "Recovery"]}
                   cursor={{ stroke: "hsl(var(--primary) / 0.3)", strokeWidth: 1 }}
                 />
-                <Line type="monotone" dataKey="recoveryScore" stroke="#34d399" strokeWidth={2} connectNulls dot={{ r: recoveryData.length > 60 ? 0 : 2, fill: "#34d399", strokeWidth: 0 }} activeDot={{ r: 4 }} />
+                <Line type="monotone" dataKey="recoveryScore" stroke="hsl(var(--chart-2))" strokeWidth={2} connectNulls dot={{ r: recoveryData.length > 60 ? 0 : 2, fill: "hsl(var(--chart-2))", strokeWidth: 0 }} activeDot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           </ChartCard>
 
-          <ChartCard title="Sleep" accent="hours & quality" accentClass="text-indigo-400" testId="card-chart-sleep">
+          <ChartCard title="Sleep" accent="hours & quality" accentClass="text-[hsl(var(--chart-4))]" testId="card-chart-sleep">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={sleepData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={<AxisTick />} interval="preserveStartEnd" />
@@ -339,8 +339,8 @@ export default function WhoopPage() {
                   cursor={{ stroke: "hsl(var(--primary) / 0.3)", strokeWidth: 1 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11, fontFamily: "var(--font-mono)" }} />
-                <Line yAxisId="h" name="Sleep (h)" type="monotone" dataKey="asleepHours" stroke="#818cf8" strokeWidth={2} connectNulls dot={false} activeDot={{ r: 4 }} />
-                <Line yAxisId="p" name="Performance %" type="monotone" dataKey="performancePct" stroke="#c4b5fd" strokeWidth={1.5} strokeDasharray="4 3" connectNulls dot={false} activeDot={{ r: 4 }} />
+                <Line yAxisId="h" name="Sleep (h)" type="monotone" dataKey="asleepHours" stroke="hsl(var(--chart-4))" strokeWidth={2} connectNulls dot={false} activeDot={{ r: 4 }} />
+                <Line yAxisId="p" name="Performance %" type="monotone" dataKey="performancePct" stroke="hsl(var(--chart-1))" strokeWidth={1.5} strokeDasharray="4 3" connectNulls dot={false} activeDot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -356,7 +356,7 @@ export default function WhoopPage() {
                   formatter={(v: any) => [Number(v).toFixed(1), "Strain"]}
                   cursor={{ stroke: "hsl(var(--primary) / 0.3)", strokeWidth: 1 }}
                 />
-                <Line type="monotone" dataKey="strain" stroke="#fbbf24" strokeWidth={2} connectNulls dot={{ r: strainData.length > 60 ? 0 : 2, fill: "#fbbf24", strokeWidth: 0 }} activeDot={{ r: 4 }} />
+                <Line type="monotone" dataKey="strain" stroke="hsl(var(--chart-3))" strokeWidth={2} connectNulls dot={{ r: strainData.length > 60 ? 0 : 2, fill: "hsl(var(--chart-3))", strokeWidth: 0 }} activeDot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -376,8 +376,8 @@ export default function WhoopPage() {
                   cursor={{ stroke: "hsl(var(--primary) / 0.3)", strokeWidth: 1 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11, fontFamily: "var(--font-mono)" }} />
-                <Line yAxisId="rhr" name="RHR (bpm)" type="monotone" dataKey="restingHeartRate" stroke="#fb7185" strokeWidth={2} connectNulls dot={false} activeDot={{ r: 4 }} />
-                <Line yAxisId="hrv" name="HRV (ms)" type="monotone" dataKey="hrvMs" stroke="#38bdf8" strokeWidth={1.5} strokeDasharray="4 3" connectNulls dot={false} activeDot={{ r: 4 }} />
+                <Line yAxisId="rhr" name="RHR (bpm)" type="monotone" dataKey="restingHeartRate" stroke="hsl(var(--chart-5))" strokeWidth={2} connectNulls dot={false} activeDot={{ r: 4 }} />
+                <Line yAxisId="hrv" name="HRV (ms)" type="monotone" dataKey="hrvMs" stroke="hsl(var(--chart-1))" strokeWidth={1.5} strokeDasharray="4 3" connectNulls dot={false} activeDot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           </ChartCard>

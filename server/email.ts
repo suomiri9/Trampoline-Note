@@ -38,26 +38,26 @@ function resetEmailHtml(resetUrl: string, displayName?: string | null): string {
   <style>
     :root { color-scheme: light dark; supported-color-schemes: light dark; }
     @media (prefers-color-scheme: dark) {
-      .email-body { background:#0a0b10 !important; }
-      .email-card { background:#12141c !important; border-color:#23262f !important; color:#e7e9ee !important; }
-      .email-eyebrow { color:#6b86ff !important; }
+      .email-body { background:#050505 !important; }
+      .email-card { background:#0d0d0d !important; border-color:#1f1f1f !important; color:#f4f6f6 !important; }
+      .email-eyebrow { color:#7dd3fc !important; }
       .email-heading { color:#ffffff !important; }
       .email-text { color:#aab0bd !important; }
       .email-muted { color:#7c8290 !important; }
-      .email-link { color:#6b86ff !important; }
+      .email-link { color:#7dd3fc !important; }
     }
   </style>
 </head>
-<body class="email-body" style="margin:0;padding:0;background:#f4f6f9;">
-  <div class="email-body" style="background:#f4f6f9;padding:32px 16px;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-    <div class="email-card" style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #e2e6ec;border-radius:16px;padding:32px;color:#2a2d35;">
-      <div class="email-eyebrow" style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#3b5bd9;margin-bottom:8px;">// ${APP_NAME}</div>
-      <h1 class="email-heading" style="font-size:24px;margin:0 0 16px;color:#0a0b10;">Reset your password</h1>
+<body class="email-body" style="margin:0;padding:0;background:#f4f4f5;">
+  <div class="email-body" style="background:#f4f4f5;padding:32px 16px;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <div class="email-card" style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #e4e7ea;border-radius:16px;padding:32px;color:#2a2d35;">
+      <div class="email-eyebrow" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#0284c7;margin-bottom:8px;">// ${APP_NAME}</div>
+      <h1 class="email-heading" style="font-size:24px;margin:0 0 16px;color:#050505;letter-spacing:-0.02em;">Reset your password</h1>
       <p class="email-text" style="font-size:15px;line-height:1.6;color:#51586a;margin:0 0 16px;">${greeting}</p>
       <p class="email-text" style="font-size:15px;line-height:1.6;color:#51586a;margin:0 0 24px;">We received a request to reset your password. Click the button below to choose a new one. This link expires in 60 minutes.</p>
-      <a href="${resetUrl}" class="email-cta" style="display:inline-block;background:#3b6bff;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 24px;border-radius:12px;font-size:15px;">Reset password</a>
+      <a href="${resetUrl}" class="email-cta" style="display:inline-block;background:#0284c7;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 24px;border-radius:12px;font-size:15px;">Reset password</a>
       <p class="email-muted" style="font-size:13px;line-height:1.6;color:#858b99;margin:24px 0 0;">If the button doesn't work, paste this link into your browser:</p>
-      <p class="email-link" style="font-size:12px;line-height:1.6;color:#3b5bd9;word-break:break-all;margin:4px 0 0;font-family:'JetBrains Mono',monospace;">${resetUrl}</p>
+      <p class="email-link" style="font-size:12px;line-height:1.6;color:#0284c7;word-break:break-all;margin:4px 0 0;font-family:'IBM Plex Mono',monospace;">${resetUrl}</p>
       <p class="email-muted" style="font-size:13px;line-height:1.6;color:#858b99;margin:24px 0 0;">If you didn't request this, you can safely ignore this email — your password won't change.</p>
     </div>
   </div>

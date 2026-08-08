@@ -15,5 +15,7 @@ export function SkillCode({
   fallback?: string;
 }) {
   const label = useSkillChipLabel();
-  return <>{label(skill, allSkills) || fallback}</>;
+  // normal-case: skill codes are case-semantic (e.g. "803o" ≠ "803O"), so they
+  // must never inherit the uppercase transform from Badge/micro-label parents.
+  return <span className="normal-case">{label(skill, allSkills) || fallback}</span>;
 }

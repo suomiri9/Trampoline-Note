@@ -526,11 +526,11 @@ function CompetitionCard({
 }
 
 const GRAPH_SERIES = [
-  { key: "total", name: "Total", color: "#f59e0b" },
-  { key: "e", name: "E", color: "#60a5fa" },
-  { key: "dd", name: "DD", color: "#a78bfa" },
-  { key: "hd", name: "HD", color: "#34d399" },
-  { key: "tof", name: "TOF", color: "#fb7185" },
+  { key: "total", name: "Total", color: "hsl(var(--chart-3))" },
+  { key: "e", name: "E", color: "hsl(var(--chart-1))" },
+  { key: "dd", name: "DD", color: "hsl(var(--chart-4))" },
+  { key: "hd", name: "HD", color: "hsl(var(--chart-2))" },
+  { key: "tof", name: "TOF", color: "hsl(var(--chart-5))" },
 ] as const;
 
 type GraphSeriesKey = (typeof GRAPH_SERIES)[number]["key"];

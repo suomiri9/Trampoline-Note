@@ -5,62 +5,28 @@
 @layer base {
   :root {
     color-scheme: light;
-    --font-display: 'Bebas Neue', sans-serif;
-    --font-body: 'DM Sans', sans-serif;
-    --font-sans: 'DM Sans', sans-serif;
-    --font-serif: 'DM Sans', sans-serif;
-    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    /* Intent type stack: Inter everywhere, IBM Plex Mono for meta/code.
+       --font-display stays as an alias so legacy font-display classes render
+       the same headline face. */
+    --font-display: 'Inter', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-sans: 'Inter', sans-serif;
+    --font-serif: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
-    /* Light Monospace — soft near-white with the same indigo/blue accent */
-    --background: 220 24% 97%;
-    --foreground: 228 28% 12%;
-    --card: 0 0% 100%;
-    --card-foreground: 228 28% 12%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 228 28% 12%;
-    --primary: 230 84% 56%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 228 18% 92%;
-    --secondary-foreground: 228 28% 18%;
-    --muted: 228 18% 94%;
-    --muted-foreground: 228 10% 42%;
-    --accent: 228 18% 91%;
-    --accent-foreground: 228 28% 16%;
-    --destructive: 0 72% 50%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 228 16% 86%;
-    --input: 228 16% 86%;
-    --ring: 230 84% 56%;
-    --radius: 0.75rem;
+    /* Color tokens live in intent-tokens.css — GENERATED from the Intent
+       design system (artifacts/intent/tokens.json). Only app-specific
+       extras belong here. */
 
-    /* Accent used for "Points to Fix" / secondary warm action */
-    --gold: 36 92% 42%;
+    /* Accent used for "Points to Fix" / secondary warm action — unified with
+       the Intent amber chart token (re-resolves per mode). */
+    --gold: var(--chart-3);
   }
 
-  /* Dark Monospace — the original near-black theme. Applied whenever <html> has
-     the `.dark` class (the default; Settings → Appearance toggles it off). */
+  /* Dark is the default theme (class set in index.html before first paint;
+     Settings → Appearance toggles it off). Values come from intent-tokens.css. */
   .dark {
     color-scheme: dark;
-    --background: 228 18% 5%;
-    --foreground: 210 20% 96%;
-    --card: 228 16% 8.5%;
-    --card-foreground: 210 20% 96%;
-    --popover: 228 16% 9%;
-    --popover-foreground: 210 20% 96%;
-    --primary: 230 92% 67%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 228 14% 14%;
-    --secondary-foreground: 210 20% 96%;
-    --muted: 228 14% 13%;
-    --muted-foreground: 220 11% 56%;
-    --accent: 228 14% 15%;
-    --accent-foreground: 210 20% 98%;
-    --destructive: 0 72% 56%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 228 12% 16%;
-    --input: 228 12% 16%;
-    --ring: 230 92% 67%;
-    --gold: 38 92% 58%;
   }
 }
 
@@ -152,21 +118,25 @@
   letter-spacing: 0.02em;
 }
 
-/* Disable JetBrains Mono programming ligatures so skill codes (e.g. `-<`, `<=`, `->`)
+/* Disable mono programming ligatures so skill codes (e.g. `-<`, `<=`, `->`)
    render as literal characters instead of merged arrow/comparison glyphs. */
 .font-mono,
 .font-mono-meta,
-.eyebrow {
+.eyebrow,
+.micro-label {
   font-feature-settings: "liga" 0, "calt" 0;
   font-variant-ligatures: none;
 }
 
-/* Small uppercase monospace eyebrow: `// TRAINING LOG` */
-.eyebrow {
+/* Intent micro-label — small uppercase monospace eyebrow: `// TRAINING LOG`.
+   (.micro-label is the design system's canonical name; .eyebrow is the app's
+   legacy alias — same recipe.) */
+.eyebrow,
+.micro-label {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 500;
-  letter-spacing: 0.28em;
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: hsl(var(--muted-foreground));
 }
@@ -179,27 +149,27 @@
 }
 @media (min-width: 640px) {
   .eyebrow-compact {
-    font-size: 0.7rem;
-    letter-spacing: 0.28em;
+    font-size: 10px;
+    letter-spacing: 0.18em;
   }
 }
 
-/* Large uppercase page title; the accent last word uses .title-accent */
+/* Large page/dialog title — Inter, tight and bold (Intent headline style). */
 .page-title {
-  font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
-  line-height: 0.92;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
 }
 
 .title-accent {
   color: hsl(var(--primary));
 }
 
-/* Blue→indigo gradient text — headlines, stat figures, accent words. */
+/* Intent signature: sky→indigo gradient text — headlines, stat figures,
+   accent words. Token-driven (primary → chart-4) so it adapts per mode. */
 .text-gradient-primary {
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, #818cf8 100%);
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -249,22 +219,12 @@
   }
 }
 
-/* Flat dark card with a thin border and a subtle inner highlight. */
+/* Intent flat panel: hairline border, no shadow — the border does the work.
+   (.card-3d is a legacy class name; ~50 call sites keep it as an alias.) */
 .card-3d {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
-  box-shadow:
-    0 1px 2px 0 hsl(228 30% 20% / 0.04),
-    0 10px 24px -18px hsl(228 30% 20% / 0.22);
-  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.dark .card-3d {
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  box-shadow:
-    0 1px 0 0 hsl(0 0% 100% / 0.02) inset,
-    0 8px 24px -16px hsl(0 0% 0% / 0.8);
+  transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
 .card-3d-hover:hover {
@@ -275,11 +235,7 @@
   transform: scale(0.99);
 }
 
-.dark .card-3d-hover:active {
-  transform: scale(0.99);
-}
-
-/* Translucent dark surface for the nav bar and floating chips. */
+/* Translucent surface for the nav bar and floating chips (neutral tint). */
 .glass-surface {
   background: hsl(0 0% 100% / 0.78);
   backdrop-filter: blur(18px) saturate(1.4);
@@ -287,11 +243,11 @@
   border: 1px solid hsl(var(--border));
   box-shadow:
     0 1px 0 0 hsl(0 0% 100% / 0.6) inset,
-    0 12px 40px -16px hsl(228 30% 20% / 0.25);
+    0 12px 40px -16px hsl(0 0% 10% / 0.18);
 }
 
 .dark .glass-surface {
-  background: hsl(228 18% 8% / 0.82);
+  background: hsl(0 0% 4% / 0.85);
   box-shadow:
     0 1px 0 0 hsl(0 0% 100% / 0.03) inset,
     0 12px 40px -12px hsl(0 0% 0% / 0.7);
@@ -341,18 +297,29 @@
   border: 1px solid hsl(var(--border));
 }
 
-/* Soft canvas with a faint indigo glow at the top (dark variant below). */
+/* CTA gradient for white-label buttons. Light mode uses deepened sky/indigo
+   endpoints so white text stays ≥4.5:1 (token light chart-4 is too light);
+   dark mode uses the standard primary → chart-4 tokens. */
+.bg-gradient-cta {
+  background: linear-gradient(135deg, hsl(201 96% 32%) 0%, hsl(243 55% 45%) 100%);
+}
+.dark .bg-gradient-cta {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%);
+}
+
+/* Soft canvas with a faint sky glow at the top — token-driven
+   (primary → chart-4, matching the Intent gradient axis). */
 .bg-mesh {
   background:
-    radial-gradient(ellipse 70% 45% at 15% -5%, hsl(230 92% 60% / 0.10) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 90% 0%, hsl(265 75% 60% / 0.07) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 45% at 15% -5%, hsl(var(--primary) / 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 90% 0%, hsl(var(--chart-4) / 0.07) 0%, transparent 55%),
     hsl(var(--background));
 }
 
 .dark .bg-mesh {
   background:
-    radial-gradient(ellipse 70% 45% at 15% -5%, hsl(230 92% 67% / 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 90% 0%, hsl(265 80% 60% / 0.05) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 45% at 15% -5%, hsl(var(--primary) / 0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 90% 0%, hsl(var(--chart-4) / 0.05) 0%, transparent 55%),
     hsl(var(--background));
 }
 
@@ -400,3 +367,65 @@ html, body {
 .stagger-3 { animation-delay: 0.3s; }
 .stagger-4 { animation-delay: 0.4s; }
 .stagger-5 { animation-delay: 0.5s; }
+
+/* ---------------------------------------------------------------------------
+   Intent interaction elevation (ported from the design system): hover/active
+   overlay tints driven by --elevate-1 / --elevate-2 (intent-tokens.css).
+   Buttons and badges opt in via `hover-elevate` / `active-elevate-2`. */
+.no-default-hover-elevate {}
+.no-default-active-elevate {}
+
+.toggle-elevate::before,
+.toggle-elevate-2::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0px;
+  border-radius: inherit;
+  z-index: -1;
+}
+
+.toggle-elevate.toggle-elevated::before {
+  background-color: var(--elevate-2);
+}
+
+.border.toggle-elevate::before {
+  inset: -1px;
+}
+
+.hover-elevate:not(.no-default-hover-elevate),
+.active-elevate:not(.no-default-active-elevate),
+.hover-elevate-2:not(.no-default-hover-elevate),
+.active-elevate-2:not(.no-default-active-elevate) {
+  position: relative;
+  z-index: 0;
+}
+
+.hover-elevate:not(.no-default-hover-elevate)::after,
+.active-elevate:not(.no-default-active-elevate)::after,
+.hover-elevate-2:not(.no-default-hover-elevate)::after,
+.active-elevate-2:not(.no-default-active-elevate)::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0px;
+  border-radius: inherit;
+  z-index: 999;
+}
+
+.hover-elevate:hover:not(.no-default-hover-elevate)::after,
+.active-elevate:active:not(.no-default-active-elevate)::after {
+  background-color: var(--elevate-1);
+}
+
+.hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
+.active-elevate-2:active:not(.no-default-active-elevate)::after {
+  background-color: var(--elevate-2);
+}
+
+.border.hover-elevate:not(.no-hover-interaction-elevate)::after,
+.border.active-elevate:not(.no-active-interaction-elevate)::after,
+.border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
+.border.active-elevate-2:not(.no-active-interaction-elevate)::after {
+  inset: -1px;
+}

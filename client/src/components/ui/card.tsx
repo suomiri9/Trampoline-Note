@@ -9,7 +9,9 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "shadcn-card rounded-2xl text-card-foreground card-3d",
+      // Intent: flat hairline panel — no shadow, the border does the work.
+      // (16px radius = the design system's rounded-xl in the app's v3 scale.)
+      "rounded-2xl border bg-card text-card-foreground",
       className
     )}
     {...props}

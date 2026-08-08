@@ -101,7 +101,7 @@ export default function Home() {
               Train<br />
               <span
                 style={{
-                  background: "linear-gradient(135deg, hsl(var(--primary)) 0%, #818cf8 100%)",
+                  background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                 }}
@@ -113,9 +113,8 @@ export default function Home() {
 
           <Button
             onClick={handleCreateNew}
-            className="mb-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white transition-transform hover:scale-105"
+            className="bg-gradient-cta mb-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-primary-foreground transition-transform hover:scale-105"
             style={{
-              background: "linear-gradient(135deg, hsl(var(--primary)) 0%, #818cf8 100%)",
               boxShadow: "0 0 24px hsl(var(--primary)/0.35)",
             }}
             aria-label="New session"
@@ -134,7 +133,7 @@ export default function Home() {
                 <div
                   className="text-[20px] font-medium tracking-[-0.05em] leading-none tabular-nums"
                   style={{
-                    background: "linear-gradient(135deg, hsl(var(--primary)), #818cf8)",
+                    background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--chart-4)))",
                     WebkitBackgroundClip: "text",
                     WebkitTextFillColor: "transparent",
                   }}
@@ -192,8 +191,7 @@ export default function Home() {
             </p>
             <Button
               onClick={handleCreateNew}
-              className="flex items-center gap-1.5 px-5 h-10 rounded-xl text-sm font-semibold text-white"
-              style={{ background: "linear-gradient(135deg, hsl(var(--primary)) 0%, #818cf8 100%)" }}
+              className="bg-gradient-cta flex items-center gap-1.5 px-5 h-10 rounded-xl text-sm font-semibold text-primary-foreground"
             >
               <Plus className="w-4 h-4" />
               Start Training

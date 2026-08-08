@@ -500,7 +500,7 @@ export default function StatsPage() {
             <div className="rounded-2xl border border-border/10 p-5 lg:col-span-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/35 mb-2">{periodTitle} <span className="text-sky-400/80">/ Turns</span></div>
+                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/35 mb-2">{periodTitle} <span className="text-primary/80">/ Turns</span></div>
                   <div className="text-4xl font-medium tracking-[-0.05em] tabular-nums" data-testid="text-period-turns">{periodTurns}</div>
                   <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground/50 mt-1.5" data-testid="legend-turns-chart">
                     <span className="flex items-center gap-1.5">

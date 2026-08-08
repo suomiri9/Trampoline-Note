@@ -1123,7 +1123,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         data-testid={`pick-part-${item.id}`}
                                       >
                                         <span className="font-mono text-xs font-semibold text-foreground mr-2">{item.name}</span>
-                                        <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-gray-600 dark:text-gray-300">Part</span>
+                                        <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">Part</span>
                                       </CommandItem>
                                     ))}
                                   </CommandGroup>
@@ -1155,9 +1155,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     <DropdownMenuContent align="end" className="w-40 rounded-xl">
                       <DropdownMenuItem className="cursor-pointer text-xs" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setShowNewPart(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(false); setNewSkillShapes([]); setNewSkillStep(1); }} data-testid="menu-new-skill">New Skill</DropdownMenuItem>
                       <DropdownMenuItem className="cursor-pointer text-xs text-yellow-600 dark:text-yellow-400" onClick={() => { setShowNewSkill(true); setShowNewConn(false); setShowNewRoutine(false); setShowNewPart(false); setNewSkillName(""); setNewSkillCode(""); setNewSkillDD(""); setNewSkillIsDrill(true); setNewSkillShapes([]); setNewSkillStep(1); }} data-testid="menu-new-drill">New Drill</DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-xs text-red-500 dark:text-red-400" onClick={() => { setShowNewConn(true); setShowNewSkill(false); setShowNewRoutine(false); setShowNewPart(false); setNewConnName(""); setNewConnSkillIds([]); setNewConnRoutineId(null); }} data-testid="menu-new-connection">New Connection</DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-xs text-blue-600 dark:text-blue-400" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setShowNewPart(false); setNewRoutineName(""); setNewRoutineSkillIds([]); }} data-testid="menu-new-routine">New Routine</DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-xs text-gray-600 dark:text-gray-300" onClick={() => { setShowNewPart(true); setShowNewConn(false); setShowNewSkill(false); setShowNewRoutine(false); setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); }} data-testid="menu-new-part">New Routine Part</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-destructive" onClick={() => { setShowNewConn(true); setShowNewSkill(false); setShowNewRoutine(false); setShowNewPart(false); setNewConnName(""); setNewConnSkillIds([]); setNewConnRoutineId(null); }} data-testid="menu-new-connection">New Connection</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-primary" onClick={() => { setShowNewRoutine(true); setShowNewConn(false); setShowNewSkill(false); setShowNewPart(false); setNewRoutineName(""); setNewRoutineSkillIds([]); }} data-testid="menu-new-routine">New Routine</DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs text-muted-foreground" onClick={() => { setShowNewPart(true); setShowNewConn(false); setShowNewSkill(false); setShowNewRoutine(false); setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); }} data-testid="menu-new-part">New Routine Part</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                   </div>
@@ -1476,7 +1476,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                             <CommandItem key={`p-${item.id}`} value={`${item.name} routine part`}
                                               onSelect={() => pickFc(item)} data-testid={`review-pick-part-${item.id}`}>
                                               <span className="font-mono text-xs font-semibold text-foreground mr-2">{item.name}</span>
-                                              <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-gray-600 dark:text-gray-300">Part</span>
+                                              <span className="ml-auto text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">Part</span>
                                             </CommandItem>
                                           ))}
                                         </CommandGroup>
@@ -1553,13 +1553,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                       </>
                                     ) : it.fcId != null ? (
                                       <>
-                                        <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] text-white border-none shrink-0", isPart ? "bg-gray-500" : "bg-red-500")} data-testid={`badge-menu-review-kind-${idx}`}>{isPart ? "PART" : "CONN"}</Badge>
-                                        <span className={cn("text-sm font-bold truncate", isPart ? "text-gray-700 dark:text-gray-300" : "text-red-600 dark:text-red-400")}>{it.names[0]}</span>
+                                        <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] border-none shrink-0", isPart ? "bg-muted text-muted-foreground" : "bg-destructive/15 text-destructive")} data-testid={`badge-menu-review-kind-${idx}`}>{isPart ? "PART" : "CONN"}</Badge>
+                                        <span className={cn("text-sm font-bold truncate", isPart ? "text-muted-foreground" : "text-destructive")}>{it.names[0]}</span>
                                       </>
                                     ) : (
                                       it.codes.map((c, j) => (
                                         <div key={j} className="flex items-center gap-2 min-w-0">
-                                          <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm border-border/70 text-foreground/70 shrink-0">{c}</Badge>
+                                          <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[10px] normal-case bg-background border-border/70 text-foreground/70 shrink-0">{c}</Badge>
                                           {it.codes.length === 1 && <span className="text-sm truncate">{it.names[j]}</span>}
                                           {j < it.codes.length - 1 && <span className="text-muted-foreground/60 font-bold text-xs">+</span>}
                                         </div>
@@ -1608,7 +1608,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         const typeLabel = isRoutine ? "ROUTINE" : isFC ? (isPart ? "PART" : "CONN") : "LINKED";
                         const typeColor = isRoutine
                           ? "bg-primary text-primary-foreground"
-                          : isPart ? "bg-gray-500 text-white" : "bg-red-500 text-white";
+                          : isPart ? "bg-muted text-muted-foreground" : "bg-destructive/15 text-destructive";
                         const title = isRoutine || isFC ? it.names[0] : it.codes.join(" + ");
                         const editIds = isRoutine || isFC ? (it.customSkillIds ?? []) : it.skillIds;
                         return (
@@ -2160,7 +2160,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           return (
                             <button key={`f-${ent.id}`} type="button" onClick={() => addSkill(ent.id.toString())} className={cn(
                               "px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors active:scale-95 max-w-[140px] truncate",
-                              isPart ? "border-gray-400 text-gray-600 bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:bg-gray-900/10" : "border-red-300 text-red-500 bg-red-50 dark:border-red-700 dark:text-red-400 dark:bg-red-900/10"
+                              isPart ? "border-border text-muted-foreground bg-muted/50" : "border-destructive/40 text-destructive bg-destructive/10"
                             )} data-testid={`btn-recent-fc-${ent.id}`}>{fc.name}</button>
                           );
                         }
@@ -2364,7 +2364,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
                                         {isConnected && (
-                                          <span className={cn("text-[9px] font-black uppercase tracking-wider shrink-0", iIdx === 0 ? "text-red-500" : "text-red-400/50 pl-1")}>
+                                          <span className={cn("text-[9px] font-black uppercase tracking-wider shrink-0", iIdx === 0 ? "text-destructive" : "text-destructive/50 pl-1")}>
                                             {iIdx === 0 ? "C" : "└"}
                                           </span>
                                         )}
@@ -2426,23 +2426,23 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                 return (
                                   <div key={idx} className={cn(
                                     iIdx > 0 && isConnected ? "border-t border-border/20" : "",
-                                    isPart ? "bg-gray-100/60 dark:bg-gray-900/10" : "bg-red-50/60 dark:bg-red-900/10"
+                                    isPart ? "bg-muted/40" : "bg-destructive/10"
                                   )}>
                                     <div
                                       className={cn("w-full px-3 py-2 text-sm flex justify-between items-center transition-colors cursor-pointer",
                                         isPart
-                                          ? "hover:bg-gray-200/40 active:bg-gray-200/60 dark:hover:bg-gray-900/20 dark:active:bg-gray-900/30"
-                                          : "hover:bg-red-100/40 active:bg-red-100/60 dark:hover:bg-red-900/20 dark:active:bg-red-900/30")}
+                                          ? "hover:bg-muted/60 active:bg-muted/70"
+                                          : "hover:bg-destructive/15 active:bg-destructive/20")}
                                       onClick={() => setEditingRoutineIdx(idx)}
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
                                         {isConnected && (
-                                          <span className={cn("text-[9px] font-black uppercase tracking-wider shrink-0", iIdx === 0 ? "text-red-500" : "text-red-400/50 pl-1")}>
+                                          <span className={cn("text-[9px] font-black uppercase tracking-wider shrink-0", iIdx === 0 ? "text-destructive" : "text-destructive/50 pl-1")}>
                                             {iIdx === 0 ? "C" : "└"}
                                           </span>
                                         )}
-                                        <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] text-white border-none shrink-0", isPart ? "bg-gray-500" : "bg-red-500")}>{isPart ? "PART" : "CONN"}</Badge>
-                                        <span className={cn("font-bold truncate", isPart ? "text-gray-700 dark:text-gray-300" : "text-red-600 dark:text-red-400")}>{fc?.name || item.fcName}</span>
+                                        <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] border-none shrink-0", isPart ? "bg-muted text-muted-foreground" : "bg-destructive/15 text-destructive")}>{isPart ? "PART" : "CONN"}</Badge>
+                                        <span className={cn("font-bold truncate", isPart ? "text-muted-foreground" : "text-destructive")}>{fc?.name || item.fcName}</span>
                                         {displaySkillIds.length < baseSkillIds.length && (
                                           <span className="text-[11px] font-mono text-muted-foreground shrink-0">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
                                         )}
@@ -2498,18 +2498,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                   <div className="px-3 py-2 flex justify-between items-center">
                                     <div className="flex gap-2 items-center min-w-0">
                                       {isConnected && (
-                                        <span className={cn("text-[9px] font-black uppercase tracking-wider shrink-0", iIdx === 0 ? "text-red-500" : "text-red-400/50 pl-1")}>
+                                        <span className={cn("text-[9px] font-black uppercase tracking-wider shrink-0", iIdx === 0 ? "text-destructive" : "text-destructive/50 pl-1")}>
                                           {iIdx === 0 ? "C" : "└"}
                                         </span>
                                       )}
                                       <Badge variant="outline" className={cn(
-                                        "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
+                                        "px-2 py-0.5 h-5 font-mono text-[10px] bg-background normal-case",
                                         skill?.isDrill === 1
                                           ? "border-yellow-300 text-yellow-600 dark:border-yellow-700 dark:text-yellow-400"
                                           : skill?.isDrill === 3
-                                          ? "border-gray-400 text-gray-600 dark:border-gray-600 dark:text-gray-300"
+                                          ? "border-border text-muted-foreground"
                                           : isConnected || skill?.isDrill === 2
-                                          ? "border-red-300 text-red-500 dark:border-red-700 dark:text-red-400"
+                                          ? "border-destructive/40 text-destructive"
                                           : "border-border/60 text-muted-foreground"
                                       )}>{skillDisplayCode(skill, allItems)}</Badge>
                                       <span className="text-sm truncate">{skillDisplayName(skill, allItems)}</span>
@@ -2738,7 +2738,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     return (
                       <div key={realIdx} className="flex items-center justify-between px-4 py-3 border-b border-border/20">
                         <div className="flex items-center gap-2 min-w-0">
-                          <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm shrink-0", sk?.isDrill === 1 ? "border-yellow-400/60 text-yellow-600 dark:border-yellow-600/60 dark:text-yellow-400" : "border-border/70 text-foreground/70")}>{skillDisplayCode(sk, allItems)}</Badge>
+                          <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[10px] bg-background normal-case shrink-0", sk?.isDrill === 1 ? "border-yellow-400/60 text-yellow-600 dark:border-yellow-600/60 dark:text-yellow-400" : "border-border/70 text-foreground/70")}>{skillDisplayCode(sk, allItems)}</Badge>
                           <span className="text-sm truncate">{skillDisplayName(sk, allItems)}</span>
                         </div>
                         <button type="button" className="ml-2 text-muted-foreground/50 hover:text-destructive shrink-0" onClick={() => {

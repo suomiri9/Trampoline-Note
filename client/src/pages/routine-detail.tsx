@@ -259,7 +259,7 @@ export default function RoutineDetailPage() {
           <Card className="mb-6">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <History className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                <History className="w-4 h-4 text-primary" />
                 Previous Routines
               </CardTitle>
             </CardHeader>
@@ -418,7 +418,7 @@ export default function RoutineDetailPage() {
                         {format(parseISO(entry.date), "MMM d, yyyy")}
                       </span>
                       {isOldLineup && (
-                        <span className="text-[9px] font-mono uppercase tracking-wider text-sky-600 dark:text-sky-400" data-testid={`tag-old-lineup-${entry.noteId}`}>
+                        <span className="text-[9px] font-mono uppercase tracking-wider text-primary" data-testid={`tag-old-lineup-${entry.noteId}`}>
                           old lineup
                         </span>
                       )}

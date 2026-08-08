@@ -114,12 +114,12 @@ export function SkillEditorOverlay({
                 >
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className={cn(
-                      "font-mono text-[10px]",
+                      "font-mono text-[10px] normal-case",
                       s.isDrill === 3 ? "border-muted-foreground/40 text-muted-foreground" :
-                      s.isDrill === 2 ? "border-red-300 text-red-500" : ""
+                      s.isDrill === 2 ? "border-destructive/40 text-destructive" : ""
                     )}>{skillDisplayCode(s, allSkills)}</Badge>
                     <span className="text-xs">{skillDisplayName(s, allSkills)}</span>
-                    {s.isDrill === 2 && <span className="text-[10px] text-red-500 font-medium">(Connection)</span>}
+                    {s.isDrill === 2 && <span className="text-[10px] text-destructive font-medium">(Connection)</span>}
                     {s.isDrill === 3 && <span className="text-[10px] text-muted-foreground font-medium">(Routine Part)</span>}
                   </div>
                 </CommandItem>

@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#0a0b10" />
+    <meta name="theme-color" content="#050505" />
     <!-- MUST stay the first script: "ResizeObserver loop completed with
          undelivered notifications" is benign browser noise, but it fires as a
          window error event with NO Error object, so dev tooling (the vite
@@ -62,7 +62,7 @@
           var light = localStorage.getItem("theme") === "light";
           var el = document.documentElement;
           el.classList.toggle("dark", !light);
-          var bg = light ? "#f4f6f9" : "#0a0b10";
+          var bg = light ? "#ffffff" : "#050505";
           el.style.backgroundColor = bg;
           var meta = document.querySelector('meta[name="theme-color"]');
           if (meta) meta.setAttribute("content", bg);
@@ -74,7 +74,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="Trampoline Note" />
 
-    <!-- iOS launch / splash screens. PLAIN solid dark (#0a0b10) on purpose:
+    <!-- iOS launch / splash screens. PLAIN solid dark (#050505) on purpose:
          designed launch images can never pixel-match the live overlay across
          devices, so the sequence is plain dark → spinner → animated splash. -->
 
@@ -157,7 +157,7 @@
     <link rel="preload" href="/icon-512.png" as="image" fetchpriority="high" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   </head>
   <body>
     <!-- Boot splash: painted straight from HTML so the trampoline bounce starts
@@ -169,7 +169,7 @@
          node, so it is the same DOM the whole time and there is no handoff snap
          mid-bounce.
          Loading phase (user request): the /splash/launch-*.png images are now
-         PLAIN solid dark (#0a0b10) and this overlay first shows only a spinner
+         PLAIN solid dark (#050505) and this overlay first shows only a spinner
          (#boot-splash-loader); the icon+title content stays hidden until the
          icon image and the display fonts are actually loaded (inline script
          adds .ready, 2.5s safety timeout). Black + loading circle on every
@@ -177,34 +177,34 @@
          matching, so there is nothing to visually "stick" or jump. -->
     <style>
       #boot-splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;
-        background:radial-gradient(ellipse 70% 45% at 15% -5%,hsl(230 92% 67% / .08) 0%,transparent 60%),
-                   radial-gradient(ellipse 50% 40% at 90% 0%,hsl(265 80% 60% / .05) 0%,transparent 55%),
-                   hsl(228 18% 5%)}
+        background:radial-gradient(ellipse 70% 45% at 15% -5%,hsl(199 95.5% 73.9% / .07) 0%,transparent 60%),
+                   radial-gradient(ellipse 50% 40% at 90% 0%,hsl(234 89.5% 73.9% / .05) 0%,transparent 55%),
+                   hsl(0 0% 2%)}
       html:not(.dark) #boot-splash{
-        background:radial-gradient(ellipse 70% 45% at 15% -5%,hsl(230 92% 60% / .10) 0%,transparent 60%),
-                   radial-gradient(ellipse 50% 40% at 90% 0%,hsl(265 75% 60% / .07) 0%,transparent 55%),
-                   hsl(220 24% 97%)}
+        background:radial-gradient(ellipse 70% 45% at 15% -5%,hsl(200 98% 39.4% / .10) 0%,transparent 60%),
+                   radial-gradient(ellipse 50% 40% at 90% 0%,hsl(239 83.5% 66.7% / .07) 0%,transparent 55%),
+                   hsl(0 0% 100%)}
       #boot-splash-loader{position:absolute;left:50%;top:50%;width:2.25rem;height:2.25rem;margin:-1.125rem 0 0 -1.125rem;
-        border-radius:9999px;border:3px solid hsl(230 92% 67% / .2);border-top-color:hsl(230 92% 67%);
+        border-radius:9999px;border:3px solid hsl(199 95.5% 73.9% / .2);border-top-color:hsl(199 95.5% 73.9%);
         animation:boot-spin .8s linear infinite}
-      html:not(.dark) #boot-splash-loader{border-color:hsl(230 84% 56% / .2);border-top-color:hsl(230 84% 56%)}
+      html:not(.dark) #boot-splash-loader{border-color:hsl(200 98% 39.4% / .2);border-top-color:hsl(200 98% 39.4%)}
       #boot-splash.ready #boot-splash-loader{display:none}
       #boot-splash-group{display:flex;flex-direction:column;align-items:center;gap:1.75rem;visibility:hidden}
       #boot-splash.ready #boot-splash-group{visibility:visible;animation:boot-fade-in-up .4s ease-out}
       #boot-splash-icon{width:6rem;height:6rem;border-radius:1.5rem;-webkit-user-select:none;user-select:none;
-        box-shadow:0 0 0 1px hsl(0 0% 100% / .1),0 25px 50px -12px hsl(230 92% 67% / .25);
+        box-shadow:0 0 0 1px hsl(0 0% 100% / .1),0 25px 50px -12px hsl(199 95.5% 73.9% / .25);
         animation:boot-splash-bounce .95s infinite;transform-origin:center bottom}
-      html:not(.dark) #boot-splash-icon{box-shadow:0 0 0 1px hsl(0 0% 0% / .05),0 25px 50px -12px hsl(230 84% 56% / .25)}
+      html:not(.dark) #boot-splash-icon{box-shadow:0 0 0 1px hsl(0 0% 0% / .05),0 25px 50px -12px hsl(200 98% 39.4% / .25)}
       #boot-splash-text{display:flex;flex-direction:column;align-items:center;gap:.625rem}
-      #boot-splash-title{margin:0;font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:3rem;line-height:.92;
-        letter-spacing:.01em;text-transform:uppercase;color:hsl(210 20% 96%)}
-      html:not(.dark) #boot-splash-title{color:hsl(228 28% 12%)}
-      #boot-splash-title span{color:hsl(230 92% 67%)}
-      html:not(.dark) #boot-splash-title span{color:hsl(230 84% 56%)}
-      #boot-splash-tagline{margin:0;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:500;
-        letter-spacing:.28em;text-transform:uppercase;color:hsl(225 9% 62% / .7);
+      #boot-splash-title{margin:0;font-family:'Inter',sans-serif;font-weight:800;font-size:2.6rem;line-height:1.02;
+        letter-spacing:-0.03em;color:hsl(180 6.7% 97.1%)}
+      html:not(.dark) #boot-splash-title{color:hsl(210 33.3% 5.9%)}
+      #boot-splash-title span{color:hsl(199 95.5% 73.9%)}
+      html:not(.dark) #boot-splash-title span{color:hsl(200 98% 39.4%)}
+      #boot-splash-tagline{margin:0;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;
+        letter-spacing:.18em;text-transform:uppercase;color:hsl(216 6.9% 57.5% / .8);
         font-feature-settings:"liga" 0,"calt" 0;font-variant-ligatures:none}
-      html:not(.dark) #boot-splash-tagline{color:hsl(228 12% 40% / .7)}
+      html:not(.dark) #boot-splash-tagline{color:hsl(211 11.1% 44.1% / .8)}
       @keyframes boot-spin{to{transform:rotate(360deg)}}
       @keyframes boot-fade-in-up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
       @keyframes boot-splash-bounce{
@@ -250,8 +250,8 @@
         if (document.fonts && document.fonts.load) {
           var fontsOk = function () { fontsDone = true; check(); };
           Promise.all([
-            document.fonts.load("1em 'Bebas Neue'"),
-            document.fonts.load("500 1em 'JetBrains Mono'"),
+            document.fonts.load("800 1em 'Inter'"),
+            document.fonts.load("500 1em 'IBM Plex Mono'"),
           ]).then(fontsOk, fontsOk);
         } else {
           fontsDone = true;

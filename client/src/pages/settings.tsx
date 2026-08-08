@@ -602,7 +602,7 @@ export default function SettingsPage() {
             <div className="rounded-2xl card-3d p-5">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4 min-w-0">
-                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-2xl font-display font-normal text-white shrink-0" data-testid="avatar-profile">
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--chart-4))] flex items-center justify-center text-2xl font-bold text-primary-foreground shrink-0" data-testid="avatar-profile">
                     {(displayName?.[0] ?? "A").toUpperCase()}
                   </div>
                   <div className="min-w-0">

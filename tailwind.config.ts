@@ -88,6 +88,11 @@ export default {
         mono: ["var(--font-mono)"],
         display: ["var(--font-display)"],
       },
+      // Tailwind v3 has no shadow-xs; the Intent components use it as the
+      // smallest elevation step (equal to v4's shadow-xs).
+      boxShadow: {
+        xs: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },

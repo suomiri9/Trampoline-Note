@@ -1,8 +1,8 @@
 export type Theme = 'dark' | 'light';
 
 const KEY = 'theme';
-const DARK_BG = '#0a0b10';
-const LIGHT_BG = '#f4f6f9';
+const DARK_BG = '#050505';
+const LIGHT_BG = '#ffffff';
 
 const subscribers = new Set<() => void>();
 

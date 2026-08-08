@@ -484,8 +484,8 @@ export default function ExecutionPage() {
                   className={cn(
                     "text-[9px] font-mono px-1.5 py-0 h-4 border-transparent",
                     s.category === "set"
-                      ? "bg-sky-500/15 text-sky-600 dark:text-sky-400"
-                      : "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+                      ? "bg-primary/15 text-primary"
+                      : "bg-[hsl(var(--chart-4)/0.15)] text-[hsl(var(--chart-4))]",
                   )}
                   data-testid={`badge-execution-category-${s.id}`}
                 >
