@@ -36,3 +36,10 @@ id = "0OnJ8MavH_mCA3zRXQgKL"
 uri = "file://client/public/icon-512.png"
 type = "image"
 title = "App logo (512×512 PNG) — upload this in the WHOOP dashboard"
+
+[[outputs]]
+id = "PGUKi3emmJHDsgrEIuG5U"
+uri = "file://trampoline-note-source.zip"
+type = "unspecified"
+title = "Trampoline Note — source code"
+description = "All source files: client, server, shared, scripts, config. No node_modules or build output."
