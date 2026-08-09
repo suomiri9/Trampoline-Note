@@ -145,7 +145,7 @@ export default function Home() {
         {/* Stats strip — bordered panel, shown once there are sessions */}
         {total > 0 && (
           <div className="relative -mx-6 px-4 pb-4">
-            <div className="flex divide-x divide-border/20 rounded-2xl overflow-hidden border border-border/20 bg-card/40">
+            <div className="flex divide-x divide-white/[0.06] rounded-2xl overflow-hidden border border-white/[0.07] bg-white/[0.025]">
               {STATS.map((s) => (
                 <div key={s.label} className="flex-1 flex flex-col items-center py-3 gap-1">
                   <span
