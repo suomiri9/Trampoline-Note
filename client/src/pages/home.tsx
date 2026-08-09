@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { Plus, BookOpen, Loader2, ChevronDown } from "lucide-react";
+import { Plus, Wrench, BookOpen, Loader2, ChevronDown } from "lucide-react";
 import { useNotesPage } from "@/hooks/use-notes";
 import { useQueuedNotes } from "@/hooks/use-queued-notes";
 import { NoteCard } from "@/components/note-card";
@@ -24,6 +24,7 @@ export default function Home() {
   const queuedNotes = useQueuedNotes();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
+  const [isPointsOpen, setIsPointsOpen] = useState(false);
 
   const handleCreateNew = () => {
     setNoteToEdit(null);
@@ -66,9 +67,16 @@ export default function Home() {
     return count;
   }, [visibleNotes]);
 
+  // Best session DD from loaded notes (difficulty = stored set-group DD, difficultyVol = vol-group DD)
+  const bestDD = useMemo(() => {
+    if (!visibleNotes.length) return 0;
+    return Math.max(...visibleNotes.map(n => (n.difficulty ?? 0) + (n.difficultyVol ?? 0)));
+  }, [visibleNotes]);
+
   const STATS = [
     { label: "Sessions", value: total > 0 ? String(total) : "—" },
     { label: "Streak", value: streak > 0 ? `${streak}d` : "—" },
+    { label: "Best DD", value: bestDD > 0 ? bestDD.toFixed(1) : "—" },
     { label: "This week", value: String(thisWeek) },
   ];
 
@@ -76,75 +84,86 @@ export default function Home() {
     <PageLayout>
       {/* ── Hero ─────────────────────────────────────────────────── */}
       <div className="relative -mx-4 sm:-mx-6 px-6 pt-safe-top pb-0 overflow-hidden">
-        {/* Blue glow */}
+        {/* Blue glow backdrop */}
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-72"
+          className="pointer-events-none absolute inset-x-0 top-0 h-80"
           style={{
-            background: "radial-gradient(ellipse 80% 60% at 50% -10%, hsl(var(--primary)/0.22) 0%, transparent 70%)",
+            background:
+              "radial-gradient(ellipse at 50% 0%, hsl(var(--primary)/0.18) 0%, hsl(var(--primary)/0.04) 55%, transparent 78%)",
           }}
         />
 
-        {/* Top bar: breadcrumb label */}
-        <div className="relative flex items-center justify-between pt-5 mb-10">
-          <span className="font-mono text-[10px] font-semibold tracking-[0.22em] text-muted-foreground/75 uppercase">
-            Training / Log
-          </span>
-        </div>
-
-        {/* Headline row: left-aligned headline + Plus button */}
-        <div className="relative flex items-end justify-between gap-4 mb-6">
-          <div>
-            <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-primary/70">
-              Performance ledger
-            </p>
-            <h1 className="font-black text-[38px] sm:text-[46px] leading-[0.92] tracking-[-0.05em]">
-              Train<br />
-              <span
-                style={{
-                  background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                }}
-              >
-                with intent.
-              </span>
-            </h1>
+        {/* Eyebrow pill */}
+        <div className="relative pt-7 pb-6 flex flex-col items-center text-center">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border/25 bg-card/60 text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Training Log
           </div>
 
-          <Button
-            onClick={handleCreateNew}
-            className="bg-gradient-cta mb-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-primary-foreground transition-transform hover:scale-105"
-            style={{
-              boxShadow: "0 0 24px hsl(var(--primary)/0.35)",
-            }}
-            aria-label="New session"
-            data-testid="btn-new-note"
-          >
-            <Plus className="h-5 w-5" />
-          </Button>
+          {/* Headline */}
+          <h1 className="font-black leading-[0.94] tracking-[-0.05em] mb-3" style={{ fontSize: "clamp(38px,10vw,48px)" }}>
+            <span className="text-foreground">Train</span>
+            <br />
+            <span
+              style={{
+                background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              with intent.
+            </span>
+          </h1>
+
+          <p className="text-[11px] text-muted-foreground/50 leading-relaxed mb-6 max-w-[200px]">
+            Every session, skill, and difficulty point — in one place.
+          </p>
+
+          {/* Action row */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsPointsOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-border/30 bg-card/40 text-[11px] font-medium text-muted-foreground hover:bg-card/70 active:scale-[0.98] transition-all"
+            >
+              <Wrench className="w-3.5 h-3.5" />
+              Points to Fix
+            </button>
+            <PointsToFix hideTrigger open={isPointsOpen} onOpenChange={setIsPointsOpen} />
+            <Button
+              onClick={handleCreateNew}
+              className="bg-gradient-cta flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-semibold text-primary-foreground active:scale-[0.98] transition-transform h-auto"
+              style={{ boxShadow: "0 0 22px hsl(var(--primary)/0.28)" }}
+              aria-label="New session"
+              data-testid="btn-new-note"
+            >
+              <Plus className="w-4 h-4" />
+              Start Training
+            </Button>
+          </div>
         </div>
 
-        {/* Stats strip */}
+        {/* Stats strip — bordered panel, shown once there are sessions */}
         {total > 0 && (
-          <div className="relative -mx-6 grid border-y border-border/20 py-4 px-6"
-            style={{ gridTemplateColumns: `repeat(${STATS.length}, 1fr)` }}>
-            {STATS.map((s, i) => (
-              <div key={s.label} className={`space-y-1 ${i > 0 ? "border-l border-border/20 pl-3" : ""}`}>
-                <div
-                  className="text-[20px] font-medium tracking-[-0.05em] leading-none tabular-nums"
-                  style={{
-                    background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--chart-4)))",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                  }}
-                >
-                  {s.value}
+          <div className="relative -mx-6 px-4 pb-4">
+            <div className="flex divide-x divide-border/20 rounded-2xl overflow-hidden border border-border/20 bg-card/40">
+              {STATS.map((s) => (
+                <div key={s.label} className="flex-1 flex flex-col items-center py-3 gap-1">
+                  <span
+                    className="text-[18px] font-bold tabular-nums leading-none"
+                    style={{
+                      background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--chart-4)))",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                    }}
+                  >
+                    {s.value}
+                  </span>
+                  <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40">
+                    {s.label}
+                  </span>
                 </div>
-                <div className="font-mono text-[8px] uppercase tracking-[0.13em] text-muted-foreground/40">
-                  {s.label}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -201,15 +220,12 @@ export default function Home() {
           <>
             {/* Sticky section header */}
             <div className="flex items-center justify-between sticky top-0 z-10 bg-background/90 backdrop-blur-md py-4 -mx-4 sm:-mx-6 px-4 sm:px-6">
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/35">
+              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/30">
                 Recent sessions
               </span>
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-[10px] text-muted-foreground/25" data-testid="text-notes-count">
-                  {visibleNotes.length} of {total}
-                </span>
-                <PointsToFix />
-              </div>
+              <span className="font-mono text-[9px] text-muted-foreground/20" data-testid="text-notes-count">
+                {visibleNotes.length} of {total}
+              </span>
             </div>
 
             {queuedNotes.length > 0 && (
