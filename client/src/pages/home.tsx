@@ -102,7 +102,7 @@ export default function Home() {
 
           {/* Headline */}
           <h1 className="font-black leading-[0.94] tracking-[-0.05em] mb-3" style={{ fontSize: "clamp(38px,10vw,48px)" }}>
-            <span className="text-foreground">Train</span>
+            <span className="text-foreground">Track every</span>
             <br />
             <span
               style={{
@@ -111,7 +111,7 @@ export default function Home() {
                 WebkitTextFillColor: "transparent",
               }}
             >
-              with intent.
+              jump.
             </span>
           </h1>
 
