@@ -218,7 +218,7 @@ export default function ExecutionSkillPage() {
                 {[...samples].reverse().map((s, i) => (
                   <div
                     key={`${s.sessionId}-${s.pos}-${i}`}
-                    className="flex items-center gap-3 text-xs font-mono rounded-lg bg-secondary/30 border border-border/50 px-3 py-2"
+                    className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.025] border border-white/[0.07] px-3 py-2"
                     data-testid={`row-exec-skill-log-${s.sessionId}-${s.pos}`}
                   >
                     <span className="text-muted-foreground w-20 shrink-0">{format(parseISO(s.date), "dd-MM-yyyy")}</span>

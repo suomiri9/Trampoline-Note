@@ -1240,7 +1240,7 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
             <button
               key={i}
               onClick={() => send(s)}
-              className="text-sm px-4 py-2 rounded-full border border-border bg-secondary/50 hover:bg-secondary text-foreground transition-colors whitespace-nowrap shrink-0"
+              className="text-sm px-4 py-2 rounded-full border border-border bg-white/[0.04] hover:bg-secondary text-foreground transition-colors whitespace-nowrap shrink-0"
               data-testid={`button-reply-suggestion-${i}`}
             >
               {s}
@@ -1256,7 +1256,7 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
               <img
                 src={src}
                 alt={`photo ${i + 1}`}
-                className="h-14 w-14 rounded-lg object-cover border border-border/60"
+                className="h-14 w-14 rounded-lg object-cover border border-white/[0.08]"
                 data-testid={`img-attachment-preview-${i}`}
               />
               <button
@@ -1272,7 +1272,7 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
         </div>
       )}
 
-      <div className="p-3 border-t border-border/50 flex items-end gap-2 shrink-0">
+      <div className="p-3 border-t border-white/[0.07] flex items-end gap-2 shrink-0">
         <input
           ref={fileInputRef}
           type="file"

@@ -456,7 +456,7 @@ export default function ExecutionPage() {
     return (
       <div
         key={pending ? `pending-${s.id}` : s.id}
-        className={cn("relative card-3d rounded-2xl p-5 pl-6 overflow-hidden", pending && "border-amber-500/40", !pending && "cursor-pointer transition-colors hover:bg-secondary/20")}
+        className={cn("relative card-3d rounded-2xl p-5 pl-6 overflow-hidden", pending && "border-amber-500/40", !pending && "cursor-pointer transition-colors hover:bg-white/[0.015]")}
         onClick={pending ? undefined : () => navigate(`/execution/session/${s.id}`)}
         data-testid={pending ? `card-execution-pending-${s.id}` : `card-execution-session-${s.id}`}
       >
@@ -559,14 +559,14 @@ export default function ExecutionPage() {
             const skillId = targetSkillIdAt(target, i);
             const sk = skillId != null ? skillOf(skillId) : undefined;
             return (
-              <div key={i} className="text-center bg-secondary/40 border border-border/50 rounded-md px-1 py-1" title={sk ? skillDisplayName(sk, allSkills) : undefined}>
+              <div key={i} className="text-center bg-white/[0.03] border border-white/[0.07] rounded-md px-1 py-1" title={sk ? skillDisplayName(sk, allSkills) : undefined}>
                 <div className="text-[9px] font-mono text-muted-foreground truncate">{seqLen == null ? `#${i + 1}` : sk ? skillDisplayCode(sk, allSkills) : `#${i + 1}`}</div>
                 <div className={cn("text-[11px] font-mono font-bold", deductionClass(v))}>{v.toFixed(1)}</div>
               </div>
             );
           })}
           {s.landingDeduction != null && (
-            <div className="text-center bg-secondary/20 border border-dashed border-border/50 rounded-md px-1 py-1" title="Landing deduction (0 = clean landing)" data-testid={`cell-execution-landing-${s.id}`}>
+            <div className="text-center bg-white/[0.015] border border-dashed border-white/[0.07] rounded-md px-1 py-1" title="Landing deduction (0 = clean landing)" data-testid={`cell-execution-landing-${s.id}`}>
               <div className="text-[9px] font-mono text-muted-foreground truncate">land</div>
               <div className={cn("text-[11px] font-mono font-bold", s.landingDeduction === 0 ? "text-emerald-500" : deductionClass(s.landingDeduction))}>
                 {s.landingDeduction.toFixed(1)}
@@ -633,7 +633,7 @@ export default function ExecutionPage() {
       <PageHeader
         eyebrow="Execution"
         title="Execution Tracker"
-        subtitle="Log the judges' per-skill execution deductions — from a sheet photo or by hand — and see which skills cost you the most tenths."
+        subtitle=""
         actions={
           <>
             <input
@@ -691,7 +691,7 @@ export default function ExecutionPage() {
               <button
                 type="button"
                 onClick={() => setTargetValue("adhoc")}
-                className="w-full rounded-xl border border-dashed border-border/70 bg-secondary/20 px-3 py-2 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-colors"
+                className="w-full rounded-xl border border-dashed border-white/[0.09] bg-white/[0.015] px-3 py-2 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-white/[0.03] transition-colors"
                 data-testid="button-exec-connect-skills"
               >
                 <Link2 className="h-3.5 w-3.5" /> Connect skills — build a quick sequence instead
@@ -724,7 +724,7 @@ export default function ExecutionPage() {
                   aria-pressed={landingOn}
                   className={cn(
                     "shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-mono uppercase tracking-wider transition-colors",
-                    landingOn ? "border-primary/60 bg-primary/15 text-primary" : "border-border/60 bg-secondary/30 text-muted-foreground",
+                    landingOn ? "border-primary/60 bg-primary/15 text-primary" : "border-white/[0.08] bg-white/[0.025] text-muted-foreground",
                   )}
                   data-testid="button-exec-landing-toggle"
                 >
@@ -777,7 +777,7 @@ export default function ExecutionPage() {
               {photoRows.map(row => {
                 const p = parseTenthsRow(row.tenths);
                 return (
-                  <div key={row.key} className={cn("rounded-xl border border-border/60 p-3", !row.kept && "opacity-60 bg-secondary/20")} data-testid={`review-execution-row-${row.key}`}>
+                  <div key={row.key} className={cn("rounded-xl border border-white/[0.08] p-3", !row.kept && "opacity-60 bg-white/[0.015]")} data-testid={`review-execution-row-${row.key}`}>
                     <div className="flex items-center justify-between mb-2">
                       <Badge variant="outline" className="font-mono text-[10px]">{row.label}</Badge>
                       {row.kept ? (
@@ -845,7 +845,7 @@ export default function ExecutionPage() {
                 const tooMany = p.skills.length > rowMax;
                 const showRowE = rowTarget == null || rowTarget.kind === "routine";
                 return (
-                  <div key={row.key} className="rounded-xl border border-border/60 p-3 space-y-2" data-testid={`details-execution-row-${row.key}`}>
+                  <div key={row.key} className="rounded-xl border border-white/[0.08] p-3 space-y-2" data-testid={`details-execution-row-${row.key}`}>
                     <div className="flex items-center justify-between text-xs font-mono">
                       <Badge variant="outline" className="font-mono text-[10px]">{row.label}</Badge>
                       <span>
@@ -921,7 +921,7 @@ export default function ExecutionPage() {
                   tabIndex={0}
                   onClick={() => navigate(`/execution/routine/${a.routineId}`)}
                   onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/execution/routine/${a.routineId}`); } }}
-                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-secondary/30 border border-border/50 px-3 py-2 cursor-pointer transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.025] border border-white/[0.07] px-3 py-2 cursor-pointer transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   data-testid={`row-exec-routine-analysis-${a.routineId}`}
                 >
                   <span className="font-bold text-foreground flex-1 truncate">{r?.name ?? "Unknown routine"}</span>
@@ -952,7 +952,7 @@ export default function ExecutionPage() {
                   tabIndex={0}
                   onClick={() => navigate(`/execution/skill/${a.skillId}`)}
                   onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/execution/skill/${a.skillId}`); } }}
-                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-secondary/30 border border-border/50 px-3 py-2 cursor-pointer transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.025] border border-white/[0.07] px-3 py-2 cursor-pointer transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   data-testid={`row-exec-analysis-${a.skillId}`}
                 >
                   <span className="font-bold text-foreground w-16 truncate shrink-0">{sk ? skillDisplayCode(sk, allSkills) : "?"}</span>
@@ -967,7 +967,7 @@ export default function ExecutionPage() {
             })}
             {analysis.landingAvg != null && (
               <div
-                className="flex items-center gap-3 text-xs font-mono rounded-lg bg-secondary/10 border border-dashed border-border/50 px-3 py-2"
+                className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.01] border border-dashed border-white/[0.07] px-3 py-2"
                 data-testid="row-exec-analysis-landing"
               >
                 <span className="font-bold text-foreground w-16 truncate shrink-0">Landing</span>

@@ -593,7 +593,7 @@ export default function SettingsPage() {
         eyebrow="Account"
         title="App Settings"
         accent="Settings"
-        subtitle="Manage your preferences and account."
+        subtitle=""
       />
 
       <main>
@@ -671,7 +671,7 @@ export default function SettingsPage() {
                       <p className="text-sm font-medium">Time Format</p>
                       <p className="text-xs text-muted-foreground mt-0.5">How times are displayed.</p>
                     </div>
-                    <div className="inline-flex p-1 rounded-xl bg-secondary/50 border border-border/50 shrink-0">
+                    <div className="inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.07] shrink-0">
                       {(["12h", "24h"] as const).map((opt) => (
                         <button
                           key={opt}
@@ -769,7 +769,7 @@ export default function SettingsPage() {
                 const percent = animatedDownloadPercent ?? downloadTargetPercent;
                 return (
                   <div
-                    className="mt-3 rounded-xl bg-secondary/40 px-4 py-3"
+                    className="mt-3 rounded-xl bg-white/[0.03] px-4 py-3"
                     data-testid="block-download-status"
                   >
                     <div className="flex items-center justify-between gap-3 mb-2">
@@ -788,7 +788,7 @@ export default function SettingsPage() {
                     </div>
                     {!(allReady && percent >= 100) && (
                       <div
-                        className="h-2 w-full rounded-full bg-secondary overflow-hidden mb-3"
+                        className="h-2 w-full rounded-full bg-white/[0.08] overflow-hidden mb-3"
                         role="progressbar"
                         aria-valuenow={percent}
                         aria-valuemin={0}
@@ -830,7 +830,7 @@ export default function SettingsPage() {
                       </p>
                     )}
                     <p
-                      className="text-[11px] text-muted-foreground mt-2 border-t border-border/50 pt-2"
+                      className="text-[11px] text-muted-foreground mt-2 border-t border-white/[0.07] pt-2"
                       data-testid="text-download-wipe-warning"
                     >
                       ⚠️ The download stays on this device through tab closes and restarts. It is wiped if you turn offline mode off, clear this site's browser data, or open the app in a different browser. The device may also evict it if storage runs very low.
@@ -839,7 +839,7 @@ export default function SettingsPage() {
                 );
               })()}
               {offlineModeEnabled && (
-                <div className="mt-3 flex items-center justify-between rounded-xl bg-secondary/40 px-3 py-2 gap-3">
+                <div className="mt-3 flex items-center justify-between rounded-xl bg-white/[0.03] px-3 py-2 gap-3">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pending sync</p>
                     <p
@@ -979,7 +979,7 @@ export default function SettingsPage() {
                       </Button>
                     </div>
                     {parsedGuide.aliasGroups.length > 0 && (
-                      <div className="mt-2 rounded-lg border border-border/50 divide-y divide-border/50">
+                      <div className="mt-2 rounded-lg border border-white/[0.07] divide-y divide-border/50">
                         {parsedGuide.aliasGroups.map((g) => {
                           const skill = skillByCode(g.code);
                           return (
@@ -997,7 +997,7 @@ export default function SettingsPage() {
                                 {g.aliases.map(({ index, alias }: { index: number; alias: string }) => (
                                   <span
                                     key={index}
-                                    className="inline-flex items-center gap-1 rounded-md bg-secondary/60 border border-border/50 px-2 h-6 text-sm font-medium"
+                                    className="inline-flex items-center gap-1 rounded-md bg-white/[0.05] border border-white/[0.07] px-2 h-6 text-sm font-medium"
                                     data-testid={`text-alias-${index}`}
                                   >
                                     {alias}
@@ -1114,7 +1114,7 @@ export default function SettingsPage() {
               failedItems.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-xl border border-border/60 bg-secondary/30 p-3 space-y-2"
+                  className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-3 space-y-2"
                   data-testid={`row-rejected-${item.id}`}
                 >
                   <div className="flex items-start justify-between gap-3">

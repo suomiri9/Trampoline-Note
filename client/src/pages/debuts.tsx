@@ -117,7 +117,7 @@ function DebutList({
               return (
                 <label
                   key={r.key}
-                  className="flex items-center gap-3 rounded-lg px-2.5 py-2 hover:bg-secondary/50 cursor-pointer"
+                  className="flex items-center gap-3 rounded-lg px-2.5 py-2 hover:bg-white/[0.04] cursor-pointer"
                   data-testid={`toggle-${testPrefix}-${r.key}`}
                 >
                   <span className={cn("flex-1 min-w-0 truncate text-xs font-mono font-bold", on ? "text-foreground" : "text-muted-foreground/60")}>
@@ -151,7 +151,7 @@ function DebutList({
     <div className="space-y-1.5">
       {picker}
       {debuted.map(r => (
-        <div key={r.key} className="rounded-lg bg-secondary/30 border border-border/50 px-3 py-2" data-testid={`row-${testPrefix}-${r.key}`}>
+        <div key={r.key} className="rounded-lg bg-white/[0.025] border border-white/[0.07] px-3 py-2" data-testid={`row-${testPrefix}-${r.key}`}>
           <div className="flex items-center gap-3 text-xs font-mono">
             <span className="font-bold text-foreground flex-1 truncate">
               {r.dotClass && <span className={cn("inline-block w-2 h-2 rounded-full mr-1.5", r.dotClass)} aria-hidden="true" />}
@@ -203,7 +203,7 @@ function DebutList({
         <>
           <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 pt-3 pb-1">Not competed yet</div>
           {pending.map(r => (
-            <div key={r.key} className="flex items-center gap-3 text-xs font-mono rounded-lg bg-secondary/10 border border-dashed border-border/50 px-3 py-2" data-testid={`row-${testPrefix}-pending-${r.key}`}>
+            <div key={r.key} className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.01] border border-dashed border-white/[0.07] px-3 py-2" data-testid={`row-${testPrefix}-pending-${r.key}`}>
               <span className="font-bold text-foreground/80 flex-1 truncate">
                 {r.dotClass && <span className={cn("inline-block w-2 h-2 rounded-full mr-1.5", r.dotClass)} aria-hidden="true" />}
                 {r.label}
@@ -461,7 +461,7 @@ export default function DebutsPage() {
         eyebrow="Competition readiness"
         title="Comp Debuts"
         accent="Debuts"
-        subtitle="How long it took each skill and routine to go from first training to first competition — shorter bar = faster debut."
+        subtitle=""
       />
 
       {isLoading ? (

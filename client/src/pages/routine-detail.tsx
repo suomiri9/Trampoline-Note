@@ -272,7 +272,7 @@ export default function RoutineDetailPage() {
                   : `until ${format(parseISO(v.effectiveUntil), "MMM d, yyyy")}`;
                 const pct = stats.sessions > 0 ? Math.round((stats.full / stats.sessions) * 100) : 0;
                 return (
-                  <div key={`${v.effectiveUntil}-${i}`} className="rounded-lg bg-muted/30 p-3" data-testid={`row-version-${i}`}>
+                  <div key={`${v.effectiveUntil}-${i}`} className="rounded-lg bg-white/[0.02] p-3" data-testid={`row-version-${i}`}>
                     <div className="flex items-center justify-between gap-2 flex-wrap mb-2 text-xs font-mono">
                       <span className="text-muted-foreground">{rangeLabel}</span>
                       <span className="flex items-center gap-1">
@@ -379,7 +379,7 @@ export default function RoutineDetailPage() {
                     type="button"
                     onClick={() => setPointsOpen(true)}
                     data-testid={`button-routine-point-${p.id}`}
-                    className={`text-left text-sm py-2 px-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors break-words ${p.resolved ? "line-through text-muted-foreground opacity-60" : ""}`}
+                    className={`text-left text-sm py-2 px-3 rounded-xl bg-white/[0.025] hover:bg-white/[0.04] transition-colors break-words ${p.resolved ? "line-through text-muted-foreground opacity-60" : ""}`}
                   >
                     {p.name}
                   </button>
@@ -410,7 +410,7 @@ export default function RoutineDetailPage() {
                   return (
                   <div
                     key={`${entry.noteId}-${entry.date}`}
-                    className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
                     data-testid={`row-session-${entry.noteId}`}
                   >
                     <div className="flex items-center gap-3">

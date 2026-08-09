@@ -510,7 +510,7 @@ export default function SkillsPage() {
         eyebrow="Skill Library"
         title="My Skills"
         accent="Skills"
-        subtitle="Manage your trampoline element library."
+        subtitle=""
         actions={
           <>
             <Button
@@ -534,11 +534,11 @@ export default function SkillsPage() {
       />
       <Tabs value={activeTab} className="flex flex-col gap-4 -mt-6" onValueChange={(v) => { setActiveTab(v); cancelEditing(); setReorderMode(false); }}>
         <div
-          className="sticky z-20 full-bleed-bar py-2 bg-background/90 backdrop-blur-md border-b border-border/60"
+          className="sticky z-20 full-bleed-bar py-2 bg-background/90 backdrop-blur-md border-b border-white/[0.08]"
           style={{ top: "var(--page-header-h, 96px)" }}
         >
           <div className="flex flex-wrap items-center gap-2">
-            <TabsList className="inline-flex h-auto flex-wrap justify-start gap-1 rounded-xl bg-secondary/40 p-1 shrink-0 self-start">
+            <TabsList className="inline-flex h-auto flex-wrap justify-start gap-1 rounded-xl bg-white/[0.03] p-1 shrink-0 self-start">
               <TabsTrigger value="skills">Skills</TabsTrigger>
               <TabsTrigger value="drills">Drills</TabsTrigger>
               <TabsTrigger value="connections">Connections</TabsTrigger>
@@ -672,7 +672,7 @@ export default function SkillsPage() {
               <CardContent className="overflow-x-auto">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(skills)}>
                   <Table>
-                    <TableHeader><TableRow className="border-border/60 hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow w-24">Code</TableHead><TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
+                    <TableHeader><TableRow className="border-white/[0.08] hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow w-24">Code</TableHead><TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
                     <SortableContext items={(skills || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
                       <TableBody>
                         {skills?.map((skill) => {
@@ -686,7 +686,7 @@ export default function SkillsPage() {
                             reorderMode={reorderMode}
                             className={cn(
                               !reorderMode && "cursor-pointer",
-                              editingSkill?.id === skill.id ? "bg-muted/50" : !reorderMode && "hover:bg-muted/30"
+                              editingSkill?.id === skill.id ? "bg-white/[0.04]" : !reorderMode && "hover:bg-white/[0.02]"
                             )}
                             onClick={hasShapes ? () => toggleExpanded(skill.id) : () => navigate(`/skills/${skill.id}`)}
                             testId={`row-skill-${skill.id}`}
@@ -862,7 +862,7 @@ export default function SkillsPage() {
               <CardContent className="overflow-x-auto">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(drills)}>
                   <Table>
-                    <TableHeader><TableRow className="border-border/60 hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow w-24">Code</TableHead><TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
+                    <TableHeader><TableRow className="border-white/[0.08] hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow w-24">Code</TableHead><TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
                     <SortableContext items={(drills || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
                       <TableBody>
                         {drills?.map((drill) => {
@@ -876,7 +876,7 @@ export default function SkillsPage() {
                             reorderMode={reorderMode}
                             className={cn(
                               !reorderMode && "cursor-pointer",
-                              editingSkill?.id === drill.id ? "bg-muted/50" : !reorderMode && "hover:bg-muted/30"
+                              editingSkill?.id === drill.id ? "bg-white/[0.04]" : !reorderMode && "hover:bg-white/[0.02]"
                             )}
                             onClick={hasShapes ? () => toggleExpanded(drill.id) : () => navigate(`/skills/${drill.id}`)}
                             testId={`row-drill-${drill.id}`}
@@ -1056,7 +1056,7 @@ export default function SkillsPage() {
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
                             <div className="flex flex-wrap gap-1.5">
                               {recents.map(s => (
-                                <button key={`conn-recent-${s.id}`} type="button" onClick={() => addSkillToConn(s.id.toString())} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95" data-testid={`btn-conn-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
+                                <button key={`conn-recent-${s.id}`} type="button" onClick={() => addSkillToConn(s.id.toString())} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-white/[0.08] text-muted-foreground bg-white/[0.025] hover:bg-white/[0.04] transition-colors active:scale-95" data-testid={`btn-conn-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
                               ))}
                             </div>
                           </div>
@@ -1066,7 +1066,7 @@ export default function SkillsPage() {
 
                     <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleConnChipDragEnd}>
                       <SortableContext items={connSkillIds.map((_, i) => `cs-${i}`)} strategy={rectSortingStrategy}>
-                        <div className="min-h-[80px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-2 items-start">
+                        <div className="min-h-[80px] rounded-lg p-2 bg-white/[0.02] flex flex-wrap gap-2 items-start">
                           {connSkillIds.map((id, idx) => {
                             const s = allItems?.find(sk => sk.id === id);
                             return (
@@ -1135,7 +1135,7 @@ export default function SkillsPage() {
               <CardContent className="overflow-x-auto">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(frequentConnections)}>
                   <Table>
-                    <TableHeader><TableRow className="border-border/60 hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow">Sequence</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
+                    <TableHeader><TableRow className="border-white/[0.08] hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow">Sequence</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
                     <SortableContext items={(frequentConnections || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
                       <TableBody>
                         {frequentConnections?.map((conn) => (
@@ -1143,7 +1143,7 @@ export default function SkillsPage() {
                             key={conn.id}
                             id={`skill-${conn.id}`}
                             reorderMode={reorderMode}
-                            className={editingSkill?.id === conn.id ? "bg-muted/50" : ""}
+                            className={editingSkill?.id === conn.id ? "bg-white/[0.04]" : ""}
                             testId={`row-connection-${conn.id}`}
                           >
                             <TableCell className="font-medium">
@@ -1285,7 +1285,7 @@ export default function SkillsPage() {
 
                         <div className="space-y-1">
                           <label className="text-xs font-medium text-muted-foreground">Skills in this part</label>
-                          <div className="min-h-[60px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-1.5 items-start">
+                          <div className="min-h-[60px] rounded-lg p-2 bg-white/[0.02] flex flex-wrap gap-1.5 items-start">
                             {partSliceIds.length === 0 ? (
                               <span className="text-xs text-muted-foreground p-1">Empty range</span>
                             ) : (
@@ -1332,7 +1332,7 @@ export default function SkillsPage() {
               <CardContent className="overflow-x-auto">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(routineParts)}>
                   <Table>
-                    <TableHeader><TableRow className="border-border/60 hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow">Sequence</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
+                    <TableHeader><TableRow className="border-white/[0.08] hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow">Sequence</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
                     <SortableContext items={(routineParts || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
                       <TableBody>
                         {routineParts?.map((part) => (
@@ -1340,7 +1340,7 @@ export default function SkillsPage() {
                             key={part.id}
                             id={`skill-${part.id}`}
                             reorderMode={reorderMode}
-                            className={editingSkill?.id === part.id ? "bg-muted/50" : ""}
+                            className={editingSkill?.id === part.id ? "bg-white/[0.04]" : ""}
                             testId={`row-part-${part.id}`}
                           >
                             <TableCell className="font-medium">

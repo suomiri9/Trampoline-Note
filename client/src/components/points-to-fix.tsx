@@ -562,7 +562,7 @@ export function PointsToFix({
                     <div
                       key={`${currentSkillId ?? "u"}-${currentRoutineId ?? "u"}-${p.id}`}
                       data-testid={`point-row-${p.id}`}
-                      className="flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl bg-secondary/30"
+                      className="flex flex-wrap items-center gap-2 py-1.5 px-3 rounded-xl bg-white/[0.025]"
                     >
                       {isEditing ? (
                         <>
@@ -1068,7 +1068,7 @@ export function PointsToFix({
                               );
                             })()}
                             {(draftSkillIds.length > 0 || draftRoutineIds.length > 0) && (
-                              <div className="flex flex-wrap gap-1.5 p-2 rounded-lg bg-muted/30">
+                              <div className="flex flex-wrap gap-1.5 p-2 rounded-lg bg-white/[0.02]">
                                 {draftSkillIds.map((id) => {
                                   const s = skillById(id);
                                   const t = skillTypeOf(s?.isDrill);

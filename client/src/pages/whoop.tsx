@@ -136,7 +136,7 @@ export default function WhoopPage() {
       eyebrow="Readiness"
       title="WHOOP Data"
       accent="Data"
-      subtitle="Recovery, sleep, strain and heart-rate trends from your WHOOP."
+      subtitle=""
     />
   );
 
@@ -175,7 +175,7 @@ export default function WhoopPage() {
           {disconnectMutation.isPending ? "Unlinking…" : "Disconnect"}
         </Button>
         <Select value={String(range)} onValueChange={(v) => setRange(Number(v) as WhoopRange)}>
-          <SelectTrigger className="w-[130px] h-8 rounded-xl text-xs border-border/50 font-mono" data-testid="select-whoop-range">
+          <SelectTrigger className="w-[130px] h-8 rounded-xl text-xs border-white/[0.07] font-mono" data-testid="select-whoop-range">
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="font-mono">
@@ -199,19 +199,19 @@ export default function WhoopPage() {
               <img
                 src={whoopLogoPath}
                 alt="WHOOP"
-                className="w-14 h-14 rounded-2xl shadow-lg shadow-black/40"
+                className="w-14 h-14 rounded-2xl shadow-black/40"
                 data-testid="icon-whoop-logo"
               />
               <ArrowRight className="w-6 h-6 text-muted-foreground" />
               <img
                 src="/icon-192.png"
                 alt="Trampoline Note"
-                className="w-14 h-14 rounded-2xl shadow-lg shadow-black/40"
+                className="w-14 h-14 rounded-2xl shadow-black/40"
                 data-testid="icon-app-logo"
               />
             </div>
           ) : (
-            <div className="w-12 h-12 mb-4 rounded-full bg-secondary/40 flex items-center justify-center">
+            <div className="w-12 h-12 mb-4 rounded-full bg-white/[0.03] flex items-center justify-center">
               <AlertTriangle className="w-6 h-6 text-amber-400" />
             </div>
           )}

@@ -292,7 +292,7 @@ export default function SkillDetailPage() {
                       type="button"
                       onClick={() => setPointsOpen(true)}
                       data-testid={`button-skill-point-${p.id}`}
-                      className={`text-left text-sm py-2 px-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors break-words ${p.resolved ? "line-through text-muted-foreground opacity-60" : ""}`}
+                      className={`text-left text-sm py-2 px-3 rounded-xl bg-white/[0.025] hover:bg-white/[0.04] transition-colors break-words ${p.resolved ? "line-through text-muted-foreground opacity-60" : ""}`}
                     >
                       {p.name}
                     </button>
@@ -320,7 +320,7 @@ export default function SkillDetailPage() {
                     return (
                       <div
                         key={`${entry.noteId}-${entry.date}`}
-                        className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                        className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
                         data-testid={`row-session-${entry.noteId}`}
                       >
                         <div className="flex items-center gap-3">
@@ -410,7 +410,7 @@ export default function SkillDetailPage() {
                     type="button"
                     onClick={() => setPointsOpen(true)}
                     data-testid={`button-skill-point-${p.id}`}
-                    className={`text-left text-sm py-2 px-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors break-words ${p.resolved ? "line-through text-muted-foreground opacity-60" : ""}`}
+                    className={`text-left text-sm py-2 px-3 rounded-xl bg-white/[0.025] hover:bg-white/[0.04] transition-colors break-words ${p.resolved ? "line-through text-muted-foreground opacity-60" : ""}`}
                   >
                     {p.name}
                   </button>
@@ -436,7 +436,7 @@ export default function SkillDetailPage() {
                 {[...entries].reverse().map((entry) => (
                   <div
                     key={`${entry.noteId}-${entry.date}`}
-                    className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
                     data-testid={`row-session-${entry.noteId}`}
                   >
                     <div className="flex items-center gap-3">

@@ -221,7 +221,7 @@ export default function RoutinesPage() {
         eyebrow="Routine Builder"
         title="My Routines"
         accent="Routines"
-        subtitle="Build and manage your 10-skill competition routines."
+        subtitle=""
         actions={
           <>
             <Button
@@ -311,7 +311,7 @@ export default function RoutinesPage() {
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
                   <div className="flex flex-wrap gap-1.5">
                     {recents.map(s => (
-                      <button key={`routine-recent-${s.id}`} type="button" disabled={selectedSkillIds.length >= 10} onClick={() => handleAddSkill(s.id)} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95 disabled:opacity-40 disabled:pointer-events-none" data-testid={`btn-routine-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
+                      <button key={`routine-recent-${s.id}`} type="button" disabled={selectedSkillIds.length >= 10} onClick={() => handleAddSkill(s.id)} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-white/[0.08] text-muted-foreground bg-white/[0.025] hover:bg-white/[0.04] transition-colors active:scale-95 disabled:opacity-40 disabled:pointer-events-none" data-testid={`btn-routine-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
                     ))}
                   </div>
                 </div>
@@ -319,7 +319,7 @@ export default function RoutinesPage() {
             })()}
             <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={selectedSkillIds.map((_, i) => `slot-${i}`)} strategy={rectSortingStrategy}>
-                <div className="min-h-[80px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-2 items-start">
+                <div className="min-h-[80px] rounded-lg p-2 bg-white/[0.02] flex flex-wrap gap-2 items-start">
                   {selectedSkillIds.map((id, idx) => {
                     const s = skills?.find(sk => sk.id === id);
                     return (
@@ -373,7 +373,7 @@ export default function RoutinesPage() {
             <label
               className={cn(
                 "flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors",
-                applyMode === "fromDay" ? "border-primary/60 bg-primary/5" : "border-border/60",
+                applyMode === "fromDay" ? "border-primary/60 bg-primary/5" : "border-white/[0.08]",
               )}
             >
               <RadioGroupItem value="fromDay" className="mt-0.5" data-testid="radio-apply-from-day" />
@@ -396,7 +396,7 @@ export default function RoutinesPage() {
             <label
               className={cn(
                 "flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors",
-                applyMode === "rewrite" ? "border-primary/60 bg-primary/5" : "border-border/60",
+                applyMode === "rewrite" ? "border-primary/60 bg-primary/5" : "border-white/[0.08]",
               )}
             >
               <RadioGroupItem value="rewrite" className="mt-0.5" data-testid="radio-apply-rewrite" />
@@ -477,7 +477,7 @@ export default function RoutinesPage() {
                   return (
                     <span
                       key={idx}
-                      className="text-center text-[11px] font-mono text-muted-foreground bg-secondary/40 border border-border/50 rounded-md px-1 py-1 truncate"
+                      className="text-center text-[11px] font-mono text-muted-foreground bg-white/[0.03] border border-white/[0.07] rounded-md px-1 py-1 truncate"
                       title={skillDisplayName(skill, allItems)}
                     >
                       <SkillCode skill={skill} allSkills={allItems} fallback="—" />

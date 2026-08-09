@@ -338,7 +338,7 @@ export default function TofPage() {
     return (
       <div
         key={pending ? `pending-${s.id}` : s.id}
-        className={cn("relative card-3d rounded-2xl p-5 pl-6 overflow-hidden", pending && "border-amber-500/40", !pending && "cursor-pointer transition-colors hover:bg-secondary/20")}
+        className={cn("relative card-3d rounded-2xl p-5 pl-6 overflow-hidden", pending && "border-amber-500/40", !pending && "cursor-pointer transition-colors hover:bg-white/[0.015]")}
         onClick={pending ? undefined : () => navigate(`/tof/session/${s.id}`)}
         data-testid={pending ? `card-tof-pending-${s.id}` : `card-tof-session-${s.id}`}
       >
@@ -407,7 +407,7 @@ export default function TofPage() {
         </div>
         <div className="grid grid-cols-5 gap-1.5 mt-4">
           {s.preJumpTof != null && (
-            <div className="text-center bg-secondary/20 border border-dashed border-border/50 rounded-md px-1 py-1" title="In-bounce jump before the first skill" data-testid={`cell-tof-prejump-${s.id}`}>
+            <div className="text-center bg-white/[0.015] border border-dashed border-white/[0.07] rounded-md px-1 py-1" title="In-bounce jump before the first skill" data-testid={`cell-tof-prejump-${s.id}`}>
               <div className="text-[9px] font-mono text-muted-foreground truncate">pre</div>
               <div className="text-[11px] font-mono font-bold text-muted-foreground">{s.preJumpTof.toFixed(2)}</div>
             </div>
@@ -418,7 +418,7 @@ export default function TofPage() {
             const prev = i > 0 ? vals[i - 1] : s.preJumpTof;
             const drop = prev != null ? prev - v : null;
             return (
-              <div key={i} className="text-center bg-secondary/40 border border-border/50 rounded-md px-1 py-1" title={sk ? skillDisplayName(sk, allSkills) : undefined}>
+              <div key={i} className="text-center bg-white/[0.03] border border-white/[0.07] rounded-md px-1 py-1" title={sk ? skillDisplayName(sk, allSkills) : undefined}>
                 <div className="text-[9px] font-mono text-muted-foreground truncate">{seqLen == null ? `#${i + 1}` : sk ? skillDisplayCode(sk, allSkills) : `#${i + 1}`}</div>
                 <div className="text-[11px] font-mono font-bold text-foreground">{v.toFixed(2)}</div>
                 {drop != null && (
@@ -440,7 +440,7 @@ export default function TofPage() {
       <PageHeader
         eyebrow="Time of Flight"
         title="ToF Tracker"
-        subtitle="Log per-jump time-of-flight from Veriflite screenshots or by hand, and see which skills cost you the most height."
+        subtitle=""
         actions={
           <Button onClick={openNew} className={primaryActionClass} data-testid="button-new-tof-session">
             <Plus className="w-5 h-5" /> New Session
@@ -478,7 +478,7 @@ export default function TofPage() {
               <button
                 type="button"
                 onClick={() => setTargetValue("adhoc")}
-                className="w-full rounded-xl border border-dashed border-border/70 bg-secondary/20 px-3 py-2 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-colors"
+                className="w-full rounded-xl border border-dashed border-white/[0.09] bg-white/[0.015] px-3 py-2 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-white/[0.03] transition-colors"
                 data-testid="button-tof-connect-skills"
               >
                 <Link2 className="h-3.5 w-3.5" /> Connect skills — build a quick sequence instead
@@ -597,7 +597,7 @@ export default function TofPage() {
                   tabIndex={0}
                   onClick={() => navigate(`/tof/routine/${a.routineId}`)}
                   onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/tof/routine/${a.routineId}`); } }}
-                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-secondary/30 border border-border/50 px-3 py-2 cursor-pointer transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.025] border border-white/[0.07] px-3 py-2 cursor-pointer transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   data-testid={`row-tof-routine-analysis-${a.routineId}`}
                 >
                   <span className="font-bold text-foreground flex-1 truncate">{r?.name ?? "Unknown routine"}</span>
@@ -628,7 +628,7 @@ export default function TofPage() {
                   tabIndex={0}
                   onClick={() => navigate(`/tof/skill/${a.skillId}`)}
                   onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/tof/skill/${a.skillId}`); } }}
-                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-secondary/30 border border-border/50 px-3 py-2 cursor-pointer transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.025] border border-white/[0.07] px-3 py-2 cursor-pointer transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   data-testid={`row-tof-analysis-${a.skillId}`}
                 >
                   <span className="font-bold text-foreground w-16 truncate shrink-0">{sk ? skillDisplayCode(sk, allSkills) : "?"}</span>

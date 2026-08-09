@@ -188,7 +188,7 @@ export default function TofSessionPage() {
             {jumps.map(j => (
               <div
                 key={j.jumpNo}
-                className="flex items-center gap-3 text-xs font-mono rounded-lg bg-secondary/30 border border-border/50 px-3 py-2"
+                className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.025] border border-white/[0.07] px-3 py-2"
                 data-testid={`row-tof-session-jump-${j.jumpNo}`}
               >
                 <span className="text-muted-foreground/60 w-8 shrink-0">#{j.jumpNo}</span>

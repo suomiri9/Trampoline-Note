@@ -9,7 +9,7 @@ export function SheetPhotoPreview({ src, testId }: { src: string; testId: string
     <button
       type="button"
       onClick={() => setExpanded(e => !e)}
-      className="block w-full rounded-xl border border-border/60 overflow-hidden bg-secondary/20"
+      className="block w-full rounded-xl border border-white/[0.08] overflow-hidden bg-white/[0.015]"
       aria-label={expanded ? "Shrink photo" : "Enlarge photo"}
       data-testid={testId}
     >

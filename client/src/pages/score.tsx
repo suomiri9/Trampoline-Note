@@ -98,7 +98,7 @@ function ScoreBreakdown({ e, d, h, t, label, routineName, total, totalColor, tot
         <div className="flex items-baseline gap-2 mb-2 min-w-0">
           {label && <span className="eyebrow text-[0.6rem] tracking-[0.2em] text-muted-foreground/80 shrink-0">{label}</span>}
           {routineName && (
-            <span className="inline-block max-w-full truncate rounded-lg border border-border/70 px-2 py-0.5 font-mono text-[11px] text-muted-foreground align-middle">
+            <span className="inline-block max-w-full truncate rounded-lg border border-white/[0.09] px-2 py-0.5 font-mono text-[11px] text-muted-foreground align-middle">
               {routineName}
             </span>
           )}
@@ -233,7 +233,7 @@ function ScoreCard({
           </div>
         </div>
 
-        <div className="mt-4 pt-4 border-t border-border/60">
+        <div className="mt-4 pt-4 border-t border-white/[0.08]">
           <ScoreGroups score={score} totalColor={totalColor} routines={routines} firstPracticedByRoutine={firstPracticedByRoutine} />
         </div>
       </div>
@@ -376,7 +376,7 @@ function RoundBlock({
   const grandTotal = effectiveTotal(score);
 
   return (
-    <div className="pt-4 border-t border-border/60 first:border-t-0 first:pt-0" data-testid={`round-${score.id}`}>
+    <div className="pt-4 border-t border-white/[0.08] first:border-t-0 first:pt-0" data-testid={`round-${score.id}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           {score.round && (
@@ -618,7 +618,7 @@ function ScoreGraph({
         </div>
         <div className="flex flex-wrap items-center sm:justify-end gap-2 sm:shrink-0">
           <Select value={catFilter} onValueChange={setCatFilter}>
-            <SelectTrigger className="w-[110px] h-8 rounded-xl text-xs border-border/50 font-mono shrink-0" data-testid={`select-graph-category${idSuffix}`}><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[110px] h-8 rounded-xl text-xs border-white/[0.07] font-mono shrink-0" data-testid={`select-graph-category${idSuffix}`}><SelectValue /></SelectTrigger>
             <SelectContent className="font-mono">
               <SelectItem value="all">Set &amp; Vol</SelectItem>
               <SelectItem value="set">Set only</SelectItem>
@@ -626,7 +626,7 @@ function ScoreGraph({
             </SelectContent>
           </Select>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[124px] h-8 rounded-xl text-xs border-border/50 font-mono shrink-0" data-testid={`select-graph-type${idSuffix}`}><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[124px] h-8 rounded-xl text-xs border-white/[0.07] font-mono shrink-0" data-testid={`select-graph-type${idSuffix}`}><SelectValue /></SelectTrigger>
             <SelectContent className="font-mono">
               <SelectItem value="all">All Types</SelectItem>
               <SelectItem value="competition">Competition</SelectItem>
@@ -636,7 +636,7 @@ function ScoreGraph({
           </Select>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="h-8 rounded-xl text-xs font-mono border-border/50 gap-1.5 px-3" data-testid={`button-graph-elements${idSuffix}`}>
+              <Button variant="outline" className="h-8 rounded-xl text-xs font-mono border-white/[0.07] gap-1.5 px-3" data-testid={`button-graph-elements${idSuffix}`}>
                 <SlidersHorizontal className="w-3.5 h-3.5" />
                 Elements
               </Button>
@@ -722,7 +722,7 @@ function ScoreGraph({
                   key={s.key}
                   type="button"
                   onClick={() => toggle(s.key)}
-                  className={cn("flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-mono transition-opacity", off ? "opacity-40 border-border/50" : "border-border")}
+                  className={cn("flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-mono transition-opacity", off ? "opacity-40 border-white/[0.07]" : "border-border")}
                   data-testid={`legend-${s.key}${idSuffix}`}
                 >
                   <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />
@@ -1517,7 +1517,7 @@ export default function ScorePage() {
                   {pb.set.score > 0 ? fmtScore(pb.set.score) : "—"}
                 </div>
                 <div className="eyebrow !text-[10px] mt-1.5 text-muted-foreground/70">Set Score</div>
-                <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-3 gap-2 text-center">
+                <div className="mt-3 pt-3 border-t border-white/[0.08] grid grid-cols-3 gap-2 text-center">
                   {[
                     { k: "E", id: "e", v: pb.set.e.toFixed(1) },
                     { k: "HD", id: "h", v: pb.set.h.toFixed(1) },
@@ -1535,7 +1535,7 @@ export default function ScorePage() {
                   {pb.vol.score > 0 ? fmtScore(pb.vol.score) : "—"}
                 </div>
                 <div className="eyebrow !text-[10px] mt-1.5 text-muted-foreground/70">Vol Score</div>
-                <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-4 gap-2 text-center">
+                <div className="mt-3 pt-3 border-t border-white/[0.08] grid grid-cols-4 gap-2 text-center">
                   {[
                     { k: "E", id: "e", v: pb.vol.e.toFixed(1) },
                     { k: "DD", id: "dd", v: pb.vol.dd.toFixed(1) },
@@ -1749,7 +1749,7 @@ export default function ScorePage() {
                   </div>
                   {editingRoutine === "set" && customSkillIds && allSkills && (
                     <div className="absolute inset-0 z-20 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setEditingRoutine(null); }}>
-                      <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-xl shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
                         <SkillEditorOverlay
                           title="Edit Skills"
                           skillIds={customSkillIds}
@@ -1841,7 +1841,7 @@ export default function ScorePage() {
                     </div>
                     {editingRoutine === "vol" && customSkillIdsVol && allSkills && (
                       <div className="absolute inset-0 z-20 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setEditingRoutine(null); }}>
-                        <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-xl shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
                           <SkillEditorOverlay
                             title="Edit Skills (Vol)"
                             skillIds={customSkillIdsVol}
@@ -1946,7 +1946,7 @@ export default function ScorePage() {
               {sheetRows.map((row) => {
                 const v = sheetRowValues(row);
                 return (
-                  <div key={row.key} className={cn("rounded-xl border border-border/60 p-3", !row.kept && "opacity-60 bg-secondary/20")} data-testid={`review-sheet-row-${row.key}`}>
+                  <div key={row.key} className={cn("rounded-xl border border-white/[0.08] p-3", !row.kept && "opacity-60 bg-white/[0.015]")} data-testid={`review-sheet-row-${row.key}`}>
                     <div className="flex items-center justify-between mb-2">
                       <Badge variant="outline" className="font-mono text-[10px]">{row.label}</Badge>
                       {row.kept ? (
@@ -2015,7 +2015,7 @@ export default function ScorePage() {
               {execDrafts.map(d => {
                 const p = parseTenthsRow(d.tenths);
                 return (
-                  <div key={d.key} className={cn("rounded-xl border border-border/60 p-3", !d.kept && "opacity-60 bg-secondary/20")} data-testid={`exec-draft-row-${d.key}`}>
+                  <div key={d.key} className={cn("rounded-xl border border-white/[0.08] p-3", !d.kept && "opacity-60 bg-white/[0.015]")} data-testid={`exec-draft-row-${d.key}`}>
                     <div className="flex items-center justify-between mb-2">
                       <Badge variant="outline" className="font-mono text-[10px]">{d.label}</Badge>
                       {d.kept ? (

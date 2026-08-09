@@ -20,7 +20,7 @@ export function OfflinePlaceholder({
       )}
       data-testid={testId ?? "card-offline-placeholder"}
     >
-      <div className="w-12 h-12 mb-4 rounded-full bg-secondary/40 flex items-center justify-center">
+      <div className="w-12 h-12 mb-4 rounded-full bg-white/[0.03] flex items-center justify-center">
         <WifiOff className="w-6 h-6 text-muted-foreground" />
       </div>
       <p className="font-semibold mb-1">You are not connected to the internet.</p>

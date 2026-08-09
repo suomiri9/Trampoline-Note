@@ -973,13 +973,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   return (
     <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[500px] md:max-w-[680px] w-[calc(100vw-32px)] p-0 rounded-[24px] border-border/50 max-h-[90vh] max-h-[90dvh] sm:max-h-[82vh] sm:max-h-[82dvh] flex flex-col overflow-clip">
+      <DialogContent className="sm:max-w-[500px] md:max-w-[680px] w-[calc(100vw-32px)] p-0 rounded-[24px] border-white/[0.07] max-h-[90vh] max-h-[90dvh] sm:max-h-[82vh] sm:max-h-[82dvh] flex flex-col overflow-clip">
         <div className="p-6 pb-4 flex-none">
           <DialogHeader>
             <DialogTitle className="text-3xl">{isEditing ? "Edit Session" : "Log Training Session"}</DialogTitle>
             <DialogDescription>Record your notes and skills practiced.</DialogDescription>
           </DialogHeader>
-          <div className="mt-3 grid grid-cols-3 gap-1 p-1 rounded-xl bg-secondary/40" role="tablist" aria-label="Session form steps">
+          <div className="mt-3 grid grid-cols-3 gap-1 p-1 rounded-xl bg-white/[0.03]" role="tablist" aria-label="Session form steps">
             {([1, 2, 3] as const).map((s, i) => (
               <button
                 key={s}
@@ -1514,8 +1514,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             {reviewConnectMode ? "Linking..." : "+ Link"}
                           </Button>
                           </div>
-                          <div className="min-h-[120px] bg-secondary/10 rounded-xl border border-border/50 overflow-hidden">
-                            <div className="bg-secondary/20 px-3 py-1.5 border-b border-border/50">
+                          <div className="min-h-[120px] bg-white/[0.01] rounded-xl border border-white/[0.07] overflow-hidden">
+                            <div className="bg-white/[0.015] px-3 py-1.5 border-b border-white/[0.07]">
                               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Practice List</span>
                             </div>
                             {menuReviewItems.length === 0 && (
@@ -1559,7 +1559,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     ) : (
                                       it.codes.map((c, j) => (
                                         <div key={j} className="flex items-center gap-2 min-w-0">
-                                          <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[10px] normal-case bg-background border-border/70 text-foreground/70 shrink-0">{c}</Badge>
+                                          <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[10px] normal-case bg-background border-white/[0.09] text-foreground/70 shrink-0">{c}</Badge>
                                           {it.codes.length === 1 && <span className="text-sm truncate">{it.names[j]}</span>}
                                           {j < it.codes.length - 1 && <span className="text-muted-foreground/60 font-bold text-xs">+</span>}
                                         </div>
@@ -1613,7 +1613,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         const editIds = isRoutine || isFC ? (it.customSkillIds ?? []) : it.skillIds;
                         return (
                           <div className="absolute inset-0 z-40 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm rounded-lg" onClick={(e) => { if (e.target === e.currentTarget) setReviewEditingIdx(null); }}>
-                            <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-xl shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-border/40">
                                 <div className="flex items-center gap-2 min-w-0">
                                   <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] border-none shrink-0", typeColor)}>{typeLabel}</Badge>
@@ -1839,7 +1839,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
                               <div className="flex flex-wrap gap-1.5">
                                 {recents.map(s => (
-                                  <button key={`nc-recent-${s.id}`} type="button" onClick={() => { addRecentSkill(s.id); setNewConnSkillIds(prev => [...prev, s.id]); }} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95" data-testid={`btn-new-conn-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
+                                  <button key={`nc-recent-${s.id}`} type="button" onClick={() => { addRecentSkill(s.id); setNewConnSkillIds(prev => [...prev, s.id]); }} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-white/[0.08] text-muted-foreground bg-white/[0.025] hover:bg-white/[0.04] transition-colors active:scale-95" data-testid={`btn-new-conn-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
                                 ))}
                               </div>
                             </div>
@@ -1848,7 +1848,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       </div>
                       <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleNewConnChipDragEnd}>
                         <SortableContext items={newConnSkillIds.map((_, i) => `nc-${i}`)} strategy={rectSortingStrategy}>
-                          <div className="min-h-[80px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-2 items-start">
+                          <div className="min-h-[80px] rounded-lg p-2 bg-white/[0.02] flex flex-wrap gap-2 items-start">
                             {newConnSkillIds.map((sid, i) => {
                               const s = allItems?.find(sk => sk.id === sid);
                               return (
@@ -1969,7 +1969,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
                             <div className="flex flex-wrap gap-1.5">
                               {recents.map(s => (
-                                <button key={`nr-recent-${s.id}`} type="button" disabled={newRoutineSkillIds.length >= 10} onClick={() => { addRecentSkill(s.id); setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, s.id] : prev); }} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50 transition-colors active:scale-95 disabled:opacity-40 disabled:pointer-events-none" data-testid={`btn-new-routine-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
+                                <button key={`nr-recent-${s.id}`} type="button" disabled={newRoutineSkillIds.length >= 10} onClick={() => { addRecentSkill(s.id); setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, s.id] : prev); }} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-white/[0.08] text-muted-foreground bg-white/[0.025] hover:bg-white/[0.04] transition-colors active:scale-95 disabled:opacity-40 disabled:pointer-events-none" data-testid={`btn-new-routine-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
                               ))}
                             </div>
                           </div>
@@ -1977,7 +1977,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       })()}
                       <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleNewRoutineChipDragEnd}>
                         <SortableContext items={newRoutineSkillIds.map((_, i) => `nr-${i}`)} strategy={rectSortingStrategy}>
-                          <div className="min-h-[80px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-2 items-start">
+                          <div className="min-h-[80px] rounded-lg p-2 bg-white/[0.02] flex flex-wrap gap-2 items-start">
                             {newRoutineSkillIds.map((sid, i) => {
                               const s = allItems?.find(sk => sk.id === sid);
                               return (
@@ -2100,7 +2100,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               </div>
                               <div className="space-y-1">
                                 <label className="text-xs font-medium text-muted-foreground">Skills in this part</label>
-                                <div className="min-h-[60px] rounded-lg p-2 bg-muted/30 flex flex-wrap gap-1.5 items-start">
+                                <div className="min-h-[60px] rounded-lg p-2 bg-white/[0.02] flex flex-wrap gap-1.5 items-start">
                                   {slice.length === 0 ? (
                                     <span className="text-xs text-muted-foreground p-1">Empty range</span>
                                   ) : slice.map((sid, i) => {
@@ -2160,7 +2160,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           return (
                             <button key={`f-${ent.id}`} type="button" onClick={() => addSkill(ent.id.toString())} className={cn(
                               "px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors active:scale-95 max-w-[140px] truncate",
-                              isPart ? "border-border text-muted-foreground bg-muted/50" : "border-destructive/40 text-destructive bg-destructive/10"
+                              isPart ? "border-border text-muted-foreground bg-white/[0.04]" : "border-destructive/40 text-destructive bg-destructive/10"
                             )} data-testid={`btn-recent-fc-${ent.id}`}>{fc.name}</button>
                           );
                         }
@@ -2170,7 +2170,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           <button key={`s-${ent.id}`} type="button" onClick={() => addSkill(ent.id.toString())} className={cn(
                             "px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors active:scale-95",
                             skill.isDrill === 1 ? "border-yellow-300 text-yellow-600 bg-yellow-50 dark:border-yellow-700 dark:text-yellow-400 dark:bg-yellow-900/10"
-                              : "border-border/60 text-muted-foreground bg-secondary/30 hover:bg-secondary/50"
+                              : "border-white/[0.08] text-muted-foreground bg-white/[0.025] hover:bg-white/[0.04]"
                           )} data-testid={`btn-recent-skill-${ent.id}`}><SkillCode skill={skill} allSkills={allItems} /></button>
                         );
                       })}
@@ -2178,8 +2178,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </div>
                 )}
 
-                <div className="min-h-[220px] bg-secondary/10 rounded-xl border border-border/50 overflow-hidden relative">
-                  <div className="bg-secondary/20 px-3 py-1.5 border-b border-border/50 flex justify-between items-center">
+                <div className="min-h-[220px] bg-white/[0.01] rounded-xl border border-white/[0.07] overflow-hidden relative">
+                  <div className="bg-white/[0.015] px-3 py-1.5 border-b border-white/[0.07] flex justify-between items-center">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Practice List</span>
                     <div className="flex items-center gap-2">
                       {trackTurns && turnInfo.totalTurns > 0 && (
@@ -2282,7 +2282,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                               "px-2 py-0.5 h-5 font-mono text-[10px] bg-background shadow-sm",
                                               sk?.isDrill === 1
                                                 ? "border-yellow-400/60 text-yellow-600 dark:border-yellow-600/60 dark:text-yellow-400"
-                                                : "border-border/70 text-foreground/70"
+                                                : "border-white/[0.09] text-foreground/70"
                                             )}><SkillCode skill={sk} allSkills={allItems} /></Badge>
                                             {sep}
                                           </div>
@@ -2335,7 +2335,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         placeholder="Type a note..."
                                         value={grpNote || ""}
                                         onChange={(e) => updateSkillNote(grpNoteIdx, e.target.value)}
-                                        className="w-full text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 outline-none focus:bg-muted/50 placeholder:text-muted-foreground/40"
+                                        className="w-full text-xs text-muted-foreground bg-white/[0.02] rounded px-2 py-1 outline-none focus:bg-white/[0.04] placeholder:text-muted-foreground/40"
                                         data-testid={`input-skill-note-${grpNoteIdx}`}
                                       />
                                     </div>
@@ -2358,7 +2358,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         "w-full px-3 py-2 text-sm flex justify-between items-center transition-colors cursor-pointer",
                                         isConnected
                                           ? "hover:bg-red-100/40 active:bg-red-100/60 dark:hover:bg-red-900/20 dark:active:bg-red-900/30"
-                                          : "hover:bg-secondary/20 active:bg-secondary/40 bg-primary/5"
+                                          : "hover:bg-white/[0.015] active:bg-white/[0.03] bg-primary/5"
                                       )}
                                       onClick={() => setEditingRoutineIdx(idx)}
                                     >
@@ -2412,7 +2412,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     </div>
                                     {(isConnected ? (iIdx === group.items.length - 1 && group.items[0].note !== undefined && group.items[0].note !== null) : (item.note !== undefined && item.note !== null)) && (
                                       <div className="px-3 pb-2 bg-primary/5">
-                                        <input type="text" placeholder="Type a note..." value={(isConnected ? group.items[0].note : item.note) || ""} onChange={(e) => updateSkillNote(isConnected ? group.indices[0] : idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 outline-none focus:bg-muted/50 placeholder:text-muted-foreground/40" data-testid={`input-skill-note-${isConnected ? group.indices[0] : idx}`} />
+                                        <input type="text" placeholder="Type a note..." value={(isConnected ? group.items[0].note : item.note) || ""} onChange={(e) => updateSkillNote(isConnected ? group.indices[0] : idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-white/[0.02] rounded px-2 py-1 outline-none focus:bg-white/[0.04] placeholder:text-muted-foreground/40" data-testid={`input-skill-note-${isConnected ? group.indices[0] : idx}`} />
                                       </div>
                                     )}
                                   </div>
@@ -2482,7 +2482,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     </div>
                                     {(isConnected ? (iIdx === group.items.length - 1 && group.items[0].note !== undefined && group.items[0].note !== null) : (item.note !== undefined && item.note !== null)) && (
                                       <div className="px-3 pb-2 bg-red-50/60 dark:bg-red-900/10">
-                                        <input type="text" placeholder="Type a note..." value={(isConnected ? group.items[0].note : item.note) || ""} onChange={(e) => updateSkillNote(isConnected ? group.indices[0] : idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 outline-none focus:bg-muted/50 placeholder:text-muted-foreground/40" data-testid={`input-skill-note-${isConnected ? group.indices[0] : idx}`} />
+                                        <input type="text" placeholder="Type a note..." value={(isConnected ? group.items[0].note : item.note) || ""} onChange={(e) => updateSkillNote(isConnected ? group.indices[0] : idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-white/[0.02] rounded px-2 py-1 outline-none focus:bg-white/[0.04] placeholder:text-muted-foreground/40" data-testid={`input-skill-note-${isConnected ? group.indices[0] : idx}`} />
                                       </div>
                                     )}
                                   </div>
@@ -2510,7 +2510,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           ? "border-border text-muted-foreground"
                                           : isConnected || skill?.isDrill === 2
                                           ? "border-destructive/40 text-destructive"
-                                          : "border-border/60 text-muted-foreground"
+                                          : "border-white/[0.08] text-muted-foreground"
                                       )}>{skillDisplayCode(skill, allItems)}</Badge>
                                       <span className="text-sm truncate">{skillDisplayName(skill, allItems)}</span>
                                     </div>
@@ -2573,7 +2573,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         placeholder="Type a note..."
                                         value={group.items[0].note || ""}
                                         onChange={(e) => updateSkillNote(group.indices[0], e.target.value)}
-                                        className="w-full text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 outline-none focus:bg-muted/50 placeholder:text-muted-foreground/40"
+                                        className="w-full text-xs text-muted-foreground bg-white/[0.02] rounded px-2 py-1 outline-none focus:bg-white/[0.04] placeholder:text-muted-foreground/40"
                                         data-testid={`input-skill-note-${group.indices[0]}`}
                                       />
                                     </div>
@@ -2612,10 +2612,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </div>
                   </DndContext>
                   {trackTurns && turnInfo.totalTurns > 0 && (
-                    <div className="border-t border-border/50 bg-secondary/10">
+                    <div className="border-t border-white/[0.07] bg-white/[0.01]">
                       <button
                         type="button"
-                        className="w-full flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary/30 transition-colors"
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-white/[0.025] transition-colors"
                         onClick={duplicateLastTurn}
                         data-testid="button-duplicate-last-turn"
                       >
@@ -2653,7 +2653,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   <FormItem className="space-y-0">
                     <FormLabel>Session Rating</FormLabel>
                     <FormControl>
-                      <div className="h-9 flex items-center bg-secondary/20 rounded-xl px-1.5 border border-border/50 w-fit">
+                      <div className="h-9 flex items-center bg-white/[0.015] rounded-xl px-1.5 border border-white/[0.07] w-fit">
                         <StarRating value={field.value} onChange={field.onChange} />
                       </div>
                     </FormControl>
@@ -2700,7 +2700,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
           const indices = editingGroupIndices;
           return (
             <div className="absolute inset-0 z-30 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setEditingGroupIndices(null); }}>
-              <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-xl shadow-black/30 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-black/30 overflow-hidden" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 shrink-0">
                   <span className="text-sm font-semibold">Connected Group</span>
                   <Button type="button" variant="outline" size="sm" className="h-7 px-3 rounded-xl text-xs" onClick={() => setEditingGroupIndices(null)}>Done</Button>
@@ -2712,7 +2712,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     if (item.id === -2) {
                       const r = routines?.find(rt => rt.id === item.routineId);
                       return (
-                        <button type="button" key={realIdx} className="w-full flex items-center justify-between px-4 py-3 border-b border-border/20 hover:bg-muted/30 active:bg-muted/50 text-left" onClick={() => setEditingRoutineIdx(realIdx)}>
+                        <button type="button" key={realIdx} className="w-full flex items-center justify-between px-4 py-3 border-b border-border/20 hover:bg-white/[0.02] active:bg-white/[0.04] text-left" onClick={() => setEditingRoutineIdx(realIdx)}>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="px-2 py-0.5 h-5 font-mono text-[9px] bg-primary text-primary-foreground border-none shrink-0">ROUTINE</Badge>
                             <span className="text-sm font-semibold text-primary">{r?.name || item.routineName}</span>
@@ -2725,7 +2725,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       const fc = allItems?.find(s => s.id === item.fcId);
                       const isPart = fc?.isDrill === 3;
                       return (
-                        <button type="button" key={realIdx} className="w-full flex items-center justify-between px-4 py-3 border-b border-border/20 hover:bg-muted/30 active:bg-muted/50 text-left" onClick={() => setEditingRoutineIdx(realIdx)}>
+                        <button type="button" key={realIdx} className="w-full flex items-center justify-between px-4 py-3 border-b border-border/20 hover:bg-white/[0.02] active:bg-white/[0.04] text-left" onClick={() => setEditingRoutineIdx(realIdx)}>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] border-none shrink-0", isPart ? "bg-secondary text-secondary-foreground" : "bg-red-500 text-white")}>{isPart ? "PART" : "CONN"}</Badge>
                             <span className={cn("text-sm font-semibold", isPart ? "text-muted-foreground" : "text-red-500 dark:text-red-400")}>{fc?.name || item.fcName}</span>
@@ -2738,7 +2738,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     return (
                       <div key={realIdx} className="flex items-center justify-between px-4 py-3 border-b border-border/20">
                         <div className="flex items-center gap-2 min-w-0">
-                          <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[10px] bg-background normal-case shrink-0", sk?.isDrill === 1 ? "border-yellow-400/60 text-yellow-600 dark:border-yellow-600/60 dark:text-yellow-400" : "border-border/70 text-foreground/70")}>{skillDisplayCode(sk, allItems)}</Badge>
+                          <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[10px] bg-background normal-case shrink-0", sk?.isDrill === 1 ? "border-yellow-400/60 text-yellow-600 dark:border-yellow-600/60 dark:text-yellow-400" : "border-white/[0.09] text-foreground/70")}>{skillDisplayCode(sk, allItems)}</Badge>
                           <span className="text-sm truncate">{skillDisplayName(sk, allItems)}</span>
                         </div>
                         <button type="button" className="ml-2 text-muted-foreground/50 hover:text-destructive shrink-0" onClick={() => {
@@ -2847,7 +2847,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
           return (
             <div className="absolute inset-0 z-40 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setEditingRoutineIdx(null); }}>
-              <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-xl shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
+              <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-border/40">
                   <div className="flex items-center gap-2 min-w-0">
                     <Badge variant="outline" className={cn("px-2 py-0.5 h-5 font-mono text-[9px] border-none shrink-0", typeColor)}>{typeLabel}</Badge>

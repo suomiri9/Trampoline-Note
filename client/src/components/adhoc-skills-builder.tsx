@@ -25,9 +25,9 @@ export function AdhocSkillsBuilder({
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   const full = skillIds.length >= max;
   return (
-    <div className="rounded-xl border border-border/60 bg-secondary/20 p-3 space-y-2" data-testid={`${testPrefix}-adhoc-builder`}>
+    <div className="rounded-xl border border-white/[0.08] bg-white/[0.015] p-3 space-y-2" data-testid={`${testPrefix}-adhoc-builder`}>
       <div className="flex items-center gap-1.5">
-        <div className="flex-1 min-h-9 rounded-md border border-border/50 bg-background px-2 py-1.5 flex flex-wrap items-center gap-y-1 font-mono text-sm">
+        <div className="flex-1 min-h-9 rounded-md border border-white/[0.07] bg-background px-2 py-1.5 flex flex-wrap items-center gap-y-1 font-mono text-sm">
           {skillIds.length === 0 ? (
             <span className="text-xs text-muted-foreground">Tap skills below, in order</span>
           ) : (
@@ -45,7 +45,7 @@ export function AdhocSkillsBuilder({
         {skillIds.length > 0 && (
           <button
             type="button"
-            className="h-9 w-9 shrink-0 rounded-md border border-border/60 bg-secondary/40 flex items-center justify-center text-muted-foreground hover:text-foreground"
+            className="h-9 w-9 shrink-0 rounded-md border border-white/[0.08] bg-white/[0.03] flex items-center justify-center text-muted-foreground hover:text-foreground"
             onClick={() => onChange(skillIds.slice(0, -1))}
             aria-label="Remove last skill"
             data-testid={`${testPrefix}-adhoc-backspace`}
@@ -63,8 +63,8 @@ export function AdhocSkillsBuilder({
             onClick={() => onChange([...skillIds, s.id])}
             title={skillDisplayName(s, allSkills)}
             className={cn(
-              "rounded-md border border-border/60 bg-secondary px-2.5 py-1.5 text-xs font-mono font-bold transition-colors",
-              full ? "opacity-40" : "hover:bg-secondary/70 active:scale-95",
+              "rounded-md border border-white/[0.08] bg-secondary px-2.5 py-1.5 text-xs font-mono font-bold transition-colors",
+              full ? "opacity-40" : "hover:bg-white/[0.06] active:scale-95",
             )}
             data-testid={`${testPrefix}-adhoc-pick-${s.id}`}
           >

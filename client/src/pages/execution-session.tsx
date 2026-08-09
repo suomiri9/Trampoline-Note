@@ -191,7 +191,7 @@ export default function ExecutionSessionPage() {
                 key={`${r.pos}-${r.isLanding ? "landing" : "skill"}`}
                 className={cn(
                   "flex items-center gap-3 text-xs font-mono rounded-lg px-3 py-2",
-                  r.isLanding ? "bg-secondary/10 border border-dashed border-border/50" : "bg-secondary/30 border border-border/50",
+                  r.isLanding ? "bg-white/[0.01] border border-dashed border-white/[0.07]" : "bg-white/[0.025] border border-white/[0.07]",
                 )}
                 data-testid={`row-exec-session-${r.isLanding ? "landing" : r.pos}`}
               >
