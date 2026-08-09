@@ -20,7 +20,6 @@ import {
 import { TrackerTargetSelect } from "@/components/tracker-target-select";
 import { AdhocSkillsBuilder } from "@/components/adhoc-skills-builder";
 import { PageLayout } from "@/components/page-layout";
-import { PageHeader, primaryActionClass, headerActionClass } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -456,11 +455,14 @@ export default function ExecutionPage() {
     return (
       <div
         key={pending ? `pending-${s.id}` : s.id}
-        className={cn("relative card-3d rounded-2xl p-5 pl-6 overflow-hidden", pending && "border-amber-500/40", !pending && "cursor-pointer transition-colors hover:bg-white/[0.015]")}
+        className={cn(
+          "relative rounded-2xl p-5 pl-6 overflow-hidden border bg-white/[0.025]",
+          pending ? "border-amber-500/40" : "border-white/[0.07] cursor-pointer transition-colors hover:bg-white/[0.05]",
+        )}
         onClick={pending ? undefined : () => navigate(`/execution/session/${s.id}`)}
         data-testid={pending ? `card-execution-pending-${s.id}` : `card-execution-session-${s.id}`}
       >
-        <span className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500 rounded-full" aria-hidden="true" />
+        <span className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500" aria-hidden="true" />
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[10px] font-mono text-muted-foreground">{fmtDate(s.date)}</div>
@@ -517,12 +519,12 @@ export default function ExecutionPage() {
           <div className="flex items-start gap-1 shrink-0">
             <div className="text-right leading-none">
               <div
-                className="text-3xl font-display font-normal text-rose-400 tracking-tight"
+                className="text-3xl font-black text-rose-400 tracking-tight tabular-nums"
                 data-testid={`text-execution-headline-${s.id}`}
               >
                 {e != null ? e.toFixed(1) : `−${total.toFixed(1)}`}
               </div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">
+              <div className="text-[9px] font-mono uppercase tracking-[0.14em] text-muted-foreground/40 mt-1">
                 {e != null ? "E score" : "Deductions"}
               </div>
             </div>
@@ -628,38 +630,112 @@ export default function ExecutionPage() {
     );
   };
 
+  const totalSessions = (sessions ?? []).length;
+  const allTotals = (sessions ?? []).map(s => totalDeductionPoints(s.deductions ?? [], s.landingDeduction));
+  const avgTotal = allTotals.length > 0 ? allTotals.reduce((a, b) => a + b, 0) / allTotals.length : 0;
+  const bestTotal = allTotals.length > 0 ? Math.min(...allTotals) : 0;
+
+  const HERO_STATS = [
+    { label: "Sessions", value: totalSessions > 0 ? String(totalSessions) : "—" },
+    { label: "Avg ded.", value: allTotals.length > 0 ? `−${avgTotal.toFixed(1)}` : "—" },
+    { label: "Best", value: allTotals.length > 0 ? `−${bestTotal.toFixed(1)}` : "—" },
+    { label: "Skills", value: String(analysis.ranked.length) },
+  ];
+
   return (
     <PageLayout>
-      <PageHeader
-        eyebrow="Execution"
-        title="Execution Tracker"
-        subtitle="Log the judges’ per-skill execution deductions — from a sheet photo or by hand — and see which skills cost you the most tenths."
-        actions={
-          <>
-            <input
-              ref={photoInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f); }}
-              data-testid="input-execution-photo"
-            />
-            <Button
-              variant="outline"
-              className={headerActionClass}
-              disabled={parsingPhoto}
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <div className="relative -mx-4 sm:-mx-6 px-6 pt-safe-top pb-0 overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-80"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 0%, hsl(var(--primary)/0.18) 0%, hsl(var(--primary)/0.04) 55%, transparent 78%)",
+          }}
+        />
+
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f); }}
+          data-testid="input-execution-photo"
+        />
+
+        <div className="relative flex flex-col items-center text-center pt-7 pb-6">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase mb-6">
+            <ClipboardCheck className="w-3 h-3 text-rose-400" />
+            Execution
+          </div>
+
+          <h1
+            className="font-black leading-[0.94] tracking-[-0.05em] mb-3"
+            style={{ fontSize: "clamp(38px,10vw,48px)" }}
+          >
+            <span className="text-foreground">Count every</span>
+            <br />
+            <span
+              style={{
+                background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              tenth.
+            </span>
+          </h1>
+
+          <p className="text-[11px] text-muted-foreground/50 leading-relaxed mb-6 max-w-[230px]">
+            Log the judges' per-skill deductions — by photo or by hand — and see what costs you the most.
+          </p>
+
+          <div className="flex items-center gap-2">
+            <button
               onClick={() => photoInputRef.current?.click()}
+              disabled={parsingPhoto}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] active:scale-[0.98] transition-all disabled:opacity-60"
               data-testid="button-upload-execution-photo"
             >
-              {parsingPhoto ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageUp className="w-4 h-4" />}
+              {parsingPhoto ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageUp className="w-3.5 h-3.5" />}
               {parsingPhoto ? "Reading..." : "From photo"}
-            </Button>
-            <Button onClick={openNew} className={primaryActionClass} data-testid="button-new-execution-session">
-              <Plus className="w-5 h-5" /> New Session
-            </Button>
-          </>
-        }
-      />
+            </button>
+            <button
+              onClick={openNew}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-semibold bg-gradient-cta text-primary-foreground active:scale-[0.98] transition-all"
+              style={{ boxShadow: "0 0 22px hsl(var(--primary)/0.28)" }}
+              data-testid="button-new-execution-session"
+            >
+              <Plus className="w-3.5 h-3.5" /> New Session
+            </button>
+          </div>
+        </div>
+
+        {/* Stat strip */}
+        {totalSessions > 0 && (
+          <div className="relative -mx-6 px-4 pb-4">
+            <div className="flex divide-x divide-white/[0.06] rounded-2xl overflow-hidden border border-white/[0.07] bg-white/[0.025]">
+              {HERO_STATS.map(s => (
+                <div key={s.label} className="flex-1 flex flex-col items-center py-3 gap-1 min-w-0 px-1">
+                  <span
+                    className="text-[18px] font-bold tabular-nums leading-none"
+                    style={{
+                      background: "linear-gradient(135deg,#60a5fa,#a78bfa)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                    }}
+                  >
+                    {s.value}
+                  </span>
+                  <span className="text-[8px] font-mono uppercase tracking-[0.12em] text-muted-foreground/40 truncate max-w-full">
+                    {s.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ---- Manual session form dialog ---- */}
       <Dialog open={showForm} onOpenChange={closeForm}>
@@ -906,11 +982,12 @@ export default function ExecutionPage() {
 
       {/* ---- Per-routine analysis ---- */}
       {routineAnalysis.length > 0 && (
-        <div className="card-3d rounded-2xl p-5 mb-6">
-          <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-            <ClipboardCheck className="h-4 w-4 text-emerald-500" /> Routine analysis
-            <span className="text-[10px] font-mono font-normal text-muted-foreground">tap for the routine's graph</span>
-          </h3>
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <ClipboardCheck className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Routine analysis</span>
+            <span className="ml-auto font-mono text-[9px] text-muted-foreground/30">tap for graph</span>
+          </div>
           <div className="space-y-1.5">
             {routineAnalysis.map(a => {
               const r = routineById.get(a.routineId);
@@ -937,11 +1014,12 @@ export default function ExecutionPage() {
 
       {/* ---- Per-skill analysis ---- */}
       {(analysis.ranked.length > 0 || analysis.landingAvg != null) && (
-        <div className="card-3d rounded-2xl p-5 mb-6">
-          <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-            <TrendingDown className="h-4 w-4 text-rose-500" /> Skill analysis
-            <span className="text-[10px] font-mono font-normal text-muted-foreground">ranked by avg deduction (worst first)</span>
-          </h3>
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingDown className="h-3.5 w-3.5 text-rose-400" />
+            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Skill analysis</span>
+            <span className="ml-auto font-mono text-[9px] text-muted-foreground/30">worst first</span>
+          </div>
           <div className="space-y-1.5">
             {analysis.ranked.map(a => {
               const sk = skillOf(a.skillId);
@@ -983,21 +1061,41 @@ export default function ExecutionPage() {
       )}
 
       {/* ---- Session list ---- */}
+      {(queuedSessions.length > 0 || (sessions ?? []).length > 0) && (
+        <div className="flex items-center justify-between mb-3">
+          <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/30">Sessions</span>
+          <span className="font-mono text-[9px] text-muted-foreground/20">{queuedSessions.length + (sessions ?? []).length} total</span>
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {queuedSessions.map(s => renderSessionCard(s, true))}
         {(sessions ?? []).map(s => renderSessionCard(s, false))}
         {!isLoading && (sessions ?? []).length === 0 && queuedSessions.length === 0 && (
-          <div className="col-span-full text-center py-20 card-3d rounded-2xl">
-            <ClipboardCheck className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-muted-foreground font-medium">No execution sessions yet.</p>
-            <p className="text-xs text-muted-foreground mt-1">Photograph a judges' sheet or enter deductions by hand.</p>
-            <div className="flex justify-center gap-2 mt-4">
-              <Button onClick={() => photoInputRef.current?.click()} variant="outline" className="rounded-xl" disabled={parsingPhoto} data-testid="button-photo-execution-empty">
-                <ImageUp className="w-4 h-4 mr-1" /> From photo
-              </Button>
-              <Button onClick={openNew} variant="outline" className="rounded-xl" data-testid="button-new-execution-empty">
-                <Plus className="w-4 h-4 mr-1" /> New Session
-              </Button>
+          <div className="col-span-full py-24 px-6 flex flex-col items-center justify-center text-center">
+            <div className="w-14 h-14 mb-5 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <ClipboardCheck className="w-7 h-7 text-primary" />
+            </div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/50 mb-2">No sessions yet</p>
+            <h3 className="text-2xl font-black tracking-tight mb-2">Start counting.</h3>
+            <p className="text-sm text-muted-foreground max-w-xs mb-8 leading-relaxed">
+              Photograph a judges' sheet or enter deductions by hand.
+            </p>
+            <div className="flex justify-center gap-2">
+              <button
+                onClick={() => photoInputRef.current?.click()}
+                disabled={parsingPhoto}
+                className="flex items-center gap-1.5 px-4 h-10 rounded-xl border border-white/[0.07] bg-white/[0.025] text-sm font-medium text-muted-foreground hover:bg-white/[0.06] active:scale-[0.98] transition-all disabled:opacity-60"
+                data-testid="button-photo-execution-empty"
+              >
+                <ImageUp className="w-4 h-4" /> From photo
+              </button>
+              <button
+                onClick={openNew}
+                className="flex items-center gap-1.5 px-5 h-10 rounded-xl text-sm font-semibold bg-gradient-cta text-primary-foreground active:scale-[0.98] transition-all"
+                data-testid="button-new-execution-empty"
+              >
+                <Plus className="w-4 h-4" /> New Session
+              </button>
             </div>
           </div>
         )}

@@ -7,8 +7,6 @@ import { useSkills } from "@/hooks/use-skills";
 import { skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
 import { resolveTarget, targetSkillIdAt, targetName } from "@/lib/tracker-target";
 import { PageLayout } from "@/components/page-layout";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Timer, Loader2, TrendingDown } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -16,7 +14,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import type { TofSession } from "@shared/schema";
 
 const tooltipStyle = {
-  borderRadius: "8px",
+  borderRadius: "12px",
   border: "1px solid hsl(var(--border))",
   background: "hsl(var(--popover))",
   color: "hsl(var(--popover-foreground))",
@@ -116,11 +114,13 @@ export default function TofSkillPage() {
   if (!skill) {
     return (
       <PageLayout>
-        <div className="text-center py-16">
-          <p className="text-muted-foreground">Skill not found.</p>
-          <Button variant="ghost" className="mt-4" onClick={() => navigate("/tof")} data-testid="button-back-tof-missing">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back to ToF
-          </Button>
+        <BackLink navigate={navigate} testId="button-back-tof-missing" />
+        <div className="py-24 flex flex-col items-center text-center">
+          <div className="w-14 h-14 mb-5 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center">
+            <Timer className="w-7 h-7 text-muted-foreground/40" />
+          </div>
+          <h3 className="text-2xl font-black tracking-tight mb-2">Skill not found.</h3>
+          <p className="text-sm text-muted-foreground/60">It may have been deleted.</p>
         </div>
       </PageLayout>
     );
@@ -128,163 +128,218 @@ export default function TofSkillPage() {
 
   return (
     <PageLayout>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="mb-4 -ml-2 text-muted-foreground"
-        onClick={() => navigate("/tof")}
-        data-testid="button-back-tof"
-      >
-        <ArrowLeft className="w-4 h-4 mr-1" /> ToF Tracker
-      </Button>
+      <BackLink navigate={navigate} testId="button-back-tof" />
 
-      <div className="mb-6">
-        <div className="text-[10px] font-mono uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
-          <Timer className="w-3.5 h-3.5" /> Time of Flight · Skill
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <div className="relative -mx-4 sm:-mx-6 px-6 pb-2 overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-56"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 0%, hsl(43 96% 56% / 0.14) 0%, hsl(43 96% 56% / 0.03) 55%, transparent 78%)",
+          }}
+        />
+        <div className="relative pt-4 pb-5">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/[0.07] bg-white/[0.025] text-[9px] font-mono text-amber-400/70 tracking-[0.18em] uppercase mb-4">
+            <Timer className="w-3 h-3" /> Time of Flight · Skill
+          </div>
+          <h1
+            className="font-black leading-[0.95] tracking-[-0.04em] break-words"
+            style={{ fontSize: "clamp(32px,9vw,48px)" }}
+            data-testid="text-tof-skill-code"
+          >
+            <span
+              style={{
+                background: "linear-gradient(135deg,#fbbf24,#f97316)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              {skillDisplayCode(skill, allSkills)}
+            </span>
+          </h1>
+          <div className="mt-2 text-sm text-muted-foreground/60 leading-snug" data-testid="text-tof-skill-name">
+            {skillDisplayName(skill, allSkills)}
+          </div>
         </div>
-        <h1 className="text-3xl font-display mt-1 flex items-baseline gap-3 flex-wrap">
-          <span data-testid="text-tof-skill-code">{skillDisplayCode(skill, allSkills)}</span>
-          <span className="text-lg text-muted-foreground font-body" data-testid="text-tof-skill-name">{skillDisplayName(skill, allSkills)}</span>
-        </h1>
       </div>
 
       {samples.length === 0 ? (
-        <div className="text-center py-20 card-3d rounded-2xl">
-          <Timer className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-muted-foreground font-medium">No ToF data for this skill yet.</p>
+        <div className="py-24 flex flex-col items-center text-center">
+          <div className="w-14 h-14 mb-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+            <Timer className="w-7 h-7 text-amber-400" />
+          </div>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50 mb-2">No data yet</p>
+          <h3 className="text-2xl font-black tracking-tight mb-2">No ToF for this skill.</h3>
+          <p className="text-sm text-muted-foreground/60 max-w-xs leading-relaxed">
+            Log a session that includes this skill to start tracking its height.
+          </p>
         </div>
       ) : (
         <>
-          {/* ---- Summary stats ---- */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <div className="card-3d rounded-2xl p-4 text-center">
-              <div className="text-2xl font-display text-amber-400" data-testid="stat-tof-avg">{stats!.avgTof.toFixed(2)}s</div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Avg ToF</div>
-            </div>
-            <div className="card-3d rounded-2xl p-4 text-center">
-              <div className="text-2xl font-display text-foreground" data-testid="stat-tof-best">{stats!.bestTof.toFixed(2)}s</div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Best ToF</div>
-            </div>
-            <div className="card-3d rounded-2xl p-4 text-center">
-              <div
-                className={cn("text-2xl font-display", stats!.avgDrop != null && stats!.avgDrop > 0 ? "text-red-500" : "text-emerald-500")}
-                data-testid="stat-tof-drop"
-              >
-                {fmtDrop(stats!.avgDrop)}
-              </div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Avg drop (n={stats!.dropSamples})</div>
-            </div>
-            <div className="card-3d rounded-2xl p-4 text-center">
-              <div className="text-2xl font-display text-foreground" data-testid="stat-tof-count">{stats!.count}</div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Recorded jumps</div>
-            </div>
+          {/* ── Stat strip ─────────────────────────────────────── */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-8">
+            <StatCell value={`${stats!.avgTof.toFixed(2)}s`} label="Avg ToF" amber testId="stat-tof-avg" />
+            <StatCell value={`${stats!.bestTof.toFixed(2)}s`} label="Best ToF" testId="stat-tof-best" />
+            <StatCell value={fmtDrop(stats!.avgDrop)} label={`Avg drop (n=${stats!.dropSamples})`} drop testId="stat-tof-drop" />
+            <StatCell value={String(stats!.count)} label="Recorded jumps" testId="stat-tof-count" />
           </div>
 
-          {/* ---- ToF over time ---- */}
-          <Card className="mb-6">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Timer className="w-4 h-4 text-amber-500" /> ToF over time
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-52 w-full" data-testid="chart-tof-skill">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="label" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval="preserveStartEnd" minTickGap={40} />
-                    <YAxis
-                      tick={{ fontSize: 11 }}
-                      className="fill-muted-foreground"
-                      domain={["dataMin - 0.1", "dataMax + 0.1"]}
-                      tickFormatter={(v: number) => v.toFixed(2)}
-                      width={52}
-                    />
-                    <Tooltip
-                      contentStyle={tooltipStyle}
-                      formatter={(value: number) => [`${value.toFixed(3)}s`, "ToF"]}
-                      labelFormatter={(_, payload) => {
-                        const p = payload?.[0]?.payload;
-                        return p ? `${p.label} · ${p.routineName} · jump ${p.jumpNo}` : "";
-                      }}
-                    />
-                    <Line type="monotone" dataKey="tof" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3, fill: "#f59e0b" }} activeDot={{ r: 5 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          {/* ── ToF over time ──────────────────────────────────── */}
+          <Panel title="ToF over time" icon={<Timer className="w-3.5 h-3.5 text-amber-400" />}>
+            <div className="h-52 w-full" data-testid="chart-tof-skill">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval="preserveStartEnd" minTickGap={40} />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    className="fill-muted-foreground"
+                    domain={["dataMin - 0.1", "dataMax + 0.1"]}
+                    tickFormatter={(v: number) => v.toFixed(2)}
+                    width={52}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(value: number) => [`${value.toFixed(3)}s`, "ToF"]}
+                    labelFormatter={(_, payload) => {
+                      const p = payload?.[0]?.payload;
+                      return p ? `${p.label} · ${p.routineName} · jump ${p.jumpNo}` : "";
+                    }}
+                  />
+                  <Line type="monotone" dataKey="tof" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3, fill: "#f59e0b" }} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Panel>
 
-          {/* ---- Drop over time ---- */}
-          <Card className="mb-6">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingDown className="w-4 h-4 text-red-500" /> Drop over time
-                <span className="text-[10px] font-mono font-normal text-muted-foreground">vs previous jump · below 0 = lost height</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-52 w-full" data-testid="chart-tof-skill-drop">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="label" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval="preserveStartEnd" minTickGap={40} />
-                    <YAxis
-                      tick={{ fontSize: 11 }}
-                      className="fill-muted-foreground"
-                      domain={["auto", "auto"]}
-                      tickFormatter={(v: number) => v.toFixed(2)}
-                      width={52}
-                    />
-                    <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />
-                    <Tooltip
-                      contentStyle={tooltipStyle}
-                      formatter={(_value: number, _name, entry) => [fmtDrop(entry?.payload?.drop ?? null), "Drop"]}
-                      labelFormatter={(_, payload) => {
-                        const p = payload?.[0]?.payload;
-                        return p ? `${p.label} · ${p.routineName} · jump ${p.jumpNo}` : "";
-                      }}
-                    />
-                    <Line type="monotone" dataKey="dropDelta" connectNulls stroke="#ef4444" strokeWidth={2} dot={{ r: 3, fill: "#ef4444" }} activeDot={{ r: 5 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          {/* ── Drop over time ─────────────────────────────────── */}
+          <Panel
+            title="Drop over time"
+            icon={<TrendingDown className="w-3.5 h-3.5 text-red-500" />}
+            meta="vs previous jump · below 0 = lost height"
+          >
+            <div className="h-52 w-full" data-testid="chart-tof-skill-drop">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval="preserveStartEnd" minTickGap={40} />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    className="fill-muted-foreground"
+                    domain={["auto", "auto"]}
+                    tickFormatter={(v: number) => v.toFixed(2)}
+                    width={52}
+                  />
+                  <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(_value: number, _name, entry) => [fmtDrop(entry?.payload?.drop ?? null), "Drop"]}
+                    labelFormatter={(_, payload) => {
+                      const p = payload?.[0]?.payload;
+                      return p ? `${p.label} · ${p.routineName} · jump ${p.jumpNo}` : "";
+                    }}
+                  />
+                  <Line type="monotone" dataKey="dropDelta" connectNulls stroke="#ef4444" strokeWidth={2} dot={{ r: 3, fill: "#ef4444" }} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Panel>
 
-          {/* ---- Jump log ---- */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingDown className="w-4 h-4 text-amber-500" /> Jump log
-                <span className="text-[10px] font-mono font-normal text-muted-foreground">newest first</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1.5">
-                {[...samples].reverse().map((s, i) => (
-                  <div
-                    key={`${s.sessionId}-${s.jumpNo}-${i}`}
-                    className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.025] border border-white/[0.07] px-3 py-2"
-                    data-testid={`row-tof-log-${s.sessionId}-${s.jumpNo}`}
+          {/* ── Jump log ───────────────────────────────────────── */}
+          <Panel title="Jump log" icon={<TrendingDown className="w-3.5 h-3.5 text-amber-400" />} meta="newest first">
+            <div className="rounded-xl overflow-hidden border border-white/[0.07] divide-y divide-white/[0.05]">
+              {[...samples].reverse().map((s, i) => (
+                <div
+                  key={`${s.sessionId}-${s.jumpNo}-${i}`}
+                  className="flex items-center gap-3 text-xs font-mono px-3.5 py-2.5 bg-white/[0.015]"
+                  data-testid={`row-tof-log-${s.sessionId}-${s.jumpNo}`}
+                >
+                  <span className="text-muted-foreground/60 w-20 shrink-0 tabular-nums">{format(parseISO(s.date), "dd-MM-yyyy")}</span>
+                  <span className="text-muted-foreground/70 flex-1 truncate">{s.routineName}</span>
+                  <span className="text-muted-foreground/40 shrink-0 tabular-nums" title="Position in the sequence (or attempt number)">#{s.jumpNo}</span>
+                  <span className="text-foreground font-bold shrink-0 w-14 text-right tabular-nums">{s.tof.toFixed(3)}s</span>
+                  <span
+                    className={cn("shrink-0 w-16 text-right tabular-nums", s.drop == null ? "text-muted-foreground/40" : s.drop > 0 ? "text-red-500" : "text-emerald-500")}
+                    title="Change vs the previous jump (positive drop = lost height)"
                   >
-                    <span className="text-muted-foreground w-20 shrink-0">{format(parseISO(s.date), "dd-MM-yyyy")}</span>
-                    <span className="text-muted-foreground flex-1 truncate">{s.routineName}</span>
-                    <span className="text-muted-foreground/60 shrink-0" title="Position in the sequence (or attempt number)">#{s.jumpNo}</span>
-                    <span className="text-foreground font-bold shrink-0 w-14 text-right">{s.tof.toFixed(3)}s</span>
-                    <span
-                      className={cn("shrink-0 w-16 text-right", s.drop == null ? "text-muted-foreground/50" : s.drop > 0 ? "text-red-500" : "text-emerald-500")}
-                      title="Change vs the previous jump (positive drop = lost height)"
-                    >
-                      {fmtDrop(s.drop)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                    {fmtDrop(s.drop)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Panel>
         </>
       )}
     </PageLayout>
+  );
+}
+
+function BackLink({ navigate, testId }: { navigate: (to: string) => void; testId: string }) {
+  return (
+    <button
+      onClick={() => navigate("/tof")}
+      className="mb-5 inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-[0.14em] text-muted-foreground/50 hover:text-amber-400 transition-colors"
+      data-testid={testId}
+    >
+      <ArrowLeft className="w-3.5 h-3.5" /> ToF Tracker
+    </button>
+  );
+}
+
+function StatCell({
+  value,
+  label,
+  amber,
+  drop,
+  testId,
+}: {
+  value: string;
+  label: string;
+  amber?: boolean;
+  drop?: boolean;
+  testId: string;
+}) {
+  const isNegDrop = drop && value.startsWith("-");
+  return (
+    <div className="flex flex-col items-center justify-center py-3.5 gap-1 rounded-2xl border border-white/[0.07] bg-white/[0.025]">
+      <span
+        className="text-[19px] font-bold tabular-nums leading-none"
+        style={
+          amber
+            ? { background: "linear-gradient(135deg,#fbbf24,#f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }
+            : drop
+              ? { color: isNegDrop ? "hsl(var(--destructive))" : "#10b981" }
+              : undefined
+        }
+        data-testid={testId}
+      >
+        {value}
+      </span>
+      <span className="text-[8px] font-mono uppercase tracking-[0.14em] text-muted-foreground/40 text-center px-1">{label}</span>
+    </div>
+  );
+}
+
+function Panel({
+  title,
+  icon,
+  meta,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  meta?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mb-4">
+      <div className="flex items-center gap-2 mb-4">
+        {icon}
+        <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60">{title}</span>
+        {meta && <span className="font-mono text-[9px] text-muted-foreground/35 ml-auto">{meta}</span>}
+      </div>
+      {children}
+    </div>
   );
 }

@@ -8,7 +8,6 @@ import { skillDisplayCode, skillDisplayName } from "@/lib/training-utils";
 import { resolveTarget, targetSkillIdAt, targetName } from "@/lib/tracker-target";
 import { PageLayout } from "@/components/page-layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, ClipboardCheck, Loader2, TrendingDown } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -16,7 +15,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import type { ExecutionSession } from "@shared/schema";
 
 const tooltipStyle = {
-  borderRadius: "8px",
+  borderRadius: "12px",
   border: "1px solid hsl(var(--border))",
   background: "hsl(var(--popover))",
   color: "hsl(var(--popover-foreground))",
@@ -100,8 +99,9 @@ export default function ExecutionSkillPage() {
   if (skillsLoading || sessionsLoading) {
     return (
       <PageLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-muted-foreground">
+          <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary/60" />
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/50">Loading skill…</p>
         </div>
       </PageLayout>
     );
@@ -110,7 +110,7 @@ export default function ExecutionSkillPage() {
   if (!skill) {
     return (
       <PageLayout>
-        <div className="text-center py-16">
+        <div className="text-center py-24">
           <p className="text-muted-foreground">Skill not found.</p>
           <Button variant="ghost" className="mt-4" onClick={() => navigate("/execution")} data-testid="button-back-execution-missing">
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Execution
@@ -120,118 +120,156 @@ export default function ExecutionSkillPage() {
     );
   }
 
+  const STATS = stats && [
+    { key: "stat-exec-skill-avg", label: "Avg ded.", value: `−${stats.avg.toFixed(2)}` },
+    { key: "stat-exec-skill-best", label: "Best (fewest)", value: `−${stats.best.toFixed(1)}` },
+    { key: "stat-exec-skill-worst", label: "Worst", value: `−${stats.worst.toFixed(1)}` },
+    { key: "stat-exec-skill-count", label: "Attempts", value: String(stats.count) },
+  ];
+
   return (
     <PageLayout>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="mb-4 -ml-2 text-muted-foreground"
-        onClick={() => navigate("/execution")}
-        data-testid="button-back-execution"
-      >
-        <ArrowLeft className="w-4 h-4 mr-1" /> Execution Tracker
-      </Button>
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <div className="relative -mx-4 sm:-mx-6 px-6 pt-safe-top pb-0 overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-72"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 0%, hsl(var(--primary)/0.16) 0%, hsl(var(--primary)/0.04) 55%, transparent 78%)",
+          }}
+        />
 
-      <div className="mb-6">
-        <div className="text-[10px] font-mono uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
-          <ClipboardCheck className="w-3.5 h-3.5" /> Execution · Skill
+        <div className="relative pt-4 pb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mb-5 -ml-2 h-8 text-[11px] font-mono uppercase tracking-[0.12em] text-muted-foreground/60 hover:text-foreground"
+            onClick={() => navigate("/execution")}
+            data-testid="button-back-execution"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 mr-1.5" /> Execution Tracker
+          </Button>
+
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase mb-4">
+            <ClipboardCheck className="w-3 h-3 text-rose-400" />
+            Skill Deduction History
+          </div>
+
+          <h1
+            className="font-black leading-[0.95] tracking-[-0.045em]"
+            style={{ fontSize: "clamp(30px,8vw,44px)" }}
+          >
+            <span
+              style={{
+                background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+              data-testid="text-exec-skill-code"
+            >
+              {skillDisplayCode(skill, allSkills)}
+            </span>
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground/60" data-testid="text-exec-skill-name">
+            {skillDisplayName(skill, allSkills)}
+          </p>
         </div>
-        <h1 className="text-3xl font-display mt-1 flex items-baseline gap-3 flex-wrap">
-          <span data-testid="text-exec-skill-code">{skillDisplayCode(skill, allSkills)}</span>
-          <span className="text-lg text-muted-foreground font-body" data-testid="text-exec-skill-name">{skillDisplayName(skill, allSkills)}</span>
-        </h1>
+
+        {/* Stat strip */}
+        {STATS && (
+          <div className="relative -mx-6 px-4 pb-4">
+            <div className="flex divide-x divide-white/[0.06] rounded-2xl overflow-hidden border border-white/[0.07] bg-white/[0.025]">
+              {STATS.map(s => (
+                <div key={s.key} className="flex-1 flex flex-col items-center py-3 gap-1 min-w-0 px-1">
+                  <span
+                    className="text-[18px] font-bold tabular-nums leading-none"
+                    style={{
+                      background: "linear-gradient(135deg,#60a5fa,#a78bfa)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                    }}
+                    data-testid={s.key}
+                  >
+                    {s.value}
+                  </span>
+                  <span className="text-[8px] font-mono uppercase tracking-[0.12em] text-muted-foreground/40 truncate max-w-full">
+                    {s.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {samples.length === 0 ? (
-        <div className="text-center py-20 card-3d rounded-2xl">
-          <ClipboardCheck className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-muted-foreground font-medium">No execution data for this skill yet.</p>
+        <div className="py-24 px-6 flex flex-col items-center justify-center text-center">
+          <div className="w-14 h-14 mb-5 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+            <ClipboardCheck className="w-7 h-7 text-primary" />
+          </div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/50 mb-2">No data yet</p>
+          <h3 className="text-xl font-black tracking-tight">No execution data for this skill.</h3>
         </div>
       ) : (
         <>
-          {/* ---- Summary stats ---- */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <div className="card-3d rounded-2xl p-4 text-center">
-              <div className="text-2xl font-display text-rose-400" data-testid="stat-exec-skill-avg">−{stats!.avg.toFixed(2)}</div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Avg deduction</div>
+          {/* ── Deduction over time ──────────────────────────────── */}
+          <section className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mb-4">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
+              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Deduction over time</span>
+              <span className="ml-auto font-mono text-[9px] text-muted-foreground/30">lower is better</span>
             </div>
-            <div className="card-3d rounded-2xl p-4 text-center">
-              <div className="text-2xl font-display text-emerald-500" data-testid="stat-exec-skill-best">−{stats!.best.toFixed(1)}</div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Best (fewest)</div>
+            <div className="h-52 w-full" data-testid="chart-exec-skill">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" minTickGap={40} axisLine={false} tickLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    domain={[0, "dataMax + 0.1"]}
+                    tickFormatter={(v: number) => v.toFixed(1)}
+                    width={40}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(value: number) => [`−${value.toFixed(1)}`, "Deduction"]}
+                    labelFormatter={(_, payload) => {
+                      const p = payload?.[0]?.payload;
+                      return p ? `${p.label} · ${p.targetLabel} · #${p.pos}` : "";
+                    }}
+                  />
+                  <Line type="monotone" dataKey="points" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3, fill: "#f43f5e" }} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
-            <div className="card-3d rounded-2xl p-4 text-center">
-              <div className="text-2xl font-display text-red-500" data-testid="stat-exec-skill-worst">−{stats!.worst.toFixed(1)}</div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Worst</div>
-            </div>
-            <div className="card-3d rounded-2xl p-4 text-center">
-              <div className="text-2xl font-display text-foreground" data-testid="stat-exec-skill-count">{stats!.count}</div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Judged attempts</div>
-            </div>
-          </div>
+          </section>
 
-          {/* ---- Deduction over time ---- */}
-          <Card className="mb-6">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingDown className="w-4 h-4 text-rose-500" /> Deduction over time
-                <span className="text-[10px] font-mono font-normal text-muted-foreground">lower is better</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-52 w-full" data-testid="chart-exec-skill">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="label" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval="preserveStartEnd" minTickGap={40} />
-                    <YAxis
-                      tick={{ fontSize: 11 }}
-                      className="fill-muted-foreground"
-                      domain={[0, "dataMax + 0.1"]}
-                      tickFormatter={(v: number) => v.toFixed(1)}
-                      width={40}
-                    />
-                    <Tooltip
-                      contentStyle={tooltipStyle}
-                      formatter={(value: number) => [`−${value.toFixed(1)}`, "Deduction"]}
-                      labelFormatter={(_, payload) => {
-                        const p = payload?.[0]?.payload;
-                        return p ? `${p.label} · ${p.targetLabel} · #${p.pos}` : "";
-                      }}
-                    />
-                    <Line type="monotone" dataKey="points" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3, fill: "#f43f5e" }} activeDot={{ r: 5 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ---- Deduction log ---- */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingDown className="w-4 h-4 text-rose-500" /> Deduction log
-                <span className="text-[10px] font-mono font-normal text-muted-foreground">newest first</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1.5">
-                {[...samples].reverse().map((s, i) => (
-                  <div
-                    key={`${s.sessionId}-${s.pos}-${i}`}
-                    className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.025] border border-white/[0.07] px-3 py-2"
-                    data-testid={`row-exec-skill-log-${s.sessionId}-${s.pos}`}
-                  >
-                    <span className="text-muted-foreground w-20 shrink-0">{format(parseISO(s.date), "dd-MM-yyyy")}</span>
-                    <span className="text-muted-foreground flex-1 truncate">{s.targetLabel}</span>
-                    <span className="text-muted-foreground/60 shrink-0" title="Position in the sequence (or attempt number)">#{s.pos}</span>
-                    <span className={cn("shrink-0 w-14 text-right font-bold", valueClass(s.points))}>
-                      −{s.points.toFixed(1)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          {/* ── Deduction log ────────────────────────────────────── */}
+          <section className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
+              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Deduction log</span>
+              <span className="ml-auto font-mono text-[9px] text-muted-foreground/30">newest first</span>
+            </div>
+            <div className="divide-y divide-white/[0.05] rounded-xl overflow-hidden border border-white/[0.06]">
+              {[...samples].reverse().map((s, i) => (
+                <div
+                  key={`${s.sessionId}-${s.pos}-${i}`}
+                  className="flex items-center gap-3 text-xs font-mono px-3 py-2.5"
+                  data-testid={`row-exec-skill-log-${s.sessionId}-${s.pos}`}
+                >
+                  <span className="text-muted-foreground/50 w-20 shrink-0">{format(parseISO(s.date), "dd-MM-yyyy")}</span>
+                  <span className="text-muted-foreground flex-1 truncate">{s.targetLabel}</span>
+                  <span className="text-muted-foreground/40 shrink-0" title="Position in the sequence (or attempt number)">#{s.pos}</span>
+                  <span className={cn("shrink-0 w-14 text-right font-bold tabular-nums", valueClass(s.points))}>
+                    −{s.points.toFixed(1)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
         </>
       )}
     </PageLayout>

@@ -1,6 +1,6 @@
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageLayout } from "@/components/page-layout";
-import { PageHeader } from "@/components/page-header";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
   Moon,
   AlertTriangle,
   RefreshCw,
+  Sparkles,
 } from "lucide-react";
 
 interface PushRecommendation {
@@ -26,31 +27,35 @@ interface PushRecommendation {
 
 const LEVELS: Record<
   PushRecommendation["level"],
-  { label: string; icon: typeof Flame; badgeClass: string; barClass: string }
+  { label: string; icon: typeof Flame; accent: string; glow: string; ring: string }
 > = {
   push: {
     label: "Push",
     icon: Flame,
-    badgeClass: "bg-red-500/15 text-red-600 dark:text-red-400",
-    barClass: "bg-red-500",
+    accent: "#f87171",
+    glow: "hsl(0 84% 60% / 0.16)",
+    ring: "hsl(0 84% 60% / 0.35)",
   },
   normal: {
     label: "Normal",
     icon: Activity,
-    badgeClass: "bg-green-500/15 text-green-600 dark:text-green-400",
-    barClass: "bg-green-500",
+    accent: "#4ade80",
+    glow: "hsl(142 71% 45% / 0.16)",
+    ring: "hsl(142 71% 45% / 0.35)",
   },
   easy: {
     label: "Easy",
     icon: Feather,
-    badgeClass: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400",
-    barClass: "bg-yellow-500",
+    accent: "#facc15",
+    glow: "hsl(48 96% 53% / 0.14)",
+    ring: "hsl(48 96% 53% / 0.32)",
   },
   rest: {
     label: "Rest",
     icon: Moon,
-    badgeClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-    barClass: "bg-blue-500",
+    accent: "#60a5fa",
+    glow: "hsl(217 91% 60% / 0.16)",
+    ring: "hsl(217 91% 60% / 0.35)",
   },
 };
 
@@ -83,20 +88,23 @@ function PushCard() {
   });
 
   if (isLoading) {
-    return <Skeleton className="h-[120px] rounded-2xl" data-testid="skeleton-coach-push" />;
+    return <Skeleton className="h-[150px] rounded-2xl" data-testid="skeleton-coach-push" />;
   }
 
   if (error || !data) {
     return (
-      <div className="card-3d rounded-2xl p-5" data-testid="card-coach-push-error">
+      <div
+        className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5"
+        data-testid="card-coach-push-error"
+      >
         <div className="flex items-center gap-2 text-muted-foreground">
-          <AlertTriangle className="w-4 h-4 text-yellow-500" />
+          <AlertTriangle className="w-4 h-4 text-amber-400" />
           <span className="text-sm">The coach couldn't build today's recommendation.</span>
         </div>
         <Button
           variant="outline"
           size="sm"
-          className="mt-3"
+          className="mt-3 rounded-xl"
           onClick={() => refetch()}
           disabled={isRefetching}
           data-testid="button-coach-push-retry"
@@ -112,47 +120,76 @@ function PushCard() {
   const Icon = lvl.icon;
 
   return (
-    <div className="card-3d rounded-2xl p-5 relative overflow-hidden" data-testid="card-coach-push">
-      <div className={cn("absolute left-0 top-0 bottom-0 w-1", lvl.barClass)} />
-      <div className="flex items-center justify-between mb-2">
-        <div className="eyebrow">Today's push level</div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 px-2 text-muted-foreground"
-          onClick={() => refresh.mutate()}
-          disabled={refresh.isPending}
-          data-testid="button-coach-push-refresh"
-          aria-label="Refresh recommendation"
-        >
-          <RefreshCw className={cn("w-4 h-4", refresh.isPending && "animate-spin")} />
-        </Button>
-      </div>
-      <div className="flex items-center gap-3 mb-2">
-        <span
-          className={cn(
-            "inline-flex items-center gap-2 px-3 py-1.5 rounded-xl font-mono uppercase tracking-wider text-sm font-semibold",
-            lvl.badgeClass,
-          )}
-          data-testid="badge-push-level"
-        >
-          <Icon className="w-4 h-4" />
-          {lvl.label}
-        </span>
-        {data.whoopLinked && data.todayRecovery != null && (
-          <span className="text-xs font-mono text-muted-foreground" data-testid="text-push-recovery">
-            recovery {Math.round(data.todayRecovery)}%
+    <div
+      className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5"
+      data-testid="card-coach-push"
+    >
+      {/* Level-tinted glow backdrop */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: `radial-gradient(ellipse at 100% 0%, ${lvl.glow} 0%, transparent 60%)` }}
+      />
+      <div className="relative">
+        <div className="flex items-center justify-between mb-4">
+          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50">
+            Today&apos;s push level
           </span>
+          <button
+            type="button"
+            onClick={() => refresh.mutate()}
+            disabled={refresh.isPending}
+            className="flex items-center justify-center w-7 h-7 rounded-lg text-muted-foreground/60 hover:bg-white/[0.06] hover:text-foreground active:scale-95 transition-all"
+            data-testid="button-coach-push-refresh"
+            aria-label="Refresh recommendation"
+          >
+            <RefreshCw className={cn("w-3.5 h-3.5", refresh.isPending && "animate-spin")} />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div
+            className="flex items-center justify-center w-14 h-14 rounded-2xl shrink-0"
+            style={{
+              background: `${lvl.glow}`,
+              boxShadow: `inset 0 0 0 1px ${lvl.ring}`,
+            }}
+            data-testid="badge-push-level"
+          >
+            <Icon className="w-7 h-7" style={{ color: lvl.accent }} />
+          </div>
+          <div className="min-w-0">
+            <div
+              className="font-black leading-none tracking-[-0.04em]"
+              style={{ fontSize: "clamp(30px,9vw,40px)", color: lvl.accent }}
+            >
+              {lvl.label}
+            </div>
+            {data.whoopLinked && data.todayRecovery != null && (
+              <div
+                className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50"
+                data-testid="text-push-recovery"
+              >
+                Recovery {Math.round(data.todayRecovery)}%
+              </div>
+            )}
+          </div>
+        </div>
+
+        <p
+          className="mt-4 text-sm text-muted-foreground/90 leading-relaxed"
+          data-testid="text-push-reasoning"
+        >
+          {data.reasoning}
+        </p>
+        {!data.whoopLinked && (
+          <p
+            className="text-[10px] font-mono uppercase tracking-[0.12em] text-muted-foreground/40 mt-3"
+            data-testid="text-push-no-whoop"
+          >
+            WHOOP not linked — guidance from training load only.
+          </p>
         )}
       </div>
-      <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-push-reasoning">
-        {data.reasoning}
-      </p>
-      {!data.whoopLinked && (
-        <p className="text-[11px] font-mono text-muted-foreground/70 mt-2" data-testid="text-push-no-whoop">
-          WHOOP not linked — guidance is based on training load only.
-        </p>
-      )}
     </div>
   );
 }
@@ -160,19 +197,65 @@ function PushCard() {
 export default function CoachPage() {
   const isOnline = useOnline();
 
-  const header = (
-    <PageHeader
-      eyebrow="AI Coach"
-      title="Coach"
-      accent="Coach"
-      subtitle="Daily push guidance, training answers, and help using the app."
-    />
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const root = document.getElementById("root");
+    if (!root) return;
+    const onScroll = () => setScrolled(root.scrollTop > 40);
+    root.addEventListener("scroll", onScroll, { passive: true });
+    return () => root.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const hero = (
+    <div className="relative -mx-4 sm:-mx-6 px-6 pt-safe-top pb-0 overflow-hidden">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-72"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 0%, hsl(var(--primary)/0.18) 0%, hsl(var(--primary)/0.04) 55%, transparent 78%)",
+        }}
+      />
+      <div
+        className={`relative flex flex-col items-center text-center transition-all duration-300 ${
+          scrolled ? "pt-3 pb-4" : "pt-7 pb-7"
+        }`}
+      >
+        <div
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border/25 bg-card/60 text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase transition-all duration-300 ${
+            scrolled ? "mb-3" : "mb-6"
+          }`}
+        >
+          <Sparkles className="w-3 h-3 text-primary" />
+          AI Coach
+        </div>
+        <h1
+          className="font-black leading-[0.94] tracking-[-0.05em] transition-all duration-300"
+          style={{ fontSize: scrolled ? "clamp(22px,6vw,26px)" : "clamp(38px,10vw,48px)", marginBottom: scrolled ? "0" : "12px" }}
+        >
+          <span className="text-foreground">Train </span>
+          <span
+            style={{
+              background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            smarter.
+          </span>
+        </h1>
+        {!scrolled && (
+          <p className="text-[11px] text-muted-foreground/50 leading-relaxed max-w-[220px]">
+            Daily push guidance, training answers, and help using the app.
+          </p>
+        )}
+      </div>
+    </div>
   );
 
   if (!isOnline) {
     return (
       <PageLayout>
-        {header}
+        {hero}
         <OfflinePlaceholder
           testId="card-offline-coach"
           hint="The AI coach is live-only. It will be back when you reconnect."
@@ -183,15 +266,20 @@ export default function CoachPage() {
 
   return (
     <PageLayout>
-      {header}
+      {hero}
 
-      <PushCard />
+      <div className="mt-2">
+        <PushCard />
+      </div>
 
-      <div className="card-3d rounded-2xl flex flex-col mt-4" data-testid="card-coach-chat">
-        <div className="flex items-center justify-between px-5 pt-4 pb-2">
-          <div className="eyebrow">
-            Chat <span className="text-primary">/ grounded in your data</span>
-          </div>
+      <div
+        className="rounded-2xl border border-white/[0.07] bg-white/[0.025] flex flex-col mt-4 overflow-hidden"
+        data-testid="card-coach-chat"
+      >
+        <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b border-white/[0.05]">
+          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50">
+            Chat <span className="text-primary/70">/ grounded in your data</span>
+          </span>
           <ClearChatButton />
         </div>
         <CoachChat />

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
@@ -20,7 +20,6 @@ import {
 import { TrackerTargetSelect } from "@/components/tracker-target-select";
 import { AdhocSkillsBuilder } from "@/components/adhoc-skills-builder";
 import { PageLayout } from "@/components/page-layout";
-import { PageHeader, primaryActionClass } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -67,6 +66,16 @@ export default function TofPage() {
   const [parsing, setParsing] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<TofSession | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Scroll-collapsing hero, bound to #root (html/body are locked).
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const root = document.getElementById("root");
+    if (!root) return;
+    const onScroll = () => setScrolled(root.scrollTop > 40);
+    root.addEventListener("scroll", onScroll, { passive: true });
+    return () => root.removeEventListener("scroll", onScroll);
+  }, []);
 
   const resetForm = () => {
     setEditing(null);
@@ -329,6 +338,29 @@ export default function TofPage() {
 
   const queuedSessions = useQueuedTofSessions();
 
+  // ---- Top-line summary stats ----
+  const summary = useMemo(() => {
+    const list = sessions ?? [];
+    const totals = list.map(s => (s.tofValues ?? []).reduce((a, b) => a + b, 0)).filter(t => t > 0);
+    const bestTotal = totals.length ? Math.max(...totals) : 0;
+    const jumps = list.reduce((acc, s) => acc + (s.tofValues ?? []).length, 0);
+    return {
+      sessions: list.length,
+      bestTotal,
+      jumps,
+      skills: analysis.length,
+    };
+  }, [sessions, analysis]);
+
+  const hasSessions = summary.sessions > 0 || queuedSessions.length > 0;
+
+  const STATS = [
+    { label: "Sessions", value: summary.sessions > 0 ? String(summary.sessions) : "—" },
+    { label: "Best total", value: summary.bestTotal > 0 ? `${summary.bestTotal.toFixed(1)}s` : "—" },
+    { label: "Jumps", value: summary.jumps > 0 ? String(summary.jumps) : "—" },
+    { label: "Skills", value: summary.skills > 0 ? String(summary.skills) : "—" },
+  ];
+
   const renderSessionCard = (s: TofSession, pending: boolean) => {
     const target = resolveTarget(s, routineById, allSkills);
     const seqLen = targetSeqLength(target);
@@ -338,17 +370,20 @@ export default function TofPage() {
     return (
       <div
         key={pending ? `pending-${s.id}` : s.id}
-        className={cn("relative card-3d rounded-2xl p-5 pl-6 overflow-hidden", pending && "border-amber-500/40", !pending && "cursor-pointer transition-colors hover:bg-white/[0.015]")}
+        className={cn(
+          "relative rounded-2xl border p-5 pl-6 overflow-hidden transition-colors",
+          pending ? "border-amber-500/40 bg-amber-500/[0.04]" : "border-white/[0.07] bg-white/[0.025] cursor-pointer hover:bg-white/[0.045]",
+        )}
         onClick={pending ? undefined : () => navigate(`/tof/session/${s.id}`)}
         data-testid={pending ? `card-tof-pending-${s.id}` : `card-tof-session-${s.id}`}
       >
-        <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 rounded-full" aria-hidden="true" />
+        <span className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full bg-gradient-to-b from-amber-400 to-orange-500" aria-hidden="true" />
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-[10px] font-mono text-muted-foreground">{fmtDate(s.date)}</div>
+            <div className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40">{fmtDate(s.date)}</div>
             {s.routineId != null ? (
               <h3
-                className="font-semibold text-base leading-tight truncate cursor-pointer hover:text-amber-500 hover:underline underline-offset-2 transition-colors"
+                className="font-bold text-base leading-tight truncate cursor-pointer hover:text-amber-400 hover:underline underline-offset-2 transition-colors mt-0.5"
                 role="button"
                 tabIndex={0}
                 title="Open this routine's ToF graph"
@@ -357,9 +392,9 @@ export default function TofPage() {
                 data-testid={`link-tof-routine-${s.id}`}
               >{name}</h3>
             ) : (
-              <h3 className="font-semibold text-base leading-tight truncate">{name}</h3>
+              <h3 className="font-bold text-base leading-tight truncate mt-0.5">{name}</h3>
             )}
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               {(target?.kind === "skill" || target?.kind === "adhoc") && (
                 <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 h-4 border-transparent bg-amber-500/15 text-amber-600 dark:text-amber-400" data-testid={`badge-tof-kind-${s.id}`}>
                   {target.kind === "adhoc" ? "CUSTOM" : skillKindLabel(target.skill).toUpperCase()}
@@ -374,8 +409,14 @@ export default function TofPage() {
           </div>
           <div className="flex items-start gap-1 shrink-0">
             <div className="text-right leading-none">
-              <div className="text-3xl font-display font-normal text-amber-400 tracking-tight" data-testid={`text-tof-session-total-${s.id}`}>{total.toFixed(2)}</div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Total s</div>
+              <div
+                className="text-3xl font-bold tracking-tight tabular-nums"
+                style={{ background: "linear-gradient(135deg,#fbbf24,#f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+                data-testid={`text-tof-session-total-${s.id}`}
+              >
+                {total.toFixed(2)}
+              </div>
+              <div className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40 mt-1">Total s</div>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -407,9 +448,9 @@ export default function TofPage() {
         </div>
         <div className="grid grid-cols-5 gap-1.5 mt-4">
           {s.preJumpTof != null && (
-            <div className="text-center bg-white/[0.015] border border-dashed border-white/[0.07] rounded-md px-1 py-1" title="In-bounce jump before the first skill" data-testid={`cell-tof-prejump-${s.id}`}>
-              <div className="text-[9px] font-mono text-muted-foreground truncate">pre</div>
-              <div className="text-[11px] font-mono font-bold text-muted-foreground">{s.preJumpTof.toFixed(2)}</div>
+            <div className="text-center bg-white/[0.015] border border-dashed border-white/[0.09] rounded-lg px-1 py-1" title="In-bounce jump before the first skill" data-testid={`cell-tof-prejump-${s.id}`}>
+              <div className="text-[9px] font-mono text-muted-foreground/50 truncate">pre</div>
+              <div className="text-[11px] font-mono font-bold text-muted-foreground/70 tabular-nums">{s.preJumpTof.toFixed(2)}</div>
             </div>
           )}
           {vals.map((v, i) => {
@@ -418,11 +459,11 @@ export default function TofPage() {
             const prev = i > 0 ? vals[i - 1] : s.preJumpTof;
             const drop = prev != null ? prev - v : null;
             return (
-              <div key={i} className="text-center bg-white/[0.03] border border-white/[0.07] rounded-md px-1 py-1" title={sk ? skillDisplayName(sk, allSkills) : undefined}>
-                <div className="text-[9px] font-mono text-muted-foreground truncate">{seqLen == null ? `#${i + 1}` : sk ? skillDisplayCode(sk, allSkills) : `#${i + 1}`}</div>
-                <div className="text-[11px] font-mono font-bold text-foreground">{v.toFixed(2)}</div>
+              <div key={i} className="text-center bg-white/[0.03] border border-white/[0.07] rounded-lg px-1 py-1" title={sk ? skillDisplayName(sk, allSkills) : undefined}>
+                <div className="text-[9px] font-mono text-muted-foreground/50 truncate">{seqLen == null ? `#${i + 1}` : sk ? skillDisplayCode(sk, allSkills) : `#${i + 1}`}</div>
+                <div className="text-[11px] font-mono font-bold text-foreground tabular-nums">{v.toFixed(2)}</div>
                 {drop != null && (
-                  <div className={cn("text-[9px] font-mono", drop > 0 ? "text-red-500" : "text-emerald-500")}>
+                  <div className={cn("text-[9px] font-mono tabular-nums", drop > 0 ? "text-red-500" : "text-emerald-500")}>
                     {drop > 0 ? "-" : "+"}{Math.abs(drop).toFixed(2)}
                   </div>
                 )}
@@ -430,23 +471,86 @@ export default function TofPage() {
             );
           })}
         </div>
-        {s.note && <p className="text-xs text-muted-foreground mt-3 whitespace-pre-wrap" data-testid={`text-tof-note-${s.id}`}>{s.note}</p>}
+        {s.note && <p className="text-xs text-muted-foreground/70 mt-3 whitespace-pre-wrap leading-relaxed" data-testid={`text-tof-note-${s.id}`}>{s.note}</p>}
       </div>
     );
   };
 
   return (
     <PageLayout>
-      <PageHeader
-        eyebrow="Time of Flight"
-        title="ToF Tracker"
-        subtitle="Log per-jump time-of-flight from Veriflite screenshots or by hand, and see which skills cost you the most height."
-        actions={
-          <Button onClick={openNew} className={primaryActionClass} data-testid="button-new-tof-session">
-            <Plus className="w-5 h-5" /> New Session
-          </Button>
-        }
-      />
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <div className="relative -mx-4 sm:-mx-6 px-6 pt-safe-top pb-0 overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-80"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 0%, hsl(43 96% 56% / 0.16) 0%, hsl(43 96% 56% / 0.03) 55%, transparent 78%)",
+          }}
+        />
+
+        <div className={`relative flex flex-col items-center text-center transition-all duration-300 ${scrolled ? "pt-3 pb-3" : "pt-7 pb-6"}`}>
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/[0.07] bg-white/[0.025] text-[9px] font-mono text-amber-400/70 tracking-[0.18em] uppercase transition-all duration-300 ${scrolled ? "mb-3" : "mb-6"}`}>
+            <Timer className="w-3 h-3" />
+            Time of Flight
+          </div>
+
+          <h1
+            className="font-black leading-[0.94] tracking-[-0.05em] transition-all duration-300"
+            style={{ fontSize: scrolled ? "clamp(22px,6vw,26px)" : "clamp(38px,10vw,48px)", marginBottom: scrolled ? "0" : "12px" }}
+          >
+            <span className="text-foreground">Chase every</span>
+            <br />
+            <span
+              style={{
+                background: "linear-gradient(135deg,#fbbf24,#f97316)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              second.
+            </span>
+          </h1>
+
+          {!scrolled && (
+            <p className="text-[11px] text-muted-foreground/50 leading-relaxed mb-6 max-w-[230px]">
+              Log per-jump time-of-flight and see which skills cost you the most height.
+            </p>
+          )}
+
+          <div className={`flex items-center gap-2 transition-all duration-300 ${scrolled ? "mt-2" : "mt-0"}`}>
+            <button
+              onClick={openNew}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-medium active:scale-[0.98] transition-all ${scrolled ? "border border-white/[0.07] bg-white/[0.025] text-foreground/70 hover:bg-white/[0.06]" : "bg-gradient-cta text-primary-foreground font-semibold"}`}
+              style={scrolled ? {} : { boxShadow: "0 0 22px hsl(var(--primary)/0.28)" }}
+              data-testid="button-new-tof-session"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              New Session
+            </button>
+          </div>
+        </div>
+
+        {/* Stats strip */}
+        {hasSessions && (
+          <div className="relative -mx-6 px-4 pb-4">
+            <div className="flex divide-x divide-white/[0.06] rounded-2xl overflow-hidden border border-white/[0.07] bg-white/[0.025]">
+              {STATS.map((s) => (
+                <div key={s.label} className="flex-1 flex flex-col items-center py-3 gap-1">
+                  <span
+                    className="text-[18px] font-bold tabular-nums leading-none"
+                    style={{ background: "linear-gradient(135deg,#fbbf24,#f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+                  >
+                    {s.value}
+                  </span>
+                  <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40">
+                    {s.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ---- Session form dialog ---- */}
       <Dialog open={showForm} onOpenChange={closeForm}>
@@ -582,12 +686,13 @@ export default function TofPage() {
 
       {/* ---- Per-routine analysis ---- */}
       {routineAnalysis.length > 0 && (
-        <div className="card-3d rounded-2xl p-5 mb-6">
-          <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-            <Timer className="h-4 w-4 text-amber-500" /> Routine analysis
-            <span className="text-[10px] font-mono font-normal text-muted-foreground">tap for the routine's graph</span>
-          </h3>
-          <div className="space-y-1.5">
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Timer className="h-3.5 w-3.5 text-amber-400" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60">Routine analysis</span>
+            <span className="font-mono text-[9px] text-muted-foreground/35 ml-auto">tap for the graph</span>
+          </div>
+          <div className="rounded-xl overflow-hidden border border-white/[0.07] divide-y divide-white/[0.05]">
             {routineAnalysis.map(a => {
               const r = routineById.get(a.routineId);
               return (
@@ -597,13 +702,13 @@ export default function TofPage() {
                   tabIndex={0}
                   onClick={() => navigate(`/tof/routine/${a.routineId}`)}
                   onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/tof/routine/${a.routineId}`); } }}
-                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.025] border border-white/[0.07] px-3 py-2 cursor-pointer transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex items-center gap-3 text-xs font-mono bg-white/[0.015] px-3.5 py-2.5 cursor-pointer transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   data-testid={`row-tof-routine-analysis-${a.routineId}`}
                 >
                   <span className="font-bold text-foreground flex-1 truncate">{r?.name ?? "Unknown routine"}</span>
-                  <span className="text-muted-foreground shrink-0" title="Average total ToF per session">avg <span className="text-foreground font-bold">{a.avgTotal.toFixed(2)}s</span></span>
-                  <span className="text-muted-foreground/60 shrink-0 w-10 text-right" title="Recorded sessions">n={a.sessions}</span>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                  <span className="text-muted-foreground/70 shrink-0 tabular-nums" title="Average total ToF per session">avg <span className="text-foreground font-bold">{a.avgTotal.toFixed(2)}s</span></span>
+                  <span className="text-muted-foreground/40 shrink-0 w-10 text-right tabular-nums" title="Recorded sessions">n={a.sessions}</span>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
                 </div>
               );
             })}
@@ -613,12 +718,13 @@ export default function TofPage() {
 
       {/* ---- Per-skill analysis ---- */}
       {analysis.length > 0 && (
-        <div className="card-3d rounded-2xl p-5 mb-6">
-          <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-            <TrendingDown className="h-4 w-4 text-amber-500" /> Skill analysis
-            <span className="text-[10px] font-mono font-normal text-muted-foreground">ranked by avg ToF drop vs previous jump</span>
-          </h3>
-          <div className="space-y-1.5">
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingDown className="h-3.5 w-3.5 text-amber-400" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60">Skill analysis</span>
+            <span className="font-mono text-[9px] text-muted-foreground/35 ml-auto">ranked by avg drop</span>
+          </div>
+          <div className="rounded-xl overflow-hidden border border-white/[0.07] divide-y divide-white/[0.05]">
             {analysis.map(a => {
               const sk = skillOf(a.skillId);
               return (
@@ -628,20 +734,20 @@ export default function TofPage() {
                   tabIndex={0}
                   onClick={() => navigate(`/tof/skill/${a.skillId}`)}
                   onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/tof/skill/${a.skillId}`); } }}
-                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.025] border border-white/[0.07] px-3 py-2 cursor-pointer transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex items-center gap-3 text-xs font-mono bg-white/[0.015] px-3.5 py-2.5 cursor-pointer transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   data-testid={`row-tof-analysis-${a.skillId}`}
                 >
                   <span className="font-bold text-foreground w-16 truncate shrink-0">{sk ? skillDisplayCode(sk, allSkills) : "?"}</span>
-                  <span className="text-muted-foreground flex-1 truncate">{sk ? skillDisplayName(sk, allSkills) : "Unknown skill"}</span>
-                  <span className="text-muted-foreground shrink-0" title="Average ToF on this skill">avg <span className="text-foreground font-bold">{a.avgTof.toFixed(2)}s</span></span>
+                  <span className="text-muted-foreground/70 flex-1 truncate">{sk ? skillDisplayName(sk, allSkills) : "Unknown skill"}</span>
+                  <span className="text-muted-foreground/70 shrink-0 tabular-nums" title="Average ToF on this skill">avg <span className="text-foreground font-bold">{a.avgTof.toFixed(2)}s</span></span>
                   <span
-                    className={cn("shrink-0 w-24 text-right", a.avgDrop != null && a.avgDrop > 0 ? "text-red-500" : "text-emerald-500")}
+                    className={cn("shrink-0 w-24 text-right tabular-nums", a.avgDrop != null && a.avgDrop > 0 ? "text-red-500" : "text-emerald-500")}
                     title="Average change vs the previous jump (positive = losing height)"
                   >
                     {a.avgDrop == null ? "—" : `${a.avgDrop > 0 ? "-" : "+"}${Math.abs(a.avgDrop).toFixed(3)}s`}
                   </span>
-                  <span className="text-muted-foreground/60 shrink-0 w-10 text-right" title="Recorded jumps this is based on">n={a.samples}</span>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                  <span className="text-muted-foreground/40 shrink-0 w-10 text-right tabular-nums" title="Recorded jumps this is based on">n={a.samples}</span>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
                 </div>
               );
             })}
@@ -650,15 +756,38 @@ export default function TofPage() {
       )}
 
       {/* ---- Session list ---- */}
+      {hasSessions && (
+        <div className="flex items-center justify-between mb-4">
+          <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/30">Sessions</span>
+          <span className="font-mono text-[9px] text-muted-foreground/20 tabular-nums">{summary.sessions + queuedSessions.length} total</span>
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {queuedSessions.map(s => renderSessionCard(s, true))}
         {(sessions ?? []).map(s => renderSessionCard(s, false))}
+        {isLoading && (sessions ?? []).length === 0 && queuedSessions.length === 0 && (
+          <div className="col-span-full py-24 flex flex-col items-center justify-center text-muted-foreground">
+            <Loader2 className="w-8 h-8 animate-spin mb-4 text-amber-400/60" />
+            <p className="font-mono text-xs uppercase tracking-widest">Loading sessions...</p>
+          </div>
+        )}
         {!isLoading && (sessions ?? []).length === 0 && queuedSessions.length === 0 && (
-          <div className="col-span-full text-center py-20 card-3d rounded-2xl">
-            <Timer className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-muted-foreground font-medium">No ToF sessions yet.</p>
-            <Button onClick={openNew} variant="outline" className="mt-4 rounded-xl" data-testid="button-new-tof-empty">
-              <Plus className="w-4 h-4 mr-1" /> New Session
+          <div className="col-span-full py-24 px-6 flex flex-col items-center justify-center text-center">
+            <div className="w-14 h-14 mb-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <Timer className="w-7 h-7 text-amber-400" />
+            </div>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50 mb-2">No sessions yet</p>
+            <h3 className="text-2xl font-black tracking-tight mb-2">Log your first flight.</h3>
+            <p className="text-sm text-muted-foreground/60 max-w-xs mb-8 leading-relaxed">
+              Read a Veriflite screenshot or enter values by hand — then watch your height trend.
+            </p>
+            <Button
+              onClick={openNew}
+              className="bg-gradient-cta flex items-center gap-1.5 px-5 h-10 rounded-xl text-sm font-semibold text-primary-foreground"
+              data-testid="button-new-tof-empty"
+            >
+              <Plus className="w-4 h-4" />
+              New Session
             </Button>
           </div>
         )}

@@ -9,11 +9,8 @@ import { useRoutines } from "@/hooks/use-routines";
 import { useSkills } from "@/hooks/use-skills";
 import { parseNoteSkills, skillDisplayCode } from "@/lib/training-utils";
 import { PageLayout } from "@/components/page-layout";
-import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Medal, Repeat, Loader2, ListChecks } from "lucide-react";
+import { ArrowLeft, Medal, Repeat, Loader2, ListChecks, Timer, Rocket } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { format, parseISO, differenceInCalendarDays } from "date-fns";
@@ -444,42 +441,117 @@ export default function DebutsPage() {
     return { skillRows, routineRows };
   }, [notes, routines, allSkills, scores]);
 
+  // Headline figure: fastest recorded debut across skills + routines.
+  const fastest = useMemo(() => {
+    const all = [...skillRows, ...routineRows].filter(r => r.days != null && r.days >= 0);
+    if (!all.length) return null;
+    return Math.min(...all.map(r => r.days!));
+  }, [skillRows, routineRows]);
+  const totalDebuted = useMemo(
+    () => [...skillRows, ...routineRows].filter(r => r.days != null && r.days >= 0).length,
+    [skillRows, routineRows],
+  );
+
   return (
     <PageLayout>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="mb-4 -ml-2 text-muted-foreground"
-        onClick={() => navigate("/score")}
-        data-testid="button-back-score"
-      >
-        <ArrowLeft className="w-4 h-4 mr-1" /> Score
-      </Button>
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <div className="relative -mx-4 sm:-mx-6 px-6 pt-safe-top pb-0 overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-72"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 0%, hsl(var(--primary)/0.16) 0%, hsl(var(--primary)/0.03) 55%, transparent 78%)",
+          }}
+        />
 
-      <PageHeader
-        className="static !mt-0"
-        eyebrow="Competition readiness"
-        title="Comp Debuts"
-        accent="Debuts"
-        subtitle="How long it took each skill and routine to go from first training to first competition — shorter bar = faster debut."
-      />
+        <div className="relative flex items-center pt-5">
+          <button
+            onClick={() => navigate("/score")}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 -ml-1 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/70 hover:bg-white/[0.06] active:scale-[0.98] transition-all"
+            data-testid="button-back-score"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Score
+          </button>
+        </div>
 
+        <div className="relative pt-6 pb-2">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-5 rounded-full border border-border/25 bg-card/60 text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase">
+            <Rocket className="w-3 h-3" />
+            Competition Readiness
+          </div>
+          <h1
+            className="font-black leading-[0.92] tracking-[-0.05em]"
+            style={{ fontSize: "clamp(38px,10vw,52px)" }}
+          >
+            <span className="text-foreground">Training to</span>
+            <br />
+            <span
+              style={{
+                background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              debut.
+            </span>
+          </h1>
+          <p className="mt-3 text-[11px] text-muted-foreground/50 leading-relaxed max-w-[260px]">
+            Days from first training to first competition — the shorter the bar, the faster the debut.
+          </p>
+        </div>
+
+        {/* Stat strip */}
+        <div className="relative -mx-6 px-4 pb-4 pt-3">
+          <div className="flex divide-x divide-white/[0.06] rounded-2xl overflow-hidden border border-white/[0.07] bg-white/[0.025]">
+            {[
+              { label: "Debuted", value: totalDebuted > 0 ? String(totalDebuted) : "—" },
+              { label: "Fastest", value: fastest != null ? (fastest === 0 ? "0d" : `${fastest}d`) : "—" },
+              { label: "Tracked", value: String(skillRows.length + routineRows.length) },
+            ].map((s) => (
+              <div key={s.label} className="flex-1 flex flex-col items-center py-3 gap-1">
+                <span
+                  className="text-[18px] font-bold tabular-nums leading-none"
+                  style={{
+                    background: "linear-gradient(135deg,#60a5fa,#a78bfa)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}
+                >
+                  {s.value}
+                </span>
+                <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40">
+                  {s.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Sections ─────────────────────────────────────────────── */}
       {isLoading ? (
-        <div className="flex items-center justify-center min-h-[40vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
+        <div className="py-24 flex flex-col items-center justify-center text-muted-foreground">
+          <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary/60" />
+          <p className="font-mono text-xs uppercase tracking-widest">Loading debuts...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Medal className="w-4 h-4 text-amber-500" /> Skill debuts
-              </CardTitle>
-              <p className="text-[10px] font-mono text-muted-foreground">
-                First comp = first competition score using a routine that contains the skill.
-              </p>
-            </CardHeader>
-            <CardContent>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start pt-4">
+          <section className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
+            <div className="flex items-start gap-3 px-4 pt-4 pb-3 border-b border-white/[0.06]">
+              <div className="w-9 h-9 shrink-0 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                <Medal className="w-4 h-4 text-amber-500" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-black tracking-tight text-base">Skill debuts</h2>
+                  <Timer className="w-3.5 h-3.5 text-muted-foreground/40" />
+                </div>
+                <p className="text-[9px] font-mono uppercase tracking-[0.12em] text-muted-foreground/50 mt-1 leading-relaxed">
+                  First comp = first score using a routine that contains the skill.
+                </p>
+              </div>
+            </div>
+            <div className="p-4">
               <DebutList
                 rows={skillRows}
                 accent="bg-amber-500/15 text-amber-600 dark:text-amber-400"
@@ -487,18 +559,25 @@ export default function DebutsPage() {
                 hidden={hiddenAll["debut-skill"] ?? []}
                 onHiddenChange={(keys) => setSectionHidden("debut-skill", keys)}
               />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Repeat className="w-4 h-4 text-[hsl(var(--chart-4))]" /> Routine debuts
-              </CardTitle>
-              <p className="text-[10px] font-mono text-muted-foreground">
-                First comp = first competition score logged with the routine.
-              </p>
-            </CardHeader>
-            <CardContent>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
+            <div className="flex items-start gap-3 px-4 pt-4 pb-3 border-b border-white/[0.06]">
+              <div className="w-9 h-9 shrink-0 rounded-xl bg-[hsl(var(--chart-4)/0.12)] border border-[hsl(var(--chart-4)/0.25)] flex items-center justify-center">
+                <Repeat className="w-4 h-4 text-[hsl(var(--chart-4))]" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-black tracking-tight text-base">Routine debuts</h2>
+                  <Timer className="w-3.5 h-3.5 text-muted-foreground/40" />
+                </div>
+                <p className="text-[9px] font-mono uppercase tracking-[0.12em] text-muted-foreground/50 mt-1 leading-relaxed">
+                  First comp = first competition score logged with the routine.
+                </p>
+              </div>
+            </div>
+            <div className="p-4">
               <DebutList
                 rows={routineRows}
                 accent="bg-[hsl(var(--chart-4)/0.15)] text-[hsl(var(--chart-4))]"
@@ -506,8 +585,8 @@ export default function DebutsPage() {
                 hidden={hiddenAll["debut-routine"] ?? []}
                 onHiddenChange={(keys) => setSectionHidden("debut-routine", keys)}
               />
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         </div>
       )}
     </PageLayout>

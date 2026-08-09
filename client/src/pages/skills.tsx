@@ -15,7 +15,6 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Trash2, Plus, Pencil, X, Link2, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore, MoreVertical, Search, ChevronRight, ChevronDown, Shapes, Unlink } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -506,6 +505,14 @@ export default function SkillsPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-[350px]">
+      <div
+        className="pointer-events-none fixed inset-x-0 top-0 h-72 -z-10"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 0%, hsl(var(--primary)/0.10) 0%, hsl(var(--primary)/0.02) 55%, transparent 78%)",
+        }}
+        aria-hidden="true"
+      />
       <PageHeader
         eyebrow="Skill Library"
         title="My Skills"
@@ -664,12 +671,12 @@ export default function SkillsPage() {
                   </Form>
               </DialogContent>
             </Dialog>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between shrink-0">
-                <CardTitle>Skills Library</CardTitle>
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
+              <div className="flex flex-row items-center justify-between shrink-0 px-4 py-3 border-b border-white/[0.06]">
+                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40">Skills Library</span>
                 {renderReorderButton()}
-              </CardHeader>
-              <CardContent className="overflow-x-auto">
+              </div>
+              <div className="overflow-x-auto p-2">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(skills)}>
                   <Table>
                     <TableHeader><TableRow className="border-white/[0.08] hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow w-24">Code</TableHead><TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
@@ -766,8 +773,8 @@ export default function SkillsPage() {
                     </SortableContext>
                   </Table>
                 </DndContext>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </TabsContent>
 
@@ -854,12 +861,12 @@ export default function SkillsPage() {
                   </Form>
               </DialogContent>
             </Dialog>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between shrink-0">
-                <CardTitle>Drills Library</CardTitle>
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
+              <div className="flex flex-row items-center justify-between shrink-0 px-4 py-3 border-b border-white/[0.06]">
+                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40">Drills Library</span>
                 {renderReorderButton()}
-              </CardHeader>
-              <CardContent className="overflow-x-auto">
+              </div>
+              <div className="overflow-x-auto p-2">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(drills)}>
                   <Table>
                     <TableHeader><TableRow className="border-white/[0.08] hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow w-24">Code</TableHead><TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
@@ -956,8 +963,8 @@ export default function SkillsPage() {
                     </SortableContext>
                   </Table>
                 </DndContext>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </TabsContent>
 
@@ -1127,12 +1134,12 @@ export default function SkillsPage() {
                   />
               </DialogContent>
             </Dialog>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between shrink-0">
-                <CardTitle>Connections Library</CardTitle>
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
+              <div className="flex flex-row items-center justify-between shrink-0 px-4 py-3 border-b border-white/[0.06]">
+                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40">Connections Library</span>
                 {renderReorderButton()}
-              </CardHeader>
-              <CardContent className="overflow-x-auto">
+              </div>
+              <div className="overflow-x-auto p-2">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(frequentConnections)}>
                   <Table>
                     <TableHeader><TableRow className="border-white/[0.08] hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow">Sequence</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
@@ -1182,8 +1189,8 @@ export default function SkillsPage() {
                     </SortableContext>
                   </Table>
                 </DndContext>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </TabsContent>
 
@@ -1324,12 +1331,12 @@ export default function SkillsPage() {
                   </div>
               </DialogContent>
             </Dialog>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between shrink-0">
-                <CardTitle>Routine Parts Library</CardTitle>
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
+              <div className="flex flex-row items-center justify-between shrink-0 px-4 py-3 border-b border-white/[0.06]">
+                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40">Routine Parts Library</span>
                 {renderReorderButton()}
-              </CardHeader>
-              <CardContent className="overflow-x-auto">
+              </div>
+              <div className="overflow-x-auto p-2">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(routineParts)}>
                   <Table>
                     <TableHeader><TableRow className="border-white/[0.08] hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow">Sequence</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
@@ -1382,8 +1389,8 @@ export default function SkillsPage() {
                     </SortableContext>
                   </Table>
                 </DndContext>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </TabsContent>
       </Tabs>

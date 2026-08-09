@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   CircleDashed,
   X,
+  SlidersHorizontal,
 } from "lucide-react";
 import { version as appVersion } from "../../../package.json";
 import { cacheGet } from "@/lib/offline-db";
@@ -29,7 +30,6 @@ import { api } from "@shared/routes";
 import type { Skill } from "@shared/schema";
 import { pickableSkills, skillDisplayCode } from "@/lib/training-utils";
 import { PageLayout } from "@/components/page-layout";
-import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Switch } from "@/components/ui/switch";
@@ -100,6 +100,7 @@ function useAnimatedPercent(target: number | null): number | null {
 export default function SettingsPage() {
   const { user, logout, isLoggingOut } = useAuth();
   const { toast } = useToast();
+  const [scrolled, setScrolled] = useState(false);
   const [showSignOutAlert, setShowSignOutAlert] = useState(false);
   const [timeFormat, setTimeFormat] = useTimeFormat();
   const [offlineModeEnabled, setOfflineModeEnabled] = useOfflineMode();
@@ -512,6 +513,14 @@ export default function SettingsPage() {
     }
   }, []);
 
+  useEffect(() => {
+    const root = document.getElementById("root");
+    if (!root) return;
+    const onScroll = () => setScrolled(root.scrollTop > 40);
+    root.addEventListener("scroll", onScroll, { passive: true });
+    return () => root.removeEventListener("scroll", onScroll);
+  }, []);
+
   const displayName =
     user?.displayName ??
     (user?.firstName ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}` : "My Account");
@@ -589,17 +598,47 @@ export default function SettingsPage() {
 
   return (
     <PageLayout>
-      <PageHeader
-        eyebrow="Account"
-        title="App Settings"
-        accent="Settings"
-        subtitle="Manage your preferences and account."
-      />
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <div className="relative -mx-4 sm:-mx-6 px-6 pt-safe-top pb-0 overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-72"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 0%, hsl(var(--primary)/0.18) 0%, hsl(var(--primary)/0.04) 55%, transparent 78%)",
+          }}
+        />
+        <div className={`relative flex flex-col items-center text-center transition-all duration-300 ${scrolled ? "pt-3 pb-4" : "pt-7 pb-6"}`}>
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border/25 bg-card/60 text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase transition-all duration-300 ${scrolled ? "mb-3" : "mb-6"}`}>
+            <SlidersHorizontal className="w-3 h-3 text-primary" />
+            Account
+          </div>
+          <h1
+            className="font-black leading-[0.94] tracking-[-0.05em] transition-all duration-300"
+            style={{ fontSize: scrolled ? "clamp(22px,6vw,26px)" : "clamp(38px,10vw,48px)", marginBottom: scrolled ? "0" : "12px" }}
+          >
+            <span className="text-foreground">Make it </span>
+            <span
+              style={{
+                background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              yours.
+            </span>
+          </h1>
+          {!scrolled && (
+            <p className="text-[11px] text-muted-foreground/50 leading-relaxed max-w-[210px]">
+              Manage your preferences, sync, and account.
+            </p>
+          )}
+        </div>
+      </div>
 
       <main>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <div className="space-y-6">
-            <div className="rounded-2xl card-3d p-5">
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4 min-w-0">
                   <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--chart-4))] flex items-center justify-center text-2xl font-bold text-primary-foreground shrink-0" data-testid="avatar-profile">
@@ -625,12 +664,15 @@ export default function SettingsPage() {
             </div>
 
             <div className="space-y-5">
-              <div className="eyebrow mb-3">Preferences</div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60 mb-3 flex items-center gap-2">
+                Preferences
+                <span className="flex-1 h-px bg-white/[0.06]" />
+              </div>
 
               {/* ── Appearance ── */}
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 px-1 mb-2">Appearance</p>
-                <div className="rounded-2xl card-3d divide-y divide-border/60 overflow-hidden">
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/45 px-1 mb-2.5">Appearance</p>
+                <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] divide-y divide-white/[0.05] overflow-hidden">
                   <div id="appearance" className="p-5 scroll-mt-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -695,8 +737,8 @@ export default function SettingsPage() {
 
               {/* ── Sync & Offline ── */}
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 px-1 mb-2">Sync &amp; Offline</p>
-                <div className="rounded-2xl card-3d divide-y divide-border/60 overflow-hidden">
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/45 px-1 mb-2.5">Sync &amp; Offline</p>
+                <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] divide-y divide-white/[0.05] overflow-hidden">
                   <div className="p-5 flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-medium">Archive Parts &amp; Connections With Routine</p>
@@ -901,8 +943,8 @@ export default function SettingsPage() {
 
               {/* ── AI Coach ── */}
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 px-1 mb-2">AI Coach</p>
-                <div className="rounded-2xl card-3d divide-y divide-border/60 overflow-hidden">
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/45 px-1 mb-2.5">AI Coach</p>
+                <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] divide-y divide-white/[0.05] overflow-hidden">
                   <div className="p-5 flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-medium">Rows Are Connections</p>
@@ -1065,7 +1107,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-2xl card-3d p-4 text-center">
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 text-center">
               <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60">Trampoline Note · v{appVersion}</span>
               <div className="mt-1.5">
                 <Link

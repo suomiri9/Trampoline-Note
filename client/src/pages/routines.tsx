@@ -335,9 +335,12 @@ export default function RoutinesPage() {
                 </div>
               </SortableContext>
             </DndContext>
-            <div className="pt-4 border-t flex justify-between items-center">
-              <span className="text-sm font-medium text-muted-foreground">Total Difficulty</span>
-              <span className="text-2xl font-display font-normal text-primary">
+            <div className="pt-4 border-t border-white/[0.06] flex justify-between items-center">
+              <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40">Total Difficulty</span>
+              <span
+                className="text-2xl font-bold tabular-nums"
+                style={{ background: "linear-gradient(135deg,#60a5fa,#a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+              >
                 {calcDDFromSkillIds(selectedSkillIds.filter((id): id is number => id !== null), allItems || []).toFixed(1)}
               </span>
             </div>
@@ -424,6 +427,14 @@ export default function RoutinesPage() {
         </DialogContent>
       </Dialog>
 
+      <div
+        className="pointer-events-none fixed inset-x-0 top-0 h-72 -z-10"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 0%, hsl(var(--primary)/0.10) 0%, hsl(var(--primary)/0.02) 55%, transparent 78%)",
+        }}
+        aria-hidden="true"
+      />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {routines?.map((routine) => {
           const dd = calcDDFromSkillIds(routine.skillIds, allItems || []);
@@ -435,18 +446,22 @@ export default function RoutinesPage() {
             <div
               key={routine.id}
               className={cn(
-                "relative card-3d card-3d-hover rounded-2xl p-5 pl-6 cursor-pointer overflow-hidden",
-                editingRoutine?.id === routine.id && "ring-1 ring-primary",
+                "group relative rounded-2xl p-5 pl-6 cursor-pointer overflow-hidden border border-white/[0.07] bg-white/[0.025] hover:bg-white/[0.04] hover:border-primary/30 active:scale-[0.99] transition-all",
+                editingRoutine?.id === routine.id && "ring-1 ring-primary border-primary/40",
               )}
               onClick={() => navigate(`/routines/${routine.id}`)}
               data-testid={`card-routine-${routine.id}`}
             >
-              <span className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-full" aria-hidden="true" />
+              <span
+                className="absolute left-0 top-0 bottom-0 w-1 rounded-full"
+                style={{ background: "linear-gradient(180deg, hsl(var(--primary)), hsl(var(--chart-4)))" }}
+                aria-hidden="true"
+              />
               <div className="flex items-start justify-between gap-3">
-                <h3 className="font-semibold text-base leading-tight flex items-center gap-2 flex-wrap min-w-0 pt-1">
+                <h3 className="font-bold text-base leading-tight tracking-tight flex items-center gap-2 flex-wrap min-w-0 pt-1">
                   <span className="truncate">{routine.name}</span>
                   {practicedLabel && (
-                    <span className="text-[10px] font-mono font-normal text-muted-foreground shrink-0" data-testid={`text-routine-first-practiced-${routine.id}`}>{practicedLabel}</span>
+                    <span className="text-[10px] font-mono font-normal text-muted-foreground/60 shrink-0" data-testid={`text-routine-first-practiced-${routine.id}`}>{practicedLabel}</span>
                   )}
                   {routine.id < 0 && (
                     <PendingSyncBadge testId={`badge-pending-routine-${routine.id}`} />
@@ -454,8 +469,13 @@ export default function RoutinesPage() {
                 </h3>
                 <div className="flex items-start gap-1 shrink-0">
                   <div className="text-right leading-none">
-                    <div className="text-4xl font-display font-normal text-emerald-400 tracking-tight">{dd.toFixed(1)}</div>
-                    <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">DD</div>
+                    <div
+                      className="text-4xl font-black tracking-tight tabular-nums"
+                      style={{ background: "linear-gradient(135deg,#60a5fa,#a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+                    >
+                      {dd.toFixed(1)}
+                    </div>
+                    <div className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40 mt-1">DD</div>
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
@@ -477,7 +497,7 @@ export default function RoutinesPage() {
                   return (
                     <span
                       key={idx}
-                      className="text-center text-[11px] font-mono text-muted-foreground bg-white/[0.03] border border-white/[0.07] rounded-md px-1 py-1 truncate"
+                      className="text-center text-[11px] font-mono text-muted-foreground/70 bg-white/[0.03] border border-white/[0.06] rounded-md px-1 py-1 truncate"
                       title={skillDisplayName(skill, allItems)}
                     >
                       <SkillCode skill={skill} allSkills={allItems} fallback="—" />
@@ -489,13 +509,21 @@ export default function RoutinesPage() {
           );
         })}
         {routines?.length === 0 && (
-          <div className="col-span-full text-center py-20 card-3d rounded-2xl">
-            <Layers className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-muted-foreground font-medium">{showArchived ? "No archived routines." : "No routines yet."}</p>
+          <div className="col-span-full py-24 px-6 flex flex-col items-center justify-center text-center rounded-2xl border border-white/[0.07] bg-white/[0.025]">
+            <div className="w-14 h-14 mb-5 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <Layers className="w-7 h-7 text-primary" />
+            </div>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50 mb-2">{showArchived ? "Archived" : "No routines yet"}</p>
+            <h3 className="text-2xl font-black tracking-tight mb-2">{showArchived ? "Nothing archived." : "Build your first."}</h3>
             {!showArchived && (
-              <Button onClick={openBuilder} variant="outline" className="mt-4 rounded-xl" data-testid="button-new-routine-empty">
-                <Plus className="w-4 h-4 mr-1" /> New Routine
-              </Button>
+              <>
+                <p className="text-sm text-muted-foreground max-w-xs mb-8 leading-relaxed">
+                  Assemble a 10-skill competition routine and track its difficulty over time.
+                </p>
+                <Button onClick={openBuilder} className="bg-gradient-cta flex items-center gap-1.5 px-5 h-10 rounded-xl text-sm font-semibold text-primary-foreground" data-testid="button-new-routine-empty">
+                  <Plus className="w-4 h-4" /> New Routine
+                </Button>
+              </>
             )}
           </div>
         )}

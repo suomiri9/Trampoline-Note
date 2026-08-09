@@ -8,7 +8,6 @@ import { skillDisplayCode } from "@/lib/training-utils";
 import { resolveTarget, targetSkillIdAt, targetName } from "@/lib/tracker-target";
 import { PageLayout } from "@/components/page-layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, ClipboardCheck, Loader2, TrendingDown } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -17,7 +16,7 @@ import { totalDeductionPoints, impliedEScore, pointsToTenths } from "@shared/exe
 import type { ExecutionSession } from "@shared/schema";
 
 const tooltipStyle = {
-  borderRadius: "8px",
+  borderRadius: "12px",
   border: "1px solid hsl(var(--border))",
   background: "hsl(var(--popover))",
   color: "hsl(var(--popover-foreground))",
@@ -72,8 +71,9 @@ export default function ExecutionSessionPage() {
   if (skillsLoading || sessionsLoading) {
     return (
       <PageLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-muted-foreground">
+          <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary/60" />
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/50">Loading session…</p>
         </div>
       </PageLayout>
     );
@@ -82,7 +82,7 @@ export default function ExecutionSessionPage() {
   if (!session) {
     return (
       <PageLayout>
-        <div className="text-center py-16">
+        <div className="text-center py-24">
           <p className="text-muted-foreground">Session not found.</p>
           <Button variant="ghost" className="mt-4" onClick={() => navigate("/execution")} data-testid="button-back-execution-missing">
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Execution
@@ -92,120 +92,151 @@ export default function ExecutionSessionPage() {
     );
   }
 
+  const STATS = [
+    { label: "Total ded.", value: `−${total.toFixed(1)}` },
+    { label: "E score", value: eScore != null ? eScore.toFixed(1) : "—" },
+    { label: worst ? `Worst · ${worst.code}` : "Worst", value: worst ? `−${worst.points.toFixed(1)}` : "—" },
+    { label: "Skills", value: String((session.deductions ?? []).length) },
+  ];
+
   return (
     <PageLayout>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="mb-4 -ml-2 text-muted-foreground"
-        onClick={() => navigate("/execution")}
-        data-testid="button-back-execution"
-      >
-        <ArrowLeft className="w-4 h-4 mr-1" /> Execution Tracker
-      </Button>
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <div className="relative -mx-4 sm:-mx-6 px-6 pt-safe-top pb-0 overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-72"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 0%, hsl(var(--primary)/0.16) 0%, hsl(var(--primary)/0.04) 55%, transparent 78%)",
+          }}
+        />
 
-      <div className="mb-6">
-        <div className="text-[10px] font-mono uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
-          <ClipboardCheck className="w-3.5 h-3.5" /> Execution · Session
-        </div>
-        <h1 className="text-3xl font-display mt-1" data-testid="text-exec-session-name">{name}</h1>
-        <div className="text-xs font-mono text-muted-foreground mt-1">{format(parseISO(session.date), "dd-MM-yyyy")}</div>
-      </div>
+        <div className="relative pt-4 pb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mb-5 -ml-2 h-8 text-[11px] font-mono uppercase tracking-[0.12em] text-muted-foreground/60 hover:text-foreground"
+            onClick={() => navigate("/execution")}
+            data-testid="button-back-execution"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 mr-1.5" /> Execution Tracker
+          </Button>
 
-      {/* ---- Summary stats ---- */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <div className="card-3d rounded-2xl p-4 text-center">
-          <div className="text-2xl font-display text-rose-400" data-testid="stat-exec-session-total">−{total.toFixed(1)}</div>
-          <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Total deductions</div>
-        </div>
-        <div className="card-3d rounded-2xl p-4 text-center">
-          <div className="text-2xl font-display text-emerald-500" data-testid="stat-exec-session-e">{eScore != null ? eScore.toFixed(1) : "—"}</div>
-          <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">E score</div>
-        </div>
-        <div className="card-3d rounded-2xl p-4 text-center">
-          <div className="text-2xl font-display text-red-500" data-testid="stat-exec-session-worst">
-            {worst ? `−${worst.points.toFixed(1)}` : "—"}
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase mb-4">
+            <ClipboardCheck className="w-3 h-3 text-rose-400" />
+            Session Deductions
           </div>
-          <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">
-            Worst{worst ? ` (${worst.code})` : ""}
-          </div>
-        </div>
-        <div className="card-3d rounded-2xl p-4 text-center">
-          <div className="text-2xl font-display text-foreground" data-testid="stat-exec-session-skills">{(session.deductions ?? []).length}</div>
-          <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Skills scored</div>
-        </div>
-      </div>
 
-      {/* ---- Deductions per skill ---- */}
-      <Card className="mb-6">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingDown className="w-4 h-4 text-rose-500" /> Deductions per skill
-            <span className="text-[10px] font-mono font-normal text-muted-foreground">in tenths, as judged</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-52 w-full" data-testid="chart-exec-session">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={rows} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                <XAxis dataKey="code" tick={{ fontSize: 10 }} className="fill-muted-foreground" interval={0} />
-                <YAxis
-                  tick={{ fontSize: 11 }}
-                  className="fill-muted-foreground"
-                  allowDecimals={false}
-                  tickFormatter={(v: number) => String(Math.round(v))}
-                  width={40}
-                />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  cursor={{ fill: "hsl(var(--muted) / 0.4)" }}
-                  formatter={(value: number) => [`−${(value / 10).toFixed(1)} pts`, "Deduction"]}
-                  labelFormatter={(_, payload) => {
-                    const p = payload?.[0]?.payload;
-                    return p ? (p.isLanding ? "Landing" : `Skill ${p.pos} · ${p.code}`) : "";
+          <h1
+            className="font-black leading-[0.95] tracking-[-0.045em]"
+            style={{ fontSize: "clamp(30px,8vw,44px)" }}
+            data-testid="text-exec-session-name"
+          >
+            <span
+              style={{
+                background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              {name}
+            </span>
+          </h1>
+          <p className="mt-2 text-[11px] font-mono uppercase tracking-[0.14em] text-muted-foreground/40">
+            {format(parseISO(session.date), "dd-MM-yyyy")}
+          </p>
+        </div>
+
+        {/* Stat strip */}
+        <div className="relative -mx-6 px-4 pb-4">
+          <div className="flex divide-x divide-white/[0.06] rounded-2xl overflow-hidden border border-white/[0.07] bg-white/[0.025]">
+            {STATS.map((s, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center py-3 gap-1 min-w-0 px-1">
+                <span
+                  className="text-[18px] font-bold tabular-nums leading-none"
+                  style={{
+                    background: "linear-gradient(135deg,#60a5fa,#a78bfa)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
                   }}
-                />
-                <Bar dataKey={(r: (typeof rows)[number]) => pointsToTenths(r.points)} radius={[4, 4, 0, 0]}>
-                  {rows.map(r => (
-                    <Cell key={r.pos} fill={barColor(r.points)} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ---- Deduction list ---- */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <ClipboardCheck className="w-4 h-4 text-emerald-500" /> Breakdown
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-1.5">
-            {rows.map(r => (
-              <div
-                key={`${r.pos}-${r.isLanding ? "landing" : "skill"}`}
-                className={cn(
-                  "flex items-center gap-3 text-xs font-mono rounded-lg px-3 py-2",
-                  r.isLanding ? "bg-white/[0.01] border border-dashed border-white/[0.07]" : "bg-white/[0.025] border border-white/[0.07]",
-                )}
-                data-testid={`row-exec-session-${r.isLanding ? "landing" : r.pos}`}
-              >
-                <span className="text-muted-foreground/60 w-8 shrink-0">{r.isLanding ? "L" : `#${r.pos}`}</span>
-                <span className="font-bold text-foreground flex-1 truncate">{r.code}</span>
-                <span className={cn("shrink-0 w-14 text-right font-bold", r.points >= 0.3 ? "text-red-500" : r.points >= 0.2 ? "text-amber-500" : "text-emerald-500")}>
-                  −{r.points.toFixed(1)}
+                  data-testid={i === 0 ? "stat-exec-session-total" : i === 1 ? "stat-exec-session-e" : i === 2 ? "stat-exec-session-worst" : "stat-exec-session-skills"}
+                >
+                  {s.value}
+                </span>
+                <span className="text-[8px] font-mono uppercase tracking-[0.12em] text-muted-foreground/40 truncate max-w-full">
+                  {s.label}
                 </span>
               </div>
             ))}
           </div>
-          {session.note && <p className="text-xs text-muted-foreground mt-3 italic">{session.note}</p>}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {/* ── Deductions per skill ─────────────────────────────────── */}
+      <section className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mb-4">
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
+          <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Deductions per skill</span>
+          <span className="ml-auto font-mono text-[9px] text-muted-foreground/30">in tenths</span>
+        </div>
+        <div className="h-52 w-full" data-testid="chart-exec-session">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={rows} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="code" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={0} axisLine={false} tickLine={false} />
+              <YAxis
+                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                allowDecimals={false}
+                tickFormatter={(v: number) => String(Math.round(v))}
+                width={40}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                cursor={{ fill: "hsl(var(--muted) / 0.4)" }}
+                formatter={(value: number) => [`−${(value / 10).toFixed(1)} pts`, "Deduction"]}
+                labelFormatter={(_, payload) => {
+                  const p = payload?.[0]?.payload;
+                  return p ? (p.isLanding ? "Landing" : `Skill ${p.pos} · ${p.code}`) : "";
+                }}
+              />
+              <Bar dataKey={(r: (typeof rows)[number]) => pointsToTenths(r.points)} radius={[4, 4, 0, 0]}>
+                {rows.map(r => (
+                  <Cell key={r.pos} fill={barColor(r.points)} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
+      {/* ── Breakdown ────────────────────────────────────────────── */}
+      <section className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <ClipboardCheck className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Breakdown</span>
+        </div>
+        <div className="divide-y divide-white/[0.05] rounded-xl overflow-hidden border border-white/[0.06]">
+          {rows.map(r => (
+            <div
+              key={`${r.pos}-${r.isLanding ? "landing" : "skill"}`}
+              className={cn(
+                "flex items-center gap-3 text-xs font-mono px-3 py-2.5",
+                r.isLanding && "bg-white/[0.01]",
+              )}
+              data-testid={`row-exec-session-${r.isLanding ? "landing" : r.pos}`}
+            >
+              <span className="text-muted-foreground/40 w-8 shrink-0">{r.isLanding ? "L" : `#${r.pos}`}</span>
+              <span className="font-bold text-foreground flex-1 truncate">{r.code}</span>
+              <span className={cn("shrink-0 w-14 text-right font-bold tabular-nums", r.points >= 0.3 ? "text-red-500" : r.points >= 0.2 ? "text-amber-500" : "text-emerald-500")}>
+                −{r.points.toFixed(1)}
+              </span>
+            </div>
+          ))}
+        </div>
+        {session.note && <p className="text-xs text-muted-foreground mt-4 italic whitespace-pre-wrap">{session.note}</p>}
+      </section>
     </PageLayout>
   );
 }

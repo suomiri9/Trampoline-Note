@@ -5,7 +5,6 @@ import { api } from "@shared/routes";
 import { useRoutines } from "@/hooks/use-routines";
 import { PageLayout } from "@/components/page-layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, ClipboardCheck, Loader2, TrendingDown } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -14,7 +13,7 @@ import { totalDeductionPoints, impliedEScore } from "@shared/execution";
 import type { ExecutionSession } from "@shared/schema";
 
 const tooltipStyle = {
-  borderRadius: "8px",
+  borderRadius: "12px",
   border: "1px solid hsl(var(--border))",
   background: "hsl(var(--popover))",
   color: "hsl(var(--popover-foreground))",
@@ -90,8 +89,9 @@ export default function ExecutionRoutinePage() {
   if (routinesLoading || sessionsLoading) {
     return (
       <PageLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-muted-foreground">
+          <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary/60" />
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/50">Loading routine…</p>
         </div>
       </PageLayout>
     );
@@ -100,7 +100,7 @@ export default function ExecutionRoutinePage() {
   if (!routine) {
     return (
       <PageLayout>
-        <div className="text-center py-16">
+        <div className="text-center py-24">
           <p className="text-muted-foreground">Routine not found.</p>
           <Button variant="ghost" className="mt-4" onClick={() => navigate("/execution")} data-testid="button-back-execution-missing">
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Execution
@@ -110,155 +110,189 @@ export default function ExecutionRoutinePage() {
     );
   }
 
+  const STATS = stats && [
+    { key: "stat-exec-routine-avg", label: "Avg ded.", value: `−${stats.avgTotal.toFixed(2)}` },
+    { key: "stat-exec-routine-best", label: "Best (fewest)", value: `−${stats.bestTotal.toFixed(1)}` },
+    { key: "stat-exec-routine-avg-e", label: "Avg E", value: stats.avgE != null ? stats.avgE.toFixed(2) : "—" },
+    { key: "stat-exec-routine-count", label: "Sessions", value: String(stats.count) },
+  ];
+
   return (
     <PageLayout>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="mb-4 -ml-2 text-muted-foreground"
-        onClick={() => navigate("/execution")}
-        data-testid="button-back-execution"
-      >
-        <ArrowLeft className="w-4 h-4 mr-1" /> Execution Tracker
-      </Button>
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <div className="relative -mx-4 sm:-mx-6 px-6 pt-safe-top pb-0 overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-72"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 0%, hsl(var(--primary)/0.16) 0%, hsl(var(--primary)/0.04) 55%, transparent 78%)",
+          }}
+        />
 
-      <div className="mb-6">
-        <div className="text-[10px] font-mono uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
-          <ClipboardCheck className="w-3.5 h-3.5" /> Execution · Routine
+        <div className="relative pt-4 pb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mb-5 -ml-2 h-8 text-[11px] font-mono uppercase tracking-[0.12em] text-muted-foreground/60 hover:text-foreground"
+            onClick={() => navigate("/execution")}
+            data-testid="button-back-execution"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 mr-1.5" /> Execution Tracker
+          </Button>
+
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase mb-4">
+            <ClipboardCheck className="w-3 h-3 text-rose-400" />
+            Routine Execution Graph
+          </div>
+
+          <h1
+            className="font-black leading-[0.95] tracking-[-0.045em]"
+            style={{ fontSize: "clamp(30px,8vw,44px)" }}
+            data-testid="text-exec-routine-name"
+          >
+            <span
+              style={{
+                background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              {routine.name}
+            </span>
+          </h1>
         </div>
-        <h1 className="text-3xl font-display mt-1" data-testid="text-exec-routine-name">{routine.name}</h1>
+
+        {/* Stat strip */}
+        {STATS && (
+          <div className="relative -mx-6 px-4 pb-4">
+            <div className="flex divide-x divide-white/[0.06] rounded-2xl overflow-hidden border border-white/[0.07] bg-white/[0.025]">
+              {STATS.map(s => (
+                <div key={s.key} className="flex-1 flex flex-col items-center py-3 gap-1 min-w-0 px-1">
+                  <span
+                    className="text-[18px] font-bold tabular-nums leading-none"
+                    style={{
+                      background: "linear-gradient(135deg,#60a5fa,#a78bfa)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                    }}
+                    data-testid={s.key}
+                  >
+                    {s.value}
+                  </span>
+                  <span className="text-[8px] font-mono uppercase tracking-[0.12em] text-muted-foreground/40 truncate max-w-full">
+                    {s.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {samples.length === 0 ? (
-        <div className="text-center py-20 card-3d rounded-2xl">
-          <ClipboardCheck className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-muted-foreground font-medium">No execution data for this routine yet.</p>
+        <div className="py-24 px-6 flex flex-col items-center justify-center text-center">
+          <div className="w-14 h-14 mb-5 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+            <ClipboardCheck className="w-7 h-7 text-primary" />
+          </div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/50 mb-2">No data yet</p>
+          <h3 className="text-xl font-black tracking-tight">No execution data for this routine.</h3>
         </div>
       ) : (
         <>
-          {/* ---- Summary stats ---- */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <div className="card-3d rounded-2xl p-4 text-center">
-              <div className="text-2xl font-display text-rose-400" data-testid="stat-exec-routine-avg">−{stats!.avgTotal.toFixed(2)}</div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Avg deductions</div>
+          {/* ── Total deductions over time ───────────────────────── */}
+          <section className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mb-4">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
+              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Total deductions over time</span>
+              <span className="ml-auto font-mono text-[9px] text-muted-foreground/30">lower is better</span>
             </div>
-            <div className="card-3d rounded-2xl p-4 text-center">
-              <div className="text-2xl font-display text-foreground" data-testid="stat-exec-routine-best">−{stats!.bestTotal.toFixed(1)}</div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Best (fewest)</div>
+            <div className="h-52 w-full" data-testid="chart-exec-routine">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" minTickGap={40} axisLine={false} tickLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    domain={[0, "dataMax + 0.2"]}
+                    tickFormatter={(v: number) => v.toFixed(1)}
+                    width={52}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(value: number) => [`−${value.toFixed(1)}`, "Deductions"]}
+                    labelFormatter={(_, payload) => {
+                      const p = payload?.[0]?.payload;
+                      return p ? `${p.label} · ${p.skillCount} skill${p.skillCount === 1 ? "" : "s"}${p.hasLanding ? " + landing" : ""}` : "";
+                    }}
+                  />
+                  <Line type="monotone" dataKey="totalDeductions" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3, fill: "#f43f5e" }} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
-            <div className="card-3d rounded-2xl p-4 text-center">
-              <div className="text-2xl font-display text-emerald-500" data-testid="stat-exec-routine-avg-e">
-                {stats!.avgE != null ? stats!.avgE.toFixed(2) : "—"}
-              </div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Avg E score</div>
-            </div>
-            <div className="card-3d rounded-2xl p-4 text-center">
-              <div className="text-2xl font-display text-foreground" data-testid="stat-exec-routine-count">{stats!.count}</div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Sessions</div>
-            </div>
-          </div>
+          </section>
 
-          {/* ---- Total deductions over time ---- */}
-          <Card className="mb-6">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingDown className="w-4 h-4 text-rose-500" /> Total deductions over time
-                <span className="text-[10px] font-mono font-normal text-muted-foreground">lower is better</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-52 w-full" data-testid="chart-exec-routine">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="label" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval="preserveStartEnd" minTickGap={40} />
-                    <YAxis
-                      tick={{ fontSize: 11 }}
-                      className="fill-muted-foreground"
-                      domain={[0, "dataMax + 0.2"]}
-                      tickFormatter={(v: number) => v.toFixed(1)}
-                      width={52}
-                    />
-                    <Tooltip
-                      contentStyle={tooltipStyle}
-                      formatter={(value: number) => [`−${value.toFixed(1)}`, "Deductions"]}
-                      labelFormatter={(_, payload) => {
-                        const p = payload?.[0]?.payload;
-                        return p ? `${p.label} · ${p.skillCount} skill${p.skillCount === 1 ? "" : "s"}${p.hasLanding ? " + landing" : ""}` : "";
-                      }}
-                    />
-                    <Line type="monotone" dataKey="totalDeductions" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3, fill: "#f43f5e" }} activeDot={{ r: 5 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          {/* ── E score over time ────────────────────────────────── */}
+          <section className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mb-4">
+            <div className="flex items-center gap-2 mb-4">
+              <ClipboardCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">E score over time</span>
+              <span className="ml-auto font-mono text-[9px] text-muted-foreground/30">complete routines only</span>
+            </div>
+            <div className="h-52 w-full" data-testid="chart-exec-routine-escore">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" minTickGap={40} axisLine={false} tickLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    domain={["dataMin - 0.2", "dataMax + 0.2"]}
+                    tickFormatter={(v: number) => v.toFixed(1)}
+                    width={52}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(value: number) => [value.toFixed(1), "E score"]}
+                    labelFormatter={(_, payload) => {
+                      const p = payload?.[0]?.payload;
+                      return p ? p.label : "";
+                    }}
+                  />
+                  <Line type="monotone" dataKey="eScore" connectNulls stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: "#10b981" }} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
 
-          {/* ---- E score over time ---- */}
-          <Card className="mb-6">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <ClipboardCheck className="w-4 h-4 text-emerald-500" /> E score over time
-                <span className="text-[10px] font-mono font-normal text-muted-foreground">complete routines only</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-52 w-full" data-testid="chart-exec-routine-escore">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="label" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval="preserveStartEnd" minTickGap={40} />
-                    <YAxis
-                      tick={{ fontSize: 11 }}
-                      className="fill-muted-foreground"
-                      domain={["dataMin - 0.2", "dataMax + 0.2"]}
-                      tickFormatter={(v: number) => v.toFixed(1)}
-                      width={52}
-                    />
-                    <Tooltip
-                      contentStyle={tooltipStyle}
-                      formatter={(value: number) => [value.toFixed(1), "E score"]}
-                      labelFormatter={(_, payload) => {
-                        const p = payload?.[0]?.payload;
-                        return p ? p.label : "";
-                      }}
-                    />
-                    <Line type="monotone" dataKey="eScore" connectNulls stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: "#10b981" }} activeDot={{ r: 5 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ---- Session log ---- */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingDown className="w-4 h-4 text-rose-500" /> Session log
-                <span className="text-[10px] font-mono font-normal text-muted-foreground">newest first</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1.5">
-                {[...samples].reverse().map(s => (
-                  <div
-                    key={s.sessionId}
-                    className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.025] border border-white/[0.07] px-3 py-2"
-                    data-testid={`row-exec-routine-log-${s.sessionId}`}
-                  >
-                    <span className="text-muted-foreground w-20 shrink-0">{format(parseISO(s.date), "dd-MM-yyyy")}</span>
-                    <span className="text-muted-foreground/60 flex-1" title="Skills scored in this session">
-                      {s.skillCount} skill{s.skillCount === 1 ? "" : "s"}{s.hasLanding ? " + landing" : ""}
-                    </span>
-                    <span className="text-rose-500 font-bold shrink-0 w-14 text-right">−{s.totalDeductions.toFixed(1)}</span>
-                    <span className={cn("shrink-0 w-14 text-right", s.eScore == null ? "text-muted-foreground/50" : "text-emerald-500 font-bold")} title="Implied E score (20 − deductions), complete routines only">
-                      {s.eScore == null ? "—" : s.eScore.toFixed(1)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          {/* ── Session log ──────────────────────────────────────── */}
+          <section className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
+              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Session log</span>
+              <span className="ml-auto font-mono text-[9px] text-muted-foreground/30">newest first</span>
+            </div>
+            <div className="divide-y divide-white/[0.05] rounded-xl overflow-hidden border border-white/[0.06]">
+              {[...samples].reverse().map(s => (
+                <div
+                  key={s.sessionId}
+                  className="flex items-center gap-3 text-xs font-mono px-3 py-2.5"
+                  data-testid={`row-exec-routine-log-${s.sessionId}`}
+                >
+                  <span className="text-muted-foreground/50 w-20 shrink-0">{format(parseISO(s.date), "dd-MM-yyyy")}</span>
+                  <span className="text-muted-foreground/40 flex-1 truncate" title="Skills scored in this session">
+                    {s.skillCount} skill{s.skillCount === 1 ? "" : "s"}{s.hasLanding ? " + landing" : ""}
+                  </span>
+                  <span className="text-rose-500 font-bold shrink-0 w-14 text-right tabular-nums">−{s.totalDeductions.toFixed(1)}</span>
+                  <span className={cn("shrink-0 w-14 text-right tabular-nums", s.eScore == null ? "text-muted-foreground/40" : "text-emerald-500 font-bold")} title="Implied E score (20 − deductions), complete routines only">
+                    {s.eScore == null ? "—" : s.eScore.toFixed(1)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
         </>
       )}
     </PageLayout>

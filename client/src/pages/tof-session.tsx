@@ -8,7 +8,6 @@ import { skillDisplayCode } from "@/lib/training-utils";
 import { resolveTarget, targetSkillIdAt, targetName } from "@/lib/tracker-target";
 import { PageLayout } from "@/components/page-layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Timer, Loader2, TrendingDown } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -16,7 +15,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import type { TofSession } from "@shared/schema";
 
 const tooltipStyle = {
-  borderRadius: "8px",
+  borderRadius: "12px",
   border: "1px solid hsl(var(--border))",
   background: "hsl(var(--popover))",
   color: "hsl(var(--popover-foreground))",
@@ -84,11 +83,13 @@ export default function TofSessionPage() {
   if (!session) {
     return (
       <PageLayout>
-        <div className="text-center py-16">
-          <p className="text-muted-foreground">Session not found.</p>
-          <Button variant="ghost" className="mt-4" onClick={() => navigate("/tof")} data-testid="button-back-tof-missing">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back to ToF
-          </Button>
+        <BackLink navigate={navigate} testId="button-back-tof-missing" />
+        <div className="py-24 flex flex-col items-center text-center">
+          <div className="w-14 h-14 mb-5 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center">
+            <Timer className="w-7 h-7 text-muted-foreground/40" />
+          </div>
+          <h3 className="text-2xl font-black tracking-tight mb-2">Session not found.</h3>
+          <p className="text-sm text-muted-foreground/60">It may have been deleted.</p>
         </div>
       </PageLayout>
     );
@@ -96,116 +97,179 @@ export default function TofSessionPage() {
 
   return (
     <PageLayout>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="mb-4 -ml-2 text-muted-foreground"
-        onClick={() => navigate("/tof")}
-        data-testid="button-back-tof"
+      <BackLink navigate={navigate} testId="button-back-tof" />
+
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <div className="relative -mx-4 sm:-mx-6 px-6 pb-2 overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-56"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 0%, hsl(43 96% 56% / 0.14) 0%, hsl(43 96% 56% / 0.03) 55%, transparent 78%)",
+          }}
+        />
+        <div className="relative pt-4 pb-5">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/[0.07] bg-white/[0.025] text-[9px] font-mono text-amber-400/70 tracking-[0.18em] uppercase mb-4">
+            <Timer className="w-3 h-3" /> Time of Flight · Session
+          </div>
+          <h1
+            className="font-black leading-[0.95] tracking-[-0.04em] break-words"
+            style={{ fontSize: "clamp(28px,8vw,40px)" }}
+            data-testid="text-tof-session-name"
+          >
+            <span
+              style={{
+                background: "linear-gradient(135deg,#fbbf24,#f97316)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              {name}
+            </span>
+          </h1>
+          <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50">
+            {format(parseISO(session.date), "dd-MM-yyyy")}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Stat strip ───────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-8">
+        <StatCell value={`${stats!.total.toFixed(2)}s`} label="Total ToF" amber testId="stat-tof-session-total" />
+        <StatCell value={`${stats!.best.toFixed(3)}s`} label="Best jump" testId="stat-tof-session-best" />
+        <StatCell
+          value={stats!.worstDrop ? fmtDrop(stats!.worstDrop.drop) : "—"}
+          label={`Biggest drop${stats!.worstDrop ? ` (${stats!.worstDrop.code})` : ""}`}
+          drop
+          testId="stat-tof-session-worst-drop"
+        />
+        <StatCell value={String(jumps.length)} label="Jumps" testId="stat-tof-session-jumps" />
+      </div>
+
+      {/* ── ToF per jump chart ───────────────────────────────────── */}
+      <Panel
+        title="ToF per jump"
+        icon={<Timer className="w-3.5 h-3.5 text-amber-400" />}
+        meta={session.preJumpTof != null ? `in-bounce ${session.preJumpTof.toFixed(3)}s` : undefined}
       >
-        <ArrowLeft className="w-4 h-4 mr-1" /> ToF Tracker
-      </Button>
+        <div className="h-52 w-full" data-testid="chart-tof-session">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={jumps} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="code" tick={{ fontSize: 10 }} className="fill-muted-foreground" interval={0} />
+              <YAxis
+                tick={{ fontSize: 11 }}
+                className="fill-muted-foreground"
+                domain={["dataMin - 0.05", "dataMax + 0.05"]}
+                tickFormatter={(v: number) => v.toFixed(2)}
+                width={52}
+              />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                formatter={(value: number) => [`${value.toFixed(3)}s`, "ToF"]}
+                labelFormatter={(_, payload) => {
+                  const p = payload?.[0]?.payload;
+                  return p ? `Jump ${p.jumpNo} · ${p.code}` : "";
+                }}
+              />
+              <Line type="monotone" dataKey="tof" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3, fill: "#f59e0b" }} activeDot={{ r: 5 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </Panel>
 
-      <div className="mb-6">
-        <div className="text-[10px] font-mono uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
-          <Timer className="w-3.5 h-3.5" /> Time of Flight · Session
-        </div>
-        <h1 className="text-3xl font-display mt-1" data-testid="text-tof-session-name">{name}</h1>
-        <div className="text-xs font-mono text-muted-foreground mt-1">{format(parseISO(session.date), "dd-MM-yyyy")}</div>
-      </div>
-
-      {/* ---- Summary stats ---- */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <div className="card-3d rounded-2xl p-4 text-center">
-          <div className="text-2xl font-display text-amber-400" data-testid="stat-tof-session-total">{stats!.total.toFixed(2)}s</div>
-          <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Total ToF</div>
-        </div>
-        <div className="card-3d rounded-2xl p-4 text-center">
-          <div className="text-2xl font-display text-foreground" data-testid="stat-tof-session-best">{stats!.best.toFixed(3)}s</div>
-          <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Best jump</div>
-        </div>
-        <div className="card-3d rounded-2xl p-4 text-center">
-          <div className="text-2xl font-display text-red-500" data-testid="stat-tof-session-worst-drop">
-            {stats!.worstDrop ? fmtDrop(stats!.worstDrop.drop) : "—"}
-          </div>
-          <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">
-            Biggest drop{stats!.worstDrop ? ` (${stats!.worstDrop.code})` : ""}
-          </div>
-        </div>
-        <div className="card-3d rounded-2xl p-4 text-center">
-          <div className="text-2xl font-display text-foreground" data-testid="stat-tof-session-jumps">{jumps.length}</div>
-          <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">Jumps</div>
-        </div>
-      </div>
-
-      {/* ---- ToF per jump ---- */}
-      <Card className="mb-6">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Timer className="w-4 h-4 text-amber-500" /> ToF per jump
-            {session.preJumpTof != null && (
-              <span className="text-[10px] font-mono font-normal text-muted-foreground">in-bounce {session.preJumpTof.toFixed(3)}s</span>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-52 w-full" data-testid="chart-tof-session">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={jumps} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="code" tick={{ fontSize: 10 }} className="fill-muted-foreground" interval={0} />
-                <YAxis
-                  tick={{ fontSize: 11 }}
-                  className="fill-muted-foreground"
-                  domain={["dataMin - 0.05", "dataMax + 0.05"]}
-                  tickFormatter={(v: number) => v.toFixed(2)}
-                  width={52}
-                />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  formatter={(value: number) => [`${value.toFixed(3)}s`, "ToF"]}
-                  labelFormatter={(_, payload) => {
-                    const p = payload?.[0]?.payload;
-                    return p ? `Jump ${p.jumpNo} · ${p.code}` : "";
-                  }}
-                />
-                <Line type="monotone" dataKey="tof" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3, fill: "#f59e0b" }} activeDot={{ r: 5 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ---- Jump list ---- */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingDown className="w-4 h-4 text-amber-500" /> Jumps
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-1.5">
-            {jumps.map(j => (
-              <div
-                key={j.jumpNo}
-                className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.025] border border-white/[0.07] px-3 py-2"
-                data-testid={`row-tof-session-jump-${j.jumpNo}`}
+      {/* ── Jump list ────────────────────────────────────────────── */}
+      <Panel title="Jumps" icon={<TrendingDown className="w-3.5 h-3.5 text-amber-400" />}>
+        <div className="rounded-xl overflow-hidden border border-white/[0.07] divide-y divide-white/[0.05]">
+          {jumps.map(j => (
+            <div
+              key={j.jumpNo}
+              className="flex items-center gap-3 text-xs font-mono px-3.5 py-2.5 bg-white/[0.015]"
+              data-testid={`row-tof-session-jump-${j.jumpNo}`}
+            >
+              <span className="text-muted-foreground/40 w-8 shrink-0 tabular-nums">#{j.jumpNo}</span>
+              <span className="font-bold text-foreground flex-1 truncate">{j.code}</span>
+              <span className="text-foreground font-bold shrink-0 w-16 text-right tabular-nums">{j.tof.toFixed(3)}s</span>
+              <span
+                className={cn("shrink-0 w-16 text-right tabular-nums", j.drop == null ? "text-muted-foreground/40" : j.drop > 0 ? "text-red-500" : "text-emerald-500")}
+                title="Change vs the previous jump (positive drop = lost height)"
               >
-                <span className="text-muted-foreground/60 w-8 shrink-0">#{j.jumpNo}</span>
-                <span className="font-bold text-foreground flex-1 truncate">{j.code}</span>
-                <span className="text-foreground font-bold shrink-0 w-16 text-right">{j.tof.toFixed(3)}s</span>
-                <span
-                  className={cn("shrink-0 w-16 text-right", j.drop == null ? "text-muted-foreground/50" : j.drop > 0 ? "text-red-500" : "text-emerald-500")}
-                  title="Change vs the previous jump (positive drop = lost height)"
-                >
-                  {fmtDrop(j.drop)}
-                </span>
-              </div>
-            ))}
-          </div>
-          {session.note && <p className="text-xs text-muted-foreground mt-3 italic">{session.note}</p>}
-        </CardContent>
-      </Card>
+                {fmtDrop(j.drop)}
+              </span>
+            </div>
+          ))}
+        </div>
+        {session.note && <p className="text-xs text-muted-foreground/70 mt-3 whitespace-pre-wrap leading-relaxed">{session.note}</p>}
+      </Panel>
     </PageLayout>
+  );
+}
+
+function BackLink({ navigate, testId }: { navigate: (to: string) => void; testId: string }) {
+  return (
+    <button
+      onClick={() => navigate("/tof")}
+      className="mb-5 inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-[0.14em] text-muted-foreground/50 hover:text-amber-400 transition-colors"
+      data-testid={testId}
+    >
+      <ArrowLeft className="w-3.5 h-3.5" /> ToF Tracker
+    </button>
+  );
+}
+
+function StatCell({
+  value,
+  label,
+  amber,
+  drop,
+  testId,
+}: {
+  value: string;
+  label: string;
+  amber?: boolean;
+  drop?: boolean;
+  testId: string;
+}) {
+  const isNegDrop = drop && value.startsWith("-");
+  return (
+    <div className="flex flex-col items-center justify-center py-3.5 gap-1 rounded-2xl border border-white/[0.07] bg-white/[0.025]">
+      <span
+        className="text-[19px] font-bold tabular-nums leading-none"
+        style={
+          amber
+            ? { background: "linear-gradient(135deg,#fbbf24,#f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }
+            : drop
+              ? { color: isNegDrop ? "hsl(var(--destructive))" : "#10b981" }
+              : undefined
+        }
+        data-testid={testId}
+      >
+        {value}
+      </span>
+      <span className="text-[8px] font-mono uppercase tracking-[0.14em] text-muted-foreground/40 text-center px-1">{label}</span>
+    </div>
+  );
+}
+
+function Panel({
+  title,
+  icon,
+  meta,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  meta?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mb-4">
+      <div className="flex items-center gap-2 mb-4">
+        {icon}
+        <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60">{title}</span>
+        {meta && <span className="font-mono text-[9px] text-muted-foreground/35 ml-auto">{meta}</span>}
+      </div>
+      {children}
+    </div>
   );
 }

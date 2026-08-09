@@ -7,7 +7,6 @@ import { calcDDFromSkillIds } from "@/lib/training-utils";
 import { SkillCode } from "@/components/skill-code";
 import { PageLayout } from "@/components/page-layout";
 import { PointsToFix, parsePoints } from "@/components/points-to-fix";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -184,86 +183,110 @@ export default function RoutineDetailPage() {
   return (
     <PageLayout>
       <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1 -ml-2 text-muted-foreground"
-              onClick={() => navigate("/routines")}
-              data-testid="button-back-to-routines"
-            >
-              <ArrowLeft className="w-4 h-4" /> Routines
-            </Button>
-            <div className="flex items-center gap-1">
+        <div className="relative -mx-4 sm:-mx-6 px-4 sm:px-6 mb-6 overflow-hidden">
+          {/* Blue glow backdrop */}
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-64"
+            style={{
+              background:
+                "radial-gradient(ellipse at 20% 0%, hsl(var(--primary)/0.16) 0%, hsl(var(--primary)/0.03) 55%, transparent 78%)",
+            }}
+          />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                disabled={!hasPrev}
-                onClick={goPrev}
-                data-testid="button-prev-routine"
+                size="sm"
+                className="gap-1 -ml-2 text-muted-foreground/70 hover:text-foreground text-[11px] font-mono uppercase tracking-[0.14em]"
+                onClick={() => navigate("/routines")}
+                data-testid="button-back-to-routines"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ArrowLeft className="w-3.5 h-3.5" /> Routines
               </Button>
-              <span className="text-xs text-muted-foreground tabular-nums min-w-[3ch] text-center">
-                {currentIndex + 1}/{orderedIds.length}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                disabled={!hasNext}
-                onClick={goNext}
-                data-testid="button-next-routine"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg"
+                  disabled={!hasPrev}
+                  onClick={goPrev}
+                  data-testid="button-prev-routine"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="text-[10px] font-mono text-muted-foreground/50 tabular-nums min-w-[3.5ch] text-center">
+                  {currentIndex + 1}/{orderedIds.length}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg"
+                  disabled={!hasNext}
+                  onClick={goNext}
+                  data-testid="button-next-routine"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
-          </div>
-          <div>
-            <div className="eyebrow mb-2">// Routine</div>
-            <h1 className="text-3xl sm:text-4xl font-display font-normal tracking-tight" data-testid="text-routine-name">{routine.name}</h1>
-            <p className="text-muted-foreground text-sm mt-2 font-mono">
-              Total DD <span className="text-primary font-semibold" data-testid="text-routine-dd">{totalDD.toFixed(1)}</span>
-            </p>
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                  Routine
+                </span>
+              </div>
+              <h1
+                className="font-black leading-[0.94] tracking-[-0.045em] mb-4"
+                style={{ fontSize: "clamp(30px,8vw,44px)" }}
+                data-testid="text-routine-name"
+              >
+                <span className="text-gradient-primary">{routine.name}</span>
+              </h1>
+              <div className="inline-flex items-baseline gap-2 px-4 py-2.5 rounded-2xl border border-white/[0.07] bg-white/[0.025]">
+                <span
+                  className="text-3xl font-bold tabular-nums leading-none"
+                  style={{ background: "linear-gradient(135deg,#60a5fa,#a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+                  data-testid="text-routine-dd"
+                >
+                  {totalDD.toFixed(1)}
+                </span>
+                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40">Total DD</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            {hasVersions && currentSince && (
-              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-2" data-testid="text-current-lineup-since">
-                Current lineup · since {format(parseISO(currentSince), "MMM d, yyyy")}
-              </div>
-            )}
-            <div className="flex flex-wrap gap-3">
-              {routine.skillIds.map((id, idx) => {
-                const skill = skills?.find(s => s.id === id);
-                return (
-                  <div key={idx} className="flex flex-col items-center gap-1">
-                    <Badge variant="outline" className="px-2 py-1 font-mono" data-testid={`badge-routine-skill-${idx}`}>
-                      <SkillCode skill={skill} allSkills={allSkills} fallback="???" />
-                    </Badge>
-                    <span className="text-[10px] text-muted-foreground font-semibold font-mono">
-                      {skill?.difficulty.toFixed(1) || "0.0"}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="mb-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
+          <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40 mb-3" data-testid={hasVersions && currentSince ? "text-current-lineup-since" : undefined}>
+            {hasVersions && currentSince
+              ? `Current lineup · since ${format(parseISO(currentSince), "MMM d, yyyy")}`
+              : "Lineup"}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {routine.skillIds.map((id, idx) => {
+              const skill = skills?.find(s => s.id === id);
+              return (
+                <div key={idx} className="flex flex-col items-center gap-1">
+                  <Badge variant="outline" className="px-2 py-1 font-mono border-white/[0.1] bg-white/[0.03]" data-testid={`badge-routine-skill-${idx}`}>
+                    <SkillCode skill={skill} allSkills={allSkills} fallback="???" />
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground/60 font-semibold font-mono tabular-nums">
+                    {skill?.difficulty.toFixed(1) || "0.0"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {hasVersions && (
-          <Card className="mb-6">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <History className="w-4 h-4 text-primary" />
-                Previous Routines
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <div className="mb-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
+            <div className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/50 mb-3">
+              <History className="w-3.5 h-3.5 text-primary" />
+              Previous Routines
+            </div>
+            <div className="space-y-3">
               {pastVersions.map((v, i) => {
                 const stats = perVersion[i];
                 const from = i === 0 ? null : pastVersions[i - 1].effectiveUntil;
@@ -272,7 +295,7 @@ export default function RoutineDetailPage() {
                   : `until ${format(parseISO(v.effectiveUntil), "MMM d, yyyy")}`;
                 const pct = stats.sessions > 0 ? Math.round((stats.full / stats.sessions) * 100) : 0;
                 return (
-                  <div key={`${v.effectiveUntil}-${i}`} className="rounded-lg bg-white/[0.02] p-3" data-testid={`row-version-${i}`}>
+                  <div key={`${v.effectiveUntil}-${i}`} className="rounded-xl border border-white/[0.05] bg-white/[0.02] p-3" data-testid={`row-version-${i}`}>
                     <div className="flex items-center justify-between gap-2 flex-wrap mb-2 text-xs font-mono">
                       <span className="text-muted-foreground">{rangeLabel}</span>
                       <span className="flex items-center gap-1">
@@ -326,8 +349,8 @@ export default function RoutineDetailPage() {
                   </div>
                 );
               })}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
@@ -364,44 +387,37 @@ export default function RoutineDetailPage() {
         </div>
 
         {routinePoints.length > 0 && (
-          <Card className="mb-6">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Wrench className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                Points to Fix
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-1.5" data-testid="list-routine-points">
-                {routinePoints.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setPointsOpen(true)}
-                    data-testid={`button-routine-point-${p.id}`}
-                    className={`text-left text-sm py-2 px-3 rounded-xl bg-white/[0.025] hover:bg-white/[0.04] transition-colors break-words ${p.resolved ? "line-through text-muted-foreground opacity-60" : ""}`}
-                  >
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <div className="mb-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
+            <div className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/50 mb-3">
+              <Wrench className="w-3.5 h-3.5 text-[hsl(var(--gold))]" />
+              Points to Fix
+            </div>
+            <div className="flex flex-col gap-1.5" data-testid="list-routine-points">
+              {routinePoints.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPointsOpen(true)}
+                  data-testid={`button-routine-point-${p.id}`}
+                  className={`text-left text-sm py-2 px-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] transition-colors break-words ${p.resolved ? "line-through text-muted-foreground opacity-60" : ""}`}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
 
         <CompletionChart title="Practice Frequency" data={weeklyData} markers={changeMarkers} />
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Session History</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="mt-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
+          <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40 mb-3">Session History</div>
             {entries.length === 0 ? (
               <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-no-history">
                 No training sessions found for this routine yet.
               </p>
             ) : (
-              <div className="space-y-2 max-h-[50vh] overflow-y-auto" data-testid="list-session-history">
+              <div className="flex flex-col divide-y divide-white/[0.05] max-h-[50vh] overflow-y-auto" data-testid="list-session-history">
                 {[...entries].reverse().map((entry) => {
                   const reps = entry.reps && entry.reps > 0 ? entry.reps : 1;
                   // Judge each entry against the lineup in effect on its date.
@@ -410,7 +426,7 @@ export default function RoutineDetailPage() {
                   return (
                   <div
                     key={`${entry.noteId}-${entry.date}`}
-                    className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
+                    className="flex items-center justify-between py-2.5 transition-colors"
                     data-testid={`row-session-${entry.noteId}`}
                   >
                     <div className="flex items-center gap-3">
@@ -429,7 +445,7 @@ export default function RoutineDetailPage() {
                       )}
                       <Badge
                         variant={entry.attempt != null ? "secondary" : "outline"}
-                        className="font-mono text-xs"
+                        className="font-mono text-xs border-white/[0.1]"
                         data-testid={`badge-attempt-${entry.noteId}`}
                       >
                         {entry.attempt != null
@@ -444,27 +460,26 @@ export default function RoutineDetailPage() {
                 })}
               </div>
             )}
-          </CardContent>
-        </Card>
+        </div>
 
-        <div className="flex justify-between items-center mt-6 text-sm text-muted-foreground">
+        <div className="flex justify-between items-center gap-2 mt-8">
           <button
-            className="flex items-center gap-1 hover:text-foreground transition-colors disabled:opacity-30"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-all disabled:opacity-25 disabled:pointer-events-none"
             disabled={!hasPrev}
             onClick={goPrev}
             data-testid="button-prev-routine-bottom"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-3.5 h-3.5 shrink-0" />
             <span className="truncate max-w-[120px]">{prevRoutine?.name || ""}</span>
           </button>
           <button
-            className="flex items-center gap-1 hover:text-foreground transition-colors disabled:opacity-30"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-all disabled:opacity-25 disabled:pointer-events-none"
             disabled={!hasNext}
             onClick={goNext}
             data-testid="button-next-routine-bottom"
           >
             <span className="truncate max-w-[120px]">{nextRoutine?.name || ""}</span>
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-3.5 h-3.5 shrink-0" />
           </button>
         </div>
 
@@ -522,14 +537,18 @@ export default function RoutineDetailPage() {
 
 function StatCard({ icon, label, value, testId }: { icon: React.ReactNode; label: string; value: string; testId: string }) {
   return (
-    <Card>
-      <CardContent className="p-3">
-        <div className="flex items-center gap-2 text-muted-foreground mb-1">
-          {icon}
-          <span className="text-xs">{label}</span>
-        </div>
-        <p className="text-lg font-bold truncate font-mono" data-testid={testId}>{value}</p>
-      </CardContent>
-    </Card>
+    <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3">
+      <div className="flex items-center gap-1.5 text-muted-foreground/40 mb-1.5">
+        <span className="[&_svg]:w-3.5 [&_svg]:h-3.5">{icon}</span>
+        <span className="text-[8px] font-mono uppercase tracking-[0.15em]">{label}</span>
+      </div>
+      <p
+        className="text-lg font-bold truncate tabular-nums leading-none"
+        style={{ background: "linear-gradient(135deg,#60a5fa,#a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+        data-testid={testId}
+      >
+        {value}
+      </p>
+    </div>
   );
 }
