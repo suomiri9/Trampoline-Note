@@ -160,11 +160,11 @@ function Navigation() {
   const [location] = useLocation();
   const { user } = useAuth();
   const navItems = [
-    { href: "/", label: "Training", icon: LayoutDashboard, lightColor: "text-blue-600/55 dark:text-blue-400/45", activeColor: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
-    { href: "/score", label: "Score", icon: Trophy, lightColor: "text-yellow-600/60 dark:text-yellow-400/45", activeColor: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400" },
-    { href: "/stats", label: "Progress", icon: BarChart3, lightColor: "text-green-600/55 dark:text-green-400/45", activeColor: "bg-green-500/15 text-green-600 dark:text-green-400" },
-    { href: "/skills", label: "Skills", icon: Target, lightColor: "text-red-600/55 dark:text-red-400/45", activeColor: "bg-red-500/15 text-red-600 dark:text-red-400" },
-    { href: "/routines", label: "Routines", icon: Layers, lightColor: "text-purple-600/55 dark:text-purple-400/45", activeColor: "bg-purple-500/15 text-purple-600 dark:text-purple-400" },
+    { href: "/", label: "Training", icon: LayoutDashboard },
+    { href: "/score", label: "Score", icon: Trophy },
+    { href: "/stats", label: "Progress", icon: BarChart3 },
+    { href: "/skills", label: "Skills", icon: Target },
+    { href: "/routines", label: "Routines", icon: Layers },
   ];
 
   const moreItems = [
@@ -197,8 +197,8 @@ function Navigation() {
               className={cn(
                 baseItem,
                 active
-                  ? `${item.activeColor} font-semibold`
-                  : `${item.lightColor} hover:bg-secondary`,
+                  ? "bg-primary/15 text-primary font-semibold"
+                  : "text-foreground/30 hover:bg-secondary hover:text-foreground/60",
               )}
             >
               <item.icon className="w-4 h-4" />

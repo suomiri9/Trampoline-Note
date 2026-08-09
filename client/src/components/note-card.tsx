@@ -87,139 +87,150 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
   return (
     <>
       <article
-        className={`border-b border-border/[0.07] py-4 animate-fade-in-up opacity-0 ${staggerClass}`}
+        className={`border-b border-border/[0.05] animate-fade-in-up opacity-0 ${staggerClass} select-none`}
         data-testid={`card-note-${note.id}`}
       >
-        {/* Main row: expand button + menu */}
-        <div className="flex items-start gap-1">
-          <button
-            className="group flex flex-1 items-start gap-3 text-left min-w-0"
-            onClick={() => setOpen(v => !v)}
-            aria-expanded={open}
-          >
-            {/* Index badge */}
-            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] border border-border/20 bg-foreground/[0.05] font-mono text-[10px] text-muted-foreground/40">
-              {index + 1}
-            </div>
-
-            {/* Content */}
-            <div className="min-w-0 flex-1">
-              {/* Date + time */}
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/40 whitespace-nowrap">
-                  {format(new Date(note.date), "EEE, d MMM yyyy")}
-                </span>
-                <span className="font-mono text-[10px] tabular-nums text-muted-foreground/25 whitespace-nowrap shrink-0">
-                  {formatTime(note.startTime, timeFormat)} – {formatTime(note.endTime, timeFormat)}
-                </span>
-              </div>
-
-              {/* Session label */}
-              <h3 className="mt-1 truncate text-[14px] font-medium tracking-[-0.02em] text-foreground/90 leading-snug">
-                {note.content || "Training session"}
-              </h3>
-
-              {/* Stats row */}
-              <div className="mt-2 flex items-center gap-3 flex-wrap">
-                {trackTurns && turnInfo.totalTurns > 0 && (
-                  <>
-                    <span className="font-mono text-[10px] text-muted-foreground/35" data-testid={`text-turns-${note.id}`}>
-                      {turnInfo.totalTurns} turns
-                    </span>
-                    <span className="h-1 w-1 rounded-full bg-foreground/20" aria-hidden />
-                  </>
-                )}
-                {skillsData.length > 0 && (
-                  <span className="font-mono text-[10px] text-primary/80">
-                    {totalDifficulty.toFixed(1)} DD
-                  </span>
-                )}
-                {note.rating ? <StarRating value={note.rating} onChange={() => {}} readonly size="sm" /> : null}
-                {whoopDay && (whoopDay.recovery != null || whoopDay.strain != null) && (
-                  <span
-                    className="flex items-center gap-1 whitespace-nowrap"
-                    title="WHOOP recovery / day strain"
-                    data-testid={`whoop-day-${note.id}`}
-                  >
-                    <HeartPulse className="w-3 h-3 shrink-0" />
-                    {whoopDay.recovery != null && (
-                      <span className={cn("font-mono text-[10px] font-bold", recoveryColorClass(whoopDay.recovery))}>
-                        {Math.round(whoopDay.recovery)}%
-                      </span>
-                    )}
-                    {whoopDay.strain != null && (
-                      <span className="font-mono text-[10px] text-muted-foreground/35">{whoopDay.strain.toFixed(1)} strain</span>
-                    )}
-                  </span>
-                )}
-                {isPending && <PendingSyncBadge testId={`badge-pending-sync-${note.id}`} />}
-              </div>
-            </div>
-
-            {/* Chevron */}
-            <ChevronDown
-              className={cn(
-                "mt-2 h-4 w-4 shrink-0 text-muted-foreground/25 transition-transform duration-200",
-                open && "rotate-180"
-              )}
-            />
-          </button>
-
-          {/* ⋮ Menu — outside the expand button */}
-          <div className="mt-0.5 shrink-0" onClick={e => e.stopPropagation()}>
-            {isPending ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground"
-                    data-testid={`btn-pending-actions-${note.id}`}
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40 rounded-xl">
-                  <DropdownMenuItem
-                    onClick={() => onEdit(note)}
-                    className="cursor-pointer gap-2"
-                    data-testid={`btn-pending-edit-${note.id}`}
-                  >
-                    <Pencil className="h-4 w-4" /> Edit Session
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => setShowDeleteAlert(true)}
-                    className="cursor-pointer gap-2 text-destructive focus:text-destructive"
-                    data-testid={`btn-pending-delete-${note.id}`}
-                  >
-                    <Trash2 className="h-4 w-4" /> Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40 rounded-xl">
-                  <DropdownMenuItem onClick={() => onEdit(note)} className="cursor-pointer gap-2">
-                    <Pencil className="h-4 w-4" /> Edit Session
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => setShowDeleteAlert(true)}
-                    className="cursor-pointer gap-2 text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" /> Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+        {/* Main row */}
+        <div
+          className={cn(
+            "flex items-center gap-3 py-3 px-2 -mx-2 rounded-xl cursor-pointer transition-colors",
+            open ? "bg-foreground/[0.035]" : "hover:bg-foreground/[0.02]"
+          )}
+          onClick={() => setOpen(v => !v)}
+          role="button"
+          aria-expanded={open}
+        >
+          {/* Accent bar */}
+          <div
+            className={cn(
+              "w-[3px] h-10 rounded-full shrink-0 transition-colors",
+              open ? "bg-primary" : "bg-foreground/10"
             )}
+          />
+
+          {/* Meta + label */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+              <span className="font-mono text-[10px] text-muted-foreground/40 tracking-wide whitespace-nowrap">
+                {format(new Date(note.date), "EEE, d MMM")}
+              </span>
+              <span className="text-muted-foreground/15 text-[9px]">·</span>
+              <span className="font-mono text-[10px] text-muted-foreground/25 whitespace-nowrap">
+                {formatTime(note.startTime, timeFormat)} – {formatTime(note.endTime, timeFormat)}
+              </span>
+              {note.rating ? <StarRating value={note.rating} onChange={() => {}} readonly size="sm" /> : null}
+              {whoopDay && (whoopDay.recovery != null || whoopDay.strain != null) && (
+                <span
+                  className="flex items-center gap-1 whitespace-nowrap"
+                  title="WHOOP recovery / day strain"
+                  data-testid={`whoop-day-${note.id}`}
+                >
+                  <HeartPulse className="w-3 h-3 shrink-0" />
+                  {whoopDay.recovery != null && (
+                    <span className={cn("font-mono text-[10px] font-bold", recoveryColorClass(whoopDay.recovery))}>
+                      {Math.round(whoopDay.recovery)}%
+                    </span>
+                  )}
+                  {whoopDay.strain != null && (
+                    <span className="font-mono text-[10px] text-muted-foreground/35">{whoopDay.strain.toFixed(1)} str</span>
+                  )}
+                </span>
+              )}
+              {isPending && <PendingSyncBadge testId={`badge-pending-sync-${note.id}`} />}
+            </div>
+            <h3 className="text-[13px] font-semibold text-foreground/85 leading-snug truncate pr-2">
+              {note.content || "Training session"}
+            </h3>
           </div>
-        </div>
+
+          {/* Stats right + chevron + menu */}
+          <div className="flex items-center gap-3 shrink-0">
+            {trackTurns && turnInfo.totalTurns > 0 && (
+              <div className="text-right" data-testid={`text-turns-${note.id}`}>
+                <div className="text-[15px] font-semibold tabular-nums leading-none text-foreground/55">
+                  {turnInfo.totalTurns}
+                </div>
+                <div className="text-[7px] font-mono uppercase tracking-[0.15em] text-muted-foreground/25 mt-0.5">
+                  turns
+                </div>
+              </div>
+            )}
+            {skillsData.length > 0 && (
+              <div className="text-right min-w-[42px]">
+                <div className="text-[19px] font-bold tabular-nums leading-none text-primary">
+                  {totalDifficulty.toFixed(1)}
+                </div>
+                <div className="text-[7px] font-mono uppercase tracking-[0.15em] text-primary/40 mt-0.5">
+                  dd
+                </div>
+              </div>
+            )}
+              {/* chevron + ⋮ menu — inside the stats-right flex */}
+              <ChevronDown
+                className={cn(
+                  "w-3.5 h-3.5 text-muted-foreground/25 transition-transform duration-200",
+                  open && "rotate-180 text-muted-foreground/45"
+                )}
+              />
+              <div onClick={e => e.stopPropagation()}>
+                {isPending ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground/20 hover:text-muted-foreground/50"
+                        data-testid={`btn-pending-actions-${note.id}`}
+                      >
+                        <MoreVertical className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                      <DropdownMenuItem
+                        onClick={() => onEdit(note)}
+                        className="cursor-pointer gap-2"
+                        data-testid={`btn-pending-edit-${note.id}`}
+                      >
+                        <Pencil className="h-4 w-4" /> Edit Session
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setShowDeleteAlert(true)}
+                        className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                        data-testid={`btn-pending-delete-${note.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground/20 hover:text-muted-foreground/50"
+                      >
+                        <MoreVertical className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                      <DropdownMenuItem onClick={() => onEdit(note)} className="cursor-pointer gap-2">
+                        <Pencil className="h-4 w-4" /> Edit Session
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setShowDeleteAlert(true)}
+                        className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            </div>{/* end stats-right */}
+          </div>{/* end main row */}
 
         {/* Expanded skills section */}
         {open && skillsData.length > 0 && (
