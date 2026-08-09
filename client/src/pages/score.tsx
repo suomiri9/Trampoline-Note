@@ -1460,9 +1460,9 @@ export default function ScorePage() {
     <PageLayout>
       <PageHeader
         eyebrow="Competition & Practice"
-        title="Score Board"
+        title="Score"
         accent="Board"
-        subtitle="Track execution, DD, and competition results."
+        subtitle=""
         actions={
           <>
             <input

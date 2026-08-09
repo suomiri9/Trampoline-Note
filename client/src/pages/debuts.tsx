@@ -453,7 +453,7 @@ export default function DebutsPage() {
         onClick={() => navigate("/score")}
         data-testid="button-back-score"
       >
-        <ArrowLeft className="w-4 h-4 mr-1" /> Score Board
+        <ArrowLeft className="w-4 h-4 mr-1" /> Score
       </Button>
 
       <PageHeader
