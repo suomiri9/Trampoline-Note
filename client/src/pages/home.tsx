@@ -148,14 +148,7 @@ export default function Home() {
             <div className="flex divide-x divide-border/20 rounded-2xl overflow-hidden border border-border/20 bg-card/40">
               {STATS.map((s) => (
                 <div key={s.label} className="flex-1 flex flex-col items-center py-3 gap-1">
-                  <span
-                    className="text-[18px] font-bold tabular-nums leading-none"
-                    style={{
-                      background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--chart-4)))",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                    }}
-                  >
+                  <span className="text-[18px] font-bold tabular-nums leading-none text-indigo-400">
                     {s.value}
                   </span>
                   <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40">
