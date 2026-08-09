@@ -235,7 +235,7 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
         {/* Expanded skills section */}
         {open && skillsData.length > 0 && (
           <div className="ml-10 mt-3 border-l border-border/10 pl-3">
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col divide-y divide-white/[0.05]">
               {(() => {
                 const groups: ({ id: number; reps?: number } | { id: number; reps?: number }[])[] = [];
                 let currentGroup: { id: number; reps?: number }[] = [];
