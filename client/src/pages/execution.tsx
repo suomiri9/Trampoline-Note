@@ -633,7 +633,7 @@ export default function ExecutionPage() {
       <PageHeader
         eyebrow="Execution"
         title="Execution Tracker"
-        subtitle=""
+        subtitle="Log the judges’ per-skill execution deductions — from a sheet photo or by hand — and see which skills cost you the most tenths."
         actions={
           <>
             <input

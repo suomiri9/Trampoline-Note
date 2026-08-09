@@ -165,7 +165,7 @@ export default function CoachPage() {
       eyebrow="AI Coach"
       title="Coach"
       accent="Coach"
-      subtitle=""
+      subtitle="Daily push guidance, training answers, and help using the app."
     />
   );
 

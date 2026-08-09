@@ -331,7 +331,7 @@ export default function StatsPage() {
         eyebrow="Analytics"
         title="Your Progress"
         accent="Progress"
-        subtitle=""
+        subtitle="Difficulty and session trends over time."
       />
 
       <div className="grid gap-6">

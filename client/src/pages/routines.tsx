@@ -221,7 +221,7 @@ export default function RoutinesPage() {
         eyebrow="Routine Builder"
         title="My Routines"
         accent="Routines"
-        subtitle=""
+        subtitle="Build and manage your 10-skill competition routines."
         actions={
           <>
             <Button

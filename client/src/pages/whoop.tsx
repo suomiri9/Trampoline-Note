@@ -136,7 +136,7 @@ export default function WhoopPage() {
       eyebrow="Readiness"
       title="WHOOP Data"
       accent="Data"
-      subtitle=""
+      subtitle="Recovery, sleep, strain and heart-rate trends from your WHOOP."
     />
   );
 

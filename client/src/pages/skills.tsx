@@ -510,7 +510,7 @@ export default function SkillsPage() {
         eyebrow="Skill Library"
         title="My Skills"
         accent="Skills"
-        subtitle=""
+        subtitle="Manage your trampoline element library."
         actions={
           <>
             <Button

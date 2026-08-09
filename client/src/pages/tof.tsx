@@ -440,7 +440,7 @@ export default function TofPage() {
       <PageHeader
         eyebrow="Time of Flight"
         title="ToF Tracker"
-        subtitle=""
+        subtitle="Log per-jump time-of-flight from Veriflite screenshots or by hand, and see which skills cost you the most height."
         actions={
           <Button onClick={openNew} className={primaryActionClass} data-testid="button-new-tof-session">
             <Plus className="w-5 h-5" /> New Session

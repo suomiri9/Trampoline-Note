@@ -593,7 +593,7 @@ export default function SettingsPage() {
         eyebrow="Account"
         title="App Settings"
         accent="Settings"
-        subtitle=""
+        subtitle="Manage your preferences and account."
       />
 
       <main>

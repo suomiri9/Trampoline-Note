@@ -461,7 +461,7 @@ export default function DebutsPage() {
         eyebrow="Competition readiness"
         title="Comp Debuts"
         accent="Debuts"
-        subtitle=""
+        subtitle="How long it took each skill and routine to go from first training to first competition — shorter bar = faster debut."
       />
 
       {isLoading ? (
