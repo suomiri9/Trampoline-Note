@@ -174,11 +174,9 @@ function Navigation() {
     { href: "/execution", label: "Execution", icon: ClipboardCheck, iconColor: "text-emerald-600 dark:text-emerald-400" },
     ...(user ? [{ href: "/settings", label: "Settings", icon: Settings }] : []),
   ];
-  const activeMoreItem = moreItems.find(
+  const moreActive = moreItems.some(
     (item) => location === item.href || location.startsWith(item.href + "/"),
   );
-  const moreActive = !!activeMoreItem;
-  const MoreIcon = activeMoreItem?.icon ?? MoreHorizontal;
 
   const baseItem =
     "flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-xl text-[11px] font-mono uppercase tracking-wider transition-all cursor-pointer";
@@ -217,14 +215,14 @@ function Navigation() {
             className={cn(
               baseItem,
               moreActive
-                ? "bg-primary/15 text-foreground font-semibold"
+                ? "bg-secondary text-foreground font-semibold"
                 : "text-muted-foreground hover:bg-secondary hover:text-foreground",
             )}
             data-testid="button-nav-more"
             aria-label="More"
           >
-            <MoreIcon className={cn("w-4 h-4", activeMoreItem?.iconColor ?? (moreActive ? "text-primary" : undefined))} />
-            <span className="hidden sm:inline">{activeMoreItem?.label ?? "More"}</span>
+            <MoreHorizontal className="w-4 h-4" />
+            <span className="hidden sm:inline">More</span>
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="top" sideOffset={10} className="w-44 rounded-xl z-[70]">
