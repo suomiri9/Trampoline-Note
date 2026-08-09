@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { Plus, Wrench, BookOpen, Loader2, ChevronDown } from "lucide-react";
 import { useNotesPage } from "@/hooks/use-notes";
@@ -25,6 +25,15 @@ export default function Home() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
   const [isPointsOpen, setIsPointsOpen] = useState(false);
+
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const root = document.getElementById("root");
+    if (!root) return;
+    const onScroll = () => setScrolled(root.scrollTop > 40);
+    root.addEventListener("scroll", onScroll, { passive: true });
+    return () => root.removeEventListener("scroll", onScroll);
+  }, []);
 
   const handleCreateNew = () => {
     setNoteToEdit(null);
@@ -93,15 +102,18 @@ export default function Home() {
           }}
         />
 
-        {/* Eyebrow pill */}
-        <div className="relative pt-4 pb-4 flex flex-col items-center text-center">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border/25 bg-card/60 text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase mb-4">
+        {/* Hero — full at top, compact when scrolled */}
+        <div className={`relative flex flex-col items-center text-center transition-all duration-300 ${scrolled ? "pt-3 pb-3" : "pt-7 pb-6"}`}>
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border/25 bg-card/60 text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase transition-all duration-300 ${scrolled ? "mb-3" : "mb-6"}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             Training Log
           </div>
 
           {/* Headline */}
-          <h1 className="font-black leading-[0.94] tracking-[-0.04em] mb-2" style={{ fontSize: "clamp(26px,7vw,32px)" }}>
+          <h1
+            className="font-black leading-[0.94] tracking-[-0.05em] transition-all duration-300"
+            style={{ fontSize: scrolled ? "clamp(22px,6vw,26px)" : "clamp(38px,10vw,48px)", marginBottom: scrolled ? "0" : "12px" }}
+          >
             <span className="text-foreground">Track every</span>
             <br />
             <span
@@ -115,8 +127,15 @@ export default function Home() {
             </span>
           </h1>
 
+          {/* Subtitle — hidden when scrolled */}
+          {!scrolled && (
+            <p className="text-[11px] text-muted-foreground/50 leading-relaxed mb-6 max-w-[200px]">
+              Every session, skill, and difficulty point — in one place.
+            </p>
+          )}
+
           {/* Action row */}
-          <div className="flex items-center gap-2 mt-4">
+          <div className={`flex items-center gap-2 transition-all duration-300 ${scrolled ? "mt-2" : "mt-0"}`}>
             <button
               onClick={() => setIsPointsOpen(true)}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] active:scale-[0.98] transition-all"
@@ -127,7 +146,8 @@ export default function Home() {
             <PointsToFix hideTrigger open={isPointsOpen} onOpenChange={setIsPointsOpen} />
             <button
               onClick={handleCreateNew}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-foreground/70 hover:bg-white/[0.06] active:scale-[0.98] transition-all"
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-medium active:scale-[0.98] transition-all ${scrolled ? "border border-white/[0.07] bg-white/[0.025] text-foreground/70 hover:bg-white/[0.06]" : "bg-gradient-cta text-primary-foreground font-semibold"}`}
+              style={scrolled ? {} : { boxShadow: "0 0 22px hsl(var(--primary)/0.28)" }}
               aria-label="New session"
               data-testid="btn-new-note"
             >
