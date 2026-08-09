@@ -123,7 +123,7 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsPointsOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-border/30 bg-card/40 text-[11px] font-medium text-muted-foreground hover:bg-card/70 active:scale-[0.98] transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] active:scale-[0.98] transition-all"
             >
               <Wrench className="w-3.5 h-3.5" />
               Points to Fix
