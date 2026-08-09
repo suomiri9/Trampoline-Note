@@ -286,39 +286,39 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
                     const reps = item.reps || 1;
 
                     return wrapRow(
-                      <div key={`routine-${groupIdx}`} className="flex items-center justify-between gap-3 py-1.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 font-mono text-[9px] tracking-tight text-primary">
-                            ROUTINE
-                          </span>
-                          <span className="truncate text-[12px] font-medium text-primary/80">
-                            {routine?.name || item.routineName || "Routine"}
-                          </span>
-                          {displaySkillIds.length > baseSkillIds.length && (
-                            <span className="font-mono text-[10px] text-muted-foreground/50">{displaySkillIds.length} skills</span>
-                          )}
-                          {displaySkillIds.length < baseSkillIds.length && (
-                            <span className="font-mono text-[10px] text-muted-foreground/50">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          className="shrink-0 flex items-center gap-1 font-mono text-[10px] font-bold"
-                          onClick={(e) => { e.stopPropagation(); if (reps > 1) toggleMath(groupIdx); }}
-                          data-testid={`math-toggle-${note.id}-${groupIdx}`}
-                        >
-                          {reps > 1 && expandedMath.has(groupIdx) ? (
-                            <><span className="text-muted-foreground/50">{routineDD.toFixed(1)}</span><span className="text-primary/40">×</span><span className="text-primary">{reps}</span><span className="text-primary/40">=</span><span className="text-primary">{(routineDD * reps).toFixed(1)}</span></>
-                          ) : reps > 1 ? (
-                            <><span className="text-muted-foreground/60">{(routineDD * reps).toFixed(1)}</span><span className="text-muted-foreground/30">×{reps}</span></>
-                          ) : (
-                            <span className="text-muted-foreground/50">{routineDD.toFixed(1)}</span>
-                          )}
-                        </button>
-                        {item.note && (
-                          <div className="w-full mt-1 col-span-2">
-                            <span className="text-[11px] text-muted-foreground italic">{item.note}</span>
+                      <div key={`routine-${groupIdx}`} className="flex flex-col py-1.5 gap-1">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 font-mono text-[9px] tracking-tight text-primary">
+                              ROUTINE
+                            </span>
+                            <span className="truncate text-[12px] font-medium text-primary/80">
+                              {routine?.name || item.routineName || "Routine"}
+                            </span>
+                            {displaySkillIds.length > baseSkillIds.length && (
+                              <span className="font-mono text-[10px] text-muted-foreground/50">{displaySkillIds.length} skills</span>
+                            )}
+                            {displaySkillIds.length < baseSkillIds.length && (
+                              <span className="font-mono text-[10px] text-muted-foreground/50">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
+                            )}
                           </div>
+                          <button
+                            type="button"
+                            className="shrink-0 flex items-center gap-1 font-mono text-[10px] font-bold"
+                            onClick={(e) => { e.stopPropagation(); if (reps > 1) toggleMath(groupIdx); }}
+                            data-testid={`math-toggle-${note.id}-${groupIdx}`}
+                          >
+                            {reps > 1 && expandedMath.has(groupIdx) ? (
+                              <><span className="text-muted-foreground/50">{routineDD.toFixed(1)}</span><span className="text-primary/40">×</span><span className="text-primary">{reps}</span><span className="text-primary/40">=</span><span className="text-primary">{(routineDD * reps).toFixed(1)}</span></>
+                            ) : reps > 1 ? (
+                              <><span className="text-muted-foreground/60">{(routineDD * reps).toFixed(1)}</span><span className="text-muted-foreground/30">×{reps}</span></>
+                            ) : (
+                              <span className="text-muted-foreground/50">{routineDD.toFixed(1)}</span>
+                            )}
+                          </button>
+                        </div>
+                        {item.note && (
+                          <span className="text-[11px] text-muted-foreground/50 italic pl-1">{item.note}</span>
                         )}
                       </div>
                     );
@@ -338,42 +338,42 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
                     const reps = item.reps || 1;
 
                     return wrapRow(
-                      <div key={`fc-${groupIdx}`} className="flex items-center justify-between gap-3 py-1.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          {isPart ? (
-                            <span className="shrink-0 rounded-full border border-border/30 bg-foreground/[0.05] px-2 py-0.5 font-mono text-[9px] tracking-tight text-muted-foreground">
-                              PART
+                      <div key={`fc-${groupIdx}`} className="flex flex-col py-1.5 gap-1">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {isPart ? (
+                              <span className="shrink-0 rounded-full border border-border/30 bg-foreground/[0.05] px-2 py-0.5 font-mono text-[9px] tracking-tight text-muted-foreground">
+                                PART
+                              </span>
+                            ) : (
+                              <span className="shrink-0 rounded-full border border-rose-400/25 bg-rose-400/10 px-2 py-0.5 font-mono text-[9px] tracking-tight text-rose-400 dark:text-rose-300">
+                                CONN
+                              </span>
+                            )}
+                            <span className={cn("truncate text-[12px] font-medium", isPart ? "text-muted-foreground/70" : "text-rose-500 dark:text-rose-400")}>
+                              {fc?.name || item.fcName || "Connection"}
                             </span>
-                          ) : (
-                            <span className="shrink-0 rounded-full border border-rose-400/25 bg-rose-400/10 px-2 py-0.5 font-mono text-[9px] tracking-tight text-rose-400 dark:text-rose-300">
-                              CONN
-                            </span>
-                          )}
-                          <span className={cn("truncate text-[12px] font-medium", isPart ? "text-muted-foreground/70" : "text-rose-500 dark:text-rose-400")}>
-                            {fc?.name || item.fcName || "Connection"}
-                          </span>
-                          {displaySkillIds.length < baseSkillIds.length && (
-                            <span className="font-mono text-[10px] text-muted-foreground/50">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          className="shrink-0 flex items-center gap-1 font-mono text-[10px] font-bold"
-                          onClick={(e) => { e.stopPropagation(); if (reps > 1) toggleMath(groupIdx); }}
-                          data-testid={`math-toggle-${note.id}-${groupIdx}`}
-                        >
-                          {reps > 1 && expandedMath.has(groupIdx) ? (
-                            <><span className="text-muted-foreground/50">{fcDD.toFixed(1)}</span><span className="text-rose-400/70">×</span><span className={isPart ? "text-muted-foreground" : "text-rose-400"}>{reps}</span><span className="text-rose-400/70">=</span><span className={isPart ? "text-muted-foreground" : "text-rose-400"}>{(fcDD * reps).toFixed(1)}</span></>
-                          ) : reps > 1 ? (
-                            <><span className={isPart ? "text-muted-foreground/60" : "text-rose-400/80"}>{(fcDD * reps).toFixed(1)}</span><span className="text-muted-foreground/30">×{reps}</span></>
-                          ) : (
-                            <span className="text-muted-foreground/50">{fcDD.toFixed(1)}</span>
-                          )}
-                        </button>
-                        {item.note && (
-                          <div className="w-full mt-1">
-                            <span className="text-[11px] text-muted-foreground italic">{item.note}</span>
+                            {displaySkillIds.length < baseSkillIds.length && (
+                              <span className="font-mono text-[10px] text-muted-foreground/50">attempt {displaySkillIds.length}/{baseSkillIds.length}</span>
+                            )}
                           </div>
+                          <button
+                            type="button"
+                            className="shrink-0 flex items-center gap-1 font-mono text-[10px] font-bold"
+                            onClick={(e) => { e.stopPropagation(); if (reps > 1) toggleMath(groupIdx); }}
+                            data-testid={`math-toggle-${note.id}-${groupIdx}`}
+                          >
+                            {reps > 1 && expandedMath.has(groupIdx) ? (
+                              <><span className="text-muted-foreground/50">{fcDD.toFixed(1)}</span><span className="text-rose-400/70">×</span><span className={isPart ? "text-muted-foreground" : "text-rose-400"}>{reps}</span><span className="text-rose-400/70">=</span><span className={isPart ? "text-muted-foreground" : "text-rose-400"}>{(fcDD * reps).toFixed(1)}</span></>
+                            ) : reps > 1 ? (
+                              <><span className={isPart ? "text-muted-foreground/60" : "text-rose-400/80"}>{(fcDD * reps).toFixed(1)}</span><span className="text-muted-foreground/30">×{reps}</span></>
+                            ) : (
+                              <span className="text-muted-foreground/50">{fcDD.toFixed(1)}</span>
+                            )}
+                          </button>
+                        </div>
+                        {item.note && (
+                          <span className="text-[11px] text-muted-foreground/50 italic pl-1">{item.note}</span>
                         )}
                       </div>
                     );
@@ -406,11 +406,9 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
                   }, 0);
 
                   return wrapRow(
-                    <div key={`group-${groupIdx}`} className={cn(
-                      "flex flex-wrap items-center gap-2 py-1.5",
-                      !isSingle && "pl-0"
-                    )}>
-                      <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+                    <div key={`group-${groupIdx}`} className="flex flex-col py-1.5 gap-1">
+                      <div className={cn("flex flex-wrap items-center gap-2", !isSingle && "pl-0")}>
+                        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
                         {group.map((gItem: any, skillIdx) => {
                           const sep = skillIdx < group.length - 1
                             ? <span key={`sep-${skillIdx}`} className="text-muted-foreground/40 text-xs font-bold">+</span>
@@ -497,10 +495,9 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
                         )}
                       </button>
 
+                      </div>{/* end inner flex row */}
                       {(group[0] as any)?.note && (
-                        <div className="w-full mt-1">
-                          <span className="text-[11px] text-muted-foreground italic">{(group[0] as any).note}</span>
-                        </div>
+                        <span className="text-[11px] text-muted-foreground/50 italic pl-1">{(group[0] as any).note}</span>
                       )}
                     </div>
                   );
