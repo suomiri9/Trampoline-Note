@@ -132,7 +132,7 @@ function SortablePracticeGroup({ gId, isConnected, children }: { gId: string; is
     >
       <button
         type="button"
-        className="touch-none cursor-grab active:cursor-grabbing flex items-center justify-center w-5 shrink-0 text-muted-foreground/30 hover:text-muted-foreground"
+        className="touch-none cursor-grab active:cursor-grabbing flex items-center justify-center w-5 shrink-0 text-muted-foreground/55 hover:text-muted-foreground"
         {...attributes}
         {...listeners}
       >
@@ -2186,7 +2186,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         <>
                           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Turns:</span>
                           <span className="text-xs font-mono font-bold text-foreground" data-testid="text-turn-count">{turnInfo.totalTurns}</span>
-                          <span className="text-muted-foreground/40">·</span>
+                          <span className="text-muted-foreground/60">·</span>
                         </>
                       )}
                       <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total DD:</span>
@@ -2335,7 +2335,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         placeholder="Type a note..."
                                         value={grpNote || ""}
                                         onChange={(e) => updateSkillNote(grpNoteIdx, e.target.value)}
-                                        className="w-full text-xs text-muted-foreground bg-white/[0.02] rounded px-2 py-1 outline-none focus:bg-white/[0.04] placeholder:text-muted-foreground/40"
+                                        className="w-full text-xs text-muted-foreground bg-white/[0.02] rounded px-2 py-1 outline-none focus:bg-white/[0.04] placeholder:text-muted-foreground/60"
                                         data-testid={`input-skill-note-${grpNoteIdx}`}
                                       />
                                     </div>
@@ -2384,13 +2384,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           return (
                                             <div className="flex items-center gap-1 text-[11px] font-mono font-bold">
                                               <span className="text-muted-foreground">{dd.toFixed(1)}</span>
-                                              <span className="text-muted-foreground/40">×</span>
+                                              <span className="text-muted-foreground/60">×</span>
                                               <div className="flex items-center border rounded-md">
                                                 <button type="button" className="px-1.5 text-muted-foreground" onClick={() => updateReps([idx], (item.reps || 1) - 1)}>-</button>
                                                 <input type="text" inputMode="numeric" pattern="[0-9]*" value={item.reps ?? 1} onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateReps([idx], v); else if (e.target.value === "") updateReps([idx], 0); }} onBlur={() => { if (!item.reps || item.reps < 1) updateReps([idx], 1); }} className="w-6 text-center text-xs font-bold bg-transparent outline-none" />
                                                 <button type="button" className="px-1.5 text-muted-foreground" onClick={() => updateReps([idx], (item.reps || 1) + 1)}>+</button>
                                               </div>
-                                              <span className="text-muted-foreground/40">=</span>
+                                              <span className="text-muted-foreground/60">=</span>
                                               <span className="text-foreground">{(dd * reps).toFixed(1)}</span>
                                             </div>
                                           );
@@ -2412,7 +2412,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     </div>
                                     {(isConnected ? (iIdx === group.items.length - 1 && group.items[0].note !== undefined && group.items[0].note !== null) : (item.note !== undefined && item.note !== null)) && (
                                       <div className="px-3 pb-2 bg-primary/5">
-                                        <input type="text" placeholder="Type a note..." value={(isConnected ? group.items[0].note : item.note) || ""} onChange={(e) => updateSkillNote(isConnected ? group.indices[0] : idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-white/[0.02] rounded px-2 py-1 outline-none focus:bg-white/[0.04] placeholder:text-muted-foreground/40" data-testid={`input-skill-note-${isConnected ? group.indices[0] : idx}`} />
+                                        <input type="text" placeholder="Type a note..." value={(isConnected ? group.items[0].note : item.note) || ""} onChange={(e) => updateSkillNote(isConnected ? group.indices[0] : idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-white/[0.02] rounded px-2 py-1 outline-none focus:bg-white/[0.04] placeholder:text-muted-foreground/60" data-testid={`input-skill-note-${isConnected ? group.indices[0] : idx}`} />
                                       </div>
                                     )}
                                   </div>
@@ -2454,13 +2454,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                           return (
                                             <div className="flex items-center gap-1 text-[11px] font-mono font-bold">
                                               <span className="text-muted-foreground">{dd.toFixed(1)}</span>
-                                              <span className="text-muted-foreground/40">×</span>
+                                              <span className="text-muted-foreground/60">×</span>
                                               <div className="flex items-center border rounded-md">
                                                 <button type="button" className="px-1.5 text-muted-foreground" onClick={() => updateReps([idx], (item.reps || 1) - 1)}>-</button>
                                                 <input type="text" inputMode="numeric" pattern="[0-9]*" value={item.reps ?? 1} onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateReps([idx], v); else if (e.target.value === "") updateReps([idx], 0); }} onBlur={() => { if (!item.reps || item.reps < 1) updateReps([idx], 1); }} className="w-6 text-center text-xs font-bold bg-transparent outline-none" />
                                                 <button type="button" className="px-1.5 text-muted-foreground" onClick={() => updateReps([idx], (item.reps || 1) + 1)}>+</button>
                                               </div>
-                                              <span className="text-muted-foreground/40">=</span>
+                                              <span className="text-muted-foreground/60">=</span>
                                               <span className="text-foreground">{(dd * reps).toFixed(1)}</span>
                                             </div>
                                           );
@@ -2482,7 +2482,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                     </div>
                                     {(isConnected ? (iIdx === group.items.length - 1 && group.items[0].note !== undefined && group.items[0].note !== null) : (item.note !== undefined && item.note !== null)) && (
                                       <div className="px-3 pb-2 bg-red-50/60 dark:bg-red-900/10">
-                                        <input type="text" placeholder="Type a note..." value={(isConnected ? group.items[0].note : item.note) || ""} onChange={(e) => updateSkillNote(isConnected ? group.indices[0] : idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-white/[0.02] rounded px-2 py-1 outline-none focus:bg-white/[0.04] placeholder:text-muted-foreground/40" data-testid={`input-skill-note-${isConnected ? group.indices[0] : idx}`} />
+                                        <input type="text" placeholder="Type a note..." value={(isConnected ? group.items[0].note : item.note) || ""} onChange={(e) => updateSkillNote(isConnected ? group.indices[0] : idx, e.target.value)} className="w-full text-xs text-muted-foreground bg-white/[0.02] rounded px-2 py-1 outline-none focus:bg-white/[0.04] placeholder:text-muted-foreground/60" data-testid={`input-skill-note-${isConnected ? group.indices[0] : idx}`} />
                                       </div>
                                     )}
                                   </div>
@@ -2521,7 +2521,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         return (
                                           <div className="flex items-center gap-1 text-[11px] font-mono font-bold">
                                             <span className="text-muted-foreground">{dd.toFixed(1)}</span>
-                                            <span className="text-muted-foreground/40">×</span>
+                                            <span className="text-muted-foreground/60">×</span>
                                             <div className="flex items-center border rounded-md">
                                               <button type="button" className="px-1.5 text-muted-foreground" onClick={() => updateReps(group.indices, (item.reps || 1) - 1)}>-</button>
                                               <input
@@ -2540,7 +2540,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                               />
                                               <button type="button" className="px-1.5 text-muted-foreground" onClick={() => updateReps(group.indices, (item.reps || 1) + 1)}>+</button>
                                             </div>
-                                            <span className="text-muted-foreground/40">=</span>
+                                            <span className="text-muted-foreground/60">=</span>
                                             <span className="text-foreground">{(dd * reps).toFixed(1)}</span>
                                           </div>
                                         );
@@ -2573,7 +2573,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                                         placeholder="Type a note..."
                                         value={group.items[0].note || ""}
                                         onChange={(e) => updateSkillNote(group.indices[0], e.target.value)}
-                                        className="w-full text-xs text-muted-foreground bg-white/[0.02] rounded px-2 py-1 outline-none focus:bg-white/[0.04] placeholder:text-muted-foreground/40"
+                                        className="w-full text-xs text-muted-foreground bg-white/[0.02] rounded px-2 py-1 outline-none focus:bg-white/[0.04] placeholder:text-muted-foreground/60"
                                         data-testid={`input-skill-note-${group.indices[0]}`}
                                       />
                                     </div>

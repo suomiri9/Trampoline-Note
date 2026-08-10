@@ -43,7 +43,7 @@ export function StarRating({ value, onChange, readonly = false, size = "md" }: S
               isSm ? "w-2.5 h-2.5" : "w-5 h-5",
               displayValue >= star 
                 ? "fill-yellow-400 text-yellow-400" 
-                : "fill-transparent text-muted-foreground/30 hover:text-yellow-300"
+                : "fill-transparent text-muted-foreground/55 hover:text-yellow-300"
             )}
           />
         </button>

@@ -173,7 +173,7 @@ export default function Home() {
                   >
                     {s.value}
                   </span>
-                  <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40">
+                  <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
                     {s.label}
                   </span>
                 </div>
@@ -235,10 +235,10 @@ export default function Home() {
           <>
             {/* Sticky section header */}
             <div className="flex items-center justify-between sticky top-0 z-10 bg-background/90 backdrop-blur-md py-4 -mx-4 sm:-mx-6 px-4 sm:px-6">
-              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/30">
+              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/55">
                 Recent sessions
               </span>
-              <span className="font-mono text-[9px] text-muted-foreground/20" data-testid="text-notes-count">
+              <span className="font-mono text-[9px] text-muted-foreground/45" data-testid="text-notes-count">
                 {visibleNotes.length} of {total}
               </span>
             </div>
@@ -263,7 +263,7 @@ export default function Home() {
                 variant="ghost"
                 onClick={() => setLimit(l => l + PAGE_SIZE)}
                 disabled={isFetching}
-                className="mt-4 w-full rounded-xl border border-border/10 h-11 text-[10px] font-mono uppercase tracking-[0.16em] text-muted-foreground/35 hover:border-primary/30 hover:text-primary/60 gap-2"
+                className="mt-4 w-full rounded-xl border border-border/10 h-11 text-[10px] font-mono uppercase tracking-[0.16em] text-muted-foreground/55 hover:border-primary/30 hover:text-primary/60 gap-2"
                 data-testid="btn-load-more-notes"
               >
                 {isFetching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ChevronDown className="w-3.5 h-3.5" />}

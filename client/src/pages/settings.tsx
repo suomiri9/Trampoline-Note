@@ -671,7 +671,7 @@ export default function SettingsPage() {
 
               {/* ── Appearance ── */}
               <div>
-                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/45 px-1 mb-2.5">Appearance</p>
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 px-1 mb-2.5">Appearance</p>
                 <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] divide-y divide-white/[0.05] overflow-hidden">
                   <div id="appearance" className="p-5 scroll-mt-4">
                     <div className="flex items-start justify-between gap-3">
@@ -737,7 +737,7 @@ export default function SettingsPage() {
 
               {/* ── Sync & Offline ── */}
               <div>
-                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/45 px-1 mb-2.5">Sync &amp; Offline</p>
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 px-1 mb-2.5">Sync &amp; Offline</p>
                 <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] divide-y divide-white/[0.05] overflow-hidden">
                   <div className="p-5 flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -943,7 +943,7 @@ export default function SettingsPage() {
 
               {/* ── AI Coach ── */}
               <div>
-                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/45 px-1 mb-2.5">AI Coach</p>
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 px-1 mb-2.5">AI Coach</p>
                 <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] divide-y divide-white/[0.05] overflow-hidden">
                   <div className="p-5 flex items-start justify-between gap-3">
                     <div className="min-w-0">

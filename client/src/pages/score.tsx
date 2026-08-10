@@ -666,7 +666,7 @@ function ScoreGraph({
 
       {data.length === 0 ? (
         <div className="text-center py-16" data-testid={`empty-score-graph${idSuffix}`}>
-          <TrendingUp className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+          <TrendingUp className="w-10 h-10 text-muted-foreground/60 mx-auto mb-3" />
           <p className="text-muted-foreground text-sm">No scores to chart yet.</p>
         </div>
       ) : (
@@ -1570,7 +1570,7 @@ export default function ScorePage() {
                   >
                     {s.value}
                   </span>
-                  <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40">
+                  <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
                     {s.label}
                   </span>
                 </div>
@@ -1609,7 +1609,7 @@ export default function ScorePage() {
                   ].map((c) => (
                     <div key={c.k}>
                       <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid={`text-pb-set-${c.id}`}>{c.v}</div>
-                      <div className="text-[8px] font-mono uppercase tracking-[0.15em] mt-1 text-muted-foreground/40">{c.k}</div>
+                      <div className="text-[8px] font-mono uppercase tracking-[0.15em] mt-1 text-muted-foreground/60">{c.k}</div>
                     </div>
                   ))}
                 </div>
@@ -1632,7 +1632,7 @@ export default function ScorePage() {
                   ].map((c) => (
                     <div key={c.k}>
                       <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid={`text-pb-vol-${c.id}`}>{c.v}</div>
-                      <div className="text-[8px] font-mono uppercase tracking-[0.15em] mt-1 text-muted-foreground/40">{c.k}</div>
+                      <div className="text-[8px] font-mono uppercase tracking-[0.15em] mt-1 text-muted-foreground/60">{c.k}</div>
                     </div>
                   ))}
                 </div>

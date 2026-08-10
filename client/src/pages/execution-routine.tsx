@@ -179,7 +179,7 @@ export default function ExecutionRoutinePage() {
                   >
                     {s.value}
                   </span>
-                  <span className="text-[8px] font-mono uppercase tracking-[0.12em] text-muted-foreground/40 truncate max-w-full">
+                  <span className="text-[8px] font-mono uppercase tracking-[0.12em] text-muted-foreground/60 truncate max-w-full">
                     {s.label}
                   </span>
                 </div>
@@ -204,7 +204,7 @@ export default function ExecutionRoutinePage() {
             <div className="flex items-center gap-2 mb-4">
               <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
               <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Total deductions over time</span>
-              <span className="ml-auto font-mono text-[9px] text-muted-foreground/30">lower is better</span>
+              <span className="ml-auto font-mono text-[9px] text-muted-foreground/55">lower is better</span>
             </div>
             <div className="h-52 w-full" data-testid="chart-exec-routine">
               <ResponsiveContainer width="100%" height="100%">
@@ -243,7 +243,7 @@ export default function ExecutionRoutinePage() {
             <div className="flex items-center gap-2 mb-4">
               <ClipboardCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">E score over time</span>
-              <span className="ml-auto font-mono text-[9px] text-muted-foreground/30">complete routines only</span>
+              <span className="ml-auto font-mono text-[9px] text-muted-foreground/55">complete routines only</span>
             </div>
             <div className="h-52 w-full" data-testid="chart-exec-routine-escore">
               <ResponsiveContainer width="100%" height="100%">
@@ -282,7 +282,7 @@ export default function ExecutionRoutinePage() {
             <div className="flex items-center gap-2 mb-4">
               <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
               <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Session log</span>
-              <span className="ml-auto font-mono text-[9px] text-muted-foreground/30">newest first</span>
+              <span className="ml-auto font-mono text-[9px] text-muted-foreground/55">newest first</span>
             </div>
             <div className="divide-y divide-white/[0.05] rounded-xl overflow-hidden border border-white/[0.06]">
               {[...samples].reverse().map(s => (
@@ -292,11 +292,11 @@ export default function ExecutionRoutinePage() {
                   data-testid={`row-exec-routine-log-${s.sessionId}`}
                 >
                   <span className="text-muted-foreground/50 w-20 shrink-0">{format(parseISO(s.date), "dd-MM-yyyy")}</span>
-                  <span className="text-muted-foreground/40 flex-1 truncate" title="Skills scored in this session">
+                  <span className="text-muted-foreground/60 flex-1 truncate" title="Skills scored in this session">
                     {s.skillCount} skill{s.skillCount === 1 ? "" : "s"}{s.hasLanding ? " + landing" : ""}
                   </span>
                   <span className="text-rose-500 font-bold shrink-0 w-14 text-right tabular-nums">−{s.totalDeductions.toFixed(1)}</span>
-                  <span className={cn("shrink-0 w-14 text-right tabular-nums", s.eScore == null ? "text-muted-foreground/40" : "text-emerald-500 font-bold")} title="Implied E score (20 − deductions), complete routines only">
+                  <span className={cn("shrink-0 w-14 text-right tabular-nums", s.eScore == null ? "text-muted-foreground/60" : "text-emerald-500 font-bold")} title="Implied E score (20 − deductions), complete routines only">
                     {s.eScore == null ? "—" : s.eScore.toFixed(1)}
                   </span>
                 </div>

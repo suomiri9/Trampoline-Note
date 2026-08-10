@@ -192,7 +192,7 @@ export default function ExecutionSkillPage() {
                   >
                     {s.value}
                   </span>
-                  <span className="text-[8px] font-mono uppercase tracking-[0.12em] text-muted-foreground/40 truncate max-w-full">
+                  <span className="text-[8px] font-mono uppercase tracking-[0.12em] text-muted-foreground/60 truncate max-w-full">
                     {s.label}
                   </span>
                 </div>
@@ -217,7 +217,7 @@ export default function ExecutionSkillPage() {
             <div className="flex items-center gap-2 mb-4">
               <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
               <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Deduction over time</span>
-              <span className="ml-auto font-mono text-[9px] text-muted-foreground/30">lower is better</span>
+              <span className="ml-auto font-mono text-[9px] text-muted-foreground/55">lower is better</span>
             </div>
             <div className="h-52 w-full" data-testid="chart-exec-skill">
               <ResponsiveContainer width="100%" height="100%">
@@ -256,7 +256,7 @@ export default function ExecutionSkillPage() {
             <div className="flex items-center gap-2 mb-4">
               <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
               <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Deduction log</span>
-              <span className="ml-auto font-mono text-[9px] text-muted-foreground/30">newest first</span>
+              <span className="ml-auto font-mono text-[9px] text-muted-foreground/55">newest first</span>
             </div>
             <div className="divide-y divide-white/[0.05] rounded-xl overflow-hidden border border-white/[0.06]">
               {[...samples].reverse().map((s, i) => (
@@ -267,7 +267,7 @@ export default function ExecutionSkillPage() {
                 >
                   <span className="text-muted-foreground/50 w-20 shrink-0">{format(parseISO(s.date), "dd-MM-yyyy")}</span>
                   <span className="text-muted-foreground flex-1 truncate">{s.targetLabel}</span>
-                  <span className="text-muted-foreground/40 shrink-0" title="Position in the sequence (or attempt number)">#{s.pos}</span>
+                  <span className="text-muted-foreground/60 shrink-0" title="Position in the sequence (or attempt number)">#{s.pos}</span>
                   <span className={cn("shrink-0 w-14 text-right font-bold tabular-nums", valueClass(s.points))}>
                     −{s.points.toFixed(1)}
                   </span>

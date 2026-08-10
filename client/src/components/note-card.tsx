@@ -111,11 +111,11 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
           {/* Meta + label */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-              <span className="font-mono text-[10px] text-muted-foreground/40 tracking-wide whitespace-nowrap">
+              <span className="font-mono text-[10px] text-muted-foreground/60 tracking-wide whitespace-nowrap">
                 {format(new Date(note.date), "EEE, d MMM")}
               </span>
-              <span className="text-muted-foreground/15 text-[9px]">·</span>
-              <span className="font-mono text-[10px] text-muted-foreground/25 whitespace-nowrap">
+              <span className="text-muted-foreground/40 text-[9px]">·</span>
+              <span className="font-mono text-[10px] text-muted-foreground/50 whitespace-nowrap">
                 {formatTime(note.startTime, timeFormat)} – {formatTime(note.endTime, timeFormat)}
               </span>
               {note.rating ? <StarRating value={note.rating} onChange={() => {}} readonly size="sm" /> : null}
@@ -132,7 +132,7 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
                     </span>
                   )}
                   {whoopDay.strain != null && (
-                    <span className="font-mono text-[10px] text-muted-foreground/35">{whoopDay.strain.toFixed(1)} str</span>
+                    <span className="font-mono text-[10px] text-muted-foreground/55">{whoopDay.strain.toFixed(1)} str</span>
                   )}
                 </span>
               )}
@@ -150,7 +150,7 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
                 <div className="text-[15px] font-semibold tabular-nums leading-none text-foreground/55">
                   {turnInfo.totalTurns}
                 </div>
-                <div className="text-[7px] font-mono uppercase tracking-[0.15em] text-muted-foreground/25 mt-0.5">
+                <div className="text-[7px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50 mt-0.5">
                   turns
                 </div>
               </div>
@@ -168,8 +168,8 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
               {/* chevron + ⋮ menu — inside the stats-right flex */}
               <ChevronDown
                 className={cn(
-                  "w-3.5 h-3.5 text-muted-foreground/25 transition-transform duration-200",
-                  open && "rotate-180 text-muted-foreground/45"
+                  "w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-200",
+                  open && "rotate-180 text-muted-foreground/60"
                 )}
               />
               <div onClick={e => e.stopPropagation()}>
@@ -179,7 +179,7 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-muted-foreground/20 hover:text-muted-foreground/50"
+                        className="h-6 w-6 text-muted-foreground/45 hover:text-muted-foreground/50"
                         data-testid={`btn-pending-actions-${note.id}`}
                       >
                         <MoreVertical className="h-3.5 w-3.5" />
@@ -209,7 +209,7 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-muted-foreground/20 hover:text-muted-foreground/50"
+                        className="h-6 w-6 text-muted-foreground/45 hover:text-muted-foreground/50"
                       >
                         <MoreVertical className="h-3.5 w-3.5" />
                       </Button>
@@ -311,7 +311,7 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
                             {reps > 1 && expandedMath.has(groupIdx) ? (
                               <><span className="text-muted-foreground/50">{routineDD.toFixed(1)}</span><span className="text-primary/40">×</span><span className="text-primary">{reps}</span><span className="text-primary/40">=</span><span className="text-primary">{(routineDD * reps).toFixed(1)}</span></>
                             ) : reps > 1 ? (
-                              <><span className="text-muted-foreground/60">{(routineDD * reps).toFixed(1)}</span><span className="text-muted-foreground/30">×{reps}</span></>
+                              <><span className="text-muted-foreground/60">{(routineDD * reps).toFixed(1)}</span><span className="text-muted-foreground/55">×{reps}</span></>
                             ) : (
                               <span className="text-muted-foreground/50">{routineDD.toFixed(1)}</span>
                             )}
@@ -366,7 +366,7 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
                             {reps > 1 && expandedMath.has(groupIdx) ? (
                               <><span className="text-muted-foreground/50">{fcDD.toFixed(1)}</span><span className="text-rose-400/70">×</span><span className={isPart ? "text-muted-foreground" : "text-rose-400"}>{reps}</span><span className="text-rose-400/70">=</span><span className={isPart ? "text-muted-foreground" : "text-rose-400"}>{(fcDD * reps).toFixed(1)}</span></>
                             ) : reps > 1 ? (
-                              <><span className={isPart ? "text-muted-foreground/60" : "text-rose-400/80"}>{(fcDD * reps).toFixed(1)}</span><span className="text-muted-foreground/30">×{reps}</span></>
+                              <><span className={isPart ? "text-muted-foreground/60" : "text-rose-400/80"}>{(fcDD * reps).toFixed(1)}</span><span className="text-muted-foreground/55">×{reps}</span></>
                             ) : (
                               <span className="text-muted-foreground/50">{fcDD.toFixed(1)}</span>
                             )}
@@ -411,7 +411,7 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
                         <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
                         {group.map((gItem: any, skillIdx) => {
                           const sep = skillIdx < group.length - 1
-                            ? <span key={`sep-${skillIdx}`} className="text-muted-foreground/40 text-xs font-bold">+</span>
+                            ? <span key={`sep-${skillIdx}`} className="text-muted-foreground/60 text-xs font-bold">+</span>
                             : null;
 
                           if (gItem.id === -2) {
@@ -482,15 +482,15 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
                         {expandedMath.has(groupIdx) ? (
                           <>
                             <span className="text-muted-foreground/50">{lineDD.toFixed(1)}</span>
-                            <span className={isSingle ? "text-muted-foreground/30" : "text-rose-400/70"}>×</span>
+                            <span className={isSingle ? "text-muted-foreground/55" : "text-rose-400/70"}>×</span>
                             <span className="text-foreground/70">{reps}</span>
-                            <span className={isSingle ? "text-muted-foreground/30" : "text-rose-400/70"}>=</span>
+                            <span className={isSingle ? "text-muted-foreground/55" : "text-rose-400/70"}>=</span>
                             <span className={isSingle ? "text-foreground/70" : "text-rose-500 dark:text-rose-400"}>{(lineDD * reps).toFixed(1)}</span>
                           </>
                         ) : (
                           <>
                             <span className={isSingle ? "text-muted-foreground/60" : "text-rose-500 dark:text-rose-400"}>{(lineDD * reps).toFixed(1)}</span>
-                            {reps > 1 && <span className={isSingle ? "text-muted-foreground/30" : "text-rose-400/60"}>×{reps}</span>}
+                            {reps > 1 && <span className={isSingle ? "text-muted-foreground/55" : "text-rose-400/60"}>×{reps}</span>}
                           </>
                         )}
                       </button>

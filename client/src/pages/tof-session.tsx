@@ -86,7 +86,7 @@ export default function TofSessionPage() {
         <BackLink navigate={navigate} testId="button-back-tof-missing" />
         <div className="py-24 flex flex-col items-center text-center">
           <div className="w-14 h-14 mb-5 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center">
-            <Timer className="w-7 h-7 text-muted-foreground/40" />
+            <Timer className="w-7 h-7 text-muted-foreground/60" />
           </div>
           <h3 className="text-2xl font-black tracking-tight mb-2">Session not found.</h3>
           <p className="text-sm text-muted-foreground/60">It may have been deleted.</p>
@@ -192,11 +192,11 @@ export default function TofSessionPage() {
               className="flex items-center gap-3 text-xs font-mono px-3.5 py-2.5 bg-white/[0.015]"
               data-testid={`row-tof-session-jump-${j.jumpNo}`}
             >
-              <span className="text-muted-foreground/40 w-8 shrink-0 tabular-nums">#{j.jumpNo}</span>
+              <span className="text-muted-foreground/60 w-8 shrink-0 tabular-nums">#{j.jumpNo}</span>
               <span className="font-bold text-foreground flex-1 truncate">{j.code}</span>
               <span className="text-foreground font-bold shrink-0 w-16 text-right tabular-nums">{j.tof.toFixed(3)}s</span>
               <span
-                className={cn("shrink-0 w-16 text-right tabular-nums", j.drop == null ? "text-muted-foreground/40" : j.drop > 0 ? "text-red-500" : "text-emerald-500")}
+                className={cn("shrink-0 w-16 text-right tabular-nums", j.drop == null ? "text-muted-foreground/60" : j.drop > 0 ? "text-red-500" : "text-emerald-500")}
                 title="Change vs the previous jump (positive drop = lost height)"
               >
                 {fmtDrop(j.drop)}
@@ -251,7 +251,7 @@ function StatCell({
       >
         {value}
       </span>
-      <span className="text-[8px] font-mono uppercase tracking-[0.14em] text-muted-foreground/40 text-center px-1">{label}</span>
+      <span className="text-[8px] font-mono uppercase tracking-[0.14em] text-muted-foreground/60 text-center px-1">{label}</span>
     </div>
   );
 }
@@ -272,7 +272,7 @@ function Panel({
       <div className="flex items-center gap-2 mb-4">
         {icon}
         <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60">{title}</span>
-        {meta && <span className="font-mono text-[9px] text-muted-foreground/35 ml-auto">{meta}</span>}
+        {meta && <span className="font-mono text-[9px] text-muted-foreground/55 ml-auto">{meta}</span>}
       </div>
       {children}
     </div>

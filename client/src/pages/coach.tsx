@@ -183,7 +183,7 @@ function PushCard() {
         </p>
         {!data.whoopLinked && (
           <p
-            className="text-[10px] font-mono uppercase tracking-[0.12em] text-muted-foreground/40 mt-3"
+            className="text-[10px] font-mono uppercase tracking-[0.12em] text-muted-foreground/60 mt-3"
             data-testid="text-push-no-whoop"
           >
             WHOOP not linked — guidance from training load only.

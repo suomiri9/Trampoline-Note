@@ -55,7 +55,7 @@ function SortableRow({ id, children, className, onClick, testId, reorderMode }: 
         <TableCell className="w-8 px-1">
           <button
             type="button"
-            className="touch-none cursor-grab active:cursor-grabbing flex items-center justify-center w-6 h-6 text-muted-foreground/40 hover:text-muted-foreground"
+            className="touch-none cursor-grab active:cursor-grabbing flex items-center justify-center w-6 h-6 text-muted-foreground/60 hover:text-muted-foreground"
             {...attributes}
             {...listeners}
           >
@@ -673,7 +673,7 @@ export default function SkillsPage() {
             </Dialog>
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
               <div className="flex flex-row items-center justify-between shrink-0 px-4 py-3 border-b border-white/[0.06]">
-                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40">Skills Library</span>
+                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60">Skills Library</span>
                 {renderReorderButton()}
               </div>
               <div className="overflow-x-auto p-2">
@@ -863,7 +863,7 @@ export default function SkillsPage() {
             </Dialog>
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
               <div className="flex flex-row items-center justify-between shrink-0 px-4 py-3 border-b border-white/[0.06]">
-                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40">Drills Library</span>
+                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60">Drills Library</span>
                 {renderReorderButton()}
               </div>
               <div className="overflow-x-auto p-2">
@@ -1136,7 +1136,7 @@ export default function SkillsPage() {
             </Dialog>
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
               <div className="flex flex-row items-center justify-between shrink-0 px-4 py-3 border-b border-white/[0.06]">
-                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40">Connections Library</span>
+                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60">Connections Library</span>
                 {renderReorderButton()}
               </div>
               <div className="overflow-x-auto p-2">
@@ -1333,7 +1333,7 @@ export default function SkillsPage() {
             </Dialog>
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
               <div className="flex flex-row items-center justify-between shrink-0 px-4 py-3 border-b border-white/[0.06]">
-                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40">Routine Parts Library</span>
+                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60">Routine Parts Library</span>
                 {renderReorderButton()}
               </div>
               <div className="overflow-x-auto p-2">

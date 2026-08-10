@@ -70,7 +70,7 @@ interface ChartCardProps {
 function ChartCard({ title, accent, accentClass, children, testId }: ChartCardProps) {
   return (
     <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5" data-testid={testId}>
-      <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/45 mb-3">
+      <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">
         {title} <span className={accentClass}>/ {accent}</span>
       </div>
       <div className="h-[200px] w-full">{children}</div>
@@ -231,7 +231,7 @@ export default function WhoopPage() {
 
   const rangeSelect = (
     <div className="flex items-center justify-between mb-4 gap-2">
-      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/40" data-testid="text-whoop-range-label">
+      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/60" data-testid="text-whoop-range-label">
         Last {range} days
       </span>
       <div className="flex items-center gap-2">
@@ -388,13 +388,13 @@ export default function WhoopPage() {
                 >
                   {s.value}
                 </span>
-                <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40">
+                <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
                   {s.label}
                 </span>
               </div>
             ))}
           </div>
-          <p className="mt-1.5 text-center font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/25">
+          <p className="mt-1.5 text-center font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/50">
             {range}-day averages
           </p>
         </div>
@@ -519,7 +519,7 @@ export default function WhoopPage() {
 
       {data.workouts.length > 0 && (
         <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mt-4" data-testid="card-whoop-workouts">
-          <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/45 mb-3">
+          <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">
             Workouts <span className="text-orange-400">/ recent</span>
           </div>
           <div className="divide-y divide-white/[0.05]">

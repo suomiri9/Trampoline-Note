@@ -142,7 +142,7 @@ export default function ExecutionSessionPage() {
               {name}
             </span>
           </h1>
-          <p className="mt-2 text-[11px] font-mono uppercase tracking-[0.14em] text-muted-foreground/40">
+          <p className="mt-2 text-[11px] font-mono uppercase tracking-[0.14em] text-muted-foreground/60">
             {format(parseISO(session.date), "dd-MM-yyyy")}
           </p>
         </div>
@@ -163,7 +163,7 @@ export default function ExecutionSessionPage() {
                 >
                   {s.value}
                 </span>
-                <span className="text-[8px] font-mono uppercase tracking-[0.12em] text-muted-foreground/40 truncate max-w-full">
+                <span className="text-[8px] font-mono uppercase tracking-[0.12em] text-muted-foreground/60 truncate max-w-full">
                   {s.label}
                 </span>
               </div>
@@ -177,7 +177,7 @@ export default function ExecutionSessionPage() {
         <div className="flex items-center gap-2 mb-4">
           <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
           <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Deductions per skill</span>
-          <span className="ml-auto font-mono text-[9px] text-muted-foreground/30">in tenths</span>
+          <span className="ml-auto font-mono text-[9px] text-muted-foreground/55">in tenths</span>
         </div>
         <div className="h-52 w-full" data-testid="chart-exec-session">
           <ResponsiveContainer width="100%" height="100%">
@@ -227,7 +227,7 @@ export default function ExecutionSessionPage() {
               )}
               data-testid={`row-exec-session-${r.isLanding ? "landing" : r.pos}`}
             >
-              <span className="text-muted-foreground/40 w-8 shrink-0">{r.isLanding ? "L" : `#${r.pos}`}</span>
+              <span className="text-muted-foreground/60 w-8 shrink-0">{r.isLanding ? "L" : `#${r.pos}`}</span>
               <span className="font-bold text-foreground flex-1 truncate">{r.code}</span>
               <span className={cn("shrink-0 w-14 text-right font-bold tabular-nums", r.points >= 0.3 ? "text-red-500" : r.points >= 0.2 ? "text-amber-500" : "text-emerald-500")}>
                 −{r.points.toFixed(1)}

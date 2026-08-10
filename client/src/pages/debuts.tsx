@@ -519,7 +519,7 @@ export default function DebutsPage() {
                 >
                   {s.value}
                 </span>
-                <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40">
+                <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
                   {s.label}
                 </span>
               </div>
@@ -544,7 +544,7 @@ export default function DebutsPage() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h2 className="font-black tracking-tight text-base">Skill debuts</h2>
-                  <Timer className="w-3.5 h-3.5 text-muted-foreground/40" />
+                  <Timer className="w-3.5 h-3.5 text-muted-foreground/60" />
                 </div>
                 <p className="text-[9px] font-mono uppercase tracking-[0.12em] text-muted-foreground/50 mt-1 leading-relaxed">
                   First comp = first score using a routine that contains the skill.
@@ -570,7 +570,7 @@ export default function DebutsPage() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h2 className="font-black tracking-tight text-base">Routine debuts</h2>
-                  <Timer className="w-3.5 h-3.5 text-muted-foreground/40" />
+                  <Timer className="w-3.5 h-3.5 text-muted-foreground/60" />
                 </div>
                 <p className="text-[9px] font-mono uppercase tracking-[0.12em] text-muted-foreground/50 mt-1 leading-relaxed">
                   First comp = first competition score logged with the routine.

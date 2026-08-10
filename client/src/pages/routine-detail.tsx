@@ -251,14 +251,14 @@ export default function RoutineDetailPage() {
                 >
                   {totalDD.toFixed(1)}
                 </span>
-                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40">Total DD</span>
+                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60">Total DD</span>
               </div>
             </div>
           </div>
         </div>
 
         <div className="mb-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
-          <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40 mb-3" data-testid={hasVersions && currentSince ? "text-current-lineup-since" : undefined}>
+          <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60 mb-3" data-testid={hasVersions && currentSince ? "text-current-lineup-since" : undefined}>
             {hasVersions && currentSince
               ? `Current lineup · since ${format(parseISO(currentSince), "MMM d, yyyy")}`
               : "Lineup"}
@@ -411,7 +411,7 @@ export default function RoutineDetailPage() {
         <CompletionChart title="Practice Frequency" data={weeklyData} markers={changeMarkers} />
 
         <div className="mt-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
-          <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40 mb-3">Session History</div>
+          <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60 mb-3">Session History</div>
             {entries.length === 0 ? (
               <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-no-history">
                 No training sessions found for this routine yet.
@@ -538,7 +538,7 @@ export default function RoutineDetailPage() {
 function StatCard({ icon, label, value, testId }: { icon: React.ReactNode; label: string; value: string; testId: string }) {
   return (
     <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3">
-      <div className="flex items-center gap-1.5 text-muted-foreground/40 mb-1.5">
+      <div className="flex items-center gap-1.5 text-muted-foreground/60 mb-1.5">
         <span className="[&_svg]:w-3.5 [&_svg]:h-3.5">{icon}</span>
         <span className="text-[8px] font-mono uppercase tracking-[0.15em]">{label}</span>
       </div>

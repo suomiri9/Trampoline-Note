@@ -183,7 +183,7 @@ export default function SkillDetailPage() {
               <span className="text-[16px] font-bold font-mono tabular-nums leading-none text-foreground/90" data-testid="text-skill-code">
                 {skillDisplayCode(skill, allSkills)}
               </span>
-              <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40">Code</span>
+              <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Code</span>
             </div>
             <div className="flex-1 flex flex-col items-center py-3 gap-1">
               <span
@@ -193,7 +193,7 @@ export default function SkillDetailPage() {
               >
                 {skill.difficulty.toFixed(1)}
               </span>
-              <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40">DD</span>
+              <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">DD</span>
             </div>
           </div>
           {isShape && (
@@ -263,7 +263,7 @@ export default function SkillDetailPage() {
 
           {expected > 0 && (
             <div className="mb-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
-              <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40 mb-3">Sequence</div>
+              <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60 mb-3">Sequence</div>
               <div className="flex flex-wrap gap-3">
                 {skill.skillIds!.map((id, idx) => {
                   const sub = allSkills?.find(s => s.id === id);
@@ -330,7 +330,7 @@ export default function SkillDetailPage() {
           <CompletionChart title="Practice Frequency" data={chartData} />
 
           <div className="mt-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
-            <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40 mb-3">Session History</div>
+            <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60 mb-3">Session History</div>
             {entries.length === 0 ? (
               <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-no-history">
                 No training sessions found for this connection yet.
@@ -440,7 +440,7 @@ export default function SkillDetailPage() {
         <RepsChart title="Reps per Day" data={chartData} />
 
         <div className="mt-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
-          <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40 mb-3">Session History</div>
+          <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60 mb-3">Session History</div>
           {entries.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-no-history">
               No training sessions found for this skill yet.
@@ -485,7 +485,7 @@ export default function SkillDetailPage() {
 function StatCard({ icon, label, value, testId }: { icon: React.ReactNode; label: string; value: string; testId: string }) {
   return (
     <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3">
-      <div className="flex items-center gap-1.5 text-muted-foreground/40 mb-1.5">
+      <div className="flex items-center gap-1.5 text-muted-foreground/60 mb-1.5">
         <span className="[&_svg]:w-3.5 [&_svg]:h-3.5">{icon}</span>
         <span className="text-[8px] font-mono uppercase tracking-[0.15em]">{label}</span>
       </div>

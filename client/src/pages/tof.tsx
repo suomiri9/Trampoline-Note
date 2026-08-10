@@ -380,7 +380,7 @@ export default function TofPage() {
         <span className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full bg-gradient-to-b from-amber-400 to-orange-500" aria-hidden="true" />
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40">{fmtDate(s.date)}</div>
+            <div className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">{fmtDate(s.date)}</div>
             {s.routineId != null ? (
               <h3
                 className="font-bold text-base leading-tight truncate cursor-pointer hover:text-amber-400 hover:underline underline-offset-2 transition-colors mt-0.5"
@@ -416,7 +416,7 @@ export default function TofPage() {
               >
                 {total.toFixed(2)}
               </div>
-              <div className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40 mt-1">Total s</div>
+              <div className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60 mt-1">Total s</div>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -542,7 +542,7 @@ export default function TofPage() {
                   >
                     {s.value}
                   </span>
-                  <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40">
+                  <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
                     {s.label}
                   </span>
                 </div>
@@ -690,7 +690,7 @@ export default function TofPage() {
           <div className="flex items-center gap-2 mb-4">
             <Timer className="h-3.5 w-3.5 text-amber-400" />
             <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60">Routine analysis</span>
-            <span className="font-mono text-[9px] text-muted-foreground/35 ml-auto">tap for the graph</span>
+            <span className="font-mono text-[9px] text-muted-foreground/55 ml-auto">tap for the graph</span>
           </div>
           <div className="rounded-xl overflow-hidden border border-white/[0.07] divide-y divide-white/[0.05]">
             {routineAnalysis.map(a => {
@@ -707,8 +707,8 @@ export default function TofPage() {
                 >
                   <span className="font-bold text-foreground flex-1 truncate">{r?.name ?? "Unknown routine"}</span>
                   <span className="text-muted-foreground/70 shrink-0 tabular-nums" title="Average total ToF per session">avg <span className="text-foreground font-bold">{a.avgTotal.toFixed(2)}s</span></span>
-                  <span className="text-muted-foreground/40 shrink-0 w-10 text-right tabular-nums" title="Recorded sessions">n={a.sessions}</span>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+                  <span className="text-muted-foreground/60 shrink-0 w-10 text-right tabular-nums" title="Recorded sessions">n={a.sessions}</span>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
                 </div>
               );
             })}
@@ -722,7 +722,7 @@ export default function TofPage() {
           <div className="flex items-center gap-2 mb-4">
             <TrendingDown className="h-3.5 w-3.5 text-amber-400" />
             <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60">Skill analysis</span>
-            <span className="font-mono text-[9px] text-muted-foreground/35 ml-auto">ranked by avg drop</span>
+            <span className="font-mono text-[9px] text-muted-foreground/55 ml-auto">ranked by avg drop</span>
           </div>
           <div className="rounded-xl overflow-hidden border border-white/[0.07] divide-y divide-white/[0.05]">
             {analysis.map(a => {
@@ -746,8 +746,8 @@ export default function TofPage() {
                   >
                     {a.avgDrop == null ? "—" : `${a.avgDrop > 0 ? "-" : "+"}${Math.abs(a.avgDrop).toFixed(3)}s`}
                   </span>
-                  <span className="text-muted-foreground/40 shrink-0 w-10 text-right tabular-nums" title="Recorded jumps this is based on">n={a.samples}</span>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+                  <span className="text-muted-foreground/60 shrink-0 w-10 text-right tabular-nums" title="Recorded jumps this is based on">n={a.samples}</span>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
                 </div>
               );
             })}
@@ -758,8 +758,8 @@ export default function TofPage() {
       {/* ---- Session list ---- */}
       {hasSessions && (
         <div className="flex items-center justify-between mb-4">
-          <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/30">Sessions</span>
-          <span className="font-mono text-[9px] text-muted-foreground/20 tabular-nums">{summary.sessions + queuedSessions.length} total</span>
+          <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/55">Sessions</span>
+          <span className="font-mono text-[9px] text-muted-foreground/45 tabular-nums">{summary.sessions + queuedSessions.length} total</span>
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -336,7 +336,7 @@ export default function RoutinesPage() {
               </SortableContext>
             </DndContext>
             <div className="pt-4 border-t border-white/[0.06] flex justify-between items-center">
-              <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40">Total Difficulty</span>
+              <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60">Total Difficulty</span>
               <span
                 className="text-2xl font-bold tabular-nums"
                 style={{ background: "linear-gradient(135deg,#60a5fa,#a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
@@ -475,7 +475,7 @@ export default function RoutinesPage() {
                     >
                       {dd.toFixed(1)}
                     </div>
-                    <div className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40 mt-1">DD</div>
+                    <div className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60 mt-1">DD</div>
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>

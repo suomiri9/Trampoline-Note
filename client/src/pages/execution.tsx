@@ -524,7 +524,7 @@ export default function ExecutionPage() {
               >
                 {e != null ? e.toFixed(1) : `−${total.toFixed(1)}`}
               </div>
-              <div className="text-[9px] font-mono uppercase tracking-[0.14em] text-muted-foreground/40 mt-1">
+              <div className="text-[9px] font-mono uppercase tracking-[0.14em] text-muted-foreground/60 mt-1">
                 {e != null ? "E score" : "Deductions"}
               </div>
             </div>
@@ -727,7 +727,7 @@ export default function ExecutionPage() {
                   >
                     {s.value}
                   </span>
-                  <span className="text-[8px] font-mono uppercase tracking-[0.12em] text-muted-foreground/40 truncate max-w-full">
+                  <span className="text-[8px] font-mono uppercase tracking-[0.12em] text-muted-foreground/60 truncate max-w-full">
                     {s.label}
                   </span>
                 </div>
@@ -986,7 +986,7 @@ export default function ExecutionPage() {
           <div className="flex items-center gap-2 mb-4">
             <ClipboardCheck className="h-3.5 w-3.5 text-emerald-400" />
             <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Routine analysis</span>
-            <span className="ml-auto font-mono text-[9px] text-muted-foreground/30">tap for graph</span>
+            <span className="ml-auto font-mono text-[9px] text-muted-foreground/55">tap for graph</span>
           </div>
           <div className="space-y-1.5">
             {routineAnalysis.map(a => {
@@ -1018,7 +1018,7 @@ export default function ExecutionPage() {
           <div className="flex items-center gap-2 mb-4">
             <TrendingDown className="h-3.5 w-3.5 text-rose-400" />
             <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Skill analysis</span>
-            <span className="ml-auto font-mono text-[9px] text-muted-foreground/30">worst first</span>
+            <span className="ml-auto font-mono text-[9px] text-muted-foreground/55">worst first</span>
           </div>
           <div className="space-y-1.5">
             {analysis.ranked.map(a => {
@@ -1063,8 +1063,8 @@ export default function ExecutionPage() {
       {/* ---- Session list ---- */}
       {(queuedSessions.length > 0 || (sessions ?? []).length > 0) && (
         <div className="flex items-center justify-between mb-3">
-          <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/30">Sessions</span>
-          <span className="font-mono text-[9px] text-muted-foreground/20">{queuedSessions.length + (sessions ?? []).length} total</span>
+          <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/55">Sessions</span>
+          <span className="font-mono text-[9px] text-muted-foreground/45">{queuedSessions.length + (sessions ?? []).length} total</span>
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

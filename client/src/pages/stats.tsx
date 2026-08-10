@@ -376,8 +376,8 @@ export default function StatsPage() {
         <div>
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-3">
             <div className="flex items-baseline gap-2">
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/35" data-testid="text-stats-scope">{periodTitle}</span>
-              <span className="font-mono text-[10px] text-muted-foreground/25" data-testid="text-stats-period">{periodLabel}</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/55" data-testid="text-stats-scope">{periodTitle}</span>
+              <span className="font-mono text-[10px] text-muted-foreground/50" data-testid="text-stats-period">{periodLabel}</span>
             </div>
           </div>
           {/* Range selector — Apple Stocks style segmented control */}
@@ -391,7 +391,7 @@ export default function StatsPage() {
                   "flex-1 rounded-[10px] px-2.5 py-1.5 uppercase tracking-wider transition-colors",
                   range === r
                     ? "bg-foreground/[0.08] text-foreground"
-                    : "text-muted-foreground/40 hover:text-muted-foreground/70"
+                    : "text-muted-foreground/60 hover:text-muted-foreground/70"
                 )}
                 data-testid={`range-${r}`}
               >
@@ -411,7 +411,7 @@ export default function StatsPage() {
                 <div className="text-[20px] sm:text-[26px] font-medium tracking-[-0.05em] leading-none tabular-nums text-gradient-primary" data-testid={s.testId}>
                   {s.value}
                 </div>
-                <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/40">
+                <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/60">
                   {s.label}
                 </div>
               </div>
@@ -423,7 +423,7 @@ export default function StatsPage() {
           <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 lg:col-span-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/35 mb-2">{periodTitle} <span className="text-primary/70">/ DD</span></div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/55 mb-2">{periodTitle} <span className="text-primary/70">/ DD</span></div>
                 <div className="text-4xl font-medium tracking-[-0.05em] tabular-nums" data-testid="text-period-total">{totalDDInRange.toFixed(1)}</div>
               </div>
               {showDelta && (
@@ -515,7 +515,7 @@ export default function StatsPage() {
           </div>
 
           <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 lg:col-span-1">
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/35 mb-2">All-Time</div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/55 mb-2">All-Time</div>
             <div>
               {[
                 { label: "Total DD Trained", value: allTimeTotalDD.toFixed(1), testId: "overview-total-dd" },
@@ -538,7 +538,7 @@ export default function StatsPage() {
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 lg:col-span-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/35 mb-2">{periodTitle} <span className="text-primary/80">/ Turns</span></div>
+                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/55 mb-2">{periodTitle} <span className="text-primary/80">/ Turns</span></div>
                   <div className="text-4xl font-medium tracking-[-0.05em] tabular-nums" data-testid="text-period-turns">{periodTurns}</div>
                   <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground/50 mt-1.5" data-testid="legend-turns-chart">
                     <span className="flex items-center gap-1.5">
@@ -684,7 +684,7 @@ export default function StatsPage() {
             </div>
 
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 lg:col-span-1">
-              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/35 mb-2">Efficiency</div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/55 mb-2">Efficiency</div>
               <div>
                 {[
                   { label: "Turns", value: String(periodTurns), testId: "stat-turns" },
