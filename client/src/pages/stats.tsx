@@ -88,9 +88,12 @@ export default function StatsPage() {
     ddByDate[key].turns += noteTurns;
     const start = parseHM(note.startTime);
     const end = parseHM(note.endTime);
-    if (start != null && end != null && end > start && noteTurns > 0) {
+    if (start != null && end != null && end !== start && noteTurns > 0) {
+      // Sessions can run past midnight (e.g. 11:22 → 00:42): an end at an
+      // earlier clock time than the start means next-day, not bad data.
+      const durationMin = end > start ? end - start : end + 24 * 60 - start;
       ddByDate[key].timedTurns += noteTurns;
-      ddByDate[key].timedMinutes += end - start;
+      ddByDate[key].timedMinutes += durationMin;
     }
   });
 
