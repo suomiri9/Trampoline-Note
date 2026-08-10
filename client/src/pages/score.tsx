@@ -28,7 +28,7 @@ import { useLocation } from "wouter";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { fileToDataUrl, compressDataUrl } from "@/lib/image-file";
@@ -673,8 +673,15 @@ function ScoreGraph({
         <>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <AreaChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                <defs>
+                  {series.map((s) => (
+                    <linearGradient key={s.key} id={`scoreFill-${s.key}${idSuffix}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={s.color} stopOpacity={s.key === "total" ? 0.22 : 0.1} />
+                      <stop offset="100%" stopColor={s.color} stopOpacity={0} />
+                    </linearGradient>
+                  ))}
+                </defs>
                 <XAxis
                   dataKey="idx"
                   axisLine={false}
@@ -699,20 +706,21 @@ function ScoreGraph({
                   cursor={{ stroke: 'hsl(var(--primary) / 0.3)', strokeWidth: 1 }}
                 />
                 {series.map((s) => (
-                  <Line
+                  <Area
                     key={s.key}
-                    type="linear"
+                    type="monotone"
                     dataKey={s.key}
                     name={s.name}
                     stroke={s.color}
                     strokeWidth={s.key === "total" ? 2.5 : 1.5}
+                    fill={`url(#scoreFill-${s.key}${idSuffix})`}
                     hide={hidden.has(s.key)}
-                    dot={data.length > 30 ? false : { r: 2.5, fill: s.color, strokeWidth: 0 }}
+                    dot={false}
                     activeDot={{ r: 5, fill: s.color, stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                     connectNulls
                   />
                 ))}
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </div>
 
