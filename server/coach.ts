@@ -781,6 +781,45 @@ export interface MenuChatMessage {
   content: string;
 }
 
+export const MENU_CHAT_OPENING_TEXT =
+  "Please read this training menu and help me turn it into a practice list.";
+
+export type MenuChatModelMessage =
+  | { role: "system"; content: string }
+  | { role: "user"; content: string | ContentPart[] }
+  | { role: "assistant"; content: string };
+
+// Builds the model message list for a menu-chat turn. The client only keeps
+// the visible bubbles in its state — the synthetic opening user turn (which
+// carried the photo) is dropped, so follow-up histories arrive starting with
+// the assistant's first question. The photo must be re-attached on EVERY
+// call: when the history opens with a user message, merge the image into it;
+// otherwise re-insert the opening image turn ahead of the history. Without
+// this, the model has no image on follow-up turns and asks the athlete to
+// re-upload the menu.
+export function buildMenuChatMessages(
+  system: string,
+  cropDataUrl: string,
+  messages: MenuChatMessage[],
+): MenuChatModelMessage[] {
+  const out: MenuChatModelMessage[] = [{ role: "system", content: system }];
+  const imageTurn = (text: string): MenuChatModelMessage => ({
+    role: "user",
+    content: [
+      { type: "image_url" as const, image_url: { url: cropDataUrl } },
+      { type: "text" as const, text },
+    ],
+  });
+  const rest = messages[0]?.role === "user" ? messages.slice(1) : messages;
+  out.push(
+    messages[0]?.role === "user"
+      ? imageTurn(messages[0].content || MENU_CHAT_OPENING_TEXT)
+      : imageTurn(MENU_CHAT_OPENING_TEXT),
+  );
+  for (const m of rest) out.push({ role: m.role, content: m.content });
+  return out;
+}
+
 const SUGGESTIONS_BLOCK_RE = /```suggestions\s*\n([\s\S]*?)```/;
 
 function extractSuggestions(raw: string): { cleaned: string; suggestions: string[] } {
@@ -870,30 +909,7 @@ export async function menuChat(
     .filter(Boolean)
     .join("\n\n");
 
-  // First user turn includes the image; subsequent turns are text-only.
-  const isFirstTurn = messages.length === 1 && messages[0].role === "user";
-
-  type OAIMessage =
-    | { role: "system"; content: string }
-    | { role: "user"; content: string | ContentPart[] }
-    | { role: "assistant"; content: string };
-
-  const oaiMessages: OAIMessage[] = [{ role: "system", content: system }];
-
-  for (let i = 0; i < messages.length; i++) {
-    const m = messages[i];
-    if (i === 0 && m.role === "user") {
-      oaiMessages.push({
-        role: "user",
-        content: [
-          { type: "image_url" as const, image_url: { url: cropDataUrl } },
-          { type: "text" as const, text: m.content || "Please read this training menu and help me turn it into a practice list." },
-        ],
-      });
-    } else {
-      oaiMessages.push({ role: m.role, content: m.content });
-    }
-  }
+  const oaiMessages = buildMenuChatMessages(system, cropDataUrl, messages);
 
   let reply: string;
   try {
