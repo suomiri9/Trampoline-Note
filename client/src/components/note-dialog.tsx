@@ -126,6 +126,7 @@ function SortablePracticeGroup({ gId, isConnected, children }: { gId: string; is
   return (
     <div
       ref={setNodeRef}
+      data-practice-group={gId}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
       className={cn("flex items-stretch border-b border-border/30 last:border-0", isConnected ? "border-l-[3px] border-l-red-400 bg-red-50/60 dark:bg-red-900/10" : "border-l-[3px] border-transparent")}
     >
@@ -274,7 +275,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const longPressSensors = useLongPressDndSensors();
   const dialogBodyRef = useRef<HTMLDivElement>(null);
   const practiceListRef = useRef<HTMLDivElement>(null);
-  const prevSkillsLenRef = useRef(0);
+  const prevSkillsRef = useRef<SkillItem[]>([]);
 
   const handleNewConnChipDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -337,19 +338,48 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   useEffect(() => {
     if (!open) {
-      prevSkillsLenRef.current = 0;
+      prevSkillsRef.current = [];
       return;
     }
-    if (selectedSkills.length > prevSkillsLenRef.current) {
+    const prev = prevSkillsRef.current;
+    const next = selectedSkills;
+    prevSkillsRef.current = next;
+    if (next.length > prev.length) {
       const el = practiceListRef.current;
-      if (el) {
-        requestAnimationFrame(() => {
-          el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-        });
+      if (!el) return;
+      // Scroll to the row that actually received the new item(s), not blindly
+      // to the list end: growth paths (append, duplicate-below, add-to-group)
+      // keep untouched rows' object identity, so the first index where the
+      // arrays diverge is the insertion point.
+      let d = 0;
+      while (d < prev.length && prev[d] === next[d]) d++;
+      let j = d; // first inserted non-separator item
+      while (j < next.length && next[j].id === -1) j++;
+      // Rendered row index containing j, and total row count (rows split on -1)
+      let gIdx = -1;
+      let total = 0;
+      let inGroup = false;
+      for (let i = 0; i < next.length; i++) {
+        if (next[i].id === -1) { inGroup = false; continue; }
+        if (!inGroup) { inGroup = true; total++; }
+        if (i === j) gIdx = total - 1;
       }
+      requestAnimationFrame(() => {
+        // Appends, initial load, and anything landing in the last row keep the
+        // old scroll-to-bottom behavior; mid-list insertions center their row.
+        const row = prev.length > 0 && gIdx >= 0 && gIdx < total - 1
+          ? (el.querySelector(`[data-practice-group="group-${gIdx}"]`) as HTMLElement | null)
+          : null;
+        if (row) {
+          const target = row.getBoundingClientRect().top - el.getBoundingClientRect().top
+            + el.scrollTop - el.clientHeight / 2 + row.clientHeight / 2;
+          el.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+        } else {
+          el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+        }
+      });
     }
-    prevSkillsLenRef.current = selectedSkills.length;
-  }, [selectedSkills.length, open]);
+  }, [selectedSkills, open]);
 
   useEffect(() => {
     if (open) {
