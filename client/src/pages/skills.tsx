@@ -518,8 +518,8 @@ export default function SkillsPage() {
       <PageHeader
         eyebrow="Skills"
         kicker="Skill Library"
-        title="Master every shape."
-        accent="every shape."
+        title="Master every skill."
+        accent="every skill."
         subtitle="Manage your trampoline element library."
         actions={
           <>
