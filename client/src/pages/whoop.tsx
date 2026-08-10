@@ -167,7 +167,7 @@ export default function WhoopPage() {
 
   // ── Bold hero (replaces PageHeader; no back-nav on this top-level page) ──
   const hero = (
-    <div className="relative -mx-4 sm:-mx-6 px-6 pt-safe-top pb-0 overflow-hidden">
+    <div className="relative -mx-4 sm:-mx-6 -mt-6 md:-mt-8 px-6 pt-safe-top pb-0 overflow-hidden">
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-72"
         style={{
