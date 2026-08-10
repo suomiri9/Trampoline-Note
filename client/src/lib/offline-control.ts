@@ -109,10 +109,66 @@ export async function findShellCacheName(): Promise<string | null> {
   }
 }
 
+/** Guards the one automatic reload per page load. Without it, a
+ * controllerchange storm (or a bad worker) could reload-loop the app. */
+let reloadedForUpdate = false;
+let updateHandlingWired = false;
+
+/** Reacts to a new service worker taking over so a deployed update is
+ * visible on the FIRST reopen instead of the second:
+ *  - controllerchange → one automatic reload (only when this page was
+ *    already controlled, so a first-ever install never reloads);
+ *  - resume/reopen (visibilitychange) → registration.update() so an
+ *    installed PWA that resumes without navigating still discovers the
+ *    new version;
+ *  - a worker stuck in `waiting` (older SW versions without install-time
+ *    skipWaiting) is told to SKIP_WAITING.
+ * The reload happens immediately on controllerchange — old pages must not
+ * keep running against the new worker, whose activate step prunes the
+ * previous build's hashed chunks. */
+function wireUpdateHandling(reg: ServiceWorkerRegistration): void {
+  if (updateHandlingWired) return;
+  updateHandlingWired = true;
+
+  // Only auto-reload when the page was ALREADY controlled — on the very
+  // first install, clients.claim() also fires controllerchange, and
+  // reloading there would be a pointless flash (same version).
+  const wasControlled = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!wasControlled || reloadedForUpdate) return;
+    reloadedForUpdate = true;
+    window.location.reload();
+  });
+
+  const nudgeWaiting = () => {
+    if (reg.waiting && navigator.serviceWorker.controller) {
+      reg.waiting.postMessage("SKIP_WAITING");
+    }
+  };
+  nudgeWaiting();
+  reg.addEventListener("updatefound", () => {
+    const sw = reg.installing;
+    if (!sw) return;
+    sw.addEventListener("statechange", () => {
+      if (sw.state === "installed") nudgeWaiting();
+    });
+  });
+
+  // Installed PWAs often RESUME instead of navigating, so the browser never
+  // re-checks /sw.js on its own — poke it whenever the app comes back to
+  // the foreground.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      reg.update().catch(() => {});
+    }
+  });
+}
+
 export async function registerServiceWorker(): Promise<void> {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
   try {
-    await navigator.serviceWorker.register("/sw.js");
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    wireUpdateHandling(reg);
   } catch {
     // ignore — service worker is best-effort.
   }
