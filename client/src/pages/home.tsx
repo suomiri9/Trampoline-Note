@@ -238,7 +238,7 @@ export default function Home() {
               <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/55">
                 Recent sessions
               </span>
-              <span className="font-mono text-[9px] text-muted-foreground/45" data-testid="text-notes-count">
+              <span className="font-mono text-[9px] text-muted-foreground/60" data-testid="text-notes-count">
                 {visibleNotes.length} of {total}
               </span>
             </div>

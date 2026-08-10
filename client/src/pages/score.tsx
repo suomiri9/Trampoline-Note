@@ -637,7 +637,7 @@ function ScoreGraph({
                   {latestDelta > 0 ? "▲" : "▼"} {Math.abs(latestDelta).toFixed(1)}
                 </span>
               )}
-              <span className="font-mono text-[9px] uppercase tracking-[0.13em] text-muted-foreground/40">Latest {latestPoint.label}</span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.13em] text-muted-foreground/60">Latest {latestPoint.label}</span>
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">{subtitle}</p>
@@ -1559,7 +1559,7 @@ export default function ScorePage() {
               <div className="font-medium tracking-[-0.05em] tabular-nums text-5xl sm:text-6xl leading-none text-gradient-gold" data-testid="text-pb-set">
                 {pb.set.score > 0 ? fmtScore(pb.set.score) : "—"}
               </div>
-              <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/40 mt-2">Set Score</div>
+              <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/60 mt-2">Set Score</div>
               <div className="mt-4 pt-3 border-t border-border/10 grid grid-cols-3 gap-2">
                 {[
                   { k: "E", id: "e", v: pb.set.e.toFixed(1) },
@@ -1568,7 +1568,7 @@ export default function ScorePage() {
                 ].map((c) => (
                   <div key={c.k} className="min-w-0">
                     <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid={`text-pb-set-${c.id}`}>{c.v}</div>
-                    <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/40 mt-1">{c.k}</div>
+                    <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/60 mt-1">{c.k}</div>
                   </div>
                 ))}
               </div>
@@ -1577,7 +1577,7 @@ export default function ScorePage() {
               <div className="font-medium tracking-[-0.05em] tabular-nums text-5xl sm:text-6xl leading-none text-gradient-gold" data-testid="text-pb-vol">
                 {pb.vol.score > 0 ? fmtScore(pb.vol.score) : "—"}
               </div>
-              <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/40 mt-2">Vol Score</div>
+              <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/60 mt-2">Vol Score</div>
               <div className="mt-4 pt-3 border-t border-border/10 grid grid-cols-4 gap-2">
                 {[
                   { k: "E", id: "e", v: pb.vol.e.toFixed(1) },
@@ -1587,7 +1587,7 @@ export default function ScorePage() {
                 ].map((c) => (
                   <div key={c.k} className="min-w-0">
                     <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid={`text-pb-vol-${c.id}`}>{c.v}</div>
-                    <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/40 mt-1">{c.k}</div>
+                    <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/60 mt-1">{c.k}</div>
                   </div>
                 ))}
               </div>

@@ -114,7 +114,7 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
               <span className="font-mono text-[10px] text-muted-foreground/60 tracking-wide whitespace-nowrap">
                 {format(new Date(note.date), "EEE, d MMM")}
               </span>
-              <span className="text-muted-foreground/40 text-[9px]">·</span>
+              <span className="text-muted-foreground/60 text-[9px]">·</span>
               <span className="font-mono text-[10px] text-muted-foreground/50 whitespace-nowrap">
                 {formatTime(note.startTime, timeFormat)} – {formatTime(note.endTime, timeFormat)}
               </span>
@@ -179,7 +179,7 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-muted-foreground/45 hover:text-muted-foreground/50"
+                        className="h-6 w-6 text-muted-foreground/60 hover:text-muted-foreground/50"
                         data-testid={`btn-pending-actions-${note.id}`}
                       >
                         <MoreVertical className="h-3.5 w-3.5" />
@@ -209,7 +209,7 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-muted-foreground/45 hover:text-muted-foreground/50"
+                        className="h-6 w-6 text-muted-foreground/60 hover:text-muted-foreground/50"
                       >
                         <MoreVertical className="h-3.5 w-3.5" />
                       </Button>

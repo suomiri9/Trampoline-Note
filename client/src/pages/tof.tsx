@@ -709,7 +709,7 @@ export default function TofPage() {
       {hasSessions && (
         <div className="flex items-center justify-between mb-4">
           <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/55">Sessions</span>
-          <span className="font-mono text-[9px] text-muted-foreground/45 tabular-nums">{summary.sessions + queuedSessions.length} total</span>
+          <span className="font-mono text-[9px] text-muted-foreground/60 tabular-nums">{summary.sessions + queuedSessions.length} total</span>
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -41,7 +41,7 @@ export function StatStrip({ items, className }: { items: StatStripItem[]; classN
           >
             {s.value}
           </div>
-          <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/40 truncate">
+          <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/60 truncate">
             {s.label}
           </div>
         </div>
