@@ -10,7 +10,7 @@ import { PageLayout } from "@/components/page-layout";
 import { ArrowLeft, Timer, Loader2, TrendingDown } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import type { TofSession } from "@shared/schema";
 
 const tooltipStyle = {
@@ -189,8 +189,13 @@ export default function TofSkillPage() {
           <Panel title="ToF over time" icon={<Timer className="w-3.5 h-3.5 text-amber-400" />}>
             <div className="h-52 w-full" data-testid="chart-tof-skill">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="tofSkillFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.22} />
+                      <stop offset="100%" stopColor="#f59e0b" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval="preserveStartEnd" minTickGap={40} />
                   <YAxis
                     tick={{ fontSize: 11 }}
@@ -207,8 +212,8 @@ export default function TofSkillPage() {
                       return p ? `${p.label} · ${p.routineName} · jump ${p.jumpNo}` : "";
                     }}
                   />
-                  <Line type="monotone" dataKey="tof" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3, fill: "#f59e0b" }} activeDot={{ r: 5 }} />
-                </LineChart>
+                  <Area type="monotone" dataKey="tof" stroke="#f59e0b" strokeWidth={2} fill="url(#tofSkillFill)" dot={false} activeDot={{ r: 5 }} />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </Panel>
@@ -221,8 +226,13 @@ export default function TofSkillPage() {
           >
             <div className="h-52 w-full" data-testid="chart-tof-skill-drop">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="tofSkillDropFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#ef4444" stopOpacity={0.22} />
+                      <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval="preserveStartEnd" minTickGap={40} />
                   <YAxis
                     tick={{ fontSize: 11 }}
@@ -240,8 +250,8 @@ export default function TofSkillPage() {
                       return p ? `${p.label} · ${p.routineName} · jump ${p.jumpNo}` : "";
                     }}
                   />
-                  <Line type="monotone" dataKey="dropDelta" connectNulls stroke="#ef4444" strokeWidth={2} dot={{ r: 3, fill: "#ef4444" }} activeDot={{ r: 5 }} />
-                </LineChart>
+                  <Area type="monotone" dataKey="dropDelta" connectNulls stroke="#ef4444" strokeWidth={2} fill="url(#tofSkillDropFill)" dot={false} activeDot={{ r: 5 }} />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </Panel>

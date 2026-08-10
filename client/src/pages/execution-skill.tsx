@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ClipboardCheck, Loader2, TrendingDown } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import type { ExecutionSession } from "@shared/schema";
 
 const tooltipStyle = {
@@ -221,8 +221,13 @@ export default function ExecutionSkillPage() {
             </div>
             <div className="h-52 w-full" data-testid="chart-exec-skill">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="execSkillFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.22} />
+                      <stop offset="100%" stopColor="#f43f5e" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                   <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" minTickGap={40} axisLine={false} tickLine={false} />
                   <YAxis
                     tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
@@ -240,8 +245,8 @@ export default function ExecutionSkillPage() {
                       return p ? `${p.label} · ${p.targetLabel} · #${p.pos}` : "";
                     }}
                   />
-                  <Line type="monotone" dataKey="points" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3, fill: "#f43f5e" }} activeDot={{ r: 5 }} />
-                </LineChart>
+                  <Area type="monotone" dataKey="points" stroke="#f43f5e" strokeWidth={2} fill="url(#execSkillFill)" dot={false} activeDot={{ r: 5 }} />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </section>

@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Unplug, AlertTriangle, RefreshCw, ArrowRight, Activity } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { format, parseISO } from "date-fns";
 import whoopLogoPath from "@assets/image_1784922999270.png";
 
@@ -411,7 +411,13 @@ export default function WhoopPage() {
         <div className="grid gap-4 md:grid-cols-2">
           <ChartCard title="Recovery" accent="%" accentClass="text-emerald-400" testId="card-chart-recovery">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={recoveryData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+              <AreaChart data={recoveryData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="whoopRecoveryFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--chart-2))" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={<AxisTick />} interval="preserveStartEnd" />
                 <YAxis hide domain={[0, 100]} />
                 <Tooltip
@@ -420,14 +426,24 @@ export default function WhoopPage() {
                   formatter={(v: any) => [`${Math.round(Number(v))} %`, "Recovery"]}
                   cursor={{ stroke: "hsl(var(--primary) / 0.3)", strokeWidth: 1 }}
                 />
-                <Line type="monotone" dataKey="recoveryScore" stroke="hsl(var(--chart-2))" strokeWidth={2} connectNulls dot={{ r: recoveryData.length > 60 ? 0 : 2, fill: "hsl(var(--chart-2))", strokeWidth: 0 }} activeDot={{ r: 4 }} />
-              </LineChart>
+                <Area type="monotone" dataKey="recoveryScore" stroke="hsl(var(--chart-2))" strokeWidth={2} fill="url(#whoopRecoveryFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
+              </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
 
           <ChartCard title="Sleep" accent="hours & quality" accentClass="text-[hsl(var(--chart-4))]" testId="card-chart-sleep">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={sleepData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+              <AreaChart data={sleepData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="whoopSleepFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--chart-4))" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="hsl(var(--chart-4))" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="whoopSleepPerfFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.08} />
+                    <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={<AxisTick />} interval="preserveStartEnd" />
                 <YAxis yAxisId="h" hide domain={[0, 12]} />
                 <YAxis yAxisId="p" hide domain={[0, 100]} />
@@ -440,15 +456,21 @@ export default function WhoopPage() {
                   cursor={{ stroke: "hsl(var(--primary) / 0.3)", strokeWidth: 1 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11, fontFamily: "var(--font-mono)" }} />
-                <Line yAxisId="h" name="Sleep (h)" type="monotone" dataKey="asleepHours" stroke="hsl(var(--chart-4))" strokeWidth={2} connectNulls dot={false} activeDot={{ r: 4 }} />
-                <Line yAxisId="p" name="Performance %" type="monotone" dataKey="performancePct" stroke="hsl(var(--chart-1))" strokeWidth={1.5} strokeDasharray="4 3" connectNulls dot={false} activeDot={{ r: 4 }} />
-              </LineChart>
+                <Area yAxisId="h" name="Sleep (h)" type="monotone" dataKey="asleepHours" stroke="hsl(var(--chart-4))" strokeWidth={2} fill="url(#whoopSleepFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
+                <Area yAxisId="p" name="Performance %" type="monotone" dataKey="performancePct" stroke="hsl(var(--chart-1))" strokeWidth={1.5} strokeDasharray="4 3" fill="url(#whoopSleepPerfFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
+              </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
 
           <ChartCard title="Strain" accent="daily" accentClass="text-amber-400" testId="card-chart-strain">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={strainData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+              <AreaChart data={strainData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="whoopStrainFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--chart-3))" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="hsl(var(--chart-3))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={<AxisTick />} interval="preserveStartEnd" />
                 <YAxis hide domain={[0, 21]} />
                 <Tooltip
@@ -457,14 +479,24 @@ export default function WhoopPage() {
                   formatter={(v: any) => [Number(v).toFixed(1), "Strain"]}
                   cursor={{ stroke: "hsl(var(--primary) / 0.3)", strokeWidth: 1 }}
                 />
-                <Line type="monotone" dataKey="strain" stroke="hsl(var(--chart-3))" strokeWidth={2} connectNulls dot={{ r: strainData.length > 60 ? 0 : 2, fill: "hsl(var(--chart-3))", strokeWidth: 0 }} activeDot={{ r: 4 }} />
-              </LineChart>
+                <Area type="monotone" dataKey="strain" stroke="hsl(var(--chart-3))" strokeWidth={2} fill="url(#whoopStrainFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
+              </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
 
           <ChartCard title="Heart" accent="RHR & HRV" accentClass="text-rose-400" testId="card-chart-heart">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={recoveryData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+              <AreaChart data={recoveryData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="whoopRhrFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--chart-5))" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="hsl(var(--chart-5))" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="whoopHrvFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.08} />
+                    <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={<AxisTick />} interval="preserveStartEnd" />
                 <YAxis yAxisId="rhr" hide domain={["dataMin - 5", "dataMax + 5"]} />
                 <YAxis yAxisId="hrv" hide domain={["dataMin - 10", "dataMax + 10"]} />
@@ -477,9 +509,9 @@ export default function WhoopPage() {
                   cursor={{ stroke: "hsl(var(--primary) / 0.3)", strokeWidth: 1 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11, fontFamily: "var(--font-mono)" }} />
-                <Line yAxisId="rhr" name="RHR (bpm)" type="monotone" dataKey="restingHeartRate" stroke="hsl(var(--chart-5))" strokeWidth={2} connectNulls dot={false} activeDot={{ r: 4 }} />
-                <Line yAxisId="hrv" name="HRV (ms)" type="monotone" dataKey="hrvMs" stroke="hsl(var(--chart-1))" strokeWidth={1.5} strokeDasharray="4 3" connectNulls dot={false} activeDot={{ r: 4 }} />
-              </LineChart>
+                <Area yAxisId="rhr" name="RHR (bpm)" type="monotone" dataKey="restingHeartRate" stroke="hsl(var(--chart-5))" strokeWidth={2} fill="url(#whoopRhrFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
+                <Area yAxisId="hrv" name="HRV (ms)" type="monotone" dataKey="hrvMs" stroke="hsl(var(--chart-1))" strokeWidth={1.5} strokeDasharray="4 3" fill="url(#whoopHrvFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
+              </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
         </div>

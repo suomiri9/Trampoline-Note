@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ClipboardCheck, Loader2, TrendingDown } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { totalDeductionPoints, impliedEScore } from "@shared/execution";
 import type { ExecutionSession } from "@shared/schema";
 
@@ -208,8 +208,13 @@ export default function ExecutionRoutinePage() {
             </div>
             <div className="h-52 w-full" data-testid="chart-exec-routine">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="execRoutineFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.22} />
+                      <stop offset="100%" stopColor="#f43f5e" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                   <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" minTickGap={40} axisLine={false} tickLine={false} />
                   <YAxis
                     tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
@@ -227,8 +232,8 @@ export default function ExecutionRoutinePage() {
                       return p ? `${p.label} · ${p.skillCount} skill${p.skillCount === 1 ? "" : "s"}${p.hasLanding ? " + landing" : ""}` : "";
                     }}
                   />
-                  <Line type="monotone" dataKey="totalDeductions" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3, fill: "#f43f5e" }} activeDot={{ r: 5 }} />
-                </LineChart>
+                  <Area type="monotone" dataKey="totalDeductions" stroke="#f43f5e" strokeWidth={2} fill="url(#execRoutineFill)" dot={false} activeDot={{ r: 5 }} />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </section>
@@ -242,8 +247,13 @@ export default function ExecutionRoutinePage() {
             </div>
             <div className="h-52 w-full" data-testid="chart-exec-routine-escore">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="execRoutineEscoreFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.22} />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                   <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" minTickGap={40} axisLine={false} tickLine={false} />
                   <YAxis
                     tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
@@ -261,8 +271,8 @@ export default function ExecutionRoutinePage() {
                       return p ? p.label : "";
                     }}
                   />
-                  <Line type="monotone" dataKey="eScore" connectNulls stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: "#10b981" }} activeDot={{ r: 5 }} />
-                </LineChart>
+                  <Area type="monotone" dataKey="eScore" connectNulls stroke="#10b981" strokeWidth={2} fill="url(#execRoutineEscoreFill)" dot={false} activeDot={{ r: 5 }} />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </section>

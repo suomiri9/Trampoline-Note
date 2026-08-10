@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Timer, Loader2, TrendingDown } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import type { TofSession } from "@shared/schema";
 
 const tooltipStyle = {
@@ -154,8 +154,13 @@ export default function TofSessionPage() {
       >
         <div className="h-52 w-full" data-testid="chart-tof-session">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={jumps} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <AreaChart data={jumps} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+              <defs>
+                <linearGradient id="tofSessionFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.22} />
+                  <stop offset="100%" stopColor="#f59e0b" stopOpacity={0} />
+                </linearGradient>
+              </defs>
               <XAxis dataKey="code" tick={{ fontSize: 10 }} className="fill-muted-foreground" interval={0} />
               <YAxis
                 tick={{ fontSize: 11 }}
@@ -172,8 +177,8 @@ export default function TofSessionPage() {
                   return p ? `Jump ${p.jumpNo} · ${p.code}` : "";
                 }}
               />
-              <Line type="monotone" dataKey="tof" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3, fill: "#f59e0b" }} activeDot={{ r: 5 }} />
-            </LineChart>
+              <Area type="monotone" dataKey="tof" stroke="#f59e0b" strokeWidth={2} fill="url(#tofSessionFill)" dot={false} activeDot={{ r: 5 }} />
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       </Panel>
