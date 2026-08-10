@@ -7,7 +7,7 @@ import { useTrackTurns } from "@/hooks/use-track-turns";
 import { PageLayout } from "@/components/page-layout";
 import { Button } from "@/components/ui/button";
 import { Loader2, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, TrendingUp } from "lucide-react";
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { cn } from "@/lib/utils";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
@@ -571,7 +571,21 @@ export default function StatsPage() {
                 onTouchEnd={handleTouchEnd}
               >
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+                  <AreaChart data={chartData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="turnsFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="hsl(200 90% 60%)" stopOpacity={0.22} />
+                        <stop offset="100%" stopColor="hsl(200 90% 60%)" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="minPerTurnFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="hsl(150 70% 55%)" stopOpacity={0.08} />
+                        <stop offset="100%" stopColor="hsl(150 70% 55%)" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="ddPerTurnFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="hsl(35 90% 60%)" stopOpacity={0.08} />
+                        <stop offset="100%" stopColor="hsl(35 90% 60%)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
                     <XAxis
                       dataKey="date"
                       axisLine={false}
@@ -616,39 +630,42 @@ export default function StatsPage() {
                     <YAxis yAxisId="turns" hide />
                     <YAxis yAxisId="minPerTurn" hide />
                     <YAxis yAxisId="ddPerTurn" hide />
-                    <Line
+                    <Area
                       yAxisId="turns"
-                      type="linear"
+                      type="monotone"
                       dataKey="turns"
                       stroke="hsl(200 90% 60%)"
                       strokeWidth={2}
+                      fill="url(#turnsFill)"
                       connectNulls
-                      dot={chartData.length > 35 ? false : { r: 2.5, fill: 'hsl(200 90% 60%)', strokeWidth: 0 }}
+                      dot={false}
                       activeDot={{ r: 5, fill: 'hsl(200 90% 60%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                     />
-                    <Line
+                    <Area
                       yAxisId="minPerTurn"
-                      type="linear"
+                      type="monotone"
                       dataKey="minPerTurn"
                       stroke="hsl(150 70% 55%)"
                       strokeWidth={1.5}
                       strokeDasharray="4 3"
+                      fill="url(#minPerTurnFill)"
                       connectNulls
-                      dot={chartData.length > 35 ? false : { r: 2, fill: 'hsl(150 70% 55%)', strokeWidth: 0 }}
+                      dot={false}
                       activeDot={{ r: 4, fill: 'hsl(150 70% 55%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                     />
-                    <Line
+                    <Area
                       yAxisId="ddPerTurn"
-                      type="linear"
+                      type="monotone"
                       dataKey="ddPerTurn"
                       stroke="hsl(35 90% 60%)"
                       strokeWidth={1.5}
                       strokeDasharray="1 3"
+                      fill="url(#ddPerTurnFill)"
                       connectNulls
-                      dot={chartData.length > 35 ? false : { r: 2, fill: 'hsl(35 90% 60%)', strokeWidth: 0 }}
+                      dot={false}
                       activeDot={{ r: 4, fill: 'hsl(35 90% 60%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                     />
-                  </LineChart>
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
               {navigable ? (
