@@ -9,6 +9,7 @@ import { useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { useTypeToSearch } from "@/hooks/use-type-to-search";
 import { PageLayout } from "@/components/page-layout";
 import { PageHeader, primaryActionClass, headerActionClass } from "@/components/page-header";
+import { StatStrip } from "@/components/stat-strip";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -215,12 +216,25 @@ export default function RoutinesPage() {
   };
 
 
+  // Display-only aggregates for the header stat band.
+  const routineStrip = useMemo(() => {
+    const list = routines ?? [];
+    if (list.length === 0) return null;
+    const dds = list.map(r => calcDDFromSkillIds(r.skillIds, allItems || []));
+    return {
+      count: list.length,
+      top: Math.max(...dds),
+      avg: dds.reduce((a, b) => a + b, 0) / dds.length,
+    };
+  }, [routines, allItems]);
+
   return (
     <PageLayout>
       <PageHeader
-        eyebrow="Routine Builder"
-        title="My Routines"
-        accent="Routines"
+        eyebrow="Routines"
+        kicker="Routine Builder"
+        title="Build the lineup."
+        accent="the lineup."
         subtitle="Build and manage your 10-skill competition routines."
         actions={
           <>
@@ -239,6 +253,16 @@ export default function RoutinesPage() {
           </>
         }
       />
+      {routineStrip && (
+        <StatStrip
+          className="mb-6"
+          items={[
+            { label: "Routines", value: String(routineStrip.count), testId: "stat-routines-count" },
+            { label: "Top DD", value: routineStrip.top.toFixed(1), testId: "stat-routines-top-dd" },
+            { label: "Avg DD", value: routineStrip.avg.toFixed(1), testId: "stat-routines-avg-dd" },
+          ]}
+        />
+      )}
       <Dialog open={showBuilder || !!editingRoutine} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
         <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
           <DialogHeader>

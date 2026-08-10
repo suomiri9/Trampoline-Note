@@ -26,7 +26,10 @@ export function CoachWidget() {
           data-testid="panel-coach-widget"
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <div className="card-3d rounded-2xl flex flex-col h-[min(65vh,540px)] overflow-hidden">
+          {/* card-3d is transparent in the flat design language, so this
+              floating overlay needs its own opaque backdrop + shadow to read
+              as a layer above the page content. */}
+          <div className="card-3d bg-background/95 backdrop-blur-md rounded-2xl flex flex-col h-[min(65vh,540px)] shadow-2xl overflow-hidden">
             <div className="flex items-center gap-2 px-4 pt-3 pb-2 border-b border-white/[0.07] shrink-0">
               <Bot className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
               <span className="font-mono uppercase tracking-wider text-[11px] font-semibold">

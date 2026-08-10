@@ -85,7 +85,7 @@ export default function ResetPasswordPage() {
           </div>
           <div>
             <div className="text-[11px] font-mono uppercase tracking-[0.2em] text-primary/70 mb-2">// Reset Password</div>
-            <h1 className="text-3xl font-display font-normal tracking-tight">Set a new <span className="text-primary">password</span></h1>
+            <h1 className="text-3xl font-black tracking-[-0.04em]">Set a new <span className="text-gradient-primary">password</span></h1>
             <p className="text-muted-foreground mt-1.5 font-mono text-sm">Choose a new password for your account.</p>
           </div>
         </div>

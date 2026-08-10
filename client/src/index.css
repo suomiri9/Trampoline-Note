@@ -176,6 +176,14 @@
   color: transparent;
 }
 
+.text-gradient-gold {
+  background: linear-gradient(135deg, #fbbf24 0%, #fb923c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
 /* Custom subtle animations for clean minimal feel */
 @keyframes fade-in-up {
   from {
@@ -219,12 +227,20 @@
   }
 }
 
-/* Intent flat panel: hairline border, no shadow — the border does the work.
+/* Minimal flat panel: hairline border, no elevation (matches the
+   border-border/10 panels on Home/Stats — the app-wide design language).
    (.card-3d is a legacy class name; ~50 call sites keep it as an alias.) */
 .card-3d {
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
+  background: transparent;
+  border: 1px solid hsl(var(--border) / 0.55);
+  box-shadow: none;
   transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.dark .card-3d {
+  background: transparent;
+  border: 1px solid hsl(var(--border) / 0.62);
+  box-shadow: none;
 }
 
 .card-3d-hover:hover {

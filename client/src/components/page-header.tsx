@@ -24,11 +24,16 @@ const COLLAPSE_AT = 48;
 const EXPAND_AT = 12;
 
 interface PageHeaderProps {
-  /** Small monospace eyebrow text, rendered as `// EYEBROW`. */
+  /** Breadcrumb tail — rendered as `TRAINING / {eyebrow}` in the top mono strip. */
   eyebrow: string;
-  /** Full page title (rendered uppercase). */
+  /** Small primary-tinted mono label directly above the headline (the page's identity). */
+  kicker?: string;
+  /**
+   * Headline statement, e.g. "Train with intent.". The accent portion drops to
+   * its own gradient line while the header is expanded.
+   */
   title: string;
-  /** Trailing portion of the title shown in the accent color. Defaults to the last word. */
+  /** Trailing portion of the title shown on the gradient line. Defaults to the last word. */
   accent?: string;
   subtitle?: string;
   actions?: ReactNode;
@@ -37,6 +42,7 @@ interface PageHeaderProps {
 
 export function PageHeader({
   eyebrow,
+  kicker,
   title,
   accent,
   subtitle,
@@ -49,8 +55,8 @@ export function PageHeader({
   // shouldn't shrink mid-page.
   const isStatic = className?.includes("static") ?? false;
 
-  // NRC-style collapse: full header at the top of the page, compact once
-  // scrolled. Buttons (actions) stay the same size in both states.
+  // NRC-style collapse: full hero at the top of the page, compact one-liner
+  // once scrolled. Buttons (actions) stay the same size in both states.
   const [collapsed, setCollapsed] = useState(false);
   const collapsedRef = useRef(false);
 
@@ -146,35 +152,71 @@ export function PageHeader({
       className={cn(
         "sticky top-0 z-30 full-bleed-bar page-header-safe mb-6 bg-background/90 backdrop-blur-md border-b border-border/60",
         "transition-all duration-300 motion-reduce:transition-none",
-        collapsed ? "pb-3" : "pb-4 sm:pb-5",
+        collapsed ? "pb-3" : "pb-5 sm:pb-6",
         className,
       )}
     >
-      <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
+      {/* Soft blue hero glow, same as the home ledger — fades away when collapsed. */}
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-0 transition-opacity duration-300",
+          collapsed ? "opacity-0" : "opacity-100",
+        )}
+        style={{
+          background:
+            "radial-gradient(ellipse 80% 70% at 50% -10%, hsl(var(--primary)/0.18) 0%, transparent 70%)",
+        }}
+      />
+      <div className={cn("relative", collapsibleRow(!collapsed))} aria-hidden={collapsed}>
         <div className="overflow-hidden">
-          <div className="font-mono text-[10px] font-semibold tracking-[0.22em] uppercase text-muted-foreground/75 mb-2.5 sm:mb-3">
+          <div className="font-mono text-[10px] font-semibold tracking-[0.22em] uppercase text-muted-foreground/75 pb-6 sm:pb-8">
             Training / {eyebrow}
           </div>
         </div>
       </div>
-      {/* Title and actions share one row; buttons sit on the right and only
+      {/* Headline and actions share one row; buttons sit on the right and only
           wrap below on screens too narrow to fit both. */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <h1
-          className={cn(
-            "font-black tracking-[-0.04em] leading-[0.95] shrink-0 transition-[font-size] duration-300 motion-reduce:transition-none",
-            collapsed ? "text-lg sm:text-3xl" : "text-[27px] sm:text-5xl",
+      <div
+        className={cn(
+          "relative flex flex-wrap gap-x-3 gap-y-2",
+          collapsed ? "items-center" : "items-end",
+        )}
+      >
+        <div className="min-w-0">
+          {kicker && (
+            <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
+              <p className="overflow-hidden font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/70 pb-2">
+                {kicker}
+              </p>
+            </div>
           )}
-        >
-          {lead && <span>{lead} </span>}
-          <span className="text-gradient-primary">{accentPart}</span>
-        </h1>
+          <h1
+            className={cn(
+              "font-black tracking-[-0.05em] transition-[font-size] duration-300 motion-reduce:transition-none",
+              collapsed ? "text-lg sm:text-3xl leading-none" : "text-[38px] sm:text-[46px] leading-[0.92]",
+            )}
+          >
+            {lead && <span className={collapsed ? undefined : "block"}>{lead}</span>}
+            {collapsed && lead ? " " : null}
+            <span className={cn("text-gradient-primary", !collapsed && "block")}>
+              {accentPart}
+            </span>
+          </h1>
+        </div>
         {actions && (
-          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">{actions}</div>
+          <div
+            className={cn(
+              "flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0",
+              !collapsed && "mb-1",
+            )}
+          >
+            {actions}
+          </div>
         )}
       </div>
       {subtitle && (
-        <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
+        <div className={cn("relative", collapsibleRow(!collapsed))} aria-hidden={collapsed}>
           <p className="overflow-hidden text-muted-foreground/70 text-[11px] leading-snug sm:text-sm pt-2 sm:pt-3">{subtitle}</p>
         </div>
       )}

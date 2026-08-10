@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { invalidateCoachPush } from "@/lib/coach-push";
 import { PageLayout } from "@/components/page-layout";
+import { PageHeader } from "@/components/page-header";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -94,15 +95,6 @@ export default function WhoopPage() {
   const { toast } = useToast();
   const offlineView = (offlineModeEnabled && !isOnline) || !isOnline;
 
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const root = document.getElementById("root");
-    if (!root) return;
-    const onScroll = () => setScrolled(root.scrollTop > 40);
-    root.addEventListener("scroll", onScroll, { passive: true });
-    return () => root.removeEventListener("scroll", onScroll);
-  }, []);
-
   // Pick up the OAuth result the callback redirect put in the URL, then clean it.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -167,49 +159,13 @@ export default function WhoopPage() {
 
   // ── Bold hero (replaces PageHeader; no back-nav on this top-level page) ──
   const hero = (
-    <div className="relative -mx-4 sm:-mx-6 -mt-6 md:-mt-8 px-6 pt-safe-top pb-0 overflow-hidden">
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-72"
-        style={{
-          background:
-            "radial-gradient(ellipse at 50% 0%, hsl(var(--chart-2)/0.16) 0%, hsl(var(--primary)/0.04) 55%, transparent 78%)",
-        }}
-      />
-      <div
-        className={`relative flex flex-col items-center text-center transition-all duration-300 ${
-          scrolled ? "pt-3 pb-4" : "pt-7 pb-7"
-        }`}
-      >
-        <div
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border/25 bg-card/60 text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase transition-all duration-300 ${
-            scrolled ? "mb-3" : "mb-6"
-          }`}
-        >
-          <Activity className="w-3 h-3 text-emerald-400" />
-          Readiness
-        </div>
-        <h1
-          className="font-black leading-[0.94] tracking-[-0.05em] transition-all duration-300"
-          style={{ fontSize: scrolled ? "clamp(22px,6vw,26px)" : "clamp(38px,10vw,48px)", marginBottom: scrolled ? "0" : "12px" }}
-        >
-          <span className="text-foreground">Know your </span>
-          <span
-            style={{
-              background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            body.
-          </span>
-        </h1>
-        {!scrolled && (
-          <p className="text-[11px] text-muted-foreground/50 leading-relaxed max-w-[230px]">
-            Recovery, sleep, strain and heart-rate trends from your WHOOP.
-          </p>
-        )}
-      </div>
-    </div>
+    <PageHeader
+      eyebrow="Recovery"
+      kicker="WHOOP Data"
+      title="Rest is training."
+      accent="training."
+      subtitle="Recovery, sleep, strain and heart-rate trends from your WHOOP."
+    />
   );
 
   // Offline: previously-loaded WHOOP data is served from the offline mirror;

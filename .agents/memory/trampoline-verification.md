@@ -15,9 +15,11 @@ be driven to fill the login form, so every authenticated page (`/`, `/score`,
 separate from anything you can set from bash/code execution.
 
 **How to apply:** do not rely on `app_preview` to visually confirm authenticated
-pages. Verify instead with `tsc --noEmit`, the workflow/HMR logs (no runtime
-errors after edits), and careful reasoning about the JSX/state changes. Only the
-login page itself is screenshot-verifiable.
+pages. Only the login page itself is screenshot-verifiable that way. For real
+visual verification of authed pages AND open dialogs, use the local playwright
+fallback (see local-headless-e2e.md): register a throwaway user via in-page
+fetch, navigate with ~2.5s splash waits, click testid buttons to open popups,
+and `page.screenshot()` to /tmp — this works reliably and shows the actual UI.
 
 ## A splash screen overlays the first ~1.5s of every fresh load
 `splash-screen.tsx` shows a full-screen animated app mark for `VISIBLE_MS` (~1.5s)

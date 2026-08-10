@@ -105,7 +105,6 @@ interface NoteDialogProps {
 }
 
 
-
 /** Height (px) of the viewport strip covered by the fixed bottom nav. The
  * nav sits at z-[60] — deliberately ABOVE dialogs and dropdowns — so a row
  * menu that extends down behind it becomes unreachable. This measures the
@@ -1995,7 +1994,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                       </DndContext>
                       <div className="pt-4 border-t flex justify-between items-center">
                         <span className="text-sm font-medium text-muted-foreground">Total Difficulty</span>
-                        <span className="text-2xl font-display font-normal text-primary">{newRoutineSkillIds.reduce((acc, sid) => acc + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0).toFixed(1)}</span>
+                        <span className="text-2xl font-semibold tracking-[-0.04em] tabular-nums text-primary">{newRoutineSkillIds.reduce((acc, sid) => acc + (allItems?.find(s => s.id === sid)?.difficulty || 0), 0).toFixed(1)}</span>
                       </div>
                       <Button type="button" className="w-full h-11" disabled={!newRoutineName || newRoutineSkillIds.length === 0 || isCreatingRoutine} onClick={async () => {
                         try {

@@ -5,6 +5,7 @@ import { useRoutines } from "@/hooks/use-routines";
 import { parseNoteSkills, calculateTotalDD, computeTurns } from "@/lib/training-utils";
 import { useTrackTurns } from "@/hooks/use-track-turns";
 import { PageLayout } from "@/components/page-layout";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Loader2, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, TrendingUp } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -48,15 +49,6 @@ export default function StatsPage() {
   const [offlineModeEnabled] = useOfflineMode();
   const isOnline = useOnline();
   const offlineView = offlineModeEnabled && !isOnline;
-
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const root = document.getElementById("root");
-    if (!root) return;
-    const onScroll = () => setScrolled(root.scrollTop > 40);
-    root.addEventListener("scroll", onScroll, { passive: true });
-    return () => root.removeEventListener("scroll", onScroll);
-  }, []);
 
   const { data: notes, isLoading: notesLoading } = useNotes();
   const { data: allItems, isLoading: skillsLoading } = useSkills();
@@ -335,42 +327,13 @@ export default function StatsPage() {
 
   return (
     <PageLayout>
-      {/* ── Hero ─────────────────────────────────────────────────── */}
-      <div className="relative -mx-4 sm:-mx-6 -mt-6 md:-mt-8 px-6 pt-safe-top pb-0 overflow-hidden">
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-72"
-          style={{
-            background:
-              "radial-gradient(ellipse at 50% 0%, hsl(var(--primary)/0.18) 0%, hsl(var(--primary)/0.04) 55%, transparent 78%)",
-          }}
-        />
-        <div className={`relative flex flex-col items-center text-center transition-all duration-300 ${scrolled ? "pt-3 pb-4" : "pt-7 pb-6"}`}>
-          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border/25 bg-card/60 text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase transition-all duration-300 ${scrolled ? "mb-3" : "mb-6"}`}>
-            <TrendingUp className="w-3 h-3 text-primary" />
-            Analytics
-          </div>
-          <h1
-            className="font-black leading-[0.94] tracking-[-0.05em] transition-all duration-300"
-            style={{ fontSize: scrolled ? "clamp(22px,6vw,26px)" : "clamp(38px,10vw,48px)", marginBottom: scrolled ? "0" : "12px" }}
-          >
-            <span className="text-foreground">Watch it </span>
-            <span
-              style={{
-                background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              add up.
-            </span>
-          </h1>
-          {!scrolled && (
-            <p className="text-[11px] text-muted-foreground/50 leading-relaxed max-w-[220px]">
-              Difficulty and session trends over every week, month, and year.
-            </p>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Progress"
+        kicker="Analytics"
+        title="Proof of progress."
+        accent="of progress."
+        subtitle="Difficulty and session trends over time."
+      />
 
       <div className="grid gap-6">
         <div>

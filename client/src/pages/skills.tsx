@@ -33,6 +33,7 @@ import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
+import { StatStrip } from "@/components/stat-strip";
 
 function SortableRow({ id, children, className, onClick, testId, reorderMode }: {
   id: string;
@@ -151,6 +152,7 @@ export default function SkillsPage() {
   const activeSkills = allItems ? sortByOrder(allItems.filter(i => i.isDrill === 0 && i.archived !== 1)) : [];
   const activeDrills = allItems ? sortByOrder(allItems.filter(i => i.isDrill === 1 && i.archived !== 1)) : [];
   const activeConnections = allItems ? sortByOrder(allItems.filter(i => i.isDrill === 2 && i.archived !== 1)) : [];
+  const activePartsCount = allItems ? allItems.filter(i => i.isDrill === 3 && i.archived !== 1).length : 0;
   const activeRoutines = (routines || []).filter(r => r.archived !== 1);
 
   const selectedPartRoutine = activeRoutines.find(r => r.id === partRoutineId) || null;
@@ -514,9 +516,10 @@ export default function SkillsPage() {
         aria-hidden="true"
       />
       <PageHeader
-        eyebrow="Skill Library"
-        title="My Skills"
-        accent="Skills"
+        eyebrow="Skills"
+        kicker="Skill Library"
+        title="Master every shape."
+        accent="every shape."
         subtitle="Manage your trampoline element library."
         actions={
           <>
@@ -539,6 +542,17 @@ export default function SkillsPage() {
           </>
         }
       />
+      {allItems && allItems.length > 0 && (
+        <StatStrip
+          className="mb-6"
+          items={[
+            { label: "Skills", value: String(activeSkills.length), testId: "stat-skills-count" },
+            { label: "Drills", value: String(activeDrills.length), testId: "stat-drills-count" },
+            { label: "Connections", value: String(activeConnections.length), testId: "stat-connections-count" },
+            { label: "Parts", value: String(activePartsCount), testId: "stat-parts-count" },
+          ]}
+        />
+      )}
       <Tabs value={activeTab} className="flex flex-col gap-4 -mt-6" onValueChange={(v) => { setActiveTab(v); cancelEditing(); setReorderMode(false); }}>
         <div
           className="sticky z-20 full-bleed-bar py-2 bg-background/90 backdrop-blur-md border-b border-white/[0.08]"

@@ -9,7 +9,7 @@ export default function NotFound() {
           <div className="eyebrow mb-3">// Error 404</div>
           <div className="flex mb-2 gap-2 items-center">
             <AlertCircle className="h-7 w-7 text-destructive" />
-            <h1 className="text-3xl font-display font-normal text-foreground">Page Not Found</h1>
+            <h1 className="text-3xl font-black tracking-[-0.04em] text-foreground">Page Not Found</h1>
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
             The page you're looking for doesn't exist.

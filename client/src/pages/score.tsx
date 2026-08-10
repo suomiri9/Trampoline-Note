@@ -6,6 +6,7 @@ import { insertScoreSchema, type Score, type Routine, type Skill, type InsertSco
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { calcDDFromSkillIds, parseNoteSkills } from "@/lib/training-utils";
 import { PageLayout } from "@/components/page-layout";
+import { PageHeader, primaryActionClass, headerActionClass } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
@@ -611,12 +612,36 @@ function ScoreGraph({
       return next;
     });
 
+  // Hero figure: latest point that actually has a total (0-total rows are
+  // partial entries and would make the delta meaningless).
+  const totalPoints = data.filter(p => p.total > 0);
+  const latestPoint = totalPoints.length > 0 ? totalPoints[totalPoints.length - 1] : null;
+  const prevPoint = totalPoints.length > 1 ? totalPoints[totalPoints.length - 2] : null;
+  const latestDelta = latestPoint && prevPoint ? latestPoint.total - prevPoint.total : null;
+
   return (
     <div className="rounded-2xl p-5 border border-white/[0.07] bg-white/[0.025]" data-testid={`card-score-graph${idSuffix}`}>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
         <div className="min-w-0">
           <div className="eyebrow mb-1.5">{eyebrow} <span className="text-amber-400">{eyebrowAccent}</span></div>
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          {latestPoint ? (
+            <div className="flex items-baseline gap-3 flex-wrap">
+              <div className="text-4xl sm:text-5xl font-medium tracking-[-0.05em] tabular-nums leading-none" data-testid={`text-graph-latest${idSuffix}`}>
+                {latestPoint.total.toFixed(1)}
+              </div>
+              {latestDelta != null && Math.abs(latestDelta) > 1e-9 && (
+                <span
+                  className={cn("font-mono text-xs tabular-nums", latestDelta > 0 ? "text-emerald-400" : "text-rose-400")}
+                  data-testid={`text-graph-delta${idSuffix}`}
+                >
+                  {latestDelta > 0 ? "▲" : "▼"} {Math.abs(latestDelta).toFixed(1)}
+                </span>
+              )}
+              <span className="font-mono text-[9px] uppercase tracking-[0.13em] text-muted-foreground/40">Latest {latestPoint.label}</span>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
+          )}
         </div>
         <div className="flex flex-wrap items-center sm:justify-end gap-2 sm:shrink-0">
           <Select value={catFilter} onValueChange={setCatFilter}>
@@ -1478,164 +1503,93 @@ export default function ScorePage() {
 
   return (
     <PageLayout>
-      {/* ── Hero ─────────────────────────────────────────────────── */}
-      <div className="relative -mx-4 sm:-mx-6 -mt-6 md:-mt-8 px-6 pt-safe-top pb-0 overflow-hidden">
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-72"
-          style={{
-            background:
-              "radial-gradient(ellipse at 50% 0%, hsl(var(--primary)/0.16) 0%, hsl(var(--primary)/0.03) 55%, transparent 78%)",
-          }}
-        />
-
-        <input
-          ref={sheetInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) openSheetCrop(f); }}
-          data-testid="input-scoresheet-photo"
-        />
-
-        <div className="relative pt-6 pb-2">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-5 rounded-full border border-border/25 bg-card/60 text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase">
-            <Trophy className="w-3 h-3 text-amber-400" />
-            Competition &amp; Practice
-          </div>
-          <h1
-            className="font-black leading-[0.92] tracking-[-0.05em]"
-            style={{ fontSize: "clamp(38px,10vw,52px)" }}
-          >
-            <span className="text-foreground">Every</span>{" "}
-            <span
-              style={{
-                background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              score.
-            </span>
-          </h1>
-          <p className="mt-3 text-[11px] text-muted-foreground/50 leading-relaxed max-w-[260px]">
-            Practice, trials and competitions — plotted, ranked, and broken down.
-          </p>
-
-          {/* Action row */}
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            <button
+      <PageHeader
+        eyebrow="Scores"
+        kicker="Score Board"
+        title="Every tenth counts."
+        accent="counts."
+        subtitle="Track execution, DD, and competition results."
+        actions={
+          <>
+            <input
+              ref={sheetInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) openSheetCrop(f); }}
+              data-testid="input-scoresheet-photo"
+            />
+            <Button
+              variant="outline"
+              className={headerActionClass}
               onClick={() => navigate("/score/debuts")}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] active:scale-[0.98] transition-all"
               data-testid="button-comp-debuts"
             >
-              <Medal className="w-3.5 h-3.5" /> Debuts
-            </button>
-            <button
+              <Medal className="w-4 h-4" /> Debuts
+            </Button>
+            <Button
+              variant="outline"
+              className={headerActionClass}
               disabled={parsingSheet}
               onClick={() => { pendingFinalForRef.current = null; sheetInputRef.current?.click(); }}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] active:scale-[0.98] transition-all disabled:opacity-50"
               data-testid="button-upload-scoresheet"
             >
-              {parsingSheet ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageUp className="w-3.5 h-3.5" />}
+              {parsingSheet ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageUp className="w-4 h-4" />}
               {parsingSheet ? "Reading..." : "From photo"}
-            </button>
-            <button
-              onClick={openAddScore}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-semibold bg-gradient-cta text-primary-foreground active:scale-[0.98] transition-all"
-              style={{ boxShadow: "0 0 22px hsl(var(--primary)/0.28)" }}
+            </Button>
+            <Button
+              onClick={() => { setIsAdding(true); setEditingScore(null); setCustomSkillIds(null); setCustomSkillIdsVol(null); form.reset({ ...scoreDefaults, date: new Date().toISOString().split('T')[0] }); }}
+              className={primaryActionClass}
               data-testid="button-add-score"
             >
-              <Plus className="w-3.5 h-3.5" /> Add Score
-            </button>
-          </div>
-        </div>
-
-        {/* Stat strip */}
-        {totalScoreCount > 0 && (
-          <div className="relative -mx-6 px-4 pb-4 pt-4">
-            <div className="flex divide-x divide-white/[0.06] rounded-2xl overflow-hidden border border-white/[0.07] bg-white/[0.025]">
-              {[
-                { label: "Entries", value: String(totalScoreCount) },
-                { label: "Set PB", value: pb.set.score > 0 ? fmtScore(pb.set.score) : "—" },
-                { label: "Vol PB", value: pb.vol.score > 0 ? fmtScore(pb.vol.score) : "—" },
-              ].map((s) => (
-                <div key={s.label} className="flex-1 flex flex-col items-center py-3 gap-1">
-                  <span
-                    className="text-[18px] font-bold tabular-nums leading-none"
-                    style={{
-                      background: "linear-gradient(135deg,#60a5fa,#a78bfa)",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                    }}
-                  >
-                    {s.value}
-                  </span>
-                  <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
-                    {s.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+              <Plus className="w-5 h-5" /> Add Score
+            </Button>
+          </>
+        }
+      />
 
       <div className="flex flex-col gap-4 pt-2">
         <div className="mt-0 order-2">
 
       {hasComps && (
-        <div className="relative rounded-2xl overflow-hidden mb-6 border border-white/[0.07] bg-white/[0.025]">
-          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-amber-500/10 blur-3xl" aria-hidden="true" />
-          <div className="p-6">
-            <div className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-[0.2em] text-amber-400/80">
-              <Trophy className="w-3 h-3" />
-              Competition Personal Best
-            </div>
-            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-6 sm:divide-x sm:divide-white/[0.06]">
-              <div className="sm:pr-6">
-                <div
-                  className="font-black text-5xl sm:text-6xl leading-none tracking-[-0.03em] tabular-nums"
-                  style={{ background: "linear-gradient(135deg,#fbbf24,#f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
-                  data-testid="text-pb-set"
-                >
-                  {pb.set.score > 0 ? fmtScore(pb.set.score) : "—"}
-                </div>
-                <div className="text-[9px] font-mono uppercase tracking-[0.15em] mt-2 text-muted-foreground/50">Set Score</div>
-                <div className="mt-4 pt-4 border-t border-white/[0.06] grid grid-cols-3 gap-2 text-center">
-                  {[
-                    { k: "E", id: "e", v: pb.set.e.toFixed(1) },
-                    { k: "HD", id: "h", v: pb.set.h.toFixed(1) },
-                    { k: "TOF", id: "tof", v: fmtScore(pb.set.tof) },
-                  ].map((c) => (
-                    <div key={c.k}>
-                      <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid={`text-pb-set-${c.id}`}>{c.v}</div>
-                      <div className="text-[8px] font-mono uppercase tracking-[0.15em] mt-1 text-muted-foreground/60">{c.k}</div>
-                    </div>
-                  ))}
-                </div>
+        <div className="-mx-4 sm:-mx-6 border-y border-border/20 py-5 px-4 sm:px-6 mb-6">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-amber-400/80">Competition Personal Best</div>
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-10">
+            <div className="min-w-0">
+              <div className="font-medium tracking-[-0.05em] tabular-nums text-5xl sm:text-6xl leading-none text-gradient-gold" data-testid="text-pb-set">
+                {pb.set.score > 0 ? fmtScore(pb.set.score) : "—"}
               </div>
-              <div className="sm:pl-6">
-                <div
-                  className="font-black text-5xl sm:text-6xl leading-none tracking-[-0.03em] tabular-nums"
-                  style={{ background: "linear-gradient(135deg,#fbbf24,#f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
-                  data-testid="text-pb-vol"
-                >
-                  {pb.vol.score > 0 ? fmtScore(pb.vol.score) : "—"}
-                </div>
-                <div className="text-[9px] font-mono uppercase tracking-[0.15em] mt-2 text-muted-foreground/50">Vol Score</div>
-                <div className="mt-4 pt-4 border-t border-white/[0.06] grid grid-cols-4 gap-2 text-center">
-                  {[
-                    { k: "E", id: "e", v: pb.vol.e.toFixed(1) },
-                    { k: "DD", id: "dd", v: pb.vol.dd.toFixed(1) },
-                    { k: "HD", id: "h", v: pb.vol.h.toFixed(1) },
-                    { k: "TOF", id: "tof", v: fmtScore(pb.vol.tof) },
-                  ].map((c) => (
-                    <div key={c.k}>
-                      <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid={`text-pb-vol-${c.id}`}>{c.v}</div>
-                      <div className="text-[8px] font-mono uppercase tracking-[0.15em] mt-1 text-muted-foreground/60">{c.k}</div>
-                    </div>
-                  ))}
-                </div>
+              <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/40 mt-2">Set Score</div>
+              <div className="mt-4 pt-3 border-t border-border/10 grid grid-cols-3 gap-2">
+                {[
+                  { k: "E", id: "e", v: pb.set.e.toFixed(1) },
+                  { k: "HD", id: "h", v: pb.set.h.toFixed(1) },
+                  { k: "TOF", id: "tof", v: fmtScore(pb.set.tof) },
+                ].map((c) => (
+                  <div key={c.k} className="min-w-0">
+                    <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid={`text-pb-set-${c.id}`}>{c.v}</div>
+                    <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/40 mt-1">{c.k}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="min-w-0 sm:border-l sm:border-border/20 sm:pl-10">
+              <div className="font-medium tracking-[-0.05em] tabular-nums text-5xl sm:text-6xl leading-none text-gradient-gold" data-testid="text-pb-vol">
+                {pb.vol.score > 0 ? fmtScore(pb.vol.score) : "—"}
+              </div>
+              <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/40 mt-2">Vol Score</div>
+              <div className="mt-4 pt-3 border-t border-border/10 grid grid-cols-4 gap-2">
+                {[
+                  { k: "E", id: "e", v: pb.vol.e.toFixed(1) },
+                  { k: "DD", id: "dd", v: pb.vol.dd.toFixed(1) },
+                  { k: "HD", id: "h", v: pb.vol.h.toFixed(1) },
+                  { k: "TOF", id: "tof", v: fmtScore(pb.vol.tof) },
+                ].map((c) => (
+                  <div key={c.k} className="min-w-0">
+                    <div className="font-mono text-[15px] font-semibold tabular-nums tracking-tight" data-testid={`text-pb-vol-${c.id}`}>{c.v}</div>
+                    <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/40 mt-1">{c.k}</div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
