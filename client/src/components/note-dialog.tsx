@@ -2194,7 +2194,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </div>
 
                   <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handlePracticeListDragEnd}>
-                  <div ref={practiceListRef} className="max-h-[296px] overflow-y-auto overscroll-contain">
+                  {/* pr keeps rows (esp. the trailing ⋮ menu) clear of the overlay scroll indicator on iOS */}
+                  <div ref={practiceListRef} className="max-h-[296px] overflow-y-auto overscroll-contain pr-1.5">
                     {(() => {
                       const groups: Array<{ items: typeof selectedSkills; indices: number[] }> = [];
                       let curItems: typeof selectedSkills = [];
