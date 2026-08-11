@@ -1048,14 +1048,14 @@ export default function ExecutionPage() {
               <button
                 onClick={() => photoInputRef.current?.click()}
                 disabled={parsingPhoto}
-                className="flex items-center gap-1.5 px-4 h-10 rounded-xl border border-white/[0.07] bg-white/[0.025] text-sm font-medium text-muted-foreground hover:bg-white/[0.06] active:scale-[0.98] transition-all disabled:opacity-60"
+                className="flex items-center gap-1.5 px-4 h-10 rounded-xl border border-white/[0.07] bg-white/[0.025] text-sm font-medium text-muted-foreground hover:bg-white/[0.06] pressable disabled:opacity-60"
                 data-testid="button-photo-execution-empty"
               >
                 <ImageUp className="w-4 h-4" /> From photo
               </button>
               <button
                 onClick={openNew}
-                className="flex items-center gap-1.5 px-5 h-10 rounded-xl text-sm font-semibold bg-gradient-cta text-primary-foreground active:scale-[0.98] transition-all"
+                className="flex items-center gap-1.5 px-5 h-10 rounded-xl text-sm font-semibold bg-gradient-cta text-primary-foreground pressable"
                 data-testid="button-new-execution-empty"
               >
                 <Plus className="w-4 h-4" /> New Session

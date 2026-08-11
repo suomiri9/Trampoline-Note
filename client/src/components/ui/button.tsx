@@ -6,8 +6,9 @@ import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
   // Intent: soft-rounded (lg = 12px), semibold, tight tracking.
+  // `pressable` = shared pointer-down feedback (index.css / docs/apple-design-skill.md §1).
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0" +
-  " hover-elevate active-elevate-2",
+  " hover-elevate active-elevate-2 pressable",
   {
     variants: {
       variant: {

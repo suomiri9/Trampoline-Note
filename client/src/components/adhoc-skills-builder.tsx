@@ -64,7 +64,7 @@ export function AdhocSkillsBuilder({
             title={skillDisplayName(s, allSkills)}
             className={cn(
               "rounded-md border border-white/[0.08] bg-secondary px-2.5 py-1.5 text-xs font-mono font-bold transition-colors",
-              full ? "opacity-40" : "hover:bg-white/[0.06] active:scale-95",
+              full ? "opacity-40" : "hover:bg-white/[0.06] pressable [--press-scale:0.95]",
             )}
             data-testid={`${testPrefix}-adhoc-pick-${s.id}`}
           >

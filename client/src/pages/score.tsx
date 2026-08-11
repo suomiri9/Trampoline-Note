@@ -2368,7 +2368,7 @@ export default function ScorePage() {
             </p>
             <button
               onClick={openAddScore}
-              className="flex items-center gap-1.5 px-5 h-10 rounded-xl text-sm font-semibold bg-gradient-cta text-primary-foreground active:scale-[0.98] transition-all"
+              className="flex items-center gap-1.5 px-5 h-10 rounded-xl text-sm font-semibold bg-gradient-cta text-primary-foreground pressable"
               style={{ boxShadow: "0 0 22px hsl(var(--primary)/0.28)" }}
             >
               <Plus className="w-4 h-4" /> Add Score

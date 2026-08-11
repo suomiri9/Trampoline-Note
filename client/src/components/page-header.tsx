@@ -7,12 +7,12 @@ import { cn } from "@/lib/utils";
  * button placed in a PageHeader `actions` slot so all headers match.
  */
 export const headerActionClass =
-  "rounded-xl h-8 px-2.5 text-xs sm:h-10 sm:px-4 sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2";
+  "rounded-xl h-8 px-2.5 text-xs sm:h-10 sm:px-4 sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2 pressable";
 
 /** Glowing solid-blue primary action (e.g. "Start Training"). */
 export const primaryActionClass = cn(
   headerActionClass,
-  "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition-all btn-3d",
+  "bg-primary text-primary-foreground hover:bg-primary/90 btn-3d",
 );
 
 /** Outlined amber/gold secondary action (e.g. "Points to Fix"). */

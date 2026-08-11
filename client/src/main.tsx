@@ -79,6 +79,11 @@ console.error = (...args: unknown[]) => {
   originalConsoleError.apply(console, args as []);
 };
 
+// iOS Safari only applies :active styles while a finger is down if at least
+// one touchstart listener exists (historic WebKit quirk). This no-op enables
+// the app-wide pointer-down press feedback (.pressable, index.css).
+document.addEventListener("touchstart", () => {}, { passive: true });
+
 applyTheme(getTheme());
 
 createRoot(document.getElementById("root")!).render(<App />);

@@ -139,7 +139,7 @@ function PushCard() {
             type="button"
             onClick={() => refresh.mutate()}
             disabled={refresh.isPending}
-            className="flex items-center justify-center w-7 h-7 rounded-lg text-muted-foreground/60 hover:bg-white/[0.06] hover:text-foreground active:scale-95 transition-all"
+            className="flex items-center justify-center w-7 h-7 rounded-lg text-muted-foreground/60 hover:bg-white/[0.06] hover:text-foreground pressable [--press-scale:0.95]"
             data-testid="button-coach-push-refresh"
             aria-label="Refresh recommendation"
           >

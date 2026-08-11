@@ -354,7 +354,7 @@ export default function StatsPage() {
                 type="button"
                 onClick={() => { setRange(r); setOffset(0); }}
                 className={cn(
-                  "flex-1 rounded-[10px] px-2.5 py-1.5 uppercase tracking-wider transition-colors",
+                  "flex-1 rounded-[10px] px-2.5 py-1.5 uppercase tracking-wider transition-colors pressable",
                   range === r
                     ? "bg-foreground/[0.08] text-foreground"
                     : "text-muted-foreground/60 hover:text-muted-foreground/70"

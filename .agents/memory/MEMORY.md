@@ -1,4 +1,5 @@
-- [Trampoline repl verification quirks](trampoline-verification.md) — auth gate makes app_preview screenshots show the login page; some pre-existing TS errors are esbuild-safe, don't chase them.
+- [Trampoline repl verification quirks](trampoline-verification.md) — auth gate makes app_preview screenshots show the login page; type-only TS errors are esbuild-safe, but TS2304 missing names crash pages at runtime.
+- [Fluid motion conventions](fluid-motion.md) — .pressable press feedback (standalone scale), vaul sheet z-70 over nav, motion-reduce slide-var pitfall; spec vendored at docs/apple-design-skill.md.
 - [App-wide design language](design-language.md) — user-chosen Fey/Apple minimal (mono micro-labels, gradient accents, hairline flat panels); home/stats/PageHeader are reference; don't revert to card-3d.
 - [Intent DS → app bridge](intent-ds-bridge.md) — main app consumes artifacts/intent via a generated token bridge (v3 app vs v4 DS); never import DS components; codes in badges need normal-case.
 - [Schema changes need three touchpoints](schema-migration-touchpoints.md) — drizzle schema + startup ALTER block (prod migrates at boot, not db:push) + any client-local row interfaces.

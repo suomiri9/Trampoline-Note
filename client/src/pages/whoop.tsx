@@ -195,7 +195,7 @@ export default function WhoopPage() {
           type="button"
           onClick={() => disconnectMutation.mutate()}
           disabled={disconnectMutation.isPending}
-          className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-white/[0.07] bg-white/[0.025] font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/60 hover:bg-white/[0.06] active:scale-[0.98] transition-all disabled:opacity-50"
+          className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-white/[0.07] bg-white/[0.025] font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/60 hover:bg-white/[0.06] pressable disabled:opacity-50"
           data-testid="button-whoop-disconnect"
         >
           <Unplug className="w-3.5 h-3.5" />

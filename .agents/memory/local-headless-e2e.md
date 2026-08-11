@@ -5,7 +5,7 @@ description: How to run your own Playwright browser when the testing subagent's 
 
 When the testing subagent repeatedly reports browser-notebook instability, run e2e checks yourself:
 - `playwright-core` is a devDependency; the headless Chromium shell lives in `.cache/ms-playwright/` (installed via `npx playwright-core install chromium`).
-- Required nix system libs (glib, nss, atk, mesa, pango, xorg.*, …) are already installed; launch with `LD_LIBRARY_PATH=$(echo /nix/store/*-glib-*/lib | tr ' ' ':') node script.mjs`.
+- Newer headless-shell builds (151+) need the full lib set (glib, nspr, nss, at-spi2/atk, mesa/gbm, dbus, alsa, libX*), and /nix/store here is HUGE (~700k entries) and **multi-arch**: shell globs over it stall for minutes, and the first store path containing a soname may be an aarch64 build that the loader silently skips ("not found" despite the file existing). Resolve libs by (1) one plain `ls /nix/store > /tmp/store-list.txt` readdir, (2) grep candidates per package name, (3) accept only dirs where `file -Lb .../lib/<soname>` says x86-64; join into LD_LIBRARY_PATH. Verify with `ldd` on the shell binary before launching.
 - Script must live in the workspace root (node can't resolve packages from /tmp) and end with `process.exit(0)` or the shell call hangs.
 - **Use `https://$REPLIT_DEV_DOMAIN` as the base URL, not localhost** — the session cookie is Secure-only, so auth silently fails (401s) over plain http.
 - Register a throwaway account via in-page `fetch('/api/auth/register', …)` with credentials include.

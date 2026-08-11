@@ -138,7 +138,7 @@ export default function Home() {
           <div className={`flex items-center gap-2 transition-all duration-300 ${scrolled ? "mt-2" : "mt-0"}`}>
             <button
               onClick={() => setIsPointsOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] active:scale-[0.98] transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] pressable"
             >
               <Wrench className="w-3.5 h-3.5" />
               Points to Fix
@@ -146,7 +146,7 @@ export default function Home() {
             <PointsToFix hideTrigger open={isPointsOpen} onOpenChange={setIsPointsOpen} />
             <button
               onClick={handleCreateNew}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-medium active:scale-[0.98] transition-all ${scrolled ? "border border-white/[0.07] bg-white/[0.025] text-foreground/70 hover:bg-white/[0.06]" : "bg-gradient-cta text-primary-foreground font-semibold"}`}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-medium pressable ${scrolled ? "border border-white/[0.07] bg-white/[0.025] text-foreground/70 hover:bg-white/[0.06]" : "bg-gradient-cta text-primary-foreground font-semibold"}`}
               style={scrolled ? {} : { boxShadow: "0 0 22px hsl(var(--primary)/0.28)" }}
               aria-label="New session"
               data-testid="btn-new-note"

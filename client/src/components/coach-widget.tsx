@@ -28,8 +28,10 @@ export function CoachWidget() {
         >
           {/* card-3d is transparent in the flat design language, so this
               floating overlay needs its own opaque backdrop + shadow to read
-              as a layer above the page content. */}
-          <div className="card-3d bg-background/95 backdrop-blur-md rounded-2xl flex flex-col h-[min(65vh,540px)] shadow-2xl overflow-hidden">
+              as a layer above the page content. It materializes (blur+scale
+              +fade together) growing from the launcher's corner; close is
+              intentionally instant — the panel is a toggle, not a modal. */}
+          <div className="card-3d bg-background/95 backdrop-blur-md rounded-2xl flex flex-col h-[min(65vh,540px)] shadow-2xl overflow-hidden animate-materialize origin-bottom-right">
             <div className="flex items-center gap-2 px-4 pt-3 pb-2 border-b border-white/[0.07] shrink-0">
               <Bot className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
               <span className="font-mono uppercase tracking-wider text-[11px] font-semibold">
@@ -57,7 +59,7 @@ export function CoachWidget() {
         onClick={() => setOpen((o) => !o)}
         onPointerDown={(e) => e.stopPropagation()}
         aria-label={open ? "Close coach chat" : "Chat with your coach"}
-        className="pointer-events-auto shrink-0 h-9 w-9 sm:h-10 sm:w-10 rounded-full glass-surface flex items-center justify-center text-cyan-600 dark:text-cyan-400 hover:scale-105 transition-transform"
+        className="pointer-events-auto shrink-0 h-9 w-9 sm:h-10 sm:w-10 rounded-full glass-surface flex items-center justify-center text-cyan-600 dark:text-cyan-400 pressable [--press-scale:0.92]"
         data-testid="button-coach-widget"
       >
         {open ? <X className="w-4 h-4" /> : <Bot className="w-4 h-4 sm:w-5 sm:h-5" />}

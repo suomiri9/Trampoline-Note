@@ -1077,7 +1077,7 @@ export default function SkillsPage() {
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
                             <div className="flex flex-wrap gap-1.5">
                               {recents.map(s => (
-                                <button key={`conn-recent-${s.id}`} type="button" onClick={() => addSkillToConn(s.id.toString())} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-white/[0.08] text-muted-foreground bg-white/[0.025] hover:bg-white/[0.04] transition-colors active:scale-95" data-testid={`btn-conn-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
+                                <button key={`conn-recent-${s.id}`} type="button" onClick={() => addSkillToConn(s.id.toString())} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-white/[0.08] text-muted-foreground bg-white/[0.025] hover:bg-white/[0.04] transition-colors pressable [--press-scale:0.95]" data-testid={`btn-conn-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
                               ))}
                             </div>
                           </div>

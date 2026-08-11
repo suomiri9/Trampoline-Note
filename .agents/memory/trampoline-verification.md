@@ -32,16 +32,23 @@ the reset form's password inputs appear in the captured browser DOM logs).
 navigation re-arms it. Confirm unauth pages via the DOM/browser logs + code, the
 same as authenticated pages.
 
-## Some TypeScript errors are pre-existing and runtime-safe
+## Some TypeScript errors are pre-existing and runtime-safe — but TS2304 is NOT
 `tsc --noEmit` reports a handful of long-standing errors that are NOT from
 current feature work and do not block the app (Vite/esbuild transpiles without
 type-checking) — they come from untyped `useForm` narrowing and a few
 parsed/narrowed `SkillItem`-style objects that lack a `.note` field at the type
 level. Re-run `tsc` to see the current exact list; don't memorize it.
 
-**How to apply:** when verifying a change, filter tsc output to the files you
-actually edited and ignore the pre-existing baseline. Don't try to "fix" those
-unless the task is specifically about them.
+**Exception — `TS2304: Cannot find name`:** esbuild bundles undefined
+identifiers as global refs, so these become runtime ReferenceErrors that
+hard-crash the page (React dies behind the splash, looks like a hang). A
+header-refactor merge once deleted settings.tsx's whole state/hook block and
+debuts.tsx's Button import this way — build + unit tests stayed green. The
+TS2304 count is now 0 and must stay 0.
+
+**How to apply:** when verifying a change, `tsc --noEmit | grep TS2304` must be
+empty (any hit = page crash, fix it); beyond that, filter tsc output to the
+files you actually edited and ignore the pre-existing type-only baseline.
 
 ## Page scrolling happens inside #root, not the window
 `html`/`body` are intentionally `position: fixed; overflow: hidden` (iOS

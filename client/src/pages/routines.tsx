@@ -335,7 +335,7 @@ export default function RoutinesPage() {
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
                   <div className="flex flex-wrap gap-1.5">
                     {recents.map(s => (
-                      <button key={`routine-recent-${s.id}`} type="button" disabled={selectedSkillIds.length >= 10} onClick={() => handleAddSkill(s.id)} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-white/[0.08] text-muted-foreground bg-white/[0.025] hover:bg-white/[0.04] transition-colors active:scale-95 disabled:opacity-40 disabled:pointer-events-none" data-testid={`btn-routine-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
+                      <button key={`routine-recent-${s.id}`} type="button" disabled={selectedSkillIds.length >= 10} onClick={() => handleAddSkill(s.id)} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-white/[0.08] text-muted-foreground bg-white/[0.025] hover:bg-white/[0.04] transition-colors pressable [--press-scale:0.95] disabled:opacity-40 disabled:pointer-events-none" data-testid={`btn-routine-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
                     ))}
                   </div>
                 </div>
@@ -470,7 +470,7 @@ export default function RoutinesPage() {
             <div
               key={routine.id}
               className={cn(
-                "group relative rounded-2xl p-5 pl-6 cursor-pointer overflow-hidden border border-white/[0.07] bg-white/[0.025] hover:bg-white/[0.04] hover:border-primary/30 active:scale-[0.99] transition-all",
+                "group relative rounded-2xl p-5 pl-6 cursor-pointer overflow-hidden border border-white/[0.07] bg-white/[0.025] hover:bg-white/[0.04] hover:border-primary/30 pressable [--press-scale:0.99]",
                 editingRoutine?.id === routine.id && "ring-1 ring-primary border-primary/40",
               )}
               onClick={() => navigate(`/routines/${routine.id}`)}

@@ -1868,7 +1868,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
                               <div className="flex flex-wrap gap-1.5">
                                 {recents.map(s => (
-                                  <button key={`nc-recent-${s.id}`} type="button" onClick={() => { addRecentSkill(s.id); setNewConnSkillIds(prev => [...prev, s.id]); }} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-white/[0.08] text-muted-foreground bg-white/[0.025] hover:bg-white/[0.04] transition-colors active:scale-95" data-testid={`btn-new-conn-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
+                                  <button key={`nc-recent-${s.id}`} type="button" onClick={() => { addRecentSkill(s.id); setNewConnSkillIds(prev => [...prev, s.id]); }} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-white/[0.08] text-muted-foreground bg-white/[0.025] hover:bg-white/[0.04] transition-colors pressable [--press-scale:0.95]" data-testid={`btn-new-conn-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
                                 ))}
                               </div>
                             </div>
@@ -1998,7 +1998,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
                             <div className="flex flex-wrap gap-1.5">
                               {recents.map(s => (
-                                <button key={`nr-recent-${s.id}`} type="button" disabled={newRoutineSkillIds.length >= 10} onClick={() => { addRecentSkill(s.id); setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, s.id] : prev); }} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-white/[0.08] text-muted-foreground bg-white/[0.025] hover:bg-white/[0.04] transition-colors active:scale-95 disabled:opacity-40 disabled:pointer-events-none" data-testid={`btn-new-routine-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
+                                <button key={`nr-recent-${s.id}`} type="button" disabled={newRoutineSkillIds.length >= 10} onClick={() => { addRecentSkill(s.id); setNewRoutineSkillIds(prev => prev.length < 10 ? [...prev, s.id] : prev); }} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-white/[0.08] text-muted-foreground bg-white/[0.025] hover:bg-white/[0.04] transition-colors pressable [--press-scale:0.95] disabled:opacity-40 disabled:pointer-events-none" data-testid={`btn-new-routine-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
                               ))}
                             </div>
                           </div>
@@ -2179,7 +2179,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           const r = routines?.find(rt => rt.id === ent.id);
                           if (!r) return null;
                           return (
-                            <button key={`r-${ent.id}`} type="button" onClick={() => addRoutine(ent.id.toString())} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors active:scale-95 border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 max-w-[140px] truncate" data-testid={`btn-recent-routine-${ent.id}`}>{r.name}</button>
+                            <button key={`r-${ent.id}`} type="button" onClick={() => addRoutine(ent.id.toString())} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors pressable [--press-scale:0.95] border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 max-w-[140px] truncate" data-testid={`btn-recent-routine-${ent.id}`}>{r.name}</button>
                           );
                         }
                         if (ent.kind === 'fc') {
@@ -2188,7 +2188,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           const isPart = fc.isDrill === 3;
                           return (
                             <button key={`f-${ent.id}`} type="button" onClick={() => addSkill(ent.id.toString())} className={cn(
-                              "px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors active:scale-95 max-w-[140px] truncate",
+                              "px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors pressable [--press-scale:0.95] max-w-[140px] truncate",
                               isPart ? "border-border text-muted-foreground bg-white/[0.04]" : "border-destructive/40 text-destructive bg-destructive/10"
                             )} data-testid={`btn-recent-fc-${ent.id}`}>{fc.name}</button>
                           );
@@ -2197,7 +2197,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         if (!skill) return null;
                         return (
                           <button key={`s-${ent.id}`} type="button" onClick={() => addSkill(ent.id.toString())} className={cn(
-                            "px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors active:scale-95",
+                            "px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-colors pressable [--press-scale:0.95]",
                             skill.isDrill === 1 ? "border-yellow-300 text-yellow-600 bg-yellow-50 dark:border-yellow-700 dark:text-yellow-400 dark:bg-yellow-900/10"
                               : "border-white/[0.08] text-muted-foreground bg-white/[0.025] hover:bg-white/[0.04]"
                           )} data-testid={`btn-recent-skill-${ent.id}`}><SkillCode skill={skill} allSkills={allItems} /></button>

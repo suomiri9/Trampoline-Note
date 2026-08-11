@@ -25,7 +25,7 @@ export function StarRating({ value, onChange, readonly = false, size = "md" }: S
           className={cn(
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full transition-all duration-200",
             isSm ? "p-0" : "p-1",
-            readonly ? "cursor-default" : "cursor-pointer hover:scale-110 active:scale-95"
+            readonly ? "cursor-default" : "cursor-pointer hover:scale-110 pressable [--press-scale:0.9]"
           )}
           onClick={() => {
             if (readonly) return;

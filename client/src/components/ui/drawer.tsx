@@ -5,8 +5,14 @@ import { Drawer as DrawerPrimitive } from "vaul"
 
 import { cn } from "@/lib/utils"
 
+// Gesture-driven bottom sheet on vaul (docs/apple-design-skill.md): the
+// sheet tracks the finger 1:1, rubber-bands past the top (§9), and commits
+// or cancels from release velocity (§5/§6) — vaul provides the physics.
+// Background scaling stays OFF: html/body are fixed and #root is the scroll
+// container, so transforming it would break the fixed bottom nav
+// (transforms create containing blocks for fixed descendants).
 const Drawer = ({
-  shouldScaleBackground = true,
+  shouldScaleBackground = false,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
   <DrawerPrimitive.Root
@@ -22,13 +28,16 @@ const DrawerPortal = DrawerPrimitive.Portal
 
 const DrawerClose = DrawerPrimitive.Close
 
+// z-[70]: unlike centered dialogs (z-50, deliberately under the z-[60]
+// floating nav), a sheet rises from the bottom edge — the nav and coach
+// launcher must sit under its scrim or they'd overlap the sheet's content.
 const DrawerOverlay = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <DrawerPrimitive.Overlay
     ref={ref}
-    className={cn("fixed inset-0 z-50 bg-black/80", className)}
+    className={cn("fixed inset-0 z-[70] bg-black/80", className)}
     {...props}
   />
 ))
@@ -43,12 +52,18 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background",
+        // sheet-material (index.css): translucent blur — §12 bigger surfaces
+        // read thicker. pb-safe keeps the footer above the home indicator.
+        "sheet-material fixed inset-x-0 bottom-0 z-[70] flex h-auto max-h-[92svh] flex-col rounded-t-2xl border-t border-border/60 pb-safe outline-none",
         className
       )}
       {...props}
     >
-      <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
+      {/* Drag handle — affords the drag-to-dismiss gesture. */}
+      <div
+        aria-hidden
+        className="mx-auto mt-3 h-1 w-9 shrink-0 rounded-full bg-muted-foreground/30"
+      />
       {children}
     </DrawerPrimitive.Content>
   </DrawerPortal>
@@ -83,10 +98,7 @@ const DrawerTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DrawerPrimitive.Title
     ref={ref}
-    className={cn(
-      "text-lg font-semibold leading-none tracking-tight",
-      className
-    )}
+    className={cn("page-title text-2xl", className)}
     {...props}
   />
 ))
