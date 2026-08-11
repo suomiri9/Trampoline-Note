@@ -5,16 +5,16 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useState, useRef } from "react";
 
 // Lazy route loader that doesn't blank the whole app when a page's JS chunk
 // can't be fetched (e.g. navigating offline to a page that was never loaded).
 // Instead it renders a small "not downloaded yet" screen with a retry button.
 //
-// React.lazy caches a failed load forever, so a plain lazy() would keep
-// showing the fallback even after reconnecting. To recover seamlessly, each
-// failed attempt creates a *fresh* lazy component (keyed by a nonce) the next
-// time the route mounts, so SPA navigation re-attempts the import.
+// React.lazy caches a failed load forever, so on first failure it resolves to
+// ChunkRecovery (never rejects), and ChunkRecovery owns every later retry:
+// in-place import attempts on mount/tap, escalating a user-tapped retry that
+// still fails while online to a full reload (fresh module map, always cures).
 function lazyPage(load: () => Promise<{ default: React.ComponentType<any> }>) {
   // Once the real module loads (first try or any retry), it's cached here so
   // every later mount renders it instantly with no further network fetches.
@@ -26,7 +26,7 @@ function lazyPage(load: () => Promise<{ default: React.ComponentType<any> }>) {
   let failedUrl: string | null = null;
   let retrySeq = 0;
 
-  const attemptLoad = async (): Promise<{ default: React.ComponentType<any> }> => {
+  const attemptLoad = async (force = false): Promise<{ default: React.ComponentType<any> }> => {
     // While the browser knows it's offline, only attempt the import when a
     // service worker controls the page — the SW serves precached chunks from
     // its cache, so the import succeeds with zero network. Without a
@@ -35,7 +35,11 @@ function lazyPage(load: () => Promise<{ default: React.ComponentType<any> }>) {
     // modulepreload'ed dependencies), after which even online imports of the
     // same URLs reject instantly from cache. Skipping that attempt keeps the
     // module map clean so the first online retry succeeds normally.
+    // `force` (user tapped Retry) bypasses the guard: navigator.onLine can
+    // misreport offline indefinitely (VPNs, macOS quirks), which would
+    // otherwise make every Retry tap a silent no-op.
     if (
+      !force &&
       typeof navigator !== "undefined" &&
       navigator.onLine === false &&
       !navigator.serviceWorker?.controller
@@ -65,18 +69,35 @@ function lazyPage(load: () => Promise<{ default: React.ComponentType<any> }>) {
     const [Comp, setComp] = useState<React.ComponentType<any> | null>(() => Loaded);
     const [attempt, setAttempt] = useState(0);
     const [failedNow, setFailedNow] = useState(false);
+    // Distinguishes user-tapped retries from automatic mount attempts so a
+    // failing tap can escalate to a full reload without ever reload-looping.
+    const userRetryRef = useRef(false);
 
     useEffect(() => {
       if (Comp) return;
       let alive = true;
+      const isUserRetry = userRetryRef.current;
+      userRetryRef.current = false;
       setFailedNow(false);
-      attemptLoad()
+      attemptLoad(isUserRetry)
         .then((m) => {
           Loaded = m.default;
           if (alive) setComp(() => m.default);
         })
         .catch(() => {
-          if (alive) setFailedNow(true);
+          if (!alive) return;
+          // An in-place retry can't cure a poisoned module map: once an
+          // offline import failed, the browser cached rejections for the
+          // chunk and/or its static deps, so the same URLs reject instantly
+          // even after reconnecting. If the user tapped Retry and the browser
+          // agrees we're online yet the import STILL failed, a full reload is
+          // the one path that always recovers (fresh module map; also picks
+          // up a newer build when the old chunk is gone).
+          if (isUserRetry && navigator.onLine !== false) {
+            window.location.reload();
+            return;
+          }
+          setFailedNow(true);
         });
       return () => {
         alive = false;
@@ -93,7 +114,10 @@ function lazyPage(load: () => Promise<{ default: React.ComponentType<any> }>) {
         </p>
         <button
           className="mt-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm"
-          onClick={() => setAttempt((a) => a + 1)}
+          onClick={() => {
+            userRetryRef.current = true;
+            setAttempt((a) => a + 1);
+          }}
           data-testid="button-chunk-retry"
         >
           Retry
