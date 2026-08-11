@@ -8,6 +8,7 @@
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
+    "check:crash": "bash script/check-ts2304.sh",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {

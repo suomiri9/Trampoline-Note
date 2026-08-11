@@ -49,6 +49,8 @@ TS2304 count is now 0 and must stay 0.
 **How to apply:** when verifying a change, `tsc --noEmit | grep TS2304` must be
 empty (any hit = page crash, fix it); beyond that, filter tsc output to the
 files you actually edited and ignore the pre-existing type-only baseline.
+`npm run check:crash` (script/check-ts2304.sh) automates exactly this and is
+registered as the `crash-check` validation command, so it gates task merges.
 
 ## Page scrolling happens inside #root, not the window
 `html`/`body` are intentionally `position: fixed; overflow: hidden` (iOS
