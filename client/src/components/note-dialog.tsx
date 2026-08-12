@@ -1000,16 +1000,42 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLocation]);
 
+  // One shared "save whatever is in the editor" path, used by the normal
+  // close (X / backdrop / nav-away effect) and by the unmount flush below.
+  // Returns true when a save was kicked off — the submit/invalid callbacks
+  // then own closing the dialog.
+  const flushDraftSave = (): boolean => {
+    if (isSavingRef.current) return false;
+    const v = form.getValues();
+    const hasContent = !!(v.content || selectedSkills.length > 0 || v.startTime || v.endTime || v.rating);
+    if (!hasContent && !form.formState.isDirty) return false;
+    isSavingRef.current = true;
+    form.handleSubmit(onSubmit, () => { isSavingRef.current = false; onOpenChange(false); })();
+    return true;
+  };
+  // Cleanup closures capture the render they were created in, so the
+  // unmount effect reads the LATEST flush + open state through refs.
+  const flushDraftSaveRef = useRef(flushDraftSave);
+  flushDraftSaveRef.current = flushDraftSave;
+  const openRef = useRef(open);
+  openRef.current = open;
+
+  // The location-watcher effect above only runs while this component stays
+  // mounted. When the HOST PAGE unmounts — the bottom nav sits above the
+  // dialog, so tapping e.g. Skills unmounts home and this dialog in one
+  // commit — React runs only cleanups, never that effect. This cleanup is
+  // therefore the last chance to save: without it, an open editor's session
+  // draft is silently destroyed and no request ever leaves the device
+  // (real training sessions have been lost this way). The started mutation
+  // and offline-queue writes run to completion after unmount.
+  useEffect(() => {
+    return () => {
+      if (openRef.current) flushDraftSaveRef.current();
+    };
+  }, []);
+
   const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen && !isSavingRef.current) {
-      const v = form.getValues();
-      const hasContent = !!(v.content || selectedSkills.length > 0 || v.startTime || v.endTime || v.rating);
-      if (hasContent || form.formState.isDirty) {
-        isSavingRef.current = true;
-        form.handleSubmit(onSubmit, () => { isSavingRef.current = false; onOpenChange(false); })();
-        return;
-      }
-    }
+    if (!newOpen && flushDraftSave()) return;
     onOpenChange(newOpen);
   };
 
