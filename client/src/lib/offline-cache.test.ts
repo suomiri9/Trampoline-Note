@@ -82,7 +82,7 @@ describe.each(CASES)("getQueryFn offline fallback for $path", ({ path, cacheKey 
     await expect(run(path)).rejects.toThrow("Failed to fetch");
   });
 
-  it("mirrors successful responses into the cache while offline mode is ON (dropping archived items)", async () => {
+  it("mirrors successful responses into the cache while offline mode is ON (keeping archived items — historical DD valuation needs them)", async () => {
     setOfflineModeEnabled(true);
     okFetch([
       { id: 1, archived: 0 },
@@ -92,7 +92,10 @@ describe.each(CASES)("getQueryFn offline fallback for $path", ({ path, cacheKey 
       { id: 1, archived: 0 },
       { id: 2, archived: 1 },
     ]);
-    await expect(cacheGet(cacheKey)).resolves.toEqual([{ id: 1, archived: 0 }]);
+    await expect(cacheGet(cacheKey)).resolves.toEqual([
+      { id: 1, archived: 0 },
+      { id: 2, archived: 1 },
+    ]);
   });
 
   it("does NOT mirror responses while offline mode is OFF", async () => {

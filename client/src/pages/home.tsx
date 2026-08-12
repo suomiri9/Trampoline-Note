@@ -1,8 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { Plus, Wrench, BookOpen, Loader2, ChevronDown } from "lucide-react";
-import { useNotesPage } from "@/hooks/use-notes";
+import { useNotes, useNotesPage } from "@/hooks/use-notes";
 import { useQueuedNotes } from "@/hooks/use-queued-notes";
+import { useSkills } from "@/hooks/use-skills";
+import { useRoutines } from "@/hooks/use-routines";
+import { parseNoteSkills, calculateTotalDD } from "@/lib/training-utils";
 import { NoteCard } from "@/components/note-card";
 import { NoteDialog } from "@/components/note-dialog";
 import { PointsToFix } from "@/components/points-to-fix";
@@ -49,17 +52,25 @@ export default function Home() {
   const hasMore = data?.hasMore ?? false;
   const total = data?.total ?? visibleNotes.length;
 
+  // Stat strip inputs: prefer the full history (shared with the Stats page's
+  // cache) so Streak/Best DD aren't capped at the visible page; fall back to
+  // the loaded page so the strip fills on first paint.
+  const { data: allNotes } = useNotes();
+  const { data: allItems } = useSkills();
+  const { data: routines } = useRoutines();
+  const statNotes = allNotes ?? visibleNotes;
+
   // All date math below is local-calendar only (never UTC/toISOString):
   // note.date is a YYYY-MM-DD string and the athlete may be far ahead of UTC.
   const thisWeek = useMemo(() => {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 6); // rolling 7 days incl. today
     const cutoffStr = format(cutoff, "yyyy-MM-dd");
-    return visibleNotes.filter(n => String(n.date).slice(0, 10) >= cutoffStr).length;
-  }, [visibleNotes]);
+    return statNotes.filter(n => String(n.date).slice(0, 10) >= cutoffStr).length;
+  }, [statNotes]);
 
   const streak = useMemo(() => {
-    const uniqueDates = Array.from(new Set(visibleNotes.map(n => String(n.date).slice(0, 10)))).sort().reverse();
+    const uniqueDates = Array.from(new Set(statNotes.map(n => String(n.date).slice(0, 10)))).sort().reverse();
     if (!uniqueDates.length) return 0;
     const fmt = (d: Date) => format(d, "yyyy-MM-dd");
     const cursor = new Date();
@@ -74,13 +85,17 @@ export default function Home() {
       cursor.setDate(cursor.getDate() - 1);
     }
     return count;
-  }, [visibleNotes]);
+  }, [statNotes]);
 
-  // Best session DD from loaded notes (difficulty = stored set-group DD, difficultyVol = vol-group DD)
+  // Best single-session DD, computed from the logged skills/routines exactly
+  // like the Stats page (notes don't store a difficulty column — the old read
+  // of n.difficulty always came up empty).
   const bestDD = useMemo(() => {
-    if (!visibleNotes.length) return 0;
-    return Math.max(...visibleNotes.map(n => (n.difficulty ?? 0) + (n.difficultyVol ?? 0)));
-  }, [visibleNotes]);
+    return statNotes.reduce(
+      (m, n) => Math.max(m, calculateTotalDD(parseNoteSkills(n.skills), allItems, routines, n.date)),
+      0,
+    );
+  }, [statNotes, allItems, routines]);
 
   const STATS = [
     { label: "Sessions", value: total > 0 ? String(total) : "—" },

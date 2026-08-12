@@ -34,3 +34,5 @@
 - [Bulk rows via executeSql](executesql-bulk-transport.md) — CSV output mangles free text; export as sliced base64 json_agg (deterministic ORDER BY), no Buffer in sandbox, snake→camel for drizzle.
 - [Mockup sandbox serving](mockup-sandbox-serving.md) — frame shows main app = sandbox not scaffolded/installed; its cartographer imports root tailwind.config.ts, so a pruned root node_modules overlays every mockup.
 - [Artifact package wiring](artifact-package-wiring.md) — root is NOT a pnpm workspace; install each artifact standalone in its dir; cross-artifact deps use file:../<slug>, never workspace:*.
+- [Prod executeSql silent failures](prod-sql-silent-errors.md) — prod query errors return success:true with only "START TRANSACTION/ROLLBACK" output; probe SELECT 1 + information_schema; prod schema lags until publish.
+- [Offline mirrors are verbatim](offline-mirror-verbatim.md) — never filter archived rows out of mirrored reference lists; historical DD valuation needs them offline; notes never store DD, it's always computed.

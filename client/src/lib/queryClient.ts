@@ -75,16 +75,12 @@ export const getQueryFn: <T>(options: {
       // that would defeat the wipe performed by disableOfflineMode() and
       // could leak data on a shared device.
       if (cacheKey && offlineModeOn) {
-        // Don't waste storage on archived items — they aren't needed offline.
-        // (Applies only to the known list mirrors; generic GETs are cached
-        // verbatim since their shape is arbitrary.)
-        const toCache =
-          !isGenericKey && Array.isArray(data)
-            ? (data as Array<Record<string, unknown>>).filter(
-                (item) => item?.archived !== 1,
-              )
-            : data;
-        await cacheSet(cacheKey, toCache);
+        // Mirror verbatim — including archived skills/routines. Historical
+        // notes still reference archived items, and DD valuation (home/stats
+        // "Best DD", per-session DD) resolves those IDs against this cache
+        // when offline. Dropping them silently under-counted historical DD;
+        // display surfaces already filter `archived` themselves.
+        await cacheSet(cacheKey, data);
       }
       return data;
     } catch (err) {
