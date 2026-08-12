@@ -30,6 +30,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { ClipboardCheck, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDown, RotateCcw, X, Link2, ChevronRight } from "lucide-react";
+import { DialogHero } from "@/components/dialog-hero";
+import { pageAccentStyle } from "@/lib/page-accent";
 import { cn } from "@/lib/utils";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { useQueuedExecutionSessions } from "@/hooks/use-queued-execution-sessions";
@@ -321,6 +323,8 @@ export default function ExecutionPage() {
       setPhotoUrl(dataUrl);
       setPhotoDate(parsed.date ?? new Date().toISOString().substring(0, 10));
       setPhotoStep("review");
+      // The photo path replaces the manual form — close it if it was open.
+      setShowForm(false);
       setPhotoOpen(true);
     } catch (e) {
       toast({
@@ -468,19 +472,19 @@ export default function ExecutionPage() {
       <div
         key={pending ? `pending-${s.id}` : s.id}
         className={cn(
-          "relative rounded-2xl p-5 pl-6 overflow-hidden border bg-white/[0.025]",
-          pending ? "border-amber-500/40" : "border-white/[0.07] cursor-pointer transition-colors hover:bg-white/[0.05]",
+          "relative rounded-2xl p-5 pl-6 overflow-hidden border bg-white/[0.02]",
+          pending ? "border-amber-500/40" : "border-border/15 cursor-pointer transition-colors hover:bg-[hsl(var(--page-accent)/0.05)]",
         )}
         onClick={pending ? undefined : () => navigate(`/execution/session/${s.id}`)}
         data-testid={pending ? `card-execution-pending-${s.id}` : `card-execution-session-${s.id}`}
       >
-        <span className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500" aria-hidden="true" />
+        <span className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[hsl(var(--page-accent))] to-[hsl(var(--page-accent-2))]" aria-hidden="true" />
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[10px] font-mono text-muted-foreground">{fmtDate(s.date)}</div>
             {s.routineId != null ? (
               <h3
-                className="font-semibold text-base leading-tight truncate cursor-pointer hover:text-rose-500 hover:underline underline-offset-2 transition-colors"
+                className="font-semibold text-base leading-tight truncate cursor-pointer hover:text-[hsl(var(--page-accent))] hover:underline underline-offset-2 transition-colors"
                 role="button"
                 tabIndex={0}
                 title="Open this routine's execution graph"
@@ -531,7 +535,10 @@ export default function ExecutionPage() {
           <div className="flex items-start gap-1 shrink-0">
             <div className="text-right leading-none">
               <div
-                className="text-3xl font-black text-rose-400 tracking-tight tabular-nums"
+                className={cn(
+                  "text-3xl font-black tracking-[-0.04em] tabular-nums",
+                  e != null ? "text-gradient-page" : "text-foreground/80",
+                )}
                 data-testid={`text-execution-headline-${s.id}`}
               >
                 {e != null ? e.toFixed(1) : `−${total.toFixed(1)}`}
@@ -655,13 +662,12 @@ export default function ExecutionPage() {
   ];
 
   return (
-    <PageLayout>
+    <PageLayout accent="execution">
       <PageHeader
-        eyebrow="Execution"
-        kicker="Execution Tracker"
+        kicker="The judges' scorecard"
         title="Chase the clean."
         accent="the clean."
-        subtitle="Log the judges' per-skill execution deductions — from a sheet photo or by hand — and see which skills cost you the most tenths."
+        subtitle="Every tenth a judge takes is a break they saw. Log the scorecard — from a sheet photo or by hand — and find the skills quietly draining your E score."
         actions={
           <>
             <input
@@ -672,16 +678,6 @@ export default function ExecutionPage() {
               onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f); }}
               data-testid="input-execution-photo"
             />
-            <Button
-              variant="outline"
-              className={headerActionClass}
-              disabled={parsingPhoto}
-              onClick={() => photoInputRef.current?.click()}
-              data-testid="button-upload-execution-photo"
-            >
-              {parsingPhoto ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageUp className="w-4 h-4" />}
-              {parsingPhoto ? "Reading..." : "From photo"}
-            </Button>
             <Button onClick={openNew} className={primaryActionClass} data-testid="button-new-execution-session">
               <Plus className="w-5 h-5" /> New Session
             </Button>
@@ -689,24 +685,103 @@ export default function ExecutionPage() {
         }
       />
 
+      {/* ── Scorecard verdict — Execution's signature opening. Where ToF leads
+             with a stopwatch, this reads like the top of a judges' sheet: the
+             cleanest routine's implied E score stamped big on the left, and a
+             plain deduction bar on the right: how much of the judges' 0–10
+             deduction range a typical sheet costs, said in one sentence. */}
+      {stripStats && (() => {
+        // Implied E for the cleanest session. Sheet deductions come from the
+        // judges' 20-point execution pool, so the implied E is 20 − deductions.
+        const cleanestE = Math.max(0, 20 - stripStats.best);
+        // Judges can take at most 10 of the 20-point pool, so the bar spans
+        // the full 0–10 range.
+        const avgPct = Math.min(100, (stripStats.avg / 10) * 100);
+        return (
+          <div
+            className="relative overflow-hidden rounded-2xl border border-border/15 bg-white/[0.02] mb-6"
+            data-testid="panel-exec-scorecard"
+          >
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full"
+              style={{ background: "radial-gradient(circle, hsl(var(--page-accent) / 0.16) 0%, transparent 70%)" }}
+            />
+            <div className="relative flex flex-col sm:flex-row sm:items-stretch">
+              {/* Cleanest E — the verdict stamp */}
+              <div className="p-5 sm:p-6 sm:w-56 border-b sm:border-b-0 sm:border-r border-border/15">
+                <div className="flex items-center gap-1.5 mb-3">
+                  <ClipboardCheck className="h-3 w-3 text-[hsl(var(--page-accent)/0.75)]" />
+                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/60">Cleanest E</span>
+                </div>
+                <div className="flex items-end gap-2">
+                  <span className="text-gradient-page font-black tracking-[-0.05em] leading-[0.85] tabular-nums text-[clamp(52px,15vw,72px)]" data-testid="text-exec-cleanest-e">
+                    {cleanestE.toFixed(1)}
+                  </span>
+                  <span className="font-mono text-[10px] text-muted-foreground/45 pb-2 uppercase tracking-[0.12em]">/ 20</span>
+                </div>
+                <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/50">
+                  −{stripStats.best.toFixed(1)} on your best sheet
+                </p>
+              </div>
+              {/* Tenths ledger — average deduction drawn as the judge's ticks */}
+              <div className="flex-1 p-5 sm:p-6 flex flex-col justify-center">
+                <div className="flex items-baseline justify-between mb-3">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/55">Average deduction</span>
+                  <span className="font-mono text-sm font-bold tabular-nums text-foreground/80" data-testid="text-exec-avg-ded">
+                    −{stripStats.avg.toFixed(2)}
+                  </span>
+                </div>
+                <div className="relative h-3 rounded-full bg-white/[0.06] overflow-hidden" aria-hidden>
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full bg-[hsl(var(--page-accent))] transition-[width] duration-300 ease-out-strong"
+                    style={{ width: `${avgPct}%` }}
+                  />
+                </div>
+                <div className="flex justify-between mt-1.5 font-mono text-[9px] tabular-nums text-muted-foreground/45" aria-hidden>
+                  <span>0</span>
+                  <span>10</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {stripStats && (
         <StatStrip
           className="mb-6"
           items={[
-            { label: "Sessions", value: String(stripStats.count), testId: "stat-exec-sessions" },
-            { label: "Avg Deductions", value: `−${stripStats.avg.toFixed(2)}`, testId: "stat-exec-avg" },
-            { label: "Cleanest", value: `−${stripStats.best.toFixed(2)}`, testId: "stat-exec-best" },
-            { label: "Skills Tracked", value: String(stripStats.skills), testId: "stat-exec-skills" },
+            { label: "Sessions", value: String(stripStats.count), accent: "page", testId: "stat-exec-sessions" },
+            { label: "Avg Deductions", value: `−${stripStats.avg.toFixed(2)}`, accent: "page", testId: "stat-exec-avg" },
+            { label: "Cleanest", value: `−${stripStats.best.toFixed(2)}`, accent: "page", testId: "stat-exec-best" },
+            { label: "Skills Tracked", value: String(stripStats.skills), accent: "page", testId: "stat-exec-skills" },
           ]}
         />
       )}
 
       {/* ---- Manual session form dialog ---- */}
       <Dialog open={showForm} onOpenChange={closeForm}>
-        <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editing ? "Edit Execution Session" : "New Execution Session"}</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto" style={pageAccentStyle("execution")}>
+          <DialogHero
+            icon={ClipboardCheck}
+            eyebrow="Judges' scorecard"
+            title={editing ? "Edit execution session" : "New execution session"}
+            description={editing ? "Update the deductions for this session." : "Log the judges' deductions skill by skill."}
+            action={!editing && (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8 rounded-lg px-2.5 text-xs font-semibold gap-1.5 shrink-0 pressable"
+                disabled={parsingPhoto}
+                onClick={() => photoInputRef.current?.click()}
+                data-testid="button-upload-execution-photo"
+              >
+                {parsingPhoto ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageUp className="w-3.5 h-3.5" />}
+                {parsingPhoto ? "Reading..." : "From photo"}
+              </Button>
+            )}
+          />
           <div className="space-y-4">
             <div className="flex gap-2">
               <div className="flex-1">
@@ -800,13 +875,16 @@ export default function ExecutionPage() {
 
       {/* ---- Photo confirmation dialog (review → details) ---- */}
       <Dialog open={photoOpen} onOpenChange={o => { if (!o && !savingPhoto) closePhoto(); }}>
-        <DialogContent aria-describedby={undefined} className="sm:max-w-lg max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
+        <DialogContent aria-describedby={undefined} className="sm:max-w-lg max-h-[90dvh] overflow-y-auto" style={pageAccentStyle("execution")}>
+          <DialogHero
+            icon={ClipboardCheck}
+            eyebrow="Judges' scorecard"
+            noPeriod
+            title={<>
               {photoStep === "review" ? "Check the deductions" : "Session details"}
               <span className="ml-2 text-xs font-mono font-normal text-muted-foreground">{photoStep === "review" ? "1/2" : "2/2"}</span>
-            </DialogTitle>
-          </DialogHeader>
+            </>}
+          />
 
           {photoStep === "review" ? (
             <div className="space-y-4">
@@ -946,9 +1024,9 @@ export default function ExecutionPage() {
 
       {/* ---- Per-routine analysis ---- */}
       {routineAnalysis.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mb-4">
+        <div className="rounded-2xl border border-border/15 bg-white/[0.02] p-5 mb-4">
           <div className="flex items-center gap-2 mb-4">
-            <ClipboardCheck className="h-3.5 w-3.5 text-emerald-400" />
+            <ClipboardCheck className="h-3.5 w-3.5 text-[hsl(var(--page-accent))]" />
             <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Routine analysis</span>
             <span className="ml-auto font-mono text-[9px] text-muted-foreground/55">tap for graph</span>
           </div>
@@ -962,11 +1040,11 @@ export default function ExecutionPage() {
                   tabIndex={0}
                   onClick={() => navigate(`/execution/routine/${a.routineId}`)}
                   onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/execution/routine/${a.routineId}`); } }}
-                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.025] border border-white/[0.07] px-3 py-2 cursor-pointer transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.015] border border-border/12 px-3 py-2 cursor-pointer transition-colors hover:bg-[hsl(var(--page-accent)/0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   data-testid={`row-exec-routine-analysis-${a.routineId}`}
                 >
                   <span className="font-bold text-foreground flex-1 truncate">{r?.name ?? "Unknown routine"}</span>
-                  <span className="text-muted-foreground shrink-0" title="Average total deductions per session">avg <span className="text-rose-500 font-bold">−{a.avgTotal.toFixed(1)}</span></span>
+                  <span className="text-muted-foreground shrink-0" title="Average total deductions per session">avg <span className="text-foreground font-bold">−{a.avgTotal.toFixed(1)}</span></span>
                   <span className="text-muted-foreground/60 shrink-0 w-10 text-right" title="Recorded sessions">n={a.sessions}</span>
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
                 </div>
@@ -978,9 +1056,9 @@ export default function ExecutionPage() {
 
       {/* ---- Per-skill analysis ---- */}
       {(analysis.ranked.length > 0 || analysis.landingAvg != null) && (
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mb-4">
+        <div className="rounded-2xl border border-border/15 bg-white/[0.02] p-5 mb-4">
           <div className="flex items-center gap-2 mb-4">
-            <TrendingDown className="h-3.5 w-3.5 text-rose-400" />
+            <TrendingDown className="h-3.5 w-3.5 text-[hsl(var(--page-accent))]" />
             <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">Skill analysis</span>
             <span className="ml-auto font-mono text-[9px] text-muted-foreground/55">worst first</span>
           </div>
@@ -994,7 +1072,7 @@ export default function ExecutionPage() {
                   tabIndex={0}
                   onClick={() => navigate(`/execution/skill/${a.skillId}`)}
                   onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/execution/skill/${a.skillId}`); } }}
-                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.025] border border-white/[0.07] px-3 py-2 cursor-pointer transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex items-center gap-3 text-xs font-mono rounded-lg bg-white/[0.015] border border-border/12 px-3 py-2 cursor-pointer transition-colors hover:bg-[hsl(var(--page-accent)/0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   data-testid={`row-exec-analysis-${a.skillId}`}
                 >
                   <span className="font-bold text-foreground w-16 truncate shrink-0">{sk ? skillDisplayCode(sk, allSkills) : "?"}</span>
@@ -1036,8 +1114,8 @@ export default function ExecutionPage() {
         {(sessions ?? []).map(s => renderSessionCard(s, false))}
         {!isLoading && (sessions ?? []).length === 0 && queuedSessions.length === 0 && (
           <div className="col-span-full py-24 px-6 flex flex-col items-center justify-center text-center">
-            <div className="w-14 h-14 mb-5 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-              <ClipboardCheck className="w-7 h-7 text-primary" />
+            <div className="w-14 h-14 mb-5 rounded-2xl bg-[hsl(var(--page-accent)/0.1)] border border-[hsl(var(--page-accent)/0.2)] flex items-center justify-center">
+              <ClipboardCheck className="w-7 h-7 text-[hsl(var(--page-accent))]" />
             </div>
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/50 mb-2">No sessions yet</p>
             <h3 className="text-2xl font-black tracking-tight mb-2">Start counting.</h3>

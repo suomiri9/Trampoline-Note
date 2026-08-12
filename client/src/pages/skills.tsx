@@ -11,12 +11,14 @@ import { useDndSensors, useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
 import { useTypeToSearch } from "@/hooks/use-type-to-search";
 import { SortableChip } from "@/components/sortable-chip";
 import { PageHeader, primaryActionClass, headerActionClass } from "@/components/page-header";
+import { pageAccentStyle } from "@/lib/page-accent";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Pencil, X, Link2, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore, MoreVertical, Search, ChevronRight, ChevronDown, Shapes, Unlink } from "lucide-react";
+import { Trash2, Plus, Pencil, X, Link2, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore, MoreVertical, Search, ChevronRight, ChevronDown, Shapes, Unlink, Target, Dumbbell, Puzzle } from "lucide-react";
+import { DialogHero } from "@/components/dialog-hero";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -491,6 +493,19 @@ export default function SkillsPage() {
     setConnSkillIds(prev => prev.filter((_, i) => i !== idx));
   };
 
+  const renderLibraryHeader = (label: string, count?: number) => (
+    <div className="flex flex-row items-center justify-between shrink-0 px-4 py-3 border-b border-[hsl(var(--page-accent)/0.12)] bg-[hsl(var(--page-accent)/0.04)]">
+      <span className="inline-flex items-center gap-2 text-[9px] font-mono uppercase tracking-[0.18em] text-[hsl(var(--page-accent)/0.85)]">
+        <span className="h-3 w-[2px] rounded-full bg-[hsl(var(--page-accent)/0.7)]" aria-hidden="true" />
+        {label}
+        {count != null && (
+          <span className="text-muted-foreground/50 tabular-nums">{count}</span>
+        )}
+      </span>
+      {renderReorderButton()}
+    </div>
+  );
+
   const renderReorderButton = () => (
     <Button
       variant={reorderMode ? "default" : "outline"}
@@ -506,21 +521,20 @@ export default function SkillsPage() {
   const addLabel = activeTab === "drills" ? "Add Drill" : activeTab === "connections" ? "Add Connection" : activeTab === "parts" ? "Add Part" : "Add Skill";
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-[350px]">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-[350px]" style={pageAccentStyle("skills")}>
       <div
         className="pointer-events-none fixed inset-x-0 top-0 h-72 -z-10"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 0%, hsl(var(--primary)/0.10) 0%, hsl(var(--primary)/0.02) 55%, transparent 78%)",
+            "radial-gradient(ellipse at 50% 0%, hsl(var(--page-accent)/0.14) 0%, hsl(var(--page-accent)/0.03) 55%, transparent 78%)",
         }}
         aria-hidden="true"
       />
       <PageHeader
-        eyebrow="Skills"
-        kicker="Skill Library"
-        title="Master every skill."
-        accent="every skill."
-        subtitle="Manage your trampoline element library."
+        kicker="The Arsenal"
+        title="Every weapon, sharpened."
+        accent="sharpened."
+        subtitle="Your hard-won library of elements, drills, connections and routine parts — coded, ranked by difficulty, and ready to load."
         actions={
           <>
             <Button
@@ -544,6 +558,7 @@ export default function SkillsPage() {
       />
       {allItems && allItems.length > 0 && (
         <StatStrip
+          accent="page"
           className="mb-6"
           items={[
             { label: "Skills", value: String(activeSkills.length), testId: "stat-skills-count" },
@@ -559,7 +574,7 @@ export default function SkillsPage() {
           style={{ top: "var(--page-header-h, 96px)" }}
         >
           <div className="flex flex-wrap items-center gap-2">
-            <TabsList className="inline-flex h-auto flex-wrap justify-start gap-1 rounded-xl bg-white/[0.03] p-1 shrink-0 self-start">
+            <TabsList className="inline-flex h-auto flex-wrap justify-start gap-1 rounded-xl bg-[hsl(var(--page-accent)/0.06)] p-1 shrink-0 self-start">
               <TabsTrigger value="skills">Skills</TabsTrigger>
               <TabsTrigger value="drills">Drills</TabsTrigger>
               <TabsTrigger value="connections">Connections</TabsTrigger>
@@ -584,10 +599,8 @@ export default function SkillsPage() {
         <TabsContent value="skills">
           <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-              <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8">
-                <DialogHeader>
-                  <DialogTitle>{editingSkill ? "Edit Skill" : "Add New Skill"}</DialogTitle>
-                </DialogHeader>
+              <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8" style={pageAccentStyle("skills")}>
+                <DialogHero icon={Target} eyebrow="The Arsenal" title={editingSkill ? "Edit skill" : "Add skill"} />
                   <Form {...skillForm}>
                     <form onSubmit={skillForm.handleSubmit(onSkillSubmit, () => setFormStep(1))} className="space-y-3">
                       {formStep === 1 ? (
@@ -685,11 +698,8 @@ export default function SkillsPage() {
                   </Form>
               </DialogContent>
             </Dialog>
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
-              <div className="flex flex-row items-center justify-between shrink-0 px-4 py-3 border-b border-white/[0.06]">
-                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60">Skills Library</span>
-                {renderReorderButton()}
-              </div>
+            <div className="rounded-2xl border border-[hsl(var(--page-accent)/0.14)] bg-white/[0.02] overflow-hidden">
+              {renderLibraryHeader("Skills Library", skills?.length)}
               <div className="overflow-x-auto p-2">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(skills)}>
                   <Table>
@@ -730,7 +740,7 @@ export default function SkillsPage() {
                                 )}
                               </span>
                             </TableCell>
-                            <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{hasShapes ? (<Badge variant="outline" className="text-[9px] px-1 py-0 font-mono" data-testid={`badge-shapes-${skill.id}`}>{shapes.length} shapes</Badge>) : skill.difficulty.toFixed(1)}</TableCell>
+                            <TableCell className="text-right font-mono font-bold text-[hsl(var(--page-accent)/0.9)] tabular-nums">{hasShapes ? (<Badge variant="outline" className="text-[9px] px-1 py-0 font-mono" data-testid={`badge-shapes-${skill.id}`}>{shapes.length} shapes</Badge>) : skill.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
                               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>
@@ -752,7 +762,7 @@ export default function SkillsPage() {
                           {!reorderMode && expanded && shapes.map((shape) => (
                             <TableRow
                               key={shape.id}
-                              className={cn("cursor-pointer border-l-2 border-l-primary/40", editingSkill?.id === shape.id ? "bg-primary/20" : "bg-muted/80 hover:bg-accent")}
+                              className={cn("cursor-pointer border-l-2 border-l-[hsl(var(--page-accent)/0.5)]", editingSkill?.id === shape.id ? "bg-[hsl(var(--page-accent)/0.14)]" : "bg-white/[0.02] hover:bg-[hsl(var(--page-accent)/0.05)]")}
                               onClick={() => navigate(`/skills/${shape.id}`)}
                               data-testid={`row-shape-${shape.id}`}
                             >
@@ -765,7 +775,7 @@ export default function SkillsPage() {
                                   )}
                                 </span>
                               </TableCell>
-                              <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{shape.difficulty.toFixed(1)}</TableCell>
+                              <TableCell className="text-right font-mono font-bold text-[hsl(var(--page-accent)/0.9)] tabular-nums">{shape.difficulty.toFixed(1)}</TableCell>
                               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
@@ -795,10 +805,8 @@ export default function SkillsPage() {
         <TabsContent value="drills">
           <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-              <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8">
-                <DialogHeader>
-                  <DialogTitle>{editingSkill ? "Edit Drill" : "Add New Drill"}</DialogTitle>
-                </DialogHeader>
+              <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8" style={pageAccentStyle("skills")}>
+                <DialogHero icon={Dumbbell} eyebrow="The Arsenal" title={editingSkill ? "Edit drill" : "Add drill"} />
                   <Form {...drillForm}>
                     <form onSubmit={drillForm.handleSubmit(onDrillSubmit, () => setFormStep(1))} className="space-y-3">
                       {formStep === 1 ? (
@@ -875,11 +883,8 @@ export default function SkillsPage() {
                   </Form>
               </DialogContent>
             </Dialog>
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
-              <div className="flex flex-row items-center justify-between shrink-0 px-4 py-3 border-b border-white/[0.06]">
-                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60">Drills Library</span>
-                {renderReorderButton()}
-              </div>
+            <div className="rounded-2xl border border-[hsl(var(--page-accent)/0.14)] bg-white/[0.02] overflow-hidden">
+              {renderLibraryHeader("Drills Library", drills?.length)}
               <div className="overflow-x-auto p-2">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(drills)}>
                   <Table>
@@ -920,7 +925,7 @@ export default function SkillsPage() {
                                 )}
                               </span>
                             </TableCell>
-                            <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{hasShapes ? (<Badge variant="outline" className="text-[9px] px-1 py-0 font-mono" data-testid={`badge-shapes-${drill.id}`}>{shapes.length} shapes</Badge>) : drill.difficulty.toFixed(1)}</TableCell>
+                            <TableCell className="text-right font-mono font-bold text-[hsl(var(--page-accent)/0.9)] tabular-nums">{hasShapes ? (<Badge variant="outline" className="text-[9px] px-1 py-0 font-mono" data-testid={`badge-shapes-${drill.id}`}>{shapes.length} shapes</Badge>) : drill.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
                               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>
@@ -942,7 +947,7 @@ export default function SkillsPage() {
                           {!reorderMode && expanded && shapes.map((shape) => (
                             <TableRow
                               key={shape.id}
-                              className={cn("cursor-pointer border-l-2 border-l-primary/40", editingSkill?.id === shape.id ? "bg-primary/20" : "bg-muted/80 hover:bg-accent")}
+                              className={cn("cursor-pointer border-l-2 border-l-[hsl(var(--page-accent)/0.5)]", editingSkill?.id === shape.id ? "bg-[hsl(var(--page-accent)/0.14)]" : "bg-white/[0.02] hover:bg-[hsl(var(--page-accent)/0.05)]")}
                               onClick={() => navigate(`/skills/${shape.id}`)}
                               data-testid={`row-shape-${shape.id}`}
                             >
@@ -955,7 +960,7 @@ export default function SkillsPage() {
                                   )}
                                 </span>
                               </TableCell>
-                              <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{shape.difficulty.toFixed(1)}</TableCell>
+                              <TableCell className="text-right font-mono font-bold text-[hsl(var(--page-accent)/0.9)] tabular-nums">{shape.difficulty.toFixed(1)}</TableCell>
                               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
@@ -985,10 +990,8 @@ export default function SkillsPage() {
         <TabsContent value="connections">
           <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-              <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8">
-                <DialogHeader>
-                  <DialogTitle>{editingSkill ? "Edit Connection" : "Add New Connection"}</DialogTitle>
-                </DialogHeader>
+              <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8" style={pageAccentStyle("skills")}>
+                <DialogHero icon={Link2} eyebrow="The Arsenal" title={editingSkill ? "Edit connection" : "Add connection"} />
                   <div className="space-y-3">
                     {!editingSkill && activeConnections.length > 0 && (
                       <div>
@@ -1112,7 +1115,7 @@ export default function SkillsPage() {
 
                     <div className="pt-2 flex justify-between items-center">
                       <span className="text-sm font-medium">Total DD:</span>
-                      <span className="font-mono font-bold text-primary">
+                      <span className="font-mono font-bold text-[hsl(var(--page-accent)/0.9)]">
                         {calcDDFromSkillIds(connSkillIds, allItems || []).toFixed(1)}
                       </span>
                     </div>
@@ -1148,11 +1151,8 @@ export default function SkillsPage() {
                   />
               </DialogContent>
             </Dialog>
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
-              <div className="flex flex-row items-center justify-between shrink-0 px-4 py-3 border-b border-white/[0.06]">
-                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60">Connections Library</span>
-                {renderReorderButton()}
-              </div>
+            <div className="rounded-2xl border border-[hsl(var(--page-accent)/0.14)] bg-white/[0.02] overflow-hidden">
+              {renderLibraryHeader("Connections Library", frequentConnections?.length)}
               <div className="overflow-x-auto p-2">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(frequentConnections)}>
                   <Table>
@@ -1182,7 +1182,7 @@ export default function SkillsPage() {
                                 ))}
                               </div>
                             </TableCell>
-                            <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{conn.difficulty.toFixed(1)}</TableCell>
+                            <TableCell className="text-right font-mono font-bold text-[hsl(var(--page-accent)/0.9)] tabular-nums">{conn.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
                               <TableCell className="text-right">
                                 <DropdownMenu>
@@ -1211,10 +1211,8 @@ export default function SkillsPage() {
         <TabsContent value="parts">
           <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-              <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8">
-                <DialogHeader>
-                  <DialogTitle>{editingSkill ? "Edit Routine Part" : "Add New Routine Part"}</DialogTitle>
-                </DialogHeader>
+              <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8" style={pageAccentStyle("skills")}>
+                <DialogHero icon={Puzzle} eyebrow="The Arsenal" title={editingSkill ? "Edit routine part" : "Add routine part"} />
                   <div className="space-y-3">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Routine</label>
@@ -1324,7 +1322,7 @@ export default function SkillsPage() {
 
                         <div className="pt-1 flex justify-between items-center">
                           <span className="text-sm font-medium">Total DD:</span>
-                          <span className="font-mono font-bold text-primary">
+                          <span className="font-mono font-bold text-[hsl(var(--page-accent)/0.9)]">
                             {calcDDFromSkillIds(partSliceIds, allItems || []).toFixed(1)}
                           </span>
                         </div>
@@ -1345,11 +1343,8 @@ export default function SkillsPage() {
                   </div>
               </DialogContent>
             </Dialog>
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
-              <div className="flex flex-row items-center justify-between shrink-0 px-4 py-3 border-b border-white/[0.06]">
-                <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60">Routine Parts Library</span>
-                {renderReorderButton()}
-              </div>
+            <div className="rounded-2xl border border-[hsl(var(--page-accent)/0.14)] bg-white/[0.02] overflow-hidden">
+              {renderLibraryHeader("Routine Parts Library", routineParts?.length)}
               <div className="overflow-x-auto p-2">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(routineParts)}>
                   <Table>
@@ -1379,7 +1374,7 @@ export default function SkillsPage() {
                                 ))}
                               </div>
                             </TableCell>
-                            <TableCell className="text-right font-mono font-bold text-primary tabular-nums">{part.difficulty.toFixed(1)}</TableCell>
+                            <TableCell className="text-right font-mono font-bold text-[hsl(var(--page-accent)/0.9)] tabular-nums">{part.difficulty.toFixed(1)}</TableCell>
                             {!reorderMode && (
                               <TableCell className="text-right">
                                 <DropdownMenu>
@@ -1421,10 +1416,8 @@ export default function SkillsPage() {
       />
 
       <Dialog open={!!assignTarget} onOpenChange={(o) => { if (!o) { setAssignTarget(null); setAssignBaseId(""); setAssignShapeLabel(""); } }}>
-        <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Assign as shape</DialogTitle>
-          </DialogHeader>
+        <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto" style={pageAccentStyle("skills")}>
+          <DialogHero icon={Shapes} eyebrow="The Arsenal" title="Assign as shape" />
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Nest <span className="font-medium text-foreground">{assignTarget?.name}</span> under a base {assignTarget?.isDrill === 1 ? "drill" : "skill"} as one of its shape variants. Its notes and history are preserved.

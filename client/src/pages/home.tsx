@@ -103,26 +103,20 @@ export default function Home() {
         />
 
         {/* Hero — full at top, compact when scrolled */}
-        <div className={`relative flex flex-col items-center text-center transition-all duration-300 ${scrolled ? "pt-3 pb-3" : "pt-7 pb-6"}`}>
-          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border/25 bg-card/60 text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase transition-all duration-300 ${scrolled ? "mb-3" : "mb-6"}`}>
+        <div className={`relative flex flex-col items-center text-center transition-[padding] duration-300 ease-in-out-strong ${scrolled ? "pt-3 pb-3" : "pt-7 pb-6"}`}>
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border/25 bg-card/60 text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase transition-[margin] duration-300 ease-in-out-strong ${scrolled ? "mb-3" : "mb-6"}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             Training Log
           </div>
 
           {/* Headline */}
           <h1
-            className="font-black leading-[0.94] tracking-[-0.05em] transition-all duration-300"
+            className="font-black leading-[0.94] tracking-[-0.05em] transition-[font-size,margin] duration-300 ease-in-out-strong"
             style={{ fontSize: scrolled ? "clamp(22px,6vw,26px)" : "clamp(38px,10vw,48px)", marginBottom: scrolled ? "0" : "12px" }}
           >
             <span className="text-foreground">Track every</span>
             <br />
-            <span
-              style={{
-                background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
+            <span className="text-gradient-primary">
               jump.
             </span>
           </h1>
@@ -135,7 +129,7 @@ export default function Home() {
           )}
 
           {/* Action row */}
-          <div className={`flex items-center gap-2 transition-all duration-300 ${scrolled ? "mt-2" : "mt-0"}`}>
+          <div className={`flex items-center gap-2 transition-[margin] duration-300 ease-in-out-strong ${scrolled ? "mt-2" : "mt-0"}`}>
             <button
               onClick={() => setIsPointsOpen(true)}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] pressable"

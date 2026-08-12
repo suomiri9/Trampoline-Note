@@ -4,6 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { invalidateCoachPush } from "@/lib/coach-push";
 import { PageLayout } from "@/components/page-layout";
 import { PageHeader } from "@/components/page-header";
+import { StatStrip } from "@/components/stat-strip";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +13,7 @@ import { useOnline } from "@/hooks/use-online";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Unplug, AlertTriangle, RefreshCw, ArrowRight, Activity } from "lucide-react";
+import { Unplug, AlertTriangle, RefreshCw, ArrowRight, HeartPulse, Heart, Moon, Zap, Activity } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { format, parseISO } from "date-fns";
 import whoopLogoPath from "@assets/image_1784922999270.png";
@@ -64,15 +65,29 @@ interface ChartCardProps {
   title: string;
   accent: string;
   accentClass: string;
+  icon: typeof Heart;
+  iconColor: string;
+  figure?: string;
   children: React.ReactNode;
   testId: string;
 }
 
-function ChartCard({ title, accent, accentClass, children, testId }: ChartCardProps) {
+function ChartCard({ title, accent, accentClass, icon: Icon, iconColor, figure, children, testId }: ChartCardProps) {
   return (
     <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5" data-testid={testId}>
-      <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">
-        {title} <span className={accentClass}>/ {accent}</span>
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0">
+            <Icon className={cn("w-4 h-4", iconColor)} />
+          </span>
+          <div className="min-w-0">
+            <div className="text-sm font-semibold tracking-tight leading-none truncate">{title}</div>
+            <div className={cn("font-mono text-[9px] uppercase tracking-[0.16em] mt-1", accentClass)}>{accent}</div>
+          </div>
+        </div>
+        {figure && (
+          <span className="font-mono text-lg tabular-nums font-semibold text-foreground/80 shrink-0">{figure}</span>
+        )}
       </div>
       <div className="h-[200px] w-full">{children}</div>
     </div>
@@ -138,10 +153,10 @@ export default function WhoopPage() {
     const str = avg(strainData.map((c) => c.strain));
     const hrv = avg(recoveryData.map((r) => r.hrvMs));
     return [
-      { label: "Recovery", value: rec != null ? `${Math.round(rec)}%` : "—" },
-      { label: "Sleep", value: slp != null ? `${slp.toFixed(1)}h` : "—" },
-      { label: "Strain", value: str != null ? str.toFixed(1) : "—" },
-      { label: "HRV", value: hrv != null ? `${Math.round(hrv)}` : "—" },
+      { label: "Recovery", value: rec != null ? `${Math.round(rec)}%` : "—", accent: "page" as const, testId: "stat-whoop-recovery" },
+      { label: "Sleep", value: slp != null ? `${slp.toFixed(1)}h` : "—", accent: "page" as const, testId: "stat-whoop-sleep" },
+      { label: "Strain", value: str != null ? str.toFixed(1) : "—", accent: "page" as const, testId: "stat-whoop-strain" },
+      { label: "HRV", value: hrv != null ? `${Math.round(hrv)}` : "—", accent: "page" as const, testId: "stat-whoop-hrv" },
     ];
   }, [data]);
 
@@ -160,11 +175,10 @@ export default function WhoopPage() {
   // ── Bold hero (replaces PageHeader; no back-nav on this top-level page) ──
   const hero = (
     <PageHeader
-      eyebrow="Recovery"
-      kicker="WHOOP Data"
-      title="Rest is training."
-      accent="training."
-      subtitle="Recovery, sleep, strain and heart-rate trends from your WHOOP."
+      kicker="WHOOP · Body"
+      title="Listen to your body."
+      accent="body."
+      subtitle="Recovery, sleep, strain and heart — the signals underneath every session."
     />
   );
 
@@ -172,7 +186,7 @@ export default function WhoopPage() {
   // only show the placeholder when nothing was ever cached for this range.
   if (offlineView && !data && !isLoading) {
     return (
-      <PageLayout>
+      <PageLayout accent="whoop">
         {hero}
         <OfflinePlaceholder
           testId="card-offline-whoop"
@@ -218,7 +232,7 @@ export default function WhoopPage() {
 
   if (error) {
     return (
-      <PageLayout>
+      <PageLayout accent="whoop">
         {hero}
         <div
           className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-8 flex flex-col items-center text-center"
@@ -307,7 +321,7 @@ export default function WhoopPage() {
 
   if (isLoading || !data) {
     return (
-      <PageLayout>
+      <PageLayout accent="whoop">
         {hero}
         {rangeSelect}
         <div className="grid gap-4 md:grid-cols-2">
@@ -326,33 +340,32 @@ export default function WhoopPage() {
     recoveryData.length > 0 || sleepData.length > 0 || strainData.length > 0 || data.workouts.length > 0;
 
   return (
-    <PageLayout>
+    <PageLayout accent="whoop">
       {hero}
 
       {hasAny && (
-        <div className="-mx-1 mb-5">
-          <div className="flex divide-x divide-white/[0.06] rounded-2xl overflow-hidden border border-white/[0.07] bg-white/[0.025]">
-            {summaryStats.map((s) => (
-              <div key={s.label} className="flex-1 flex flex-col items-center py-3.5 gap-1">
-                <span
-                  className="text-[19px] font-bold tabular-nums leading-none"
-                  style={{
-                    background: "linear-gradient(135deg,#60a5fa,#a78bfa)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                  }}
-                >
-                  {s.value}
-                </span>
-                <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
-                  {s.label}
-                </span>
-              </div>
-            ))}
+        <div className="mb-6">
+          {/* Physiological opening gesture — a body pulse in the page's rose
+              identity, sitting above the vitals band. */}
+          <div className="relative flex items-center gap-4 pb-5">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -left-6 -top-8 h-40 w-40 rounded-full blur-2xl"
+              style={{ background: "radial-gradient(circle, hsl(var(--page-accent) / 0.18) 0%, transparent 70%)" }}
+            />
+            <div className="relative flex items-center justify-center w-11 h-11 rounded-2xl bg-[hsl(var(--page-accent)/0.1)] border border-[hsl(var(--page-accent)/0.2)] shrink-0">
+              <HeartPulse className="w-5 h-5 text-[hsl(var(--page-accent)/0.9)]" />
+            </div>
+            <div className="relative min-w-0">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[hsl(var(--page-accent)/0.7)]">
+                {range}-Day Vitals
+              </p>
+              <p className="text-sm text-muted-foreground/70 leading-snug mt-0.5">
+                Your rolling averages — the baseline every session pushes against.
+              </p>
+            </div>
           </div>
-          <p className="mt-1.5 text-center font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/50">
-            {range}-day averages
-          </p>
+          <StatStrip accent="page" items={summaryStats} />
         </div>
       )}
 
@@ -365,7 +378,7 @@ export default function WhoopPage() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          <ChartCard title="Recovery" accent="%" accentClass="text-emerald-400" testId="card-chart-recovery">
+          <ChartCard title="Recovery" accent="daily %" accentClass="text-emerald-400/70" icon={Zap} iconColor="text-emerald-400" figure={summaryStats[0].value} testId="card-chart-recovery">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={recoveryData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
                 <defs>
@@ -387,7 +400,7 @@ export default function WhoopPage() {
             </ResponsiveContainer>
           </ChartCard>
 
-          <ChartCard title="Sleep" accent="hours & quality" accentClass="text-[hsl(var(--chart-4))]" testId="card-chart-sleep">
+          <ChartCard title="Sleep" accent="hours & quality" accentClass="text-[hsl(var(--chart-4))]/70" icon={Moon} iconColor="text-[hsl(var(--chart-4))]" figure={summaryStats[1].value} testId="card-chart-sleep">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={sleepData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
                 <defs>
@@ -418,7 +431,7 @@ export default function WhoopPage() {
             </ResponsiveContainer>
           </ChartCard>
 
-          <ChartCard title="Strain" accent="daily" accentClass="text-amber-400" testId="card-chart-strain">
+          <ChartCard title="Strain" accent="daily load" accentClass="text-amber-400/70" icon={Activity} iconColor="text-amber-400" figure={summaryStats[2].value} testId="card-chart-strain">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={strainData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
                 <defs>
@@ -440,7 +453,7 @@ export default function WhoopPage() {
             </ResponsiveContainer>
           </ChartCard>
 
-          <ChartCard title="Heart" accent="RHR & HRV" accentClass="text-rose-400" testId="card-chart-heart">
+          <ChartCard title="Heart" accent="RHR & HRV" accentClass="text-[hsl(var(--page-accent)/0.7)]" icon={Heart} iconColor="text-[hsl(var(--page-accent))]" figure={summaryStats[3].value} testId="card-chart-heart">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={recoveryData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
                 <defs>
@@ -475,8 +488,14 @@ export default function WhoopPage() {
 
       {data.workouts.length > 0 && (
         <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mt-4" data-testid="card-whoop-workouts">
-          <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">
-            Workouts <span className="text-orange-400">/ recent</span>
+          <div className="flex items-center gap-2.5 mb-4">
+            <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-[hsl(var(--page-accent)/0.1)] border border-[hsl(var(--page-accent)/0.2)] shrink-0">
+              <Activity className="w-4 h-4 text-[hsl(var(--page-accent))]" />
+            </span>
+            <div>
+              <div className="text-sm font-semibold tracking-tight leading-none">Workouts</div>
+              <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-[hsl(var(--page-accent)/0.7)] mt-1">Recent effort</div>
+            </div>
           </div>
           <div className="divide-y divide-white/[0.05]">
             {data.workouts.slice(0, 20).map((w) => (

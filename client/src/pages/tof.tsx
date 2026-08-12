@@ -29,7 +29,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Timer, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDown, ChevronRight, Link2 } from "lucide-react";
+import { Timer, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDown, ChevronRight, Link2, Gauge, ArrowUpRight } from "lucide-react";
+import { DialogHero } from "@/components/dialog-hero";
+import { pageAccentStyle } from "@/lib/page-accent";
 import { cn } from "@/lib/utils";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { useQueuedTofSessions } from "@/hooks/use-queued-tof-sessions";
@@ -371,18 +373,20 @@ export default function TofPage() {
         key={pending ? `pending-${s.id}` : s.id}
         className={cn(
           "relative rounded-2xl border p-5 pl-6 overflow-hidden transition-colors",
-          pending ? "border-amber-500/40 bg-amber-500/[0.04]" : "border-white/[0.07] bg-white/[0.025] cursor-pointer hover:bg-white/[0.045]",
+          pending
+            ? "border-[hsl(var(--page-accent)/0.4)] bg-[hsl(var(--page-accent)/0.05)]"
+            : "border-border/15 bg-white/[0.02] cursor-pointer hover:bg-[hsl(var(--page-accent)/0.05)]",
         )}
         onClick={pending ? undefined : () => navigate(`/tof/session/${s.id}`)}
         data-testid={pending ? `card-tof-pending-${s.id}` : `card-tof-session-${s.id}`}
       >
-        <span className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full bg-gradient-to-b from-amber-400 to-orange-500" aria-hidden="true" />
+        <span className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full bg-gradient-to-b from-[hsl(var(--page-accent))] to-[hsl(var(--page-accent-2))]" aria-hidden="true" />
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">{fmtDate(s.date)}</div>
             {s.routineId != null ? (
               <h3
-                className="font-bold text-base leading-tight truncate cursor-pointer hover:text-amber-400 hover:underline underline-offset-2 transition-colors mt-0.5"
+                className="font-bold text-base leading-tight truncate cursor-pointer hover:text-[hsl(var(--page-accent))] hover:underline underline-offset-2 transition-colors mt-0.5"
                 role="button"
                 tabIndex={0}
                 title="Open this routine's ToF graph"
@@ -395,7 +399,7 @@ export default function TofPage() {
             )}
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               {(target?.kind === "skill" || target?.kind === "adhoc") && (
-                <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 h-4 border-transparent bg-amber-500/15 text-amber-600 dark:text-amber-400" data-testid={`badge-tof-kind-${s.id}`}>
+                <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 h-4 border-transparent bg-[hsl(var(--page-accent)/0.15)] text-[hsl(var(--page-accent))]" data-testid={`badge-tof-kind-${s.id}`}>
                   {target.kind === "adhoc" ? "CUSTOM" : skillKindLabel(target.skill).toUpperCase()}
                 </Badge>
               )}
@@ -409,13 +413,14 @@ export default function TofPage() {
           <div className="flex items-start gap-1 shrink-0">
             <div className="text-right leading-none">
               <div
-                className="text-3xl font-bold tracking-tight tabular-nums"
-                style={{ background: "linear-gradient(135deg,#fbbf24,#f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+                className="text-3xl font-black tracking-[-0.04em] tabular-nums text-gradient-page"
                 data-testid={`text-tof-session-total-${s.id}`}
               >
                 {total.toFixed(2)}
               </div>
-              <div className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60 mt-1">Total s</div>
+              <div className="flex items-center justify-end gap-1 text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60 mt-1">
+                <Gauge className="h-2.5 w-2.5 text-[hsl(var(--page-accent)/0.7)]" /> Airtime s
+              </div>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -476,13 +481,12 @@ export default function TofPage() {
   };
 
   return (
-    <PageLayout>
+    <PageLayout accent="tof">
       <PageHeader
-        eyebrow="Time of Flight"
-        kicker="ToF Tracker"
+        kicker="Stopwatch · seconds aloft"
         title="Own the air."
         accent="the air."
-        subtitle="Log per-jump time-of-flight from Veriflite screenshots or by hand, and see which skills cost you the most height."
+        subtitle="Every hundredth of a second you hang counts. Read per-jump time-of-flight from a Veriflite screenshot or by hand, and see which skills quietly cost you height."
         actions={
           <Button onClick={openNew} className={primaryActionClass} data-testid="button-new-tof-session">
             <Plus className="w-5 h-5" /> New Session
@@ -490,24 +494,82 @@ export default function TofPage() {
         }
       />
 
+      {/* ── Flight readout — ToF's signature opening: a precision airtime
+             instrument. Best total sits big on the left as the "record on the
+             clock"; the right column reads the latest flight against it like a
+             stopwatch delta. Amber glow + tabular figures = stopwatch feel. */}
+      {stripStats && (() => {
+        const delta = stripStats.last - stripStats.best;
+        return (
+          <div
+            className="relative overflow-hidden rounded-2xl border border-border/15 bg-white/[0.02] mb-6"
+            data-testid="panel-tof-readout"
+          >
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -top-16 -left-10 h-56 w-56 rounded-full"
+              style={{ background: "radial-gradient(circle, hsl(var(--page-accent) / 0.16) 0%, transparent 70%)" }}
+            />
+            <div className="relative flex flex-col sm:flex-row sm:items-stretch">
+              {/* Record airtime — the big clock face */}
+              <div className="flex-1 p-5 sm:p-6">
+                <div className="flex items-center gap-1.5 mb-3">
+                  <Gauge className="h-3 w-3 text-[hsl(var(--page-accent)/0.75)]" />
+                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/60">Best flight</span>
+                </div>
+                <div className="flex items-end gap-2">
+                  <span className="text-gradient-page font-black tracking-[-0.05em] leading-[0.85] tabular-nums text-[clamp(52px,15vw,76px)]">
+                    {stripStats.best.toFixed(2)}
+                  </span>
+                  <span className="font-mono text-sm text-muted-foreground/50 pb-2">s</span>
+                </div>
+                <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/50">
+                  Total time in the air
+                </p>
+              </div>
+              {/* Latest flight vs. the record — the stopwatch delta */}
+              <div className="flex flex-row sm:flex-col justify-between gap-4 border-t sm:border-t-0 sm:border-l border-border/15 p-5 sm:p-6 sm:w-52">
+                <div>
+                  <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55 mb-1">Latest</div>
+                  <div className="text-2xl font-black tracking-[-0.04em] tabular-nums leading-none" data-testid="text-tof-readout-last">
+                    {stripStats.last.toFixed(2)}<span className="text-xs font-mono text-muted-foreground/40 ml-0.5">s</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55 mb-1">vs best</div>
+                  <div
+                    className={cn(
+                      "flex items-center gap-1 text-lg font-bold tabular-nums leading-none",
+                      delta >= 0 ? "text-[hsl(var(--page-accent))]" : "text-muted-foreground/70",
+                    )}
+                    data-testid="text-tof-readout-delta"
+                  >
+                    <ArrowUpRight className={cn("h-4 w-4 shrink-0", delta < 0 && "rotate-90")} />
+                    {delta >= 0 ? "+" : "−"}{Math.abs(delta).toFixed(2)}s
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {stripStats && (
         <StatStrip
           className="mb-6"
           items={[
-            { label: "Sessions", value: String(stripStats.count), testId: "stat-tof-sessions" },
-            { label: "Best Total", value: `${stripStats.best.toFixed(2)}s`, testId: "stat-tof-best" },
-            { label: "Avg Total", value: `${stripStats.avg.toFixed(2)}s`, testId: "stat-tof-avg" },
-            { label: "Last", value: `${stripStats.last.toFixed(2)}s`, testId: "stat-tof-last" },
+            { label: "Sessions", value: String(stripStats.count), accent: "page", testId: "stat-tof-sessions" },
+            { label: "Best Total", value: `${stripStats.best.toFixed(2)}s`, accent: "page", testId: "stat-tof-best" },
+            { label: "Avg Total", value: `${stripStats.avg.toFixed(2)}s`, accent: "page", testId: "stat-tof-avg" },
+            { label: "Last", value: `${stripStats.last.toFixed(2)}s`, accent: "page", testId: "stat-tof-last" },
           ]}
         />
       )}
 
       {/* ---- Session form dialog ---- */}
       <Dialog open={showForm} onOpenChange={closeForm}>
-        <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editing ? "Edit ToF Session" : "New ToF Session"}</DialogTitle>
-          </DialogHeader>
+        <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto" style={pageAccentStyle("tof")}>
+          <DialogHero icon={Timer} eyebrow="Stopwatch" title={editing ? "Edit ToF session" : "New ToF session"} />
           <div className="space-y-4">
             <div className="flex gap-2">
               <div className="flex-1">
@@ -636,13 +698,13 @@ export default function TofPage() {
 
       {/* ---- Per-routine analysis ---- */}
       {routineAnalysis.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mb-4">
+        <div className="rounded-2xl border border-border/15 bg-white/[0.02] p-5 mb-4">
           <div className="flex items-center gap-2 mb-4">
-            <Timer className="h-3.5 w-3.5 text-amber-400" />
+            <Timer className="h-3.5 w-3.5 text-[hsl(var(--page-accent))]" />
             <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60">Routine analysis</span>
             <span className="font-mono text-[9px] text-muted-foreground/55 ml-auto">tap for the graph</span>
           </div>
-          <div className="rounded-xl overflow-hidden border border-white/[0.07] divide-y divide-white/[0.05]">
+          <div className="rounded-xl overflow-hidden border border-border/15 divide-y divide-border/10">
             {routineAnalysis.map(a => {
               const r = routineById.get(a.routineId);
               return (
@@ -652,7 +714,7 @@ export default function TofPage() {
                   tabIndex={0}
                   onClick={() => navigate(`/tof/routine/${a.routineId}`)}
                   onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/tof/routine/${a.routineId}`); } }}
-                  className="flex items-center gap-3 text-xs font-mono bg-white/[0.015] px-3.5 py-2.5 cursor-pointer transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex items-center gap-3 text-xs font-mono bg-white/[0.015] px-3.5 py-2.5 cursor-pointer transition-colors hover:bg-[hsl(var(--page-accent)/0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   data-testid={`row-tof-routine-analysis-${a.routineId}`}
                 >
                   <span className="font-bold text-foreground flex-1 truncate">{r?.name ?? "Unknown routine"}</span>
@@ -668,13 +730,13 @@ export default function TofPage() {
 
       {/* ---- Per-skill analysis ---- */}
       {analysis.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mb-8">
+        <div className="rounded-2xl border border-border/15 bg-white/[0.02] p-5 mb-8">
           <div className="flex items-center gap-2 mb-4">
-            <TrendingDown className="h-3.5 w-3.5 text-amber-400" />
+            <TrendingDown className="h-3.5 w-3.5 text-[hsl(var(--page-accent))]" />
             <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60">Skill analysis</span>
             <span className="font-mono text-[9px] text-muted-foreground/55 ml-auto">ranked by avg drop</span>
           </div>
-          <div className="rounded-xl overflow-hidden border border-white/[0.07] divide-y divide-white/[0.05]">
+          <div className="rounded-xl overflow-hidden border border-border/15 divide-y divide-border/10">
             {analysis.map(a => {
               const sk = skillOf(a.skillId);
               return (
@@ -684,7 +746,7 @@ export default function TofPage() {
                   tabIndex={0}
                   onClick={() => navigate(`/tof/skill/${a.skillId}`)}
                   onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/tof/skill/${a.skillId}`); } }}
-                  className="flex items-center gap-3 text-xs font-mono bg-white/[0.015] px-3.5 py-2.5 cursor-pointer transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex items-center gap-3 text-xs font-mono bg-white/[0.015] px-3.5 py-2.5 cursor-pointer transition-colors hover:bg-[hsl(var(--page-accent)/0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   data-testid={`row-tof-analysis-${a.skillId}`}
                 >
                   <span className="font-bold text-foreground w-16 truncate shrink-0">{sk ? skillDisplayCode(sk, allSkills) : "?"}</span>
@@ -717,14 +779,14 @@ export default function TofPage() {
         {(sessions ?? []).map(s => renderSessionCard(s, false))}
         {isLoading && (sessions ?? []).length === 0 && queuedSessions.length === 0 && (
           <div className="col-span-full py-24 flex flex-col items-center justify-center text-muted-foreground">
-            <Loader2 className="w-8 h-8 animate-spin mb-4 text-amber-400/60" />
+            <Loader2 className="w-8 h-8 animate-spin mb-4 text-[hsl(var(--page-accent)/0.6)]" />
             <p className="font-mono text-xs uppercase tracking-widest">Loading sessions...</p>
           </div>
         )}
         {!isLoading && (sessions ?? []).length === 0 && queuedSessions.length === 0 && (
           <div className="col-span-full py-24 px-6 flex flex-col items-center justify-center text-center">
-            <div className="w-14 h-14 mb-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-              <Timer className="w-7 h-7 text-amber-400" />
+            <div className="w-14 h-14 mb-5 rounded-2xl bg-[hsl(var(--page-accent)/0.1)] border border-[hsl(var(--page-accent)/0.2)] flex items-center justify-center">
+              <Timer className="w-7 h-7 text-[hsl(var(--page-accent))]" />
             </div>
             <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50 mb-2">No sessions yet</p>
             <h3 className="text-2xl font-black tracking-tight mb-2">Log your first flight.</h3>

@@ -13,7 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Calendar, Star, TrendingUp, Loader2, Layers, ChevronLeft, ChevronRight, Wrench, History, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Calendar, Star, TrendingUp, Loader2, Layers, ChevronLeft, ChevronRight, Wrench, History, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { DialogHero } from "@/components/dialog-hero";
+import { pageAccentStyle } from "@/lib/page-accent";
+import { BackLink } from "@/components/back-link";
 import { format, parseISO } from "date-fns";
 import { useRef, useCallback, useMemo, useState } from "react";
 import { CompletionChart, buildDailyCompletion } from "@/lib/history-chart";
@@ -92,9 +95,9 @@ export default function RoutineDetailPage() {
 
   if (skillsLoading || routinesLoading || historyLoading) {
     return (
-      <PageLayout>
+      <PageLayout accent="routines">
         <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
+          <Loader2 className="w-8 h-8 animate-spin text-[hsl(var(--page-accent)/0.5)]" />
         </div>
       </PageLayout>
     );
@@ -102,12 +105,10 @@ export default function RoutineDetailPage() {
 
   if (!routine) {
     return (
-      <PageLayout>
+      <PageLayout accent="routines">
         <div className="text-center py-16">
           <p className="text-muted-foreground">Routine not found.</p>
-          <Button variant="ghost" className="mt-4" onClick={() => navigate("/routines")}>
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Routines
-          </Button>
+          <BackLink to="/routines" label="Routines" className="mt-4" />
         </div>
       </PageLayout>
     );
@@ -181,28 +182,22 @@ export default function RoutineDetailPage() {
   const nextRoutine = hasNext ? routines?.find(r => r.id === orderedIds[currentIndex + 1]) : null;
 
   return (
-    <PageLayout>
+    <PageLayout accent="routines">
       <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        <div className="relative -mx-4 sm:-mx-6 px-4 sm:px-6 mb-6 overflow-hidden">
-          {/* Blue glow backdrop */}
+        <div className="relative -mx-4 sm:-mx-6 -mt-6 md:-mt-8 px-4 sm:px-6 mb-6">
+          {/* Purple identity glow backdrop */}
           <div
-            className="pointer-events-none absolute inset-x-0 top-0 h-64"
+            className="pointer-events-none absolute inset-x-0 top-0 h-96"
             style={{
               background:
-                "radial-gradient(ellipse at 20% 0%, hsl(var(--primary)/0.16) 0%, hsl(var(--primary)/0.03) 55%, transparent 78%)",
+                "radial-gradient(ellipse at 20% 0%, hsl(var(--page-accent)/0.24) 0%, hsl(var(--page-accent)/0.05) 60%, transparent 82%)",
+              WebkitMaskImage: "linear-gradient(to bottom, black 55%, transparent 100%)",
+              maskImage: "linear-gradient(to bottom, black 55%, transparent 100%)",
             }}
           />
-          <div className="relative">
+          <div className="relative pt-6 md:pt-8">
             <div className="flex items-center justify-between mb-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1 -ml-2 text-muted-foreground/70 hover:text-foreground text-[11px] font-mono uppercase tracking-[0.14em]"
-                onClick={() => navigate("/routines")}
-                data-testid="button-back-to-routines"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" /> Routines
-              </Button>
+              <BackLink to="/routines" label="Routines" testId="button-back-to-routines" />
               <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
@@ -231,8 +226,8 @@ export default function RoutineDetailPage() {
             </div>
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[hsl(var(--page-accent)/0.25)] bg-[hsl(var(--page-accent)/0.08)] text-[9px] font-mono text-[hsl(var(--page-accent)/0.9)] tracking-[0.18em] uppercase">
+                  <Layers className="w-3 h-3" />
                   Routine
                 </span>
               </div>
@@ -241,12 +236,11 @@ export default function RoutineDetailPage() {
                 style={{ fontSize: "clamp(30px,8vw,44px)" }}
                 data-testid="text-routine-name"
               >
-                <span className="text-gradient-primary">{routine.name}</span>
+                <span className="text-gradient-page">{routine.name}</span>
               </h1>
-              <div className="inline-flex items-baseline gap-2 px-4 py-2.5 rounded-2xl border border-white/[0.07] bg-white/[0.025]">
+              <div className="inline-flex items-baseline gap-2 px-4 py-2.5 rounded-2xl border border-[hsl(var(--page-accent)/0.15)] bg-[hsl(var(--page-accent)/0.05)]">
                 <span
-                  className="text-3xl font-bold tabular-nums leading-none"
-                  style={{ background: "linear-gradient(135deg,#60a5fa,#a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+                  className="text-3xl font-bold tabular-nums leading-none text-gradient-page"
                   data-testid="text-routine-dd"
                 >
                   {totalDD.toFixed(1)}
@@ -257,33 +251,62 @@ export default function RoutineDetailPage() {
           </div>
         </div>
 
-        <div className="mb-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
-          <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60 mb-3" data-testid={hasVersions && currentSince ? "text-current-lineup-since" : undefined}>
-            {hasVersions && currentSince
-              ? `Current lineup · since ${format(parseISO(currentSince), "MMM d, yyyy")}`
-              : "Lineup"}
+        {/* The lineup — the signature moment: a numbered sequence with a purple
+            spine threading skills 01→10 in strict order. */}
+        <div className="mb-6 rounded-2xl border border-[hsl(var(--page-accent)/0.14)] bg-white/[0.02] p-4 sm:p-5 overflow-hidden relative">
+          <div
+            className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 opacity-60"
+            style={{ background: "radial-gradient(circle, hsl(var(--page-accent)/0.12) 0%, transparent 70%)" }}
+            aria-hidden="true"
+          />
+          <div className="relative flex items-center justify-between mb-4">
+            <div className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-[0.18em] text-[hsl(var(--page-accent)/0.85)]" data-testid={hasVersions && currentSince ? "text-current-lineup-since" : undefined}>
+              <Layers className="w-3.5 h-3.5" />
+              {hasVersions && currentSince
+                ? `Current lineup · since ${format(parseISO(currentSince), "MMM d, yyyy")}`
+                : "Current lineup"}
+            </div>
+            <span className="font-mono text-[9px] tabular-nums text-muted-foreground/50">
+              {routine.skillIds.length.toString().padStart(2, "0")} skills
+            </span>
           </div>
-          <div className="flex flex-wrap gap-3">
-            {routine.skillIds.map((id, idx) => {
-              const skill = skills?.find(s => s.id === id);
-              return (
-                <div key={idx} className="flex flex-col items-center gap-1">
-                  <Badge variant="outline" className="px-2 py-1 font-mono border-white/[0.1] bg-white/[0.03]" data-testid={`badge-routine-skill-${idx}`}>
-                    <SkillCode skill={skill} allSkills={allSkills} fallback="???" />
-                  </Badge>
-                  <span className="text-[10px] text-muted-foreground/60 font-semibold font-mono tabular-nums">
-                    {skill?.difficulty.toFixed(1) || "0.0"}
-                  </span>
-                </div>
-              );
-            })}
+          <div className="relative">
+            {/* Vertical spine connecting the sequence */}
+            <span
+              className="absolute left-[15px] top-1 bottom-1 w-px"
+              style={{ background: "linear-gradient(180deg, hsl(var(--page-accent)/0.5), hsl(var(--page-accent-2)/0.15))" }}
+              aria-hidden="true"
+            />
+            <div className="relative flex flex-col gap-1.5">
+              {routine.skillIds.map((id, idx) => {
+                const skill = skills?.find(s => s.id === id);
+                return (
+                  <div key={idx} className="flex items-center gap-3">
+                    {/* Ordinal node on the spine */}
+                    <span
+                      className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[hsl(var(--page-accent)/0.3)] bg-background font-mono text-[10px] font-bold tabular-nums text-[hsl(var(--page-accent))]"
+                    >
+                      {String(idx + 1).padStart(2, "0")}
+                    </span>
+                    <div className="flex flex-1 items-center justify-between gap-3 rounded-lg border border-white/[0.05] bg-white/[0.02] px-3 py-1.5 min-w-0">
+                      <Badge variant="outline" className="px-2 py-0.5 font-mono border-white/[0.1] bg-white/[0.03] shrink-0" data-testid={`badge-routine-skill-${idx}`}>
+                        <SkillCode skill={skill} allSkills={allSkills} fallback="???" />
+                      </Badge>
+                      <span className="text-[11px] text-muted-foreground/60 font-semibold font-mono tabular-nums shrink-0">
+                        {skill?.difficulty.toFixed(1) || "0.0"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
         {hasVersions && (
-          <div className="mb-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
+          <div className="mb-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
             <div className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/50 mb-3">
-              <History className="w-3.5 h-3.5 text-primary" />
+              <History className="w-3.5 h-3.5 text-[hsl(var(--page-accent))]" />
               Previous Routines
             </div>
             <div className="space-y-3">
@@ -300,7 +323,7 @@ export default function RoutineDetailPage() {
                       <span className="text-muted-foreground">{rangeLabel}</span>
                       <span className="flex items-center gap-1">
                         <span data-testid={`text-version-stats-${i}`}>
-                          <span className="text-primary font-semibold">{stats.full}</span>
+                          <span className="text-[hsl(var(--page-accent))] font-semibold">{stats.full}</span>
                           {stats.sessions > 0 ? ` full (${pct}%)` : " full"} · {stats.partial} attempts · {stats.sessions} sessions
                         </span>
                         <DropdownMenu>
@@ -353,6 +376,14 @@ export default function RoutineDetailPage() {
           </div>
         )}
 
+        <div className="flex items-center gap-3 mb-3">
+          <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/55 shrink-0">Training Record</span>
+          <span
+            className="h-px flex-1"
+            style={{ background: "linear-gradient(90deg, hsl(var(--page-accent)/0.3), transparent)" }}
+            aria-hidden="true"
+          />
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
           <StatCard
             icon={<Calendar className="w-4 h-4" />}
@@ -434,7 +465,7 @@ export default function RoutineDetailPage() {
                         {format(parseISO(entry.date), "MMM d, yyyy")}
                       </span>
                       {isOldLineup && (
-                        <span className="text-[9px] font-mono uppercase tracking-wider text-primary" data-testid={`tag-old-lineup-${entry.noteId}`}>
+                        <span className="text-[9px] font-mono uppercase tracking-wider text-[hsl(var(--page-accent))]" data-testid={`tag-old-lineup-${entry.noteId}`}>
                           old lineup
                         </span>
                       )}
@@ -464,7 +495,7 @@ export default function RoutineDetailPage() {
 
         <div className="flex justify-between items-center gap-2 mt-8">
           <button
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-all disabled:opacity-25 disabled:pointer-events-none"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-colors disabled:opacity-25 disabled:pointer-events-none"
             disabled={!hasPrev}
             onClick={goPrev}
             data-testid="button-prev-routine-bottom"
@@ -473,7 +504,7 @@ export default function RoutineDetailPage() {
             <span className="truncate max-w-[120px]">{prevRoutine?.name || ""}</span>
           </button>
           <button
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-all disabled:opacity-25 disabled:pointer-events-none"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-colors disabled:opacity-25 disabled:pointer-events-none"
             disabled={!hasNext}
             onClick={goNext}
             data-testid="button-next-routine-bottom"
@@ -484,14 +515,13 @@ export default function RoutineDetailPage() {
         </div>
 
         <Dialog open={editVersionIdx != null} onOpenChange={(o) => { if (!o) setEditVersionIdx(null); }}>
-          <DialogContent aria-describedby={undefined} className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Change lineup change day</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-muted-foreground -mt-2">
-              This lineup applied to sessions <span className="font-medium text-foreground">before</span> the
-              chosen day. Moving the day re-classifies history and stats around the new boundary.
-            </p>
+          <DialogContent className="sm:max-w-sm" style={pageAccentStyle("routines")}>
+            <DialogHero
+              icon={History}
+              eyebrow="Lineup history"
+              title="Move the change day"
+              description={<>This lineup applied to sessions <span className="font-medium text-foreground">before</span> the chosen day. Moving the day re-classifies history and stats around the new boundary.</>}
+            />
             <Input
               type="date"
               value={editVersionDay}
@@ -539,12 +569,11 @@ function StatCard({ icon, label, value, testId }: { icon: React.ReactNode; label
   return (
     <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3">
       <div className="flex items-center gap-1.5 text-muted-foreground/60 mb-1.5">
-        <span className="[&_svg]:w-3.5 [&_svg]:h-3.5">{icon}</span>
+        <span className="[&_svg]:w-3.5 [&_svg]:h-3.5 text-[hsl(var(--page-accent)/0.7)]">{icon}</span>
         <span className="text-[8px] font-mono uppercase tracking-[0.15em]">{label}</span>
       </div>
       <p
-        className="text-lg font-bold truncate tabular-nums leading-none"
-        style={{ background: "linear-gradient(135deg,#60a5fa,#a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+        className="text-lg font-bold truncate tabular-nums leading-none text-gradient-page"
         data-testid={testId}
       >
         {value}

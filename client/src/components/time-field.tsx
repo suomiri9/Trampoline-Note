@@ -232,7 +232,7 @@ function Wheel<T extends string | number>({ items, value, onChange, testId, rend
               onChange(item);
             }}
             className={cn(
-              "flex items-center justify-center text-base font-semibold cursor-pointer select-none transition-all",
+              "flex items-center justify-center text-base font-semibold cursor-pointer select-none transition-[transform,color] duration-150",
               i === visibleIdx ? "invisible" : "text-muted-foreground/50 scale-95"
             )}
             style={{ height: ITEM_HEIGHT }}

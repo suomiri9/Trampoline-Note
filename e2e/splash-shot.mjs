@@ -1,0 +1,14 @@
+import { chromium } from "playwright-core";
+import { mkdirSync } from "node:fs";
+const BASE = "https://" + process.env.REPLIT_DEV_DOMAIN;
+mkdirSync("/tmp/pageshots", { recursive: true });
+const browser = await chromium.launch({ headless: true });
+const page = await (await browser.newContext({ viewport: { width: 430, height: 900 }, deviceScaleFactor: 2 })).newPage();
+await page.goto(BASE + "/", { waitUntil: "domcontentloaded" });
+await page.waitForSelector("#boot-splash.ready", { timeout: 5000 });
+await page.waitForTimeout(180);
+await page.screenshot({ path: "/tmp/pageshots/splash-a.png" });
+await page.waitForTimeout(450);
+await page.screenshot({ path: "/tmp/pageshots/splash-b.png" });
+await browser.close();
+console.log("DONE");

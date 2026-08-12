@@ -9,7 +9,10 @@ import {
   CircleDashed,
   X,
   SlidersHorizontal,
+  CloudOff,
 } from "lucide-react";
+import { DialogHero } from "@/components/dialog-hero";
+import { pageAccentStyle } from "@/lib/page-accent";
 import { version as appVersion } from "../../../package.json";
 import { cacheGet } from "@/lib/offline-db";
 import { useAuth } from "@/hooks/use-auth";
@@ -598,22 +601,38 @@ export default function SettingsPage() {
     kind === "note" ? "Training note" : "Score";
 
   return (
-    <PageLayout>
+    <PageLayout accent="settings">
       <PageHeader
-        eyebrow="Settings"
-        kicker="Account"
-        title="Make it yours."
-        accent="yours."
-        subtitle="Manage your preferences and account."
+        kicker="Account · Preferences"
+        title="Dialed in."
+        accent="in."
+        subtitle="Account, offline downloads, and the small preferences that make it yours."
       />
 
       <main>
+        {/* Calm opening gesture — a quiet silver index that sets Settings apart
+            as the utilitarian room: no glow theatrics, just a considered rule. */}
+        <div className="relative mb-6 flex items-center gap-3">
+          <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-[hsl(var(--page-accent)/0.08)] border border-[hsl(var(--page-accent)/0.2)] shrink-0">
+            <SlidersHorizontal className="w-4 h-4 text-[hsl(var(--page-accent))]" />
+          </span>
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[hsl(var(--page-accent)/0.8)]">
+              Control panel
+            </p>
+            <p className="text-xs text-muted-foreground/70 leading-snug mt-0.5">
+              Everything tuned in one place — signed in as {displayName}.
+            </p>
+          </div>
+          <span className="flex-1 h-px bg-gradient-to-r from-[hsl(var(--page-accent)/0.25)] to-transparent" />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <div className="space-y-6">
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4 min-w-0">
-                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--chart-4))] flex items-center justify-center text-2xl font-bold text-primary-foreground shrink-0" data-testid="avatar-profile">
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[hsl(var(--page-accent))] to-[hsl(var(--page-accent-2))] flex items-center justify-center text-2xl font-bold text-background shrink-0" data-testid="avatar-profile">
                     {(displayName?.[0] ?? "A").toUpperCase()}
                   </div>
                   <div className="min-w-0">
@@ -636,14 +655,17 @@ export default function SettingsPage() {
             </div>
 
             <div className="space-y-5">
-              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60 mb-3 flex items-center gap-2">
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[hsl(var(--page-accent)/0.8)] mb-3 flex items-center gap-2">
                 Preferences
-                <span className="flex-1 h-px bg-white/[0.06]" />
+                <span className="flex-1 h-px bg-gradient-to-r from-[hsl(var(--page-accent)/0.25)] to-transparent" />
               </div>
 
               {/* ── Appearance ── */}
               <div>
-                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 px-1 mb-2.5">Appearance</p>
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 px-1 mb-2.5 flex items-center gap-2">
+                  <span className="w-3 h-px bg-[hsl(var(--page-accent)/0.5)]" />
+                  Appearance
+                </p>
                 <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] divide-y divide-white/[0.05] overflow-hidden">
                   <div id="appearance" className="p-5 scroll-mt-4">
                     <div className="flex items-start justify-between gap-3">
@@ -692,7 +714,7 @@ export default function SettingsPage() {
                           type="button"
                           onClick={() => { setTimeFormat(opt); pushAccountSettings({ timeFormat: opt }); }}
                           className={cn(
-                            "px-4 h-8 rounded-lg text-xs font-semibold transition-all",
+                            "px-4 h-8 rounded-lg text-xs font-semibold transition-[color,background-color,box-shadow]",
                             timeFormat === opt
                               ? "bg-background shadow-sm text-foreground"
                               : "text-muted-foreground hover:text-foreground",
@@ -709,7 +731,10 @@ export default function SettingsPage() {
 
               {/* ── Sync & Offline ── */}
               <div>
-                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 px-1 mb-2.5">Sync &amp; Offline</p>
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 px-1 mb-2.5 flex items-center gap-2">
+                  <span className="w-3 h-px bg-[hsl(var(--page-accent)/0.5)]" />
+                  Sync &amp; Offline
+                </p>
                 <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] divide-y divide-white/[0.05] overflow-hidden">
                   <div className="p-5 flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -810,7 +835,7 @@ export default function SettingsPage() {
                         data-testid="bar-download-progress"
                       >
                         <div
-                          className={`h-full rounded-full transition-all duration-200 ${allReady ? "bg-emerald-500" : "bg-primary"}`}
+                          className={`h-full rounded-full transition-[width] duration-200 ${allReady ? "bg-emerald-500" : "bg-primary"}`}
                           style={{ width: `${percent}%` }}
                         />
                       </div>
@@ -847,7 +872,7 @@ export default function SettingsPage() {
                       className="text-[11px] text-muted-foreground mt-2 border-t border-white/[0.07] pt-2"
                       data-testid="text-download-wipe-warning"
                     >
-                      ⚠️ The download stays on this device through tab closes and restarts. It is wiped if you turn offline mode off, clear this site's browser data, or open the app in a different browser. The device may also evict it if storage runs very low.
+                      The download stays on this device through tab closes and restarts. It is wiped if you turn offline mode off, clear this site's browser data, or open the app in a different browser. The device may also evict it if storage runs very low.
                     </p>
                   </div>
                 );
@@ -915,7 +940,10 @@ export default function SettingsPage() {
 
               {/* ── AI Coach ── */}
               <div>
-                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 px-1 mb-2.5">AI Coach</p>
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 px-1 mb-2.5 flex items-center gap-2">
+                  <span className="w-3 h-px bg-[hsl(var(--page-accent)/0.5)]" />
+                  AI Coach
+                </p>
                 <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] divide-y divide-white/[0.05] overflow-hidden">
                   <div className="p-5 flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -1107,14 +1135,15 @@ export default function SettingsPage() {
       <Dialog open={showFailedDialog} onOpenChange={setShowFailedDialog}>
         <DialogContent
           className="rounded-2xl max-w-[calc(100vw-32px)] sm:max-w-2xl p-5 sm:p-6 max-h-[85dvh] overflow-hidden flex flex-col"
+          style={pageAccentStyle("settings")}
           data-testid="dialog-rejected-entries"
         >
-          <DialogHeader>
-            <DialogTitle>Rejected offline entries</DialogTitle>
-            <DialogDescription>
-              The server wouldn't accept these entries. Copy any details you need before discarding.
-            </DialogDescription>
-          </DialogHeader>
+          <DialogHero
+            icon={CloudOff}
+            eyebrow="Offline sync"
+            title="Rejected offline entries"
+            description="The server wouldn't accept these entries. Copy any details you need before discarding."
+          />
           <div className="flex-1 overflow-y-auto -mx-1 px-1 mt-2 space-y-3">
             {failedItems == null ? (
               <div className="flex items-center justify-center py-8">

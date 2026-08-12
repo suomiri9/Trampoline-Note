@@ -203,7 +203,7 @@ function Navigation() {
   );
 
   const baseItem =
-    "flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-xl text-[11px] font-mono uppercase tracking-wider transition-all cursor-pointer pressable";
+    "flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-xl text-[11px] font-mono uppercase tracking-wider transition-colors cursor-pointer pressable";
 
   // z-[60] — above dialogs (z-50) so the coach launcher stays visible over
   // popups. The wrapper itself is click-through; only the pill and the
@@ -467,7 +467,7 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
+      <TooltipProvider delayDuration={400} skipDelayDuration={500}>
         <SplashScreen />
         <AppContent />
         <Toaster />

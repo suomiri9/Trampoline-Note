@@ -24,8 +24,6 @@ const COLLAPSE_AT = 48;
 const EXPAND_AT = 12;
 
 interface PageHeaderProps {
-  /** Breadcrumb tail — rendered as `TRAINING / {eyebrow}` in the top mono strip. */
-  eyebrow: string;
   /** Small primary-tinted mono label directly above the headline (the page's identity). */
   kicker?: string;
   /**
@@ -37,16 +35,18 @@ interface PageHeaderProps {
   accent?: string;
   subtitle?: string;
   actions?: ReactNode;
+  /** Optional back-navigation link (a BackLink) rendered as the header's top strip, inside the glow. */
+  backLink?: ReactNode;
   className?: string;
 }
 
 export function PageHeader({
-  eyebrow,
   kicker,
   title,
   accent,
   subtitle,
   actions,
+  backLink,
   className,
 }: PageHeaderProps) {
   const headerRef = useRef<HTMLDivElement>(null);
@@ -142,7 +142,7 @@ export function PageHeader({
   /** Grid-rows trick: animates an unknown-height row down to 0 (needs overflow-hidden child). */
   const collapsibleRow = (visible: boolean) =>
     cn(
-      "grid transition-[grid-template-rows,opacity] duration-300 motion-reduce:transition-none",
+      "grid transition-[grid-template-rows,opacity] duration-300 ease-in-out-strong motion-reduce:transition-none",
       visible ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
     );
 
@@ -151,7 +151,7 @@ export function PageHeader({
       ref={headerRef}
       className={cn(
         "sticky top-0 z-30 full-bleed-bar page-header-safe mb-6 bg-background/90 backdrop-blur-md border-b border-border/60",
-        "transition-all duration-300 motion-reduce:transition-none",
+        "transition-[padding] duration-300 ease-in-out-strong motion-reduce:transition-none",
         collapsed ? "pb-3" : "pb-5 sm:pb-6",
         className,
       )}
@@ -160,21 +160,21 @@ export function PageHeader({
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none absolute inset-0 transition-opacity duration-300",
+          "pointer-events-none absolute inset-x-0 top-0 h-[150%] transition-opacity duration-300",
           collapsed ? "opacity-0" : "opacity-100",
         )}
         style={{
           background:
-            "radial-gradient(ellipse 80% 70% at 50% -10%, hsl(var(--primary)/0.18) 0%, transparent 70%)",
+            "radial-gradient(ellipse 95% 90% at 50% -10%, hsl(var(--page-accent) / 0.24) 0%, transparent 74%)",
         }}
       />
-      <div className={cn("relative", collapsibleRow(!collapsed))} aria-hidden={collapsed}>
-        <div className="overflow-hidden">
-          <div className="font-mono text-[10px] font-semibold tracking-[0.22em] uppercase text-muted-foreground/75 pb-6 sm:pb-8">
-            Training / {eyebrow}
+      {backLink && (
+        <div className={cn("relative", collapsibleRow(!collapsed))} aria-hidden={collapsed}>
+          <div className="overflow-hidden">
+            <div className={cn("pb-4 sm:pb-5", collapsed && "invisible")}>{backLink}</div>
           </div>
         </div>
-      </div>
+      )}
       {/* Headline and actions share one row; buttons sit on the right and only
           wrap below on screens too narrow to fit both. */}
       <div
@@ -186,20 +186,21 @@ export function PageHeader({
         <div className="min-w-0">
           {kicker && (
             <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
-              <p className="overflow-hidden font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/70 pb-2">
+              <p className="overflow-hidden font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[hsl(var(--page-accent)/0.7)] pb-2">
                 {kicker}
               </p>
             </div>
           )}
           <h1
             className={cn(
-              "font-black tracking-[-0.05em] transition-[font-size] duration-300 motion-reduce:transition-none",
-              collapsed ? "text-lg sm:text-3xl leading-none" : "text-[38px] sm:text-[46px] leading-[0.92]",
+              "font-black tracking-[-0.05em] break-words transition-[font-size] duration-300 motion-reduce:transition-none",
+              // clamp: headline can never outgrow the viewport (iOS page-zoom/text-size boosts shrink vw with them)
+              collapsed ? "text-lg sm:text-3xl leading-none" : "text-[clamp(26px,9.7vw,38px)] sm:text-[46px] leading-[0.92]",
             )}
           >
             {lead && <span className={collapsed ? undefined : "block"}>{lead}</span>}
             {collapsed && lead ? " " : null}
-            <span className={cn("text-gradient-primary", !collapsed && "block")}>
+            <span className={cn("text-gradient-page", !collapsed && "block")}>
               {accentPart}
             </span>
           </h1>

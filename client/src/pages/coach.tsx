@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   RefreshCw,
   Sparkles,
+  MessageSquare,
 } from "lucide-react";
 
 interface PushRecommendation {
@@ -200,17 +201,16 @@ export default function CoachPage() {
 
   const hero = (
     <PageHeader
-      eyebrow="Coach"
-      kicker="AI Coach"
-      title="Ask anything."
-      accent="anything."
+      kicker="AI Coach · Live"
+      title="Talk it through."
+      accent="through."
       subtitle="Daily push guidance, training answers, and help using the app."
     />
   );
 
   if (!isOnline) {
     return (
-      <PageLayout>
+      <PageLayout accent="coach">
         {hero}
         <OfflinePlaceholder
           testId="card-offline-coach"
@@ -221,21 +221,47 @@ export default function CoachPage() {
   }
 
   return (
-    <PageLayout>
+    <PageLayout accent="coach">
       {hero}
 
-      <div className="mt-2">
-        <PushCard />
+      {/* Conversational opening gesture — a cyan "today's read" lead-in that
+          frames the push card as the coach's first word of the day. */}
+      <div className="relative mt-2 mb-4">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-6 right-0 h-32 w-56 rounded-full blur-2xl"
+          style={{ background: "radial-gradient(ellipse, hsl(var(--page-accent) / 0.16) 0%, transparent 70%)" }}
+        />
+        <div className="relative flex items-center gap-2.5">
+          <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-[hsl(var(--page-accent)/0.1)] border border-[hsl(var(--page-accent)/0.2)] shrink-0">
+            <Sparkles className="w-4 h-4 text-[hsl(var(--page-accent))]" />
+          </span>
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[hsl(var(--page-accent)/0.75)]">
+            Today&apos;s read
+          </p>
+        </div>
       </div>
 
+      <PushCard />
+
+      {/* Chat room — framed as a conversation surface with a cyan-tinted lead
+          rail so it reads as its own space, not a generic list panel. */}
       <div
-        className="rounded-2xl border border-white/[0.07] bg-white/[0.025] flex flex-col mt-4 overflow-hidden"
+        className="relative rounded-2xl border border-white/[0.07] bg-white/[0.025] flex flex-col mt-5 overflow-hidden"
         data-testid="card-coach-chat"
       >
-        <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b border-white/[0.05]">
-          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50">
-            Chat <span className="text-primary/70">/ grounded in your data</span>
-          </span>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-24"
+          style={{ background: "radial-gradient(ellipse 70% 100% at 20% 0%, hsl(var(--page-accent) / 0.08) 0%, transparent 70%)" }}
+        />
+        <div className="relative flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/[0.05]">
+          <div className="flex items-center gap-2 min-w-0">
+            <MessageSquare className="w-3.5 h-3.5 text-[hsl(var(--page-accent))] shrink-0" />
+            <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 truncate">
+              Chat <span className="text-[hsl(var(--page-accent)/0.75)]">· grounded in your data</span>
+            </span>
+          </div>
           <ClearChatButton />
         </div>
         <CoachChat />

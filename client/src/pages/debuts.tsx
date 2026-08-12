@@ -1,9 +1,7 @@
-import { Button } from "@/components/ui/button";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import type { SafeUser } from "@shared/models/auth";
-import { useLocation } from "wouter";
 import { api } from "@shared/routes";
 import { useNotes } from "@/hooks/use-notes";
 import { useRoutines } from "@/hooks/use-routines";
@@ -11,8 +9,11 @@ import { useSkills } from "@/hooks/use-skills";
 import { parseNoteSkills, skillDisplayCode } from "@/lib/training-utils";
 import { PageLayout } from "@/components/page-layout";
 import { PageHeader } from "@/components/page-header";
+import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Medal, Repeat, Loader2, ListChecks, Timer, Rocket } from "lucide-react";
+import { Medal, Repeat, Loader2, ListChecks, Timer, Rocket } from "lucide-react";
+import { DialogHero } from "@/components/dialog-hero";
+import { pageAccentStyle } from "@/lib/page-accent";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { format, parseISO, differenceInCalendarDays } from "date-fns";
@@ -103,13 +104,13 @@ function DebutList({
         </button>
       </div>
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent className="sm:max-w-[420px] w-[calc(100vw-32px)] rounded-2xl max-h-[80dvh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="text-lg">Show in debuts</DialogTitle>
-            <DialogDescription className="text-xs">
-              Toggle which ones appear in the list. Choices are saved to your account.
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-[420px] w-[calc(100vw-32px)] rounded-2xl max-h-[80dvh] flex flex-col" style={pageAccentStyle("score")}>
+          <DialogHero
+            icon={ListChecks}
+            eyebrow="Debuts"
+            title="Show in debuts"
+            description="Toggle which ones appear in the list. Choices are saved to your account."
+          />
           <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 space-y-1">
             {allSorted.map(r => {
               const on = !hidden.includes(r.key);
@@ -220,7 +221,6 @@ function DebutList({
 }
 
 export default function DebutsPage() {
-  const [, navigate] = useLocation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -455,20 +455,9 @@ export default function DebutsPage() {
   );
 
   return (
-    <PageLayout>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="mb-4 -ml-2 text-muted-foreground"
-        onClick={() => navigate("/score")}
-        data-testid="button-back-score"
-      >
-        <ArrowLeft className="w-4 h-4 mr-1" /> Score Board
-      </Button>
-
+    <PageLayout accent="score">
       <PageHeader
-        className="static !mt-0"
-        eyebrow="Debuts"
+        backLink={<BackLink to="/score" label="Score Board" testId="button-back-score" />}
         kicker="Competition readiness"
         title="Ready to debut."
         accent="debut."

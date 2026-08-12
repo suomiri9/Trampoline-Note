@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useRoute, useLocation } from "wouter";
+import { useRoute } from "wouter";
 import { api } from "@shared/routes";
 import { useRoutines } from "@/hooks/use-routines";
 import { PageLayout } from "@/components/page-layout";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, ClipboardCheck, Loader2, TrendingDown } from "lucide-react";
+import { ClipboardCheck, Loader2, TrendingDown } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -31,7 +31,6 @@ interface RoutineSample {
 
 export default function ExecutionRoutinePage() {
   const [, params] = useRoute("/execution/routine/:id");
-  const [, navigate] = useLocation();
   const routineId = Number(params?.id);
 
   const { data: routines, isLoading: routinesLoading } = useRoutines();
@@ -88,7 +87,7 @@ export default function ExecutionRoutinePage() {
 
   if (routinesLoading || sessionsLoading) {
     return (
-      <PageLayout>
+      <PageLayout accent="execution">
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-muted-foreground">
           <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary/60" />
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/50">Loading routine…</p>
@@ -99,12 +98,10 @@ export default function ExecutionRoutinePage() {
 
   if (!routine) {
     return (
-      <PageLayout>
+      <PageLayout accent="execution">
         <div className="text-center py-24">
           <p className="text-muted-foreground">Routine not found.</p>
-          <Button variant="ghost" className="mt-4" onClick={() => navigate("/execution")} data-testid="button-back-execution-missing">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Execution
-          </Button>
+          <BackLink to="/execution" label="Execution Tracker" testId="button-back-execution-missing" className="mt-4" />
         </div>
       </PageLayout>
     );
@@ -118,30 +115,26 @@ export default function ExecutionRoutinePage() {
   ];
 
   return (
-    <PageLayout>
+    <PageLayout accent="execution">
       {/* ── Hero ─────────────────────────────────────────────────── */}
-      <div className="relative -mx-4 sm:-mx-6 -mt-6 md:-mt-8 px-6 pt-safe-top pb-0 overflow-hidden">
+      <div className="relative -mx-4 sm:-mx-6 -mt-6 md:-mt-8 px-6 pt-safe-top pb-0">
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-72"
+          className="pointer-events-none absolute inset-x-0 top-0 h-96"
           style={{
             background:
-              "radial-gradient(ellipse at 50% 0%, hsl(var(--primary)/0.16) 0%, hsl(var(--primary)/0.04) 55%, transparent 78%)",
+              "radial-gradient(ellipse at 50% 0%, hsl(var(--page-accent)/0.22) 0%, hsl(var(--page-accent)/0.06) 60%, transparent 82%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 55%, transparent 100%)",
+            maskImage: "linear-gradient(to bottom, black 55%, transparent 100%)",
           }}
         />
 
         <div className="relative pt-4 pb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mb-5 -ml-2 h-8 text-[11px] font-mono uppercase tracking-[0.12em] text-muted-foreground/60 hover:text-foreground"
-            onClick={() => navigate("/execution")}
-            data-testid="button-back-execution"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 mr-1.5" /> Execution Tracker
-          </Button>
+          <div className="mb-5">
+            <BackLink to="/execution" label="Execution Tracker" testId="button-back-execution" />
+          </div>
 
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase mb-4">
-            <ClipboardCheck className="w-3 h-3 text-rose-400" />
+            <ClipboardCheck className="w-3 h-3 text-[hsl(var(--page-accent))]" />
             Routine Execution Graph
           </div>
 
@@ -152,7 +145,7 @@ export default function ExecutionRoutinePage() {
           >
             <span
               style={{
-                background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%)",
+                background: "linear-gradient(135deg, hsl(var(--page-accent)) 0%, hsl(var(--page-accent-2)) 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
               }}
@@ -171,7 +164,7 @@ export default function ExecutionRoutinePage() {
                   <span
                     className="text-[18px] font-bold tabular-nums leading-none"
                     style={{
-                      background: "linear-gradient(135deg,#60a5fa,#a78bfa)",
+                      background: "linear-gradient(135deg, hsl(var(--page-accent)) 0%, hsl(var(--page-accent-2)) 100%)",
                       WebkitBackgroundClip: "text",
                       WebkitTextFillColor: "transparent",
                     }}

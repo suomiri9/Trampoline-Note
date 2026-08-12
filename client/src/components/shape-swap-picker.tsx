@@ -1,4 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Shapes } from "lucide-react";
+import { DialogHero } from "@/components/dialog-hero";
+import { pageAccentStyle } from "@/lib/page-accent";
 import {
   Drawer,
   DrawerContent,
@@ -82,10 +85,8 @@ export function ShapeSwapPicker({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined} className="sm:max-w-xs">
-        <DialogHeader>
-          <DialogTitle>Duplicate w/ shape</DialogTitle>
-        </DialogHeader>
+      <DialogContent aria-describedby={undefined} className="sm:max-w-xs" style={pageAccentStyle("skills")}>
+        <DialogHero icon={Shapes} eyebrow="The Arsenal" title="Duplicate with shape" />
         {renderOptions()}
       </DialogContent>
     </Dialog>

@@ -1,14 +1,14 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useRoute, useLocation } from "wouter";
+import { useRoute } from "wouter";
 import { api } from "@shared/routes";
 import { useRoutines } from "@/hooks/use-routines";
 import { useSkills } from "@/hooks/use-skills";
 import { skillDisplayCode } from "@/lib/training-utils";
 import { resolveTarget, targetSkillIdAt, targetName } from "@/lib/tracker-target";
 import { PageLayout } from "@/components/page-layout";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Timer, Loader2, TrendingDown } from "lucide-react";
+import { Timer, Loader2, TrendingDown } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -29,7 +29,6 @@ function fmtDrop(drop: number | null): string {
 
 export default function TofSessionPage() {
   const [, params] = useRoute("/tof/session/:id");
-  const [, navigate] = useLocation();
   const sessionId = Number(params?.id);
 
   const { data: routines } = useRoutines();
@@ -72,7 +71,7 @@ export default function TofSessionPage() {
 
   if (skillsLoading || sessionsLoading) {
     return (
-      <PageLayout>
+      <PageLayout accent="tof">
         <div className="flex items-center justify-center min-h-[60vh]">
           <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
         </div>
@@ -82,8 +81,8 @@ export default function TofSessionPage() {
 
   if (!session) {
     return (
-      <PageLayout>
-        <BackLink navigate={navigate} testId="button-back-tof-missing" />
+      <PageLayout accent="tof">
+        <BackLink to="/tof" label="ToF Tracker" testId="button-back-tof-missing" className="mb-5" />
         <div className="py-24 flex flex-col items-center text-center">
           <div className="w-14 h-14 mb-5 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center">
             <Timer className="w-7 h-7 text-muted-foreground/60" />
@@ -96,19 +95,22 @@ export default function TofSessionPage() {
   }
 
   return (
-    <PageLayout>
-      <BackLink navigate={navigate} testId="button-back-tof" />
-
+    <PageLayout accent="tof">
       {/* ── Hero ─────────────────────────────────────────────────── */}
-      <div className="relative -mx-4 sm:-mx-6 px-6 pb-2 overflow-hidden">
+      <div className="relative -mx-4 sm:-mx-6 -mt-6 md:-mt-8 px-4 sm:px-6 pb-2">
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-56"
+          className="pointer-events-none absolute inset-x-0 top-0 h-96"
           style={{
             background:
-              "radial-gradient(ellipse at 50% 0%, hsl(43 96% 56% / 0.14) 0%, hsl(43 96% 56% / 0.03) 55%, transparent 78%)",
+              "radial-gradient(ellipse at 50% 0%, hsl(var(--page-accent) / 0.20) 0%, hsl(var(--page-accent) / 0.05) 60%, transparent 82%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 55%, transparent 100%)",
+            maskImage: "linear-gradient(to bottom, black 55%, transparent 100%)",
           }}
         />
-        <div className="relative pt-4 pb-5">
+        <div className="relative pt-6 md:pt-8 pb-5">
+          <div className="mb-5">
+            <BackLink to="/tof" label="ToF Tracker" testId="button-back-tof" />
+          </div>
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/[0.07] bg-white/[0.025] text-[9px] font-mono text-amber-400/70 tracking-[0.18em] uppercase mb-4">
             <Timer className="w-3 h-3" /> Time of Flight · Session
           </div>
@@ -119,7 +121,7 @@ export default function TofSessionPage() {
           >
             <span
               style={{
-                background: "linear-gradient(135deg,#fbbf24,#f97316)",
+                background: "linear-gradient(135deg, hsl(var(--page-accent)) 0%, hsl(var(--page-accent-2)) 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
               }}
@@ -136,7 +138,7 @@ export default function TofSessionPage() {
       {/* ── Stat strip ───────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-8">
         <StatCell value={`${stats!.total.toFixed(2)}s`} label="Total ToF" amber testId="stat-tof-session-total" />
-        <StatCell value={`${stats!.best.toFixed(3)}s`} label="Best jump" testId="stat-tof-session-best" />
+        <StatCell value={`${stats!.best.toFixed(3)}s`} label="Best jump" amber testId="stat-tof-session-best" />
         <StatCell
           value={stats!.worstDrop ? fmtDrop(stats!.worstDrop.drop) : "—"}
           label={`Biggest drop${stats!.worstDrop ? ` (${stats!.worstDrop.code})` : ""}`}
@@ -210,17 +212,6 @@ export default function TofSessionPage() {
   );
 }
 
-function BackLink({ navigate, testId }: { navigate: (to: string) => void; testId: string }) {
-  return (
-    <button
-      onClick={() => navigate("/tof")}
-      className="mb-5 inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-[0.14em] text-muted-foreground/50 hover:text-amber-400 transition-colors"
-      data-testid={testId}
-    >
-      <ArrowLeft className="w-3.5 h-3.5" /> ToF Tracker
-    </button>
-  );
-}
 
 function StatCell({
   value,
@@ -242,7 +233,7 @@ function StatCell({
         className="text-[19px] font-bold tabular-nums leading-none"
         style={
           amber
-            ? { background: "linear-gradient(135deg,#fbbf24,#f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }
+            ? { background: "linear-gradient(135deg, hsl(var(--page-accent)) 0%, hsl(var(--page-accent-2)) 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }
             : drop
               ? { color: isNegDrop ? "hsl(var(--destructive))" : "#10b981" }
               : undefined

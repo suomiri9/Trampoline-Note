@@ -6,9 +6,11 @@ import { insertScoreSchema, type Score, type Routine, type Skill, type InsertSco
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { calcDDFromSkillIds, parseNoteSkills } from "@/lib/training-utils";
 import { PageLayout } from "@/components/page-layout";
+import { pageAccentStyle } from "@/lib/page-accent";
+import { DialogHero } from "@/components/dialog-hero";
 import { PageHeader, primaryActionClass, headerActionClass } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SkillEditorOverlay } from "@/components/skill-editor-overlay";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
@@ -32,8 +34,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { fileToDataUrl, compressDataUrl } from "@/lib/image-file";
-import { PhotoAreaSelect, type PhotoAreaSelectHandle } from "@/components/photo-area-select";
+import { fileToDataUrl } from "@/lib/image-file";
 import { SheetPhotoPreview } from "@/components/sheet-photo-preview";
 import { emptyTenths, parseTenthsRow, tenthsRowToInsert, TenthsGrid, TenthsRowSummary } from "@/components/execution-tenths";
 import { EXECUTION_SKILL_COUNT } from "@shared/execution";
@@ -626,7 +627,7 @@ function ScoreGraph({
           <div className="eyebrow mb-1.5">{eyebrow} <span className="text-amber-400">{eyebrowAccent}</span></div>
           {latestPoint ? (
             <div className="flex items-baseline gap-3 flex-wrap">
-              <div className="text-4xl sm:text-5xl font-medium tracking-[-0.05em] tabular-nums leading-none" data-testid={`text-graph-latest${idSuffix}`}>
+              <div className="text-4xl sm:text-5xl font-extrabold tracking-[-0.05em] tabular-nums leading-none" data-testid={`text-graph-latest${idSuffix}`}>
                 {latestPoint.total.toFixed(1)}
               </div>
               {latestDelta != null && Math.abs(latestDelta) > 1e-9 && (
@@ -788,13 +789,11 @@ export default function ScorePage() {
 
   // ---- Scoresheet photo flow (parse → review → details → save) ----
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetStep, setSheetStep] = useState<"crop" | "review" | "details" | "executions">("review");
+  const [sheetStep, setSheetStep] = useState<"review" | "details" | "executions">("review");
   const [sheetRows, setSheetRows] = useState<SheetRow[]>([]);
   const [sheetPhotoUrl, setSheetPhotoUrl] = useState<string | null>(null);
   // Full uploaded photo (before area selection) shown in the crop step.
   const [sheetPhotoOriginal, setSheetPhotoOriginal] = useState<string | null>(null);
-  const sheetCropRef = useRef<PhotoAreaSelectHandle>(null);
-  const [sheetCropCount, setSheetCropCount] = useState(0);
   // Draft execution sessions parsed from the same photo, offered after the
   // score saves ("add the deductions too" step).
   const [execDrafts, setExecDrafts] = useState<ExecDraft[]>([]);
@@ -992,7 +991,9 @@ export default function ScorePage() {
   };
 
   // Step 0: photo picked → open the dialog on the area-select step (no AI call yet).
-  const openSheetCrop = async (file: File) => {
+  // Read the whole sheet photo straight away — no crop/selection step.
+  const openSheetPhoto = async (file: File) => {
+    if (parsingSheet) return;
     setParsingSheet(true);
     // Consume the pending "final for this comp" target set by the card menu.
     const finalFor = pendingFinalForRef.current;
@@ -1000,38 +1001,13 @@ export default function ScorePage() {
     try {
       const dataUrl = await fileToDataUrl(file);
       closeSheet(); // reset any leftover state from a previous sheet
-      setSheetFinalFor(finalFor);
-      setSheetPhotoOriginal(dataUrl);
-      setSheetStep("crop");
-      setSheetOpen(true);
-    } catch (e) {
-      toast({
-        title: "Couldn't read that photo",
-        description: e instanceof Error ? e.message : "Try a different image.",
-        variant: "destructive",
-      });
-    } finally {
-      setParsingSheet(false);
-      if (sheetInputRef.current) sheetInputRef.current.value = "";
-    }
-  };
-
-  // Step 1: read the selected area (or the whole photo if nothing was drawn).
-  const readSheetSelection = async () => {
-    if (!sheetPhotoOriginal || parsingSheet) return;
-    setParsingSheet(true);
-    try {
-      const raw = sheetCropRef.current?.buildCropDataUrl() ?? sheetPhotoOriginal;
-      // The original already fits the API cap; only re-compress fresh crops.
-      const cropUrl = raw === sheetPhotoOriginal ? raw : await compressDataUrl(raw);
-      // In parallel, try reading per-skill deduction rows — from the FULL photo,
-      // since the judges' deduction table often sits outside the selected area.
-      // Offered as Execution-tracker drafts after the score is saved.
-      execParseRef.current = apiRequest("POST", "/api/execution-sessions/parse-photo", { images: [sheetPhotoOriginal] })
+      // In parallel, try reading per-skill deduction rows from the same photo —
+      // offered as Execution-tracker drafts after the score is saved.
+      execParseRef.current = apiRequest("POST", "/api/execution-sessions/parse-photo", { images: [dataUrl] })
         .then(res => res.json())
         .then((p: { rows: ParsedExecRow[] }) => (p.rows && p.rows.length > 0 ? p.rows : null))
         .catch(() => null);
-      const res = await apiRequest("POST", "/api/scores/parse-photo", { images: [cropUrl] });
+      const res = await apiRequest("POST", "/api/scores/parse-photo", { images: [dataUrl] });
       const parsed = (await res.json()) as {
         routines: { label: string; execution: number | null; difficulty: number | null; horizontal: number | null; timeOfFlight: number | null; total: number | null }[];
         competitionName: string | null;
@@ -1039,12 +1015,13 @@ export default function ScorePage() {
         date: string | null;
       };
       if (!parsed.routines || parsed.routines.length === 0) {
+        execParseRef.current = null;
         toast({
           title: "No routine scores found",
-          description: "Couldn't read E/D/H/T lines there. Select a tighter area around the score lines and try again.",
+          description: "Couldn't read E/D/H/T lines in that photo. Try a closer photo of the score lines, or enter the score manually.",
           variant: "destructive",
         });
-        return; // stay on the crop step so the selection can be adjusted
+        return;
       }
       const rows: SheetRow[] = parsed.routines.map((r, idx) => ({
         key: idx,
@@ -1057,14 +1034,16 @@ export default function ScorePage() {
         kept: true,
         routineId: "",
       }));
+      setSheetFinalFor(finalFor);
+      setSheetPhotoOriginal(dataUrl);
       setSheetRows(rows);
-      setSheetPhotoUrl(cropUrl);
-      if (sheetFinalFor) {
+      setSheetPhotoUrl(dataUrl);
+      if (finalFor) {
         // Attaching a final to an existing competition — details come from it.
-        setSheetDate(parsed.date ?? sheetFinalFor.date);
-        setSheetCompName(sheetFinalFor.competitionName ?? "");
+        setSheetDate(parsed.date ?? finalFor.date);
+        setSheetCompName(finalFor.competitionName ?? "");
         setSheetRound("final");
-        setSheetType(sheetFinalFor.type === "trial" ? "trial" : "competition");
+        setSheetType(finalFor.type === "trial" ? "trial" : "competition");
         // Finals are voluntary routines (two rows = e.g. semi + final voluntary).
         setSheetCategory("vol");
         setSheetPairCategory(rows.length === 2 ? "vol_vol" : "both");
@@ -1081,6 +1060,10 @@ export default function ScorePage() {
         setSheetPairCategory(rows.length === 2 && first.difficulty != null && first.difficulty > 0 ? "vol_vol" : "both");
       }
       setSheetStep("review");
+      // The photo path replaces the manual form — close it if it was open.
+      setIsAdding(false);
+      setEditingScore(null);
+      setSheetOpen(true);
     } catch (e) {
       toast({
         title: "Photo reading failed",
@@ -1089,6 +1072,7 @@ export default function ScorePage() {
       });
     } finally {
       setParsingSheet(false);
+      if (sheetInputRef.current) sheetInputRef.current.value = "";
     }
   };
 
@@ -1502,9 +1486,8 @@ export default function ScorePage() {
   const totalScoreCount = renderItems.length + queuedScores.length;
 
   return (
-    <PageLayout>
+    <PageLayout accent="score">
       <PageHeader
-        eyebrow="Scores"
         kicker="Score Board"
         title="Every tenth counts."
         accent="counts."
@@ -1516,7 +1499,7 @@ export default function ScorePage() {
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) openSheetCrop(f); }}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) openSheetPhoto(f); }}
               data-testid="input-scoresheet-photo"
             />
             <Button
@@ -1526,16 +1509,6 @@ export default function ScorePage() {
               data-testid="button-comp-debuts"
             >
               <Medal className="w-4 h-4" /> Debuts
-            </Button>
-            <Button
-              variant="outline"
-              className={headerActionClass}
-              disabled={parsingSheet}
-              onClick={() => { pendingFinalForRef.current = null; sheetInputRef.current?.click(); }}
-              data-testid="button-upload-scoresheet"
-            >
-              {parsingSheet ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageUp className="w-4 h-4" />}
-              {parsingSheet ? "Reading..." : "From photo"}
             </Button>
             <Button
               onClick={() => { setIsAdding(true); setEditingScore(null); setCustomSkillIds(null); setCustomSkillIdsVol(null); form.reset({ ...scoreDefaults, date: new Date().toISOString().split('T')[0] }); }}
@@ -1556,7 +1529,7 @@ export default function ScorePage() {
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-amber-400/80">Competition Personal Best</div>
           <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-10">
             <div className="min-w-0">
-              <div className="font-medium tracking-[-0.05em] tabular-nums text-5xl sm:text-6xl leading-none text-gradient-gold" data-testid="text-pb-set">
+              <div className="font-extrabold tracking-[-0.05em] tabular-nums text-5xl sm:text-6xl leading-none text-gradient-gold" data-testid="text-pb-set">
                 {pb.set.score > 0 ? fmtScore(pb.set.score) : "—"}
               </div>
               <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/60 mt-2">Set Score</div>
@@ -1574,7 +1547,7 @@ export default function ScorePage() {
               </div>
             </div>
             <div className="min-w-0 sm:border-l sm:border-border/20 sm:pl-10">
-              <div className="font-medium tracking-[-0.05em] tabular-nums text-5xl sm:text-6xl leading-none text-gradient-gold" data-testid="text-pb-vol">
+              <div className="font-extrabold tracking-[-0.05em] tabular-nums text-5xl sm:text-6xl leading-none text-gradient-gold" data-testid="text-pb-vol">
                 {pb.vol.score > 0 ? fmtScore(pb.vol.score) : "—"}
               </div>
               <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/60 mt-2">Vol Score</div>
@@ -1597,10 +1570,26 @@ export default function ScorePage() {
       )}
 
       <Dialog open={isAdding} onOpenChange={(o) => { if (!o) { setIsAdding(false); setEditingScore(null); } }}>
-        <DialogContent aria-describedby={undefined} className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingScore ? "Edit Score" : "Add New Score"}</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto rounded-[24px] border-white/[0.07]" style={pageAccentStyle("score")}>
+          <DialogHero
+            icon={Trophy}
+            eyebrow="Score board"
+            title={editingScore ? "Edit score" : "Add score"}
+            description={editingScore ? "Update the details of this score." : "Enter it yourself or read it off a photo."}
+            action={!editingScore && (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8 rounded-lg px-2.5 text-xs font-semibold gap-1.5 shrink-0 pressable"
+                disabled={parsingSheet}
+                onClick={() => { pendingFinalForRef.current = null; sheetInputRef.current?.click(); }}
+                data-testid="button-upload-scoresheet"
+              >
+                {parsingSheet ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageUp className="w-3.5 h-3.5" />}
+                {parsingSheet ? "Reading..." : "From photo"}
+              </Button>
+            )}
+          />
             <Form {...form}>
               <form onSubmit={form.handleSubmit((data) => {
                 const round3 = (n: number | null | undefined) =>
@@ -1744,7 +1733,7 @@ export default function ScorePage() {
                 )}
 
                 <div className="space-y-4 relative min-h-[280px]">
-                  <h3 className="font-bold text-sm uppercase tracking-wider text-primary/60">
+                  <h3 className="font-bold text-sm uppercase tracking-wider text-[hsl(var(--page-accent)/0.7)]">
                     {form.watch("category") === "both"
                       ? "Set Score"
                       : form.watch("category") === "vol_vol"
@@ -1840,7 +1829,7 @@ export default function ScorePage() {
 
                 {(form.watch("category") === "both" || form.watch("category") === "vol_vol") && (
                   <div className="space-y-4 pt-4 border-t border-primary/10 relative min-h-[280px]">
-                    <h3 className="font-bold text-sm uppercase tracking-wider text-primary/60">
+                    <h3 className="font-bold text-sm uppercase tracking-wider text-[hsl(var(--page-accent)/0.7)]">
                       {form.watch("category") === "vol_vol" ? "Vol Score 2" : "Vol Score"}
                     </h3>
                     <div className="flex gap-2 items-end">
@@ -1941,45 +1930,19 @@ export default function ScorePage() {
 
       {/* ---- Scoresheet photo confirmation (review → details) ---- */}
       <Dialog open={sheetOpen} onOpenChange={(o) => { if (!o && !createMutation.isPending && !sheetFinishing && !savingExecDrafts && !parsingSheet) closeSheet(); }}>
-        <DialogContent aria-describedby={undefined} className="sm:max-w-lg max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {sheetStep === "crop" ? (sheetFinalFor ? "Select the final's scores" : "Select the scores to read") : sheetStep === "review" ? "Check the scores" : sheetStep === "details" ? "Score details" : "Add the deductions too?"}
+        <DialogContent aria-describedby={undefined} className="sm:max-w-lg max-h-[90dvh] overflow-y-auto" style={pageAccentStyle("score")}>
+          <DialogHero
+            icon={Trophy}
+            eyebrow="Score board"
+            noPeriod
+            title={<>
+              {sheetStep === "review" ? "Check the scores" : sheetStep === "details" ? "Score details" : "Add the deductions too?"}
               {(sheetStep === "review" || sheetStep === "details") && (
                 <span className="ml-2 text-xs font-mono font-normal text-muted-foreground">{sheetStep === "review" ? "1/2" : "2/2"}</span>
               )}
-            </DialogTitle>
-          </DialogHeader>
-          {sheetStep === "crop" ? (
-            sheetPhotoOriginal && (
-              <div className="space-y-3">
-                <PhotoAreaSelect
-                  ref={sheetCropRef}
-                  photoDataUrl={sheetPhotoOriginal}
-                  testIdPrefix="sheet-crop"
-                  topHint="Draw a rectangle over your scores — the lines with the E / D / H / T numbers. Skip to read the whole photo."
-                  bottomHint="You can select multiple areas, e.g. the header with the competition name plus your score lines."
-                  selectedHint="draw more or read"
-                  onSelectionChange={setSheetCropCount}
-                />
-                <div className="flex justify-end gap-2">
-                  <Button variant="ghost" onClick={closeSheet} disabled={parsingSheet} data-testid="button-sheet-crop-cancel">
-                    Cancel
-                  </Button>
-                  <Button onClick={readSheetSelection} disabled={parsingSheet} className="gap-2" data-testid="button-sheet-crop-read">
-                    {parsingSheet ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageUp className="w-4 h-4" />}
-                    {parsingSheet
-                      ? "Reading..."
-                      : sheetCropCount > 1
-                        ? `Read ${sheetCropCount} areas`
-                        : sheetCropCount === 1
-                          ? "Read selection"
-                          : "Read whole photo"}
-                  </Button>
-                </div>
-              </div>
-            )
-          ) : sheetStep === "review" ? (
+            </>}
+          />
+          {sheetStep === "review" ? (
             <div className="space-y-4">
               <p className="text-xs text-muted-foreground">
                 These are the values read from the scoresheet — fix anything that's wrong before continuing. A blank DD usually means a set routine.

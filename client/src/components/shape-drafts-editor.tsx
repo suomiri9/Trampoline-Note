@@ -2,7 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, X, Link2 } from "lucide-react";
+import { Plus, X, Link2, Shapes } from "lucide-react";
+import { DialogHero } from "@/components/dialog-hero";
+import { pageAccentStyle } from "@/lib/page-accent";
 import { useState } from "react";
 import type { Skill } from "@shared/schema";
 import { cn } from "@/lib/utils";
@@ -159,10 +161,8 @@ export function ShapeDraftsEditor({
 
       {assignableSkills && (
         <Dialog open={pickerOpen} onOpenChange={(o) => { if (!o) closePicker(); }}>
-          <DialogContent aria-describedby={undefined} className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Assign existing as shape</DialogTitle>
-            </DialogHeader>
+          <DialogContent aria-describedby={undefined} className="sm:max-w-md" style={pageAccentStyle("skills")}>
+            <DialogHero icon={Shapes} eyebrow="The Arsenal" title="Assign existing as shape" />
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
                 Pull an existing skill in as a shape variant of this base. Its notes, history and DD are preserved.

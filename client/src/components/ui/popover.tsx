@@ -26,7 +26,7 @@ const PopoverContent = React.forwardRef<
       // Motion: fade+zoom growing from the trigger's corner (transform origin),
       // mirrored in/out, no overshoot; reduced motion keeps only the fade.
       className={cn(
-        "z-50 max-h-[var(--radix-popover-content-available-height)] overflow-y-auto w-72 rounded-xl border border-border/60 bg-popover p-4 text-popover-foreground shadow-xl shadow-black/30 outline-none ease-out duration-150 data-[state=closed]:duration-100 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 motion-safe:data-[state=open]:zoom-in-95 motion-safe:data-[state=closed]:zoom-out-95 origin-[--radix-popover-content-transform-origin]",
+        "z-50 max-h-[var(--radix-popover-content-available-height)] overflow-y-auto w-72 rounded-xl border border-border/60 bg-popover p-4 text-popover-foreground shadow-xl shadow-black/30 outline-none ease-out-strong duration-150 data-[state=closed]:duration-100 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 motion-safe:data-[state=open]:zoom-in-95 motion-safe:data-[state=closed]:zoom-out-95 origin-[--radix-popover-content-transform-origin]",
         className
       )}
       {...props}

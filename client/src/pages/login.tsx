@@ -139,13 +139,18 @@ export default function LoginPage() {
               disabled={isPending}
               data-testid="button-submit"
             >
-              {isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : mode === "login" ? (
-                "Sign in"
-              ) : (
-                "Create account"
-              )}
+              <span
+                key={String(isPending)}
+                className="animate-morph-blur inline-flex items-center justify-center gap-2"
+              >
+                {isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : mode === "login" ? (
+                  "Sign in"
+                ) : (
+                  "Create account"
+                )}
+              </span>
             </Button>
           </form>
 

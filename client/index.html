@@ -157,7 +157,7 @@
     <link rel="preload" href="/icon-512.png" as="image" fetchpriority="high" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   </head>
   <body>
     <!-- Boot splash: painted straight from HTML so the trampoline bounce starts
@@ -189,37 +189,66 @@
         animation:boot-spin .8s linear infinite}
       html:not(.dark) #boot-splash-loader{border-color:hsl(200 98% 39.4% / .2);border-top-color:hsl(200 98% 39.4%)}
       #boot-splash.ready #boot-splash-loader{display:none}
-      #boot-splash-group{display:flex;flex-direction:column;align-items:center;gap:1.75rem;visibility:hidden}
-      #boot-splash.ready #boot-splash-group{visibility:visible;animation:boot-fade-in-up .4s ease-out}
-      #boot-splash-icon{width:6rem;height:6rem;border-radius:1.5rem;-webkit-user-select:none;user-select:none;
-        box-shadow:0 0 0 1px hsl(0 0% 100% / .1),0 25px 50px -12px hsl(199 95.5% 73.9% / .25);
+      #boot-splash-group{display:flex;flex-direction:column;align-items:center;gap:1.5rem;visibility:hidden}
+      #boot-splash.ready #boot-splash-group{visibility:visible}
+      #boot-splash-stage{position:relative;display:flex;justify-content:center;width:9rem;height:7.6rem}
+      #boot-splash.ready #boot-splash-stage{animation:boot-pop .5s cubic-bezier(.23,1,.32,1) both}
+      #boot-splash-glow{position:absolute;left:50%;top:2.6rem;width:17rem;height:17rem;margin:-8.5rem 0 0 -8.5rem;
+        border-radius:9999px;pointer-events:none;
+        background:radial-gradient(circle,hsl(199 95.5% 73.9% / .13) 0%,transparent 62%)}
+      html:not(.dark) #boot-splash-glow{background:radial-gradient(circle,hsl(200 98% 39.4% / .08) 0%,transparent 62%)}
+      #boot-splash-icon{position:relative;width:6rem;height:6rem;border-radius:1.5rem;-webkit-user-select:none;user-select:none;
+        box-shadow:0 0 0 1px hsl(0 0% 100% / .1),0 8px 20px -8px hsl(199 95.5% 73.9% / .35),0 25px 50px -12px hsl(199 95.5% 73.9% / .25);
         animation:boot-splash-bounce .95s infinite;transform-origin:center bottom}
       html:not(.dark) #boot-splash-icon{box-shadow:0 0 0 1px hsl(0 0% 0% / .05),0 25px 50px -12px hsl(200 98% 39.4% / .25)}
-      #boot-splash-text{display:flex;flex-direction:column;align-items:center;gap:.625rem}
-      #boot-splash-title{margin:0;font-family:'Inter',sans-serif;font-weight:800;font-size:2.6rem;line-height:1.02;
-        letter-spacing:-0.03em;color:hsl(180 6.7% 97.1%)}
+      #boot-splash-ground{position:absolute;bottom:0;left:50%;width:4.9rem;height:.8rem;margin-left:-2.45rem;
+        border-radius:9999px;filter:blur(3px);
+        background:radial-gradient(50% 50% at 50% 50%,hsl(199 95.5% 73.9% / .3) 0%,transparent 72%);
+        animation:boot-ground .95s infinite}
+      html:not(.dark) #boot-splash-ground{background:radial-gradient(50% 50% at 50% 50%,hsl(210 30% 10% / .22) 0%,transparent 72%)}
+      #boot-splash-text{display:flex;flex-direction:column;align-items:center;gap:.7rem}
+      #boot-splash.ready #boot-splash-text{animation:boot-fade-in-up .45s cubic-bezier(.23,1,.32,1) .07s both}
+      #boot-splash-title{margin:0;font-family:'Inter',sans-serif;font-weight:800;font-size:clamp(2.15rem,9vw,2.6rem);line-height:1.02;
+        letter-spacing:-0.035em;color:hsl(180 6.7% 97.1%)}
       html:not(.dark) #boot-splash-title{color:hsl(210 33.3% 5.9%)}
-      #boot-splash-title span{color:hsl(199 95.5% 73.9%)}
-      html:not(.dark) #boot-splash-title span{color:hsl(200 98% 39.4%)}
-      #boot-splash-tagline{margin:0;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;
-        letter-spacing:.18em;text-transform:uppercase;color:hsl(216 6.9% 57.5% / .8);
+      #boot-splash-title span{padding:.1em .08em;margin:-.1em -.08em;
+        background:linear-gradient(135deg,hsl(217 91% 60%) 0%,hsl(239 84% 67%) 100%);
+        -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+      html:not(.dark) #boot-splash-title span{background:linear-gradient(135deg,hsl(221 83% 53%) 0%,hsl(239 84% 62%) 100%);
+        -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+      #boot-splash-tagline{margin:0;font-family:'Inter',sans-serif;font-size:10px;font-weight:500;
+        letter-spacing:.22em;text-transform:uppercase;color:hsl(216 6.9% 57.5% / .7);
         font-feature-settings:"liga" 0,"calt" 0;font-variant-ligatures:none}
-      html:not(.dark) #boot-splash-tagline{color:hsl(211 11.1% 44.1% / .8)}
+      html:not(.dark) #boot-splash-tagline{color:hsl(211 11.1% 44.1% / .75)}
+      #boot-splash-tagline .bs-dot{color:hsl(217 91% 60% / .9);margin:0 .1em}
+      html:not(.dark) #boot-splash-tagline .bs-dot{color:hsl(221 83% 53% / .8)}
       @keyframes boot-spin{to{transform:rotate(360deg)}}
-      @keyframes boot-fade-in-up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes boot-pop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+      @keyframes boot-fade-in-up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
       @keyframes boot-splash-bounce{
         0%,100%{transform:translateY(0) scaleX(1) scaleY(1);animation-timing-function:cubic-bezier(.33,0,.4,1)}
         45%{transform:translateY(-26px) scaleX(.97) scaleY(1.03);animation-timing-function:cubic-bezier(.6,0,.67,1)}
         90%{transform:translateY(0) scaleX(1.05) scaleY(.95)}}
-      @media (prefers-reduced-motion:reduce){#boot-splash-icon{animation:none}#boot-splash.ready #boot-splash-group{animation:none}}
+      @keyframes boot-ground{
+        0%,100%{transform:scaleX(1.05);opacity:.95;animation-timing-function:cubic-bezier(.33,0,.4,1)}
+        45%{transform:scaleX(.66);opacity:.45;animation-timing-function:cubic-bezier(.6,0,.67,1)}
+        90%{transform:scaleX(1.16);opacity:1}}
+      @media (prefers-reduced-motion:reduce){
+        #boot-splash-icon,#boot-splash-ground{animation:none}
+        #boot-splash-ground{opacity:.8}
+        #boot-splash.ready #boot-splash-stage,#boot-splash.ready #boot-splash-text{animation:none}}
     </style>
     <div id="boot-splash" data-testid="splash-screen" aria-hidden="true">
       <div id="boot-splash-loader"></div>
       <div id="boot-splash-group">
-        <img id="boot-splash-icon" src="/icon-512.png" alt="" draggable="false" />
+        <div id="boot-splash-stage">
+          <div id="boot-splash-glow"></div>
+          <img id="boot-splash-icon" src="/icon-512.png" alt="" draggable="false" />
+          <div id="boot-splash-ground"></div>
+        </div>
         <div id="boot-splash-text">
           <h1 id="boot-splash-title">Trampoline <span>Note</span></h1>
-          <p id="boot-splash-tagline">Jump · Log · Progress</p>
+          <p id="boot-splash-tagline">Jump <span class="bs-dot">·</span> Log <span class="bs-dot">·</span> Progress</p>
         </div>
       </div>
     </div>
@@ -251,7 +280,7 @@
           var fontsOk = function () { fontsDone = true; check(); };
           Promise.all([
             document.fonts.load("800 1em 'Inter'"),
-            document.fonts.load("500 1em 'IBM Plex Mono'"),
+            document.fonts.load("500 1em 'Inter'"),
           ]).then(fontsOk, fontsOk);
         } else {
           fontsDone = true;

@@ -23,7 +23,7 @@ export function StarRating({ value, onChange, readonly = false, size = "md" }: S
           type="button"
           disabled={readonly}
           className={cn(
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full transition-all duration-200",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full",
             isSm ? "p-0" : "p-1",
             readonly ? "cursor-default" : "cursor-pointer hover:scale-110 pressable [--press-scale:0.9]"
           )}
@@ -39,7 +39,7 @@ export function StarRating({ value, onChange, readonly = false, size = "md" }: S
         >
           <Star
             className={cn(
-              "transition-all duration-300",
+              "transition-colors duration-200",
               isSm ? "w-2.5 h-2.5" : "w-5 h-5",
               displayValue >= star 
                 ? "fill-yellow-400 text-yellow-400" 

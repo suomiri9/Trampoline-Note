@@ -5,14 +5,14 @@
 @layer base {
   :root {
     color-scheme: light;
-    /* Intent type stack: Inter everywhere, IBM Plex Mono for meta/code.
+    /* Intent type stack: Inter everywhere — monospace is banned (user, Aug 2026);
        --font-display stays as an alias so legacy font-display classes render
        the same headline face. */
     --font-display: 'Inter', sans-serif;
     --font-body: 'Inter', sans-serif;
     --font-sans: 'Inter', sans-serif;
     --font-serif: 'Inter', sans-serif;
-    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --font-mono: var(--font-sans); /* user banned monospace (Aug 2026) — micro-labels render in the sans stack */
 
     /* Color tokens live in intent-tokens.css — GENERATED from the Intent
        design system (artifacts/intent/tokens.json). Only app-specific
@@ -21,6 +21,18 @@
     /* Accent used for "Points to Fix" / secondary warm action — unified with
        the Intent amber chart token (re-resolves per mode). */
     --gold: var(--chart-3);
+
+    /* Strong easing curves (emil-design-eng, .agents/skills/emil-design-eng):
+       the built-in CSS keywords are too weak to feel intentional. Registered
+       as Tailwind utilities ease-out-strong / ease-in-out-strong / ease-drawer
+       in tailwind.config.ts. */
+    --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Per-page accent identity (nav icon colors). Pages override via <PageLayout accent=...>. */
+  --page-accent: var(--primary);
+  --page-accent-2: var(--chart-4);
   }
 
   /* Dark is the default theme (class set in index.html before first paint;
@@ -178,6 +190,13 @@
 /* Intent signature: sky→indigo gradient text — headlines, stat figures,
    accent words. Token-driven (primary → chart-4) so it adapts per mode. */
 .text-gradient-primary {
+  /* bg-clip-text only paints the line box: tight leading (0.92) lets descenders
+     hang below it and negative tracking lets the last glyph's ink pass its edge —
+     both got shaved to transparent. Pad the paint box back out; the negative
+     margins cancel any layout impact. */
+  padding: 0.16em 0.1em 0.22em 0.04em;
+  margin: -0.16em -0.1em -0.22em -0.04em;
+
   background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -186,6 +205,13 @@
 }
 
 .text-gradient-gold {
+  /* bg-clip-text only paints the line box: tight leading (0.92) lets descenders
+     hang below it and negative tracking lets the last glyph's ink pass its edge —
+     both got shaved to transparent. Pad the paint box back out; the negative
+     margins cancel any layout impact. */
+  padding: 0.16em 0.1em 0.22em 0.04em;
+  margin: -0.16em -0.1em -0.22em -0.04em;
+
   background: linear-gradient(135deg, #fbbf24 0%, #fb923c 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -193,11 +219,25 @@
   color: transparent;
 }
 
+.text-gradient-page {
+  /* bg-clip-text only paints the line box: tight leading (0.92) lets descenders
+     hang below it and negative tracking lets the last glyph's ink pass its edge —
+     both got shaved to transparent. Pad the paint box back out; the negative
+     margins cancel any layout impact. */
+  padding: 0.16em 0.1em 0.22em 0.04em;
+  margin: -0.16em -0.1em -0.22em -0.04em;
+
+  background: linear-gradient(135deg, hsl(var(--page-accent)) 0%, hsl(var(--page-accent-2)) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 /* Custom subtle animations for clean minimal feel */
 @keyframes fade-in-up {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -206,7 +246,8 @@
 }
 
 .animate-fade-in-up {
-  animation: fade-in-up 0.4s ease-out forwards;
+  /* emil-design-eng: list entrances stay under 300ms on the strong curve. */
+  animation: fade-in-up 250ms var(--ease-out-strong) forwards;
 }
 
 /* Splash screen: a trampoline-style bounce for the app mark. */
@@ -245,7 +286,7 @@
   box-shadow: none;
   /* Press feedback uses the standalone `scale` property at the shared
      100ms pointer-down timing (docs/apple-design-skill.md §1). */
-  transition: border-color 0.2s ease, scale 100ms ease-out;
+  transition: border-color 0.2s ease, scale 100ms var(--ease-out-strong);
 }
 
 .dark .card-3d {
@@ -254,8 +295,13 @@
   box-shadow: none;
 }
 
-.card-3d-hover:hover {
-  border-color: hsl(var(--primary) / 0.35);
+/* Hover tint only for devices that truly hover (emil-design-eng): on touch
+   screens :hover sticks after a tap until the next tap elsewhere. Presses
+   keep their own :active feedback. */
+@media (hover: hover) and (pointer: fine) {
+  .card-3d-hover:hover {
+    border-color: hsl(var(--primary) / 0.35);
+  }
 }
 
 .card-3d-hover:active {
@@ -291,11 +337,13 @@
   transition: box-shadow 0.18s ease;
 }
 
-.btn-3d:hover {
-  box-shadow:
-    0 0 0 1px hsl(var(--primary) / 0.6),
-    0 0 32px 0 hsl(var(--primary) / 0.7),
-    0 6px 22px -4px hsl(var(--primary) / 0.6);
+@media (hover: hover) and (pointer: fine) {
+  .btn-3d:hover {
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0.6),
+      0 0 32px 0 hsl(var(--primary) / 0.7),
+      0 6px 22px -4px hsl(var(--primary) / 0.6);
+  }
 }
 
 .btn-3d:active {
@@ -312,9 +360,11 @@
   transition: border-color 0.18s ease, background-color 0.18s ease;
 }
 
-.btn-gold:hover {
-  border-color: hsl(var(--gold) / 0.7);
-  background: hsl(var(--gold) / 0.12);
+@media (hover: hover) and (pointer: fine) {
+  .btn-gold:hover {
+    border-color: hsl(var(--gold) / 0.7);
+    background: hsl(var(--gold) / 0.12);
+  }
 }
 
 .icon-3d {
@@ -377,6 +427,12 @@ html, body {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  /* Desktop browsers' scroll anchoring fights the collapsing PageHeader: the
+     collapse shrinks the sticky header, anchoring "compensates" scrollTop back
+     under the expand threshold, and the header flip-flops mid-state when you
+     stop scrolling right at the boundary. iOS has no scroll anchoring, so this
+     only ever showed on desktop. */
+  overflow-anchor: none;
 }
 
 /* Horizontally scrollable rows (e.g. coach reply suggestions) — scrolls but
@@ -389,12 +445,15 @@ html, body {
   display: none;
 }
 
-/* Staggered animation delays for lists */
-.stagger-1 { animation-delay: 0.1s; }
-.stagger-2 { animation-delay: 0.2s; }
-.stagger-3 { animation-delay: 0.3s; }
-.stagger-4 { animation-delay: 0.4s; }
-.stagger-5 { animation-delay: 0.5s; }
+/* Staggered list entrances (emil-design-eng: 30-80ms steps, never longer).
+   50ms steps: the whole cascade resolves within ~450ms instead of ~900ms,
+   reading as one gesture rather than a queue. Stagger is decorative — rows
+   are interactive from the first frame. */
+.stagger-1 { animation-delay: 0ms; }
+.stagger-2 { animation-delay: 50ms; }
+.stagger-3 { animation-delay: 100ms; }
+.stagger-4 { animation-delay: 150ms; }
+.stagger-5 { animation-delay: 200ms; }
 
 /* ---------------------------------------------------------------------------
    Intent interaction elevation (ported from the design system): hover/active
@@ -441,12 +500,23 @@ html, body {
   z-index: 999;
 }
 
-.hover-elevate:hover:not(.no-default-hover-elevate)::after,
+/* Hover tints gated to real pointers (emil-design-eng) — Tailwind's hover:
+   utilities get the same gate via future.hoverOnlyWhenSupported. Active
+   (press) tints stay unconditional: that's the touch feedback. */
+@media (hover: hover) and (pointer: fine) {
+  .hover-elevate:hover:not(.no-default-hover-elevate)::after {
+    background-color: var(--elevate-1);
+  }
+
+  .hover-elevate-2:hover:not(.no-default-hover-elevate)::after {
+    background-color: var(--elevate-2);
+  }
+}
+
 .active-elevate:active:not(.no-default-active-elevate)::after {
   background-color: var(--elevate-1);
 }
 
-.hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
 .active-elevate-2:active:not(.no-default-active-elevate)::after {
   background-color: var(--elevate-2);
 }
@@ -470,8 +540,8 @@ html, body {
    longer settle so hover tints still ease. */
 .pressable {
   transition:
-    scale 100ms ease-out,
-    transform 150ms ease-out,
+    scale 100ms var(--ease-out-strong),
+    transform 150ms var(--ease-out-strong),
     background-color 150ms ease-out,
     border-color 150ms ease-out,
     color 150ms ease-out,
@@ -508,7 +578,7 @@ html, body {
   }
 }
 .animate-materialize {
-  animation: materialize-in 200ms ease-out;
+  animation: materialize-in 200ms var(--ease-out-strong);
 }
 
 /* §14 reduced motion: presses keep their overlay tint but stop scaling;
@@ -539,5 +609,45 @@ html, body {
     background: hsl(var(--background));
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+  }
+}
+
+
+/* ---------------------------------------------------------------------------
+   emil-design-eng additions (.agents/skills/emil-design-eng). */
+
+/* Blur-crossfade for in-place content morphs (a button swapping label <-> a
+   spinner): re-key the wrapper on the state so the incoming content blurs in
+   instead of two overlapping states hard-swapping.
+   <span key={String(pending)} className="animate-morph-blur">...</span> */
+@keyframes morph-blur-in {
+  from {
+    opacity: 0.3;
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+.animate-morph-blur {
+  animation: morph-blur-in 180ms var(--ease-out-strong);
+}
+
+/* Sonner toasts: exits faster than enters. Enter keeps Sonner's unhurried
+   400ms ease (its signature feel); a dismissing front toast leaves in 200ms.
+   Swipe-out already runs ~200ms in Sonner's own keyframes. */
+html [data-sonner-toast][data-removed='true'][data-front='true'][data-swipe-out='false'] {
+  transition-duration: 200ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-morph-blur {
+    animation: reduced-fade-in 150ms ease-out;
+  }
+  /* Toasts appear/disappear as instant fades; stack shuffling stops sliding. */
+  [data-sonner-toast] {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }

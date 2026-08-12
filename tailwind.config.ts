@@ -2,6 +2,11 @@ import type { Config } from "tailwindcss";
 
 export default {
   darkMode: ["class"],
+  // emil-design-eng: without this, hover styles stick after taps on touch
+  // screens (hover: utilities emit inside @media (hover:hover)(pointer:fine)).
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
@@ -82,6 +87,14 @@ export default {
           offline: "rgb(156 163 175)",
         },
       },
+      // emil-design-eng strong curves (vars in index.css :root). These drive
+      // BOTH transitions and Radix enter/exit animations - tailwindcss-animate
+      // re-emits ease-* as animation-timing-function.
+      transitionTimingFunction: {
+        "out-strong": "var(--ease-out-strong)",
+        "in-out-strong": "var(--ease-in-out-strong)",
+        drawer: "var(--ease-drawer)",
+      },
       fontFamily: {
         sans: ["var(--font-sans)"],
         serif: ["var(--font-serif)"],
@@ -104,8 +117,10 @@ export default {
         },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
+        "accordion-down": "accordion-down 0.2s var(--ease-out-strong)",
+        "accordion-up": "accordion-up 0.2s var(--ease-out-strong)",
+        // emil-design-eng: a faster spinner reads as faster loading.
+        spin: "spin 0.65s linear infinite",
       },
     },
   },

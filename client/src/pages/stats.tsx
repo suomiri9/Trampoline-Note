@@ -59,7 +59,7 @@ export default function StatsPage() {
   if (notesLoading || skillsLoading || routinesLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
+        <Loader2 className="w-8 h-8 animate-spin text-[hsl(var(--page-accent)/0.4)]" />
       </div>
     );
   }
@@ -329,42 +329,49 @@ export default function StatsPage() {
   const showTurnsDelta = navigable && (prevPeriodTurns > 0 || periodTurns > 0);
 
   return (
-    <PageLayout>
+    <PageLayout accent="progress">
       <PageHeader
-        eyebrow="Progress"
         kicker="Analytics"
         title="Proof of progress."
         accent="of progress."
         subtitle="Difficulty and session trends over time."
       />
 
+      {/* Period + range selector — pinned beneath the page header while scrolling.
+          Lives outside the grid: sticky grid items only stick within their own row. */}
+      <div
+        className="sticky z-20 full-bleed-bar py-2 mb-4 bg-background/90 backdrop-blur-md border-b border-white/[0.08]"
+        style={{ top: "var(--page-header-h, 96px)" }}
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-2">
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/55" data-testid="text-stats-scope">{periodTitle}</span>
+            <span className="font-mono text-[10px] text-muted-foreground/50" data-testid="text-stats-period">{periodLabel}</span>
+          </div>
+        </div>
+        {/* Range selector — Apple Stocks style segmented control */}
+        <div className="flex rounded-xl border border-border/20 p-0.5 font-mono text-[10px]">
+          {(["week", "month", "year", "all"] as Range[]).map(r => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => { setRange(r); setOffset(0); }}
+              className={cn(
+                "flex-1 rounded-[10px] px-2.5 py-1.5 uppercase tracking-wider transition-colors pressable",
+                range === r
+                  ? "bg-foreground/[0.08] text-foreground"
+                  : "text-muted-foreground/60 hover:text-muted-foreground/70"
+              )}
+              data-testid={`range-${r}`}
+            >
+              {r === "week" ? "1W" : r === "month" ? "1M" : r === "year" ? "1Y" : "All"}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid gap-6">
         <div>
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-3">
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/55" data-testid="text-stats-scope">{periodTitle}</span>
-              <span className="font-mono text-[10px] text-muted-foreground/50" data-testid="text-stats-period">{periodLabel}</span>
-            </div>
-          </div>
-          {/* Range selector — Apple Stocks style segmented control */}
-          <div className="flex rounded-xl border border-border/20 p-0.5 font-mono text-[10px] mb-4">
-            {(["week", "month", "year", "all"] as Range[]).map(r => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => { setRange(r); setOffset(0); }}
-                className={cn(
-                  "flex-1 rounded-[10px] px-2.5 py-1.5 uppercase tracking-wider transition-colors pressable",
-                  range === r
-                    ? "bg-foreground/[0.08] text-foreground"
-                    : "text-muted-foreground/60 hover:text-muted-foreground/70"
-                )}
-                data-testid={`range-${r}`}
-              >
-                {r === "week" ? "1W" : r === "month" ? "1M" : r === "year" ? "1Y" : "All"}
-              </button>
-            ))}
-          </div>
           {/* Stat strip */}
           <div className="-mx-4 sm:-mx-6 grid grid-cols-4 border-y border-border/20 py-4 px-4 sm:px-6">
             {[
@@ -374,7 +381,7 @@ export default function StatsPage() {
               { label: "Best DD", value: periodBest.toFixed(1), testId: "stat-best" },
             ].map((s, i) => (
               <div key={s.label} className={cn("space-y-1 min-w-0", i > 0 && "border-l border-border/20 pl-3")}>
-                <div className="text-[20px] sm:text-[26px] font-medium tracking-[-0.05em] leading-none tabular-nums text-gradient-primary" data-testid={s.testId}>
+                <div className="text-[20px] sm:text-[26px] font-extrabold tracking-[-0.05em] leading-none tabular-nums text-gradient-page" data-testid={s.testId}>
                   {s.value}
                 </div>
                 <div className="font-mono text-[8px] sm:text-[10px] uppercase tracking-[0.13em] text-muted-foreground/60">
@@ -389,8 +396,8 @@ export default function StatsPage() {
           <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 lg:col-span-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/55 mb-2">{periodTitle} <span className="text-primary/70">/ DD</span></div>
-                <div className="text-4xl font-medium tracking-[-0.05em] tabular-nums" data-testid="text-period-total">{totalDDInRange.toFixed(1)}</div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/55 mb-2">{periodTitle} <span className="text-[hsl(var(--page-accent)/0.7)]">/ DD</span></div>
+                <div className="text-4xl font-extrabold tracking-[-0.05em] tabular-nums" data-testid="text-period-total">{totalDDInRange.toFixed(1)}</div>
               </div>
               {showDelta && (
                 <div className="text-right shrink-0">
@@ -412,8 +419,8 @@ export default function StatsPage() {
                 <AreaChart data={chartData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
                   <defs>
                     <linearGradient id="ddFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.28} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      <stop offset="0%" stopColor="hsl(var(--page-accent))" stopOpacity={0.28} />
+                      <stop offset="100%" stopColor="hsl(var(--page-accent))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis
@@ -449,17 +456,17 @@ export default function StatsPage() {
                         ? (v: string) => { try { return format(parseISO(v), "d MMM"); } catch { return v; } }
                         : undefined
                     }
-                    cursor={{ stroke: 'hsl(var(--primary) / 0.3)', strokeWidth: 1 }}
+                    cursor={{ stroke: 'hsl(var(--page-accent) / 0.3)', strokeWidth: 1 }}
                   />
                   <Area
                     type="linear"
                     dataKey="difficulty"
-                    stroke="hsl(var(--primary))"
+                    stroke="hsl(var(--page-accent))"
                     strokeWidth={2}
                     fill="url(#ddFill)"
                     connectNulls
-                    dot={chartData.length > 35 ? false : { r: 2.5, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
-                    activeDot={{ r: 5, fill: 'hsl(var(--primary))', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+                    dot={chartData.length > 35 ? false : { r: 2.5, fill: 'hsl(var(--page-accent))', strokeWidth: 0 }}
+                    activeDot={{ r: 5, fill: 'hsl(var(--page-accent))', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -504,8 +511,8 @@ export default function StatsPage() {
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 lg:col-span-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/55 mb-2">{periodTitle} <span className="text-primary/80">/ Turns</span></div>
-                  <div className="text-4xl font-medium tracking-[-0.05em] tabular-nums" data-testid="text-period-turns">{periodTurns}</div>
+                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/55 mb-2">{periodTitle} <span className="text-[hsl(var(--page-accent)/0.8)]">/ Turns</span></div>
+                  <div className="text-4xl font-extrabold tracking-[-0.05em] tabular-nums" data-testid="text-period-turns">{periodTurns}</div>
                   <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground/50 mt-1.5" data-testid="legend-turns-chart">
                     <span className="flex items-center gap-1.5">
                       <span className="inline-block w-4 border-t-2" style={{ borderColor: 'hsl(200 90% 60%)' }} />

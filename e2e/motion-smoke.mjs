@@ -7,13 +7,19 @@
 //      fade+zoom classes; no sheet.
 //   3. Mobile + prefers-reduced-motion → centered dialog again (§14: the
 //      sheet spring is replaced by the dialog's quick cross-fade).
+//   4. emil-design-eng tokens (.agents/skills/emil-design-eng): strong easing
+//      var registered, .pressable rides it, animate-spin at 0.65s, Sonner
+//      toast enters at the TOP edge on mobile (spatial consistency).
 //
 // Prerequisites:
 // - The PRODUCTION build must be serving (workflow "Start application").
 // - Headless Chromium shell: `npx playwright-core install chromium`.
-// Run with:
-//   LD_LIBRARY_PATH=$(echo /nix/store/*-glib-*/lib | tr ' ' ':') \
-//     node e2e/motion-smoke.mjs
+// Run with LD_LIBRARY_PATH covering chromium's system libs (glib, nspr, nss,
+// atk/at-spi2, mesa, dbus, alsa, libX*...). /nix/store is ~700k entries and
+// multi-arch — do NOT glob/find over it; build the path once with the recipe
+// in .agents/memory/local-headless-e2e.md (ls the store to a file, grep
+// package names, keep x86-64 dirs, confirm with ldd), then:
+//   LD_LIBRARY_PATH=$(cat /tmp/pw-ldpath) node e2e/motion-smoke.mjs
 // Uses https://$REPLIT_DEV_DOMAIN (the session cookie is Secure-only, so
 // plain-http localhost silently fails auth).
 
@@ -65,6 +71,31 @@ try {
   if (/(^|, )scale($|,)/.test(transition)) ok("pressable transition (scale) live on buttons");
   else fail(`button transition-property lacks scale: "${transition}"`);
 
+  // emil-design-eng: strong easing tokens registered + pressable rides them,
+  // and the spinner runs fast (perceived performance).
+  const motion = await m.getByTestId("btn-sign-out").evaluate((el) => {
+    const probe = document.createElement("div");
+    probe.className = "animate-spin";
+    document.body.appendChild(probe);
+    const spin = getComputedStyle(probe).animationDuration;
+    probe.remove();
+    return {
+      easeVar: getComputedStyle(document.documentElement)
+        .getPropertyValue("--ease-out-strong")
+        .trim(),
+      timing: getComputedStyle(el).transitionTimingFunction,
+      spin,
+    };
+  });
+  // Note: the CSS minifier strips leading zeros (".23"), computed styles keep them.
+  if (/cubic-bezier\(0?\.23, ?1, ?0?\.32, ?1\)/.test(motion.easeVar))
+    ok("strong ease-out token registered");
+  else fail(`--ease-out-strong missing/wrong: "${motion.easeVar}"`);
+  if (motion.timing.includes("0.23")) ok("pressable rides the strong ease-out curve");
+  else fail(`pressable timing lacks strong curve: "${motion.timing}"`);
+  if (motion.spin === "0.65s") ok(`spinner duration ${motion.spin}`);
+  else fail(`animate-spin duration "${motion.spin}", expected "0.65s"`);
+
   await m.getByTestId("btn-sign-out").click();
   const sheet = m.getByTestId("sheet-confirm");
   await sheet.waitFor({ timeout: 5000 });
@@ -86,6 +117,15 @@ try {
   await m.waitForTimeout(700);
   if ((await m.getByTestId("sheet-confirm").count()) === 0) ok("sheet closes on cancel");
   else fail("sheet did not close on cancel");
+
+  // Sonner toast: enters at the TOP edge on mobile (spatial consistency —
+  // same edge in, same edge out, clear of the floating bottom nav).
+  await m.getByTestId("toggle-offline-mode").click();
+  const toastEl = m.locator("[data-sonner-toast]").first();
+  await toastEl.waitFor({ timeout: 10000 });
+  const ypos = await toastEl.getAttribute("data-y-position");
+  if (ypos === "top") ok("sonner toast enters top-center on mobile");
+  else fail(`mobile toast data-y-position="${ypos}", expected "top"`);
   await mctx.close();
 
   // ---- 2. Desktop: centered dialog ---------------------------------------

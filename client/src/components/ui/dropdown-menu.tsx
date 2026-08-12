@@ -48,7 +48,7 @@ const DropdownMenuSubContent = React.forwardRef<
     className={cn(
       // Motion: fade+zoom from the trigger's corner, mirrored in/out, no
       // overshoot; reduced motion keeps only the fade.
-      "z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-xl border border-border/60 bg-popover p-1.5 text-popover-foreground shadow-xl shadow-black/30 ease-out duration-150 data-[state=closed]:duration-100 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 motion-safe:data-[state=open]:zoom-in-95 motion-safe:data-[state=closed]:zoom-out-95 origin-[--radix-dropdown-menu-content-transform-origin]",
+      "z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-xl border border-border/60 bg-popover p-1.5 text-popover-foreground shadow-xl shadow-black/30 ease-out-strong duration-150 data-[state=closed]:duration-100 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 motion-safe:data-[state=open]:zoom-in-95 motion-safe:data-[state=closed]:zoom-out-95 origin-[--radix-dropdown-menu-content-transform-origin]",
       className
     )}
     {...props}
@@ -69,7 +69,7 @@ const DropdownMenuContent = React.forwardRef<
       className={cn(
         // Motion: fade+zoom from the trigger's corner, mirrored in/out, no
       // overshoot; reduced motion keeps only the fade.
-      "z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-xl border border-border/60 bg-popover p-1.5 text-popover-foreground shadow-xl shadow-black/30 ease-out duration-150 data-[state=closed]:duration-100 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 motion-safe:data-[state=open]:zoom-in-95 motion-safe:data-[state=closed]:zoom-out-95 origin-[--radix-dropdown-menu-content-transform-origin]",
+      "z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-xl border border-border/60 bg-popover p-1.5 text-popover-foreground shadow-xl shadow-black/30 ease-out-strong duration-150 data-[state=closed]:duration-100 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 motion-safe:data-[state=open]:zoom-in-95 motion-safe:data-[state=closed]:zoom-out-95 origin-[--radix-dropdown-menu-content-transform-origin]",
         className
       )}
       {...props}

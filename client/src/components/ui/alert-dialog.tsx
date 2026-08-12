@@ -16,7 +16,7 @@ const AlertDialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Overlay
     className={cn(
-      "fixed inset-0 z-50 bg-black/80 ease-out duration-200 data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/80 ease-out-strong duration-200 data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     )}
     {...props}
@@ -35,7 +35,7 @@ const AlertDialogContent = React.forwardRef<
       ref={ref}
       // Same motion spec as DialogContent — see client/src/components/ui/dialog.tsx.
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 rounded-2xl border border-border/60 bg-background p-6 shadow-2xl shadow-black/50 ease-out duration-200 data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 motion-safe:data-[state=open]:zoom-in-[.97] motion-safe:data-[state=closed]:zoom-out-[.97] data-[state=open]:slide-in-from-left-1/2 data-[state=closed]:slide-out-to-left-1/2 motion-safe:data-[state=open]:slide-in-from-top-[48%] motion-safe:data-[state=closed]:slide-out-to-top-[48%] motion-reduce:data-[state=open]:slide-in-from-top-1/2 motion-reduce:data-[state=closed]:slide-out-to-top-1/2",
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 rounded-2xl border border-border/60 bg-background p-6 shadow-2xl shadow-black/50 ease-out-strong duration-200 data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 motion-safe:data-[state=open]:zoom-in-[.97] motion-safe:data-[state=closed]:zoom-out-[.97] data-[state=open]:slide-in-from-left-1/2 data-[state=closed]:slide-out-to-left-1/2 motion-safe:data-[state=open]:slide-in-from-top-[48%] motion-safe:data-[state=closed]:slide-out-to-top-[48%] motion-reduce:data-[state=open]:slide-in-from-top-1/2 motion-reduce:data-[state=closed]:slide-out-to-top-1/2",
         className
       )}
       {...props}

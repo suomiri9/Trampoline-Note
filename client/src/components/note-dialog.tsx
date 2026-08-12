@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Clock, Loader2, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, Minus, X, Search, Shapes, ChevronDown, ChevronRight, Camera, Check, Merge, Split, Repeat } from "lucide-react";
+import { CalendarIcon, Clock, Loader2, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, Minus, X, Search, Shapes, ChevronDown, ChevronRight, Camera, Check, Merge, Split, Repeat, NotebookPen, Target, Dumbbell, Link2, Layers, Puzzle } from "lucide-react";
+import { DialogHero } from "@/components/dialog-hero";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -854,18 +855,31 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   const addNoteAndFocus = (noteIdx: number) => {
     updateSkillNote(noteIdx, "");
-    setTimeout(() => {
+    // Focus the new note input and KEEP it: when the row's ⋮ menu unmounts,
+    // the dialog's focus scope restores focus to the previously-focused
+    // element — usually the skill search bar. On iOS the menu's exit
+    // animation delays that restore past a one-shot focus(), so the search
+    // bar ends up with the keyboard. Re-assert focus until the dust settles.
+    const startedAt = Date.now();
+    let scrolled = false;
+    const claim = () => {
       const el = document.querySelector(`[data-testid="input-skill-note-${noteIdx}"]`) as HTMLInputElement | null;
-      if (!el) return;
-      const container = practiceListRef.current;
-      if (container) {
-        const containerRect = container.getBoundingClientRect();
-        const elRect = el.getBoundingClientRect();
-        const target = elRect.top - containerRect.top + container.scrollTop - (container.clientHeight / 2) + (el.clientHeight / 2);
-        container.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+      if (el) {
+        if (!scrolled) {
+          scrolled = true;
+          const container = practiceListRef.current;
+          if (container) {
+            const containerRect = container.getBoundingClientRect();
+            const elRect = el.getBoundingClientRect();
+            const target = elRect.top - containerRect.top + container.scrollTop - (container.clientHeight / 2) + (el.clientHeight / 2);
+            container.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+          }
+        }
+        if (document.activeElement !== el) el.focus();
       }
-      el.focus();
-    }, 60);
+      if (Date.now() - startedAt < 600) setTimeout(claim, 80);
+    };
+    setTimeout(claim, 60);
   };
 
   // Routine lineups are resolved against the session's own day (athlete-local),
@@ -1004,10 +1018,12 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px] md:max-w-[680px] w-[calc(100vw-32px)] p-0 rounded-[24px] border-white/[0.07] max-h-[90vh] max-h-[90dvh] sm:max-h-[82vh] sm:max-h-[82dvh] flex flex-col overflow-clip">
         <div className="p-6 pb-4 flex-none">
-          <DialogHeader>
-            <DialogTitle className="text-3xl">{isEditing ? "Edit Session" : "Log Training Session"}</DialogTitle>
-            <DialogDescription>Record your notes and skills practiced.</DialogDescription>
-          </DialogHeader>
+          <DialogHero
+            icon={NotebookPen}
+            eyebrow="Training log"
+            title={isEditing ? "Edit session" : "Log session"}
+            description="Record your notes and skills practiced."
+          />
           <div className="mt-3 grid grid-cols-3 gap-1 p-1 rounded-xl bg-white/[0.03]" role="tablist" aria-label="Session form steps">
             {([1, 2, 3] as const).map((s, i) => (
               <button
@@ -1034,7 +1050,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
               <div className={cn("space-y-4", noteStep !== 1 && "hidden")}>
                 <FormField control={form.control} name="date" render={({ field }) => (
                   <FormItem className="flex-1">
-                    <FormLabel>Date</FormLabel>
+                    <FormLabel className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Date</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -1061,7 +1077,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
               </div>
 
               <div className={cn("space-y-3", noteStep !== 2 && "hidden")}>
-                <FormLabel className="text-foreground/80 font-medium">Skills & Drills Practiced</FormLabel>
+                <FormLabel className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Skills & drills practiced</FormLabel>
 
                 <div className="flex flex-wrap gap-2">
                   <div className="flex w-full sm:w-auto sm:flex-1 min-w-0 sm:basis-0 h-11 rounded-xl border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
@@ -1195,7 +1211,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     variant={isConnectMode ? "default" : "outline"}
                     size="sm"
                     className={cn(
-                      "h-11 shrink-0 px-3 text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all",
+                      "h-11 shrink-0 px-3 text-[10px] font-bold uppercase tracking-wider rounded-xl",
                       isConnectMode ? "bg-red-500 text-white shadow-md hover:bg-red-600" : "border-red-300 text-red-500 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
                     )}
                     onClick={() => setIsConnectMode(!isConnectMode)}
@@ -1533,7 +1549,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                             variant={reviewConnectMode ? "default" : "outline"}
                             size="sm"
                             className={cn(
-                              "h-11 shrink-0 px-3 text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all",
+                              "h-11 shrink-0 px-3 text-[10px] font-bold uppercase tracking-wider rounded-xl",
                               reviewConnectMode ? "bg-red-500 text-white shadow-md hover:bg-red-600" : "border-red-300 text-red-500 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
                             )}
                             onClick={() => setReviewConnectMode(!reviewConnectMode)}
@@ -1682,9 +1698,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
                 <Dialog open={showNewSkill} onOpenChange={(o) => { if (!o) { setShowNewSkill(false); setNewSkillStep(1); } }}>
                   <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>{newSkillIsDrill ? "Add New Drill" : "Add New Skill"}</DialogTitle>
-                    </DialogHeader>
+                    <DialogHero icon={newSkillIsDrill ? Dumbbell : Target} eyebrow="The Arsenal" title={newSkillIsDrill ? "Add drill" : "Add skill"} />
                     <div className="space-y-3">
                       {newSkillStep === 1 ? (
                         <>
@@ -1789,9 +1803,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
                 <Dialog open={showNewConn} onOpenChange={(o) => { if (!o) setShowNewConn(false); }}>
                   <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Add New Connection</DialogTitle>
-                    </DialogHeader>
+                    <DialogHero icon={Link2} eyebrow="The Arsenal" title="Add connection" />
                     <div className="space-y-3">
                       {(() => {
                         const dupConns = allItems?.filter(s => s.isDrill === 2 && s.archived !== 1) || [];
@@ -1937,9 +1949,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
                 <Dialog open={showNewRoutine} onOpenChange={(o) => { if (!o) setShowNewRoutine(false); }}>
                   <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Create Routine</DialogTitle>
-                    </DialogHeader>
+                    <DialogHero icon={Layers} eyebrow="Routine builder" title="Create routine" />
                     <div className="space-y-4">
                       {(() => {
                         const dupRoutines = routines?.filter(r => r.archived !== 1) || [];
@@ -2050,9 +2060,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   return (
                     <Dialog open={showNewPart} onOpenChange={(o) => { if (!o) { setShowNewPart(false); setNewPartRoutineId(null); setNewPartStart(1); setNewPartEnd(10); setNewPartNameOverride(null); } }}>
                       <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Add New Routine Part</DialogTitle>
-                        </DialogHeader>
+                        <DialogHero icon={Puzzle} eyebrow="The Arsenal" title="Add routine part" />
                         <div className="space-y-3">
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Routine</label>
@@ -2681,7 +2689,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 </div>
                 <FormField control={form.control} name="rating" render={({ field }) => (
                   <FormItem className="space-y-0">
-                    <FormLabel>Session Rating</FormLabel>
+                    <FormLabel className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Session rating</FormLabel>
                     <FormControl>
                       <div className="h-9 flex items-center bg-white/[0.015] rounded-xl px-1.5 border border-white/[0.07] w-fit">
                         <StarRating value={field.value} onChange={field.onChange} />
@@ -2690,7 +2698,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="content" render={({ field }) => (
-                  <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea placeholder="How did the session go?" className="min-h-[100px] rounded-xl" {...field} /></FormControl></FormItem>
+                  <FormItem><FormLabel className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Notes</FormLabel><FormControl><Textarea placeholder="How did the session go?" className="min-h-[100px] rounded-xl" {...field} /></FormControl></FormItem>
                 )} />
               </div>
               {noteStep === 1 ? (
@@ -2718,7 +2726,12 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     onClick={() => handleOpenChange(false)}
                     data-testid="btn-note-done"
                   >
-                    {(createNote.isPending || updateNote.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : "End Training"}
+                    <span
+                      key={String(createNote.isPending || updateNote.isPending)}
+                      className="animate-morph-blur inline-flex items-center justify-center gap-2"
+                    >
+                      {(createNote.isPending || updateNote.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : "End training"}
+                    </span>
                   </Button>
                 </div>
               )}

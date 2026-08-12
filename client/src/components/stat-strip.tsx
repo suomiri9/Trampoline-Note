@@ -3,8 +3,8 @@ import { cn } from "@/lib/utils";
 export interface StatStripItem {
   label: string;
   value: string;
-  /** Gradient accent for the figure. Defaults to the primary blue→indigo. */
-  accent?: "primary" | "gold" | "plain";
+  /** Gradient accent for the figure. Defaults to the primary blue→indigo; "page" follows the page's accent color. */
+  accent?: "primary" | "gold" | "plain" | "page";
   testId?: string;
 }
 
@@ -21,7 +21,7 @@ const COLS: Record<number, string> = {
  * presentational: values are formatted strings derived from data the
  * page already loads.
  */
-export function StatStrip({ items, className }: { items: StatStripItem[]; className?: string }) {
+export function StatStrip({ items, accent, className }: { items: StatStripItem[]; accent?: StatStripItem["accent"]; className?: string }) {
   return (
     <div
       className={cn(
@@ -34,8 +34,8 @@ export function StatStrip({ items, className }: { items: StatStripItem[]; classN
         <div key={s.label} className={cn("space-y-1 min-w-0", i > 0 && "border-l border-border/20 pl-3")}>
           <div
             className={cn(
-              "text-[20px] sm:text-[26px] font-medium tracking-[-0.05em] leading-none tabular-nums truncate",
-              s.accent === "gold" ? "text-gradient-gold" : s.accent === "plain" ? "" : "text-gradient-primary",
+              "text-[20px] sm:text-[26px] font-extrabold tracking-[-0.05em] leading-none tabular-nums truncate",
+              (s.accent ?? accent) === "gold" ? "text-gradient-gold" : (s.accent ?? accent) === "plain" ? "" : (s.accent ?? accent) === "page" ? "text-gradient-page" : "text-gradient-primary",
             )}
             data-testid={s.testId}
           >

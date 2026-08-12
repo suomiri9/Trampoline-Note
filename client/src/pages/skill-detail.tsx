@@ -8,7 +8,8 @@ import { PageLayout } from "@/components/page-layout";
 import { PointsToFix, parsePoints } from "@/components/points-to-fix";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, Hash, Star, TrendingUp, Loader2, ChevronLeft, ChevronRight, Wrench, Unlink } from "lucide-react";
+import { Calendar, Hash, Star, TrendingUp, Loader2, ChevronLeft, ChevronRight, Wrench, Unlink } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { format, parseISO } from "date-fns";
 import { useRef, useCallback, useMemo, useState, useEffect } from "react";
 import {
@@ -96,9 +97,9 @@ export default function SkillDetailPage() {
 
   if (skillsLoading || historyLoading) {
     return (
-      <PageLayout>
+      <PageLayout accent="skills">
         <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
+          <Loader2 className="w-8 h-8 animate-spin text-[hsl(var(--page-accent)/0.5)]" />
         </div>
       </PageLayout>
     );
@@ -110,12 +111,10 @@ export default function SkillDetailPage() {
 
   if (!skill) {
     return (
-      <PageLayout>
+      <PageLayout accent="skills">
         <div className="text-center py-16">
           <p className="text-muted-foreground">Skill not found.</p>
-          <Button variant="ghost" className="mt-4" onClick={() => navigate("/skills")}>
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Skills
-          </Button>
+          <BackLink to="/skills" label="Skills" className="mt-4" />
         </div>
       </PageLayout>
     );
@@ -132,26 +131,20 @@ export default function SkillDetailPage() {
   const nextSkill = hasNext ? allSkills?.find(s => s.id === orderedIds[currentIndex + 1]) : null;
 
   const header = (
-    <div className="relative -mx-4 sm:-mx-6 px-4 sm:px-6 mb-6 overflow-hidden">
-      {/* Blue glow backdrop */}
+    <div className="relative -mx-4 sm:-mx-6 -mt-6 md:-mt-8 px-4 sm:px-6 mb-6">
+      {/* Skills-red identity glow */}
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-64"
+        className="pointer-events-none absolute inset-x-0 top-0 h-96"
         style={{
           background:
-            "radial-gradient(ellipse at 20% 0%, hsl(var(--primary)/0.16) 0%, hsl(var(--primary)/0.03) 55%, transparent 78%)",
+            "radial-gradient(ellipse at 20% 0%, hsl(var(--page-accent)/0.24) 0%, hsl(var(--page-accent)/0.06) 60%, transparent 82%)",
+          WebkitMaskImage: "linear-gradient(to bottom, black 55%, transparent 100%)",
+          maskImage: "linear-gradient(to bottom, black 55%, transparent 100%)",
         }}
       />
-      <div className="relative">
+      <div className="relative pt-6 md:pt-8">
         <div className="flex items-center justify-between mb-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1 -ml-2 text-muted-foreground/70 hover:text-foreground text-[11px] font-mono uppercase tracking-[0.14em]"
-            onClick={() => navigate("/skills")}
-            data-testid="button-back-to-skills"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" /> Skills
-          </Button>
+          <BackLink to="/skills" label="Skills" testId="button-back-to-skills" />
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" disabled={!hasPrev} onClick={goPrev} data-testid="button-prev-skill">
               <ChevronLeft className="w-4 h-4" />
@@ -166,8 +159,8 @@ export default function SkillDetailPage() {
         </div>
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase" data-testid="badge-skill-type">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[hsl(var(--page-accent)/0.2)] bg-[hsl(var(--page-accent)/0.06)] text-[9px] font-mono text-[hsl(var(--page-accent)/0.75)] tracking-[0.18em] uppercase" data-testid="badge-skill-type">
+              <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--page-accent))]" />
               {typeLabel}
             </span>
           </div>
@@ -176,9 +169,9 @@ export default function SkillDetailPage() {
             style={{ fontSize: "clamp(30px,8vw,44px)" }}
             data-testid="text-skill-name"
           >
-            <span className="text-gradient-primary">{skillDisplayName(skill, allSkills)}</span>
+            <span className="text-gradient-page">{skillDisplayName(skill, allSkills)}</span>
           </h1>
-          <div className="flex items-stretch divide-x divide-white/[0.06] rounded-2xl overflow-hidden border border-white/[0.07] bg-white/[0.025]">
+          <div className="flex items-stretch divide-x divide-[hsl(var(--page-accent)/0.12)] rounded-2xl overflow-hidden border border-[hsl(var(--page-accent)/0.16)] bg-[hsl(var(--page-accent)/0.04)]">
             <div className="flex-1 flex flex-col items-center py-3 gap-1">
               <span className="text-[16px] font-bold font-mono tabular-nums leading-none text-foreground/90" data-testid="text-skill-code">
                 {skillDisplayCode(skill, allSkills)}
@@ -187,8 +180,7 @@ export default function SkillDetailPage() {
             </div>
             <div className="flex-1 flex flex-col items-center py-3 gap-1">
               <span
-                className="text-[18px] font-bold tabular-nums leading-none"
-                style={{ background: "linear-gradient(135deg,#60a5fa,#a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+                className="text-gradient-page text-[18px] font-bold tabular-nums leading-none"
                 data-testid="text-skill-difficulty"
               >
                 {skill.difficulty.toFixed(1)}
@@ -225,7 +217,7 @@ export default function SkillDetailPage() {
   const bottomNav = (
     <div className="flex justify-between items-center gap-2 mt-8">
       <button
-        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-all disabled:opacity-25 disabled:pointer-events-none"
+        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-colors disabled:opacity-25 disabled:pointer-events-none"
         disabled={!hasPrev}
         onClick={goPrev}
         data-testid="button-prev-skill-bottom"
@@ -234,7 +226,7 @@ export default function SkillDetailPage() {
         <span className="truncate max-w-[120px]">{skillDisplayName(prevSkill, allSkills) || ""}</span>
       </button>
       <button
-        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-all disabled:opacity-25 disabled:pointer-events-none"
+        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-colors disabled:opacity-25 disabled:pointer-events-none"
         disabled={!hasNext}
         onClick={goNext}
         data-testid="button-next-skill-bottom"
@@ -257,7 +249,7 @@ export default function SkillDetailPage() {
     const chartData = buildDailyCompletion(entries);
 
     return (
-      <PageLayout>
+      <PageLayout accent="skills">
         <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
           {header}
 
@@ -394,7 +386,7 @@ export default function SkillDetailPage() {
   const chartData = buildDailyReps(entries);
 
   return (
-    <PageLayout>
+    <PageLayout accent="skills">
       <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {header}
 
@@ -484,14 +476,13 @@ export default function SkillDetailPage() {
 
 function StatCard({ icon, label, value, testId }: { icon: React.ReactNode; label: string; value: string; testId: string }) {
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3">
+    <div className="rounded-xl border border-[hsl(var(--page-accent)/0.14)] bg-[hsl(var(--page-accent)/0.03)] p-3">
       <div className="flex items-center gap-1.5 text-muted-foreground/60 mb-1.5">
         <span className="[&_svg]:w-3.5 [&_svg]:h-3.5">{icon}</span>
         <span className="text-[8px] font-mono uppercase tracking-[0.15em]">{label}</span>
       </div>
       <p
-        className="text-lg font-bold truncate tabular-nums leading-none"
-        style={{ background: "linear-gradient(135deg,#60a5fa,#a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+        className="text-gradient-page text-lg font-bold truncate tabular-nums leading-none"
         data-testid={testId}
       >
         {value}
