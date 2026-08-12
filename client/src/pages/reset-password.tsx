@@ -1,7 +1,9 @@
-import { Activity, Loader2, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AuthHero } from "@/components/auth-hero";
+import { cn } from "@/lib/utils";
 import { Link, useSearch, useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useEffect, useState } from "react";
@@ -79,18 +81,13 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-[100svh] flex flex-col items-center justify-center bg-mesh px-6">
       <div className="w-full max-w-sm flex flex-col items-center gap-8">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-primary-foreground btn-3d">
-            <Activity className="w-8 h-8" />
-          </div>
-          <div>
-            <div className="text-[11px] font-mono uppercase tracking-[0.2em] text-primary/70 mb-2">// Reset Password</div>
-            <h1 className="text-3xl font-black tracking-[-0.04em]">Set a new <span className="text-gradient-primary">password</span></h1>
-            <p className="text-muted-foreground mt-1.5 font-mono text-sm">Choose a new password for your account.</p>
-          </div>
-        </div>
+        <AuthHero
+          eyebrow="Reset password"
+          title={<>Set a new <span className="text-gradient-primary">password</span></>}
+          subtitle="Choose a new password for your account."
+        />
 
-        <div className="w-full card-3d rounded-2xl p-6 flex flex-col gap-4">
+        <div className="w-full card-3d rounded-2xl p-6 flex flex-col gap-4 motion-safe:animate-fade-in-up motion-safe:[animation-delay:80ms] motion-safe:[animation-fill-mode:both]">
           {tokenState === "checking" && (
             <div className="flex flex-col items-center gap-3 py-4" data-testid="status-token-checking">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -108,7 +105,7 @@ export default function ResetPasswordPage() {
                 This password reset link is no longer valid. Reset links expire after 60 minutes and can only be used once.
               </p>
               <Link href="/forgot-password" data-testid="link-request-new">
-                <span className="inline-flex items-center justify-center w-full h-11 rounded-xl font-semibold btn-3d bg-primary text-primary-foreground px-4 mt-1 cursor-pointer">
+                <span className={cn(buttonVariants(), "w-full h-11 rounded-xl font-semibold mt-1 shadow-lg shadow-primary/25 cursor-pointer")}>
                   Request a new link
                 </span>
               </Link>
@@ -140,13 +137,14 @@ export default function ResetPasswordPage() {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
+              <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3.5">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="password">New password</Label>
                   <Input
                     id="password"
                     type="password"
                     placeholder="At least 6 characters"
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -162,6 +160,7 @@ export default function ResetPasswordPage() {
                     id="confirm"
                     type="password"
                     placeholder="Re-enter your password"
+                    autoComplete="new-password"
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                     required
@@ -173,19 +172,24 @@ export default function ResetPasswordPage() {
 
                 <Button
                   type="submit"
-                  className="w-full h-11 rounded-xl font-semibold mt-1 btn-3d"
+                  className="w-full h-11 rounded-xl font-semibold mt-1 shadow-lg shadow-primary/25"
                   disabled={isPending}
                   data-testid="button-reset-password"
                 >
-                  {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Update password"}
+                  <span
+                    key={String(isPending)}
+                    className="animate-morph-blur inline-flex items-center justify-center gap-2"
+                  >
+                    {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Update password"}
+                  </span>
                 </Button>
               </form>
             </>
           )}
 
-          <div className="text-center">
+          <div className="border-t border-border/40 pt-4 -mb-1 text-center">
             <Link href="/" data-testid="link-back-to-login">
-              <span className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline cursor-pointer">
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-colors duration-150 cursor-pointer">
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Back to sign in
               </span>
