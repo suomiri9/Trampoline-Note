@@ -159,6 +159,15 @@ function buildCss(tokens) {
   replacements.__DS_FONT_MONO__ = toFontStack(
     resolveValue(tokens.typography.fontFamily.mono, tokens),
   );
+  replacements.__DS_EASE_OUT_STRONG__ = resolveValue(
+    tokens.motion.easeOutStrong,
+    tokens,
+  );
+  replacements.__DS_EASE_IN_OUT_STRONG__ = resolveValue(
+    tokens.motion.easeInOutStrong,
+    tokens,
+  );
+  replacements.__DS_EASE_DRAWER__ = resolveValue(tokens.motion.easeDrawer, tokens);
   replacements.__DS_RADIUS__ = resolveValue(tokens.radius.base, tokens);
   replacements.__DS_SPACING__ = resolveValue(tokens.spacing.base, tokens);
 
@@ -188,6 +197,11 @@ function buildTs(tokens) {
     },
     radius: resolveValue(tokens.radius.base, tokens),
     spacing: resolveValue(tokens.spacing.base, tokens),
+    motion: {
+      easeOutStrong: resolveValue(tokens.motion.easeOutStrong, tokens),
+      easeInOutStrong: resolveValue(tokens.motion.easeInOutStrong, tokens),
+      easeDrawer: resolveValue(tokens.motion.easeDrawer, tokens),
+    },
   };
   return `/* GENERATED FROM tokens.json -- DO NOT EDIT. Run scripts/build-tokens.mjs. */
 // Portable design tokens (colors as hex). Web consumes the theme via

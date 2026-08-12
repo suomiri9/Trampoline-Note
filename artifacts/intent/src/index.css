@@ -100,6 +100,15 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Strong easing curves (emil-design-eng): built-in keywords are too weak to
+   * feel intentional. Registered here so Tailwind emits ease-out-strong /
+   * ease-in-out-strong / ease-drawer utilities. Never use `transition-all` --
+   * transition the specific properties instead -- and gate hover styles behind
+   * @media (hover: hover) and (pointer: fine). */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /* LIGHT MODE */

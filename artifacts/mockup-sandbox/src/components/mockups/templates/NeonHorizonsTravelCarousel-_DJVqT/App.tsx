@@ -151,7 +151,7 @@ export default function App() {
                   <button
                     key={s.num}
                     onClick={() => setActiveStep(i)}
-                    className={`group relative flex-1 h-[52px] border transition-all duration-300 ${
+                    className={`group relative flex-1 h-[52px] border transition-colors duration-300 ${
                       i === activeStep
                         ? 'border-[#C96F4A] bg-[#1E1812]'
                         : 'border-[#2A261F] bg-[#14120E] hover:border-[#9CAF94]/60'
@@ -219,7 +219,7 @@ export default function App() {
             </span>
             <div className="flex items-center gap-1.5">
               {[0,1,2,3,4,5,6].map(i => (
-                <div key={i} className={`h-[3px] transition-all ${i === 2 ? 'w-7 bg-[#C96F4A]' : 'w-3 bg-[#3A352C]'}`}
+                <div key={i} className={`h-[3px] transition-[width,background-color] ${i === 2 ? 'w-7 bg-[#C96F4A]' : 'w-3 bg-[#3A352C]'}`}
                   style={i === 2 ? { boxShadow: '0 0 8px rgba(201,111,74,0.7)' } : {}} />
               ))}
             </div>
@@ -249,7 +249,7 @@ export default function App() {
           </div>
           <button
             onClick={() => setSaved(!saved)}
-            className={`flex items-center gap-2 px-4 h-9 border font-['Space_Mono'] text-[11px] tracking-[0.2em] transition-all ${
+            className={`flex items-center gap-2 px-4 h-9 border font-['Space_Mono'] text-[11px] tracking-[0.2em] transition-colors ${
               saved ? 'border-[#9CAF94] text-[#9CAF94] bg-[#10140D]' : 'border-[#2A261F] text-[#A39B8B] hover:border-[#9CAF94]'
             }`}>
             <Bookmark size={13} fill={saved ? '#9CAF94' : 'none'} />

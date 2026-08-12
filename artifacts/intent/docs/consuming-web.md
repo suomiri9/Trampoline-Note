@@ -39,6 +39,29 @@ primitives rather than recreating those primitives locally.
 The packaged `Toaster` and toast hook share one in-memory store. Do not call a
 local toast hook while rendering the packaged `Toaster`.
 
+## Motion
+
+The theme ships strong easing tokens (`tokens.json` → `motion`), exposed as CSS
+variables and Tailwind utilities:
+
+- `--ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1)` (`ease-out-strong`) —
+  entrances, press feedback, most transitions.
+- `--ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1)` (`ease-in-out-strong`)
+  — moves and morphs that both start and end on screen.
+- `--ease-drawer: cubic-bezier(0.32, 0.72, 0, 1)` (`ease-drawer`) — sheets and
+  drawers.
+
+Rules for every consumer:
+
+- Never use `transition-all`; transition the specific properties
+  (`transition-colors`, `transition-transform`, `transition-[left,width]`, …).
+- Prefer the strong easing utilities over the built-in `ease-*` keywords —
+  the defaults are too weak to feel intentional.
+- Gate hover-only styles behind `@media (hover: hover) and (pointer: fine)`
+  (or Tailwind's `hoverOnlyWhenSupported`) so `:hover` doesn't stick after taps
+  on touch screens.
+- Keep durations tight: ~100ms press feedback, ≤300ms entrances; spinners fast.
+
 ## Verify
 
 After wiring the workspace dependency, import and render

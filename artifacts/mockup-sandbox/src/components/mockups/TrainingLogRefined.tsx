@@ -330,7 +330,7 @@ export default function TrainingLogRefined() {
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/[0.08] bg-white/[0.03] text-[11px] font-medium text-white/55 hover:bg-white/[0.06] active:scale-[0.98] transition-all">
+          <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/[0.08] bg-white/[0.03] text-[11px] font-medium text-white/55 hover:bg-white/[0.06] active:scale-[0.98] transition-[background-color,transform]">
             <Wrench className="w-3.5 h-3.5" />
             Points to Fix
           </button>

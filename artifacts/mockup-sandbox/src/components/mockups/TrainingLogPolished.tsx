@@ -196,14 +196,14 @@ function SessionRow({
   return (
     <div className="select-none">
       <div
-        className={`group relative flex items-center gap-3 py-3.5 px-3 -mx-3 rounded-2xl cursor-pointer transition-all duration-150 ${
+        className={`group relative flex items-center gap-3 py-3.5 px-3 -mx-3 rounded-2xl cursor-pointer transition-colors duration-150 ${
           open ? "bg-white/[0.04]" : "hover:bg-white/[0.025]"
         }`}
         onClick={() => setOpen((o) => !o)}
       >
         {/* Left accent bar — thicker when open */}
         <div
-          className={`w-[3px] self-stretch rounded-full shrink-0 transition-all duration-200 ${
+          className={`w-[3px] self-stretch rounded-full shrink-0 transition-colors duration-200 ${
             open
               ? "bg-gradient-to-b from-blue-400 to-indigo-500"
               : "bg-white/[0.08] group-hover:bg-white/[0.15]"
@@ -505,10 +505,10 @@ export default function TrainingLogPolished() {
         {NAV.map(({ icon: Icon, label, active }) => (
           <button
             key={label}
-            className="flex flex-col items-center gap-1 px-2.5 py-1 rounded-xl transition-all"
+            className="flex flex-col items-center gap-1 px-2.5 py-1 rounded-xl transition-colors"
           >
             <div
-              className={`w-10 h-7 rounded-xl flex items-center justify-center transition-all duration-150 ${
+              className={`w-10 h-7 rounded-xl flex items-center justify-center transition-colors duration-150 ${
                 active ? "" : "bg-transparent"
               }`}
               style={

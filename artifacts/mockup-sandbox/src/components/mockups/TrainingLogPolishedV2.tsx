@@ -219,7 +219,7 @@ function SessionRow({
       >
         {/* Left accent bar */}
         <div
-          className={`w-[2px] my-2 ml-1 rounded-full shrink-0 transition-all duration-300 ${
+          className={`w-[2px] my-2 ml-1 rounded-full shrink-0 transition-colors duration-300 ${
             open ? "bg-blue-500 opacity-100" : "bg-white/[0.08] group-hover:bg-white/15"
           }`}
         />

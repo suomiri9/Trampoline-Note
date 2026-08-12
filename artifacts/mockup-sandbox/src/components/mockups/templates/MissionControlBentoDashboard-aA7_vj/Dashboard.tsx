@@ -494,7 +494,7 @@ function CommitHeatmap() {
       <div className="flex-1 min-h-0 grid gap-[3px]"
         style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)`, gridTemplateRows: `repeat(${ROWS}, 1fr)` }}>
         {cells.map((v, i) => (
-          <div key={i} className="rounded-[2px] transition-all hover:scale-110"
+          <div key={i} className="rounded-[2px] transition-transform hover:scale-110"
             style={{ backgroundColor: colors[v], border: v === 0 ? "1px solid var(--border)" : "none" }} />
         ))}
       </div>

@@ -24,7 +24,11 @@ on it and import its theme and components directly.
   signature utilities from `styles.css`: `.text-gradient-primary` (sky→indigo
   gradient text for headline accents and hero figures) and `.micro-label`
   (mono uppercase 10px label, 0.18em tracking, muted). Dark is the canonical
-  Intent mode; light is a derived counterpart.
+  Intent mode; light is a derived counterpart. Motion: strong easing tokens
+  (`--ease-out-strong`, `--ease-in-out-strong`, `--ease-drawer`, from
+  `tokens.json` → `motion`) back the `ease-*-strong` / `ease-drawer` utilities;
+  never use `transition-all`, and gate hover styles behind
+  `(hover: hover) and (pointer: fine)` — see docs/consuming-web.md § Motion.
 - `src/lib/` (`cn`) and `src/hooks/` — exported as `./lib/*` and `./hooks/*`.
 - `src/App.tsx` — the entry point for the living style guide.
 - `src/preview/DesignSystemBrowser.tsx` — the persistent grouped navigation,

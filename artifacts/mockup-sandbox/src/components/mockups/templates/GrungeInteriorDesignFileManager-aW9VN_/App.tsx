@@ -175,7 +175,7 @@ export default function App() {
         <div className="flex flex-wrap gap-2 mt-8">
           {filters.map(f => (
             <button key={f} onClick={() => setFilter(f)}
-              className={`font-mono text-[11px] tracking-[0.2em] px-4 py-2 border transition-all ${filter === f ? 'border-[#CCFF00] text-black bg-[#CCFF00]' : 'border-[#2a2a2a] text-[#888] hover:border-[#555] hover:text-[#ddd]'}`}>
+              className={`font-mono text-[11px] tracking-[0.2em] px-4 py-2 border transition-colors ${filter === f ? 'border-[#CCFF00] text-black bg-[#CCFF00]' : 'border-[#2a2a2a] text-[#888] hover:border-[#555] hover:text-[#ddd]'}`}>
               {f}
             </button>
           ))}
@@ -201,7 +201,7 @@ export default function App() {
                   <div className="p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <Folder size={15} style={{ color: NEON }} />
-                      <h3 className="heading-grunge text-lg text-[#ededed] tracking-wide group-hover:neon-underline transition-all truncate">{p.name}</h3>
+                      <h3 className="heading-grunge text-lg text-[#ededed] tracking-wide group-hover:neon-underline transition-colors truncate">{p.name}</h3>
                     </div>
                     <div className="flex items-center justify-between font-mono text-[10px] tracking-[0.15em] text-[#777]">
                       <span>{p.items} ITEMS · {p.size}</span>
