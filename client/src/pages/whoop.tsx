@@ -8,12 +8,11 @@ import { StatStrip } from "@/components/stat-strip";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { useOnline } from "@/hooks/use-online";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Unplug, AlertTriangle, RefreshCw, ArrowRight, HeartPulse, Heart, Moon, Zap, Activity } from "lucide-react";
+import { Unplug, AlertTriangle, RefreshCw, Lock, HeartPulse, Heart, Moon, Zap, Activity } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { format, parseISO } from "date-fns";
 import whoopLogoPath from "@assets/image_1784922999270.png";
@@ -105,10 +104,9 @@ const OAUTH_MESSAGES: Record<string, string> = {
 export default function WhoopPage() {
   const [range, setRange] = useState<WhoopRange>(30);
   const [oauthError, setOauthError] = useState<string | null>(null);
-  const [offlineModeEnabled] = useOfflineMode();
   const isOnline = useOnline();
   const { toast } = useToast();
-  const offlineView = (offlineModeEnabled && !isOnline) || !isOnline;
+  const offlineView = !isOnline;
 
   // Pick up the OAuth result the callback redirect put in the URL, then clean it.
   useEffect(() => {
@@ -133,6 +131,14 @@ export default function WhoopPage() {
     queryKey: ["/api/whoop/data", range],
     staleTime: 5 * 60 * 1000,
   });
+
+  // Self-heal when connectivity returns: if the last attempt failed and the
+  // online signal flips back on, fetch again instead of stranding the page
+  // on the offline card until an app restart.
+  useEffect(() => {
+    if (isOnline && !data && !isLoading && !isRefetching) refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline]);
 
   // ── Summary stat strip: range-average figures across the trends ──
   // Computed before any early return so hook order stays stable.
@@ -191,6 +197,8 @@ export default function WhoopPage() {
         <OfflinePlaceholder
           testId="card-offline-whoop"
           hint="WHOOP data hasn't been downloaded yet. It will be back when you reconnect."
+          onRetry={() => refetch()}
+          retrying={isRefetching}
         />
       </PageLayout>
     );
@@ -234,87 +242,138 @@ export default function WhoopPage() {
     return (
       <PageLayout accent="whoop">
         {hero}
-        <div
-          className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-8 flex flex-col items-center text-center"
-          data-testid={notConnected ? "card-whoop-not-connected" : "card-whoop-error"}
-        >
-          {notConnected ? (
-            <div className="flex items-center gap-3 mb-4" data-testid="icon-whoop-link">
+        {notConnected ? (
+          <div
+            className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] px-5 py-10 sm:p-10 flex flex-col items-center text-center"
+            data-testid="card-whoop-not-connected"
+          >
+            {/* Rose body-pulse glow — the same identity device the connected
+                vitals band uses, so the empty state already belongs to the page. */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-16 h-52 w-52 rounded-full blur-2xl"
+              style={{ background: "radial-gradient(circle, hsl(var(--page-accent) / 0.2) 0%, transparent 70%)" }}
+            />
+
+            {/* The handoff: WHOOP's signal flowing into the app. */}
+            <div className="relative flex items-center gap-2.5 mb-6" data-testid="icon-whoop-link">
               <img
                 src={whoopLogoPath}
                 alt="WHOOP"
-                className="w-14 h-14 rounded-2xl"
+                className="w-14 h-14 rounded-2xl border border-white/[0.08]"
                 data-testid="icon-whoop-logo"
               />
-              <ArrowRight className="w-6 h-6 text-muted-foreground/50" />
+              <svg
+                width="72"
+                height="24"
+                viewBox="0 0 72 24"
+                fill="none"
+                aria-hidden
+                className="text-[hsl(var(--page-accent))] animate-pulse motion-reduce:animate-none"
+              >
+                <path
+                  d="M0 12 H22 L28 12 L32 4 L38 20 L42 12 H72"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity="0.8"
+                />
+              </svg>
               <img
                 src="/icon-192.png"
                 alt="Trampoline Note"
-                className="w-14 h-14 rounded-2xl"
+                className="w-14 h-14 rounded-2xl border border-white/[0.08]"
                 data-testid="icon-app-logo"
               />
             </div>
-          ) : (
+
+            <h3 className="relative text-2xl font-black tracking-tight mb-2">
+              Connect WHOOP<span className="text-[hsl(var(--page-accent))]">.</span>
+            </h3>
+            <p className="relative text-sm text-muted-foreground max-w-sm leading-relaxed">
+              Recovery, sleep, strain and heart — next to every session you log.
+            </p>
+            {oauthError && (
+              <p className="relative text-xs font-mono text-amber-400 max-w-sm mt-3" data-testid="text-whoop-oauth-error">
+                {oauthError}
+              </p>
+            )}
+
+            {/* Ghosted vitals strip — exactly what appears once linked. Purely
+                decorative preview (placeholder dashes), so hidden from AT. */}
+            <div aria-hidden className="relative w-full max-w-md grid grid-cols-4 border-y border-white/[0.06] divide-x divide-white/[0.05] py-3.5 my-7">
+              {[
+                { icon: Zap, color: "text-emerald-400/60", label: "Recovery" },
+                { icon: Moon, color: "text-[hsl(var(--chart-4)/0.6)]", label: "Sleep" },
+                { icon: Activity, color: "text-amber-400/60", label: "Strain" },
+                { icon: Heart, color: "text-[hsl(var(--page-accent)/0.6)]", label: "HRV" },
+              ].map(({ icon: Icon, color, label }) => (
+                <div key={label} className="flex flex-col items-center gap-1.5 px-1 min-w-0">
+                  <Icon className={cn("w-3.5 h-3.5", color)} />
+                  <span className="text-base font-extrabold tracking-[-0.04em] leading-none tabular-nums text-foreground/25">
+                    —
+                  </span>
+                  <span className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.14em] text-muted-foreground truncate w-full">
+                    {label}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <Button
+              className="relative bg-gradient-cta text-primary-foreground font-semibold rounded-xl h-11 px-6 pressable"
+              onClick={() => {
+                // WHOOP's login page refuses to load inside an iframe (e.g. the
+                // Replit preview pane), so break out to the top-level window —
+                // falling back to a new tab if top navigation is blocked.
+                const url = "/api/whoop/auth";
+                const framed = window.self !== window.top;
+                if (framed) {
+                  try {
+                    window.top!.location.href = url;
+                  } catch {
+                    window.open(url, "_blank", "noopener");
+                  }
+                } else {
+                  window.location.href = url;
+                }
+              }}
+              data-testid="button-whoop-signin"
+            >
+              Sign in with WHOOP
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="relative mt-2 rounded-xl font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60"
+              onClick={() => refetch()}
+              disabled={isRefetching}
+              data-testid="button-whoop-recheck"
+            >
+              <RefreshCw className={cn("w-4 h-4 mr-2", isRefetching && "animate-spin")} />
+              {isRefetching ? "Checking…" : "Check connection"}
+            </Button>
+
+            <p className="relative flex items-center gap-1.5 mt-6 text-[11px] text-muted-foreground">
+              <Lock className="w-3 h-3 shrink-0" />
+              Sign-in happens on WHOOP&apos;s own page — this app never sees your password.
+            </p>
+          </div>
+        ) : (
+          <div
+            className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-8 flex flex-col items-center text-center"
+            data-testid="card-whoop-error"
+          >
             <div className="w-12 h-12 mb-4 rounded-2xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center">
               <AlertTriangle className="w-6 h-6 text-amber-400" />
             </div>
-          )}
-          {notConnected ? (
-            <>
-              <h3 className="text-xl font-black tracking-tight mb-2">Connect WHOOP.</h3>
-              <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-                Sign in with your WHOOP account to see your recovery, sleep,
-                strain and workout trends here. Your login happens on WHOOP&apos;s
-                own page — this app never sees your WHOOP password.
-              </p>
-              {oauthError && (
-                <p className="text-xs font-mono text-amber-400 max-w-sm mt-3" data-testid="text-whoop-oauth-error">
-                  {oauthError}
-                </p>
-              )}
-              <Button
-                className="mt-5 bg-gradient-cta text-primary-foreground font-semibold rounded-xl h-10 px-5"
-                onClick={() => {
-                  // WHOOP's login page refuses to load inside an iframe (e.g. the
-                  // Replit preview pane), so break out to the top-level window —
-                  // falling back to a new tab if top navigation is blocked.
-                  const url = "/api/whoop/auth";
-                  const framed = window.self !== window.top;
-                  if (framed) {
-                    try {
-                      window.top!.location.href = url;
-                    } catch {
-                      window.open(url, "_blank", "noopener");
-                    }
-                  } else {
-                    window.location.href = url;
-                  }
-                }}
-                data-testid="button-whoop-signin"
-              >
-                Sign in with WHOOP
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-2 rounded-xl font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60"
-                onClick={() => refetch()}
-                disabled={isRefetching}
-                data-testid="button-whoop-recheck"
-              >
-                <RefreshCw className={cn("w-4 h-4 mr-2", isRefetching && "animate-spin")} />
-                {isRefetching ? "Checking…" : "Check connection"}
-              </Button>
-            </>
-          ) : (
-            <>
-              <h3 className="text-xl font-black tracking-tight mb-2">Couldn&apos;t load WHOOP data</h3>
-              <p className="text-sm text-muted-foreground max-w-sm break-words leading-relaxed">
-                {errMessage.replace(/^\d+:\s*/, "") || "The WHOOP service returned an error. Try again shortly."}
-              </p>
-            </>
-          )}
-        </div>
+            <h3 className="text-xl font-black tracking-tight mb-2">Couldn&apos;t load WHOOP data</h3>
+            <p className="text-sm text-muted-foreground max-w-sm break-words leading-relaxed">
+              {errMessage.replace(/^\d+:\s*/, "") || "The WHOOP service returned an error. Try again shortly."}
+            </p>
+          </div>
+        )}
       </PageLayout>
     );
   }

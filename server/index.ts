@@ -99,6 +99,7 @@ async function runMigrations() {
       ALTER TABLE routines ADD COLUMN IF NOT EXISTS code text;
       ALTER TABLE skills ADD COLUMN IF NOT EXISTS archived integer NOT NULL DEFAULT 0;
       ALTER TABLE routines ADD COLUMN IF NOT EXISTS archived integer NOT NULL DEFAULT 0;
+      ALTER TABLE routines ADD COLUMN IF NOT EXISTS category text;
       CREATE TABLE IF NOT EXISTS coach_messages (
         id serial PRIMARY KEY,
         user_id varchar NOT NULL,

@@ -60,6 +60,7 @@ export default function RoutinesPage() {
 
   const [editingRoutine, setEditingRoutine] = useState<RoutineWithVersions | null>(null);
   const [name, setName] = useState("");
+  const [category, setCategory] = useState<"set" | "vol" | null>(null);
   // "When does this change apply?" dialog for lineup edits on a routine with
   // training history (from-a-day vs rewrite-all).
   const [applyChangeOpen, setApplyChangeOpen] = useState(false);
@@ -149,6 +150,7 @@ export default function RoutinesPage() {
         id: editingRoutine.id,
         name,
         code: name,
+        category,
         skillIds: selectedSkillIds,
       });
       setEditingRoutine(null);
@@ -156,11 +158,13 @@ export default function RoutinesPage() {
       await createRoutine({
         name,
         code: name,
+        category,
         skillIds: selectedSkillIds,
       });
     }
 
     setName("");
+    setCategory(null);
     setSelectedSkillIds([]);
     setShowBuilder(false);
   };
@@ -171,6 +175,7 @@ export default function RoutinesPage() {
       id: editingRoutine.id,
       name,
       code: name,
+      category,
       skillIds: selectedSkillIds,
     };
     if (applyMode === "fromDay" && applyFromDay) {
@@ -191,6 +196,7 @@ export default function RoutinesPage() {
     await updateRoutine(payload);
     setEditingRoutine(null);
     setName("");
+    setCategory(null);
     setSelectedSkillIds([]);
     setShowBuilder(false);
   };
@@ -198,6 +204,7 @@ export default function RoutinesPage() {
   const startEditing = (routine: RoutineWithVersions) => {
     setEditingRoutine(routine);
     setName(routine.name);
+    setCategory(routine.category === "set" || routine.category === "vol" ? routine.category : null);
     setSelectedSkillIds(routine.skillIds.slice(0, 10));
     setShowBuilder(true);
   };
@@ -206,6 +213,7 @@ export default function RoutinesPage() {
     if (editingRoutine) {
       setEditingRoutine(null);
       setName("");
+      setCategory(null);
       setSelectedSkillIds([]);
     }
     setTopPickerOpen(false);
@@ -214,6 +222,10 @@ export default function RoutinesPage() {
 
   const openBuilder = () => {
     setEditingRoutine(null);
+    // A fresh create session always starts untagged — a stale Set/Vol tag from
+    // an abandoned draft (or "duplicate from existing") would silently
+    // mislabel the new routine.
+    setCategory(null);
     setShowBuilder(true);
   };
 
@@ -297,6 +309,34 @@ export default function RoutinesPage() {
               value={name} 
               onChange={e => setName(e.target.value)} 
             />
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Set or voluntary?</label>
+              <div className="grid grid-cols-3 gap-1 rounded-xl border border-input bg-background p-1" role="group" aria-label="Set or voluntary">
+                {([["none", "Neither"], ["set", "Set"], ["vol", "Voluntary"]] as const).map(([val, label]) => {
+                  const active = (category ?? "none") === val;
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setCategory(val === "none" ? null : val)}
+                      aria-pressed={active}
+                      className={cn(
+                        "h-8 rounded-lg text-xs font-medium transition-colors",
+                        active
+                          ? "bg-[hsl(var(--page-accent)/0.18)] text-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                      data-testid={`button-routine-category-${val}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-muted-foreground/60 mt-1">
+                Tag your set and voluntary lineups — score entry will pick them automatically.
+              </p>
+            </div>
             <div className="flex items-center gap-2">
               <SearchPicker
                 open={topPickerOpen}
@@ -514,6 +554,14 @@ export default function RoutinesPage() {
                     >
                       <Layers className="h-3 w-3" /> Lineup
                     </span>
+                    {(routine.category === "set" || routine.category === "vol") && (
+                      <span
+                        className="inline-flex items-center rounded-md border border-[hsl(var(--page-accent)/0.3)] bg-[hsl(var(--page-accent)/0.12)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-[hsl(var(--page-accent))]"
+                        data-testid={`badge-routine-category-${routine.id}`}
+                      >
+                        {routine.category === "set" ? "Set" : "Vol"}
+                      </span>
+                    )}
                     {routine.id < 0 && (
                       <PendingSyncBadge testId={`badge-pending-routine-${routine.id}`} />
                     )}

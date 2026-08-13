@@ -34,6 +34,10 @@ export const routines = pgTable("routines", {
   userId: varchar("user_id"),
   name: text("name").notNull(),
   code: text("code"),
+  // Which competition slot this lineup is: "set" | "vol" | null (unlabeled).
+  // Drives score-entry defaults and set/vol badges; scores keep their own
+  // per-entry category (what was actually performed that day).
+  category: text("category"),
   skillIds: integer("skill_ids").array().notNull(), // Array of 10 skill IDs (the CURRENT lineup)
   archived: integer("archived").notNull().default(0), // 0 = active, 1 = archived
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -164,7 +168,13 @@ export const whoopTokens = pgTable("whoop_tokens", {
 
 export const insertNoteSchema = createInsertSchema(notes).omit({ id: true });
 export const insertSkillSchema = createInsertSchema(skills).omit({ id: true });
-export const insertRoutineSchema = createInsertSchema(routines).omit({ id: true, createdAt: true });
+export const insertRoutineSchema = createInsertSchema(routines)
+  .omit({ id: true, createdAt: true })
+  .extend({
+    // Only the two competition slots (or null to clear) — free-text here would
+    // silently break badges and score-entry defaulting.
+    category: z.enum(["set", "vol"]).nullable().optional(),
+  });
 export const insertScoreSchema = createInsertSchema(scores).omit({ id: true });
 export const insertTofSessionSchema = createInsertSchema(tofSessions)
   .omit({ id: true })

@@ -3,7 +3,7 @@
 // offline mode is ON, and disabling offline mode must wipe the caches.
 import "fake-indexeddb/auto";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { getQueryFn } from "./queryClient";
+import { getQueryFn, queryClient } from "./queryClient";
 import { cacheGet, cacheSet } from "./offline-db";
 import { setOfflineModeEnabled } from "./offline-mode";
 import { clearOfflineDataAndQueue } from "./offline-queue";
@@ -211,5 +211,18 @@ describe("getQueryFn 8s slow-network fallback", () => {
       getQueryFn({ on401: "returnNull" })({ queryKey: [path] } as any),
     ).resolves.toBeNull();
     expect(getCacheServed()).toBe(false);
+  });
+});
+
+describe("queryClient network mode", () => {
+  // iOS PWAs miss the browser 'online' event while suspended. React Query's
+  // default networkMode 'online' then PAUSES every fetch/mutation forever
+  // (queryFn never runs → no mirror fallback, no error, just stuck skeletons
+  // or offline cards until the app is force-quit). Offline behaviour lives in
+  // OUR layer (getQueryFn mirror fallback + 8s cap), so both must be 'always'.
+  it("queries and mutations never pause on stale offline state", () => {
+    const defaults = queryClient.getDefaultOptions();
+    expect(defaults.queries?.networkMode).toBe("always");
+    expect(defaults.mutations?.networkMode).toBe("always");
   });
 });

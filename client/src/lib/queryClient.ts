@@ -121,6 +121,14 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       staleTime: Infinity,
       retry: false,
+      // Same rationale as mutations below: offline behaviour lives in
+      // getQueryFn (IndexedDB mirror fallback + 8s cap), so fetches must
+      // really run. v5's default networkMode 'online' PAUSES every fetch
+      // once its onlineManager saw an 'offline' event — and iOS PWAs
+      // routinely miss the matching 'online' event while suspended, leaving
+      // queries paused (stuck skeletons / offline cards, e.g. the WHOOP
+      // page) until the app is force-quit.
+      networkMode: "always",
     },
     mutations: {
       retry: false,

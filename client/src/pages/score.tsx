@@ -809,6 +809,9 @@ export default function ScorePage() {
   const [sheetPairCategory, setSheetPairCategory] = useState<"both" | "vol_vol">("both");
   const [parsingSheet, setParsingSheet] = useState(false);
   const sheetInputRef = useRef<HTMLInputElement>(null);
+  // Sheet rows whose routine picker was auto-filled from a labeled lineup
+  // (row.key -> value we set); lets category corrections re-point only those.
+  const sheetAutoFilledRows = useRef<Record<number, string>>({});
   // "Final from photo": the prelims score the scanned sheet attaches a final to.
   const [sheetFinalFor, setSheetFinalFor] = useState<Score | null>(null);
   // Carries the target across the native file picker (the input's onChange).
@@ -824,11 +827,45 @@ export default function ScorePage() {
   // archived routine always stays visible so edits display correctly).
   const [showArchivedRoutines, setShowArchivedRoutines] = useState(false);
   const archivedRoutineCount = (routines ?? []).filter(r => r.archived === 1).length;
-  const routineOptions = (selected?: number | string | null) => {
+  const routineOptions = (selected?: number | string | null, prefer?: "set" | "vol") => {
     const sel = selected == null || selected === "" || selected === "none" ? null : Number(selected);
     const opts = (routines ?? []).filter(r => r.archived !== 1 || showArchivedRoutines || r.id === sel);
-    return [...opts.filter(r => r.archived !== 1), ...opts.filter(r => r.archived === 1)];
+    const active = opts.filter(r => r.archived !== 1);
+    if (prefer) {
+      // Lineup labeled for this slot first, then unlabeled, then the other label.
+      const rank = (r: Routine) => (r.category === prefer ? 0 : r.category !== "set" && r.category !== "vol" ? 1 : 2);
+      active.sort((a, b) => rank(a) - rank(b));
+    }
+    return [...active, ...opts.filter(r => r.archived === 1)];
   };
+  // Picker label: routine name + its set/vol tag + archived marker.
+  const routineOptionLabel = (r: Routine) =>
+    `${r.name}${r.category === "set" ? " · Set" : r.category === "vol" ? " · Vol" : ""}${r.archived === 1 ? " · archived" : ""}`;
+  // If the user corrects the sheet's category guess (Set↔Vol, Set+Vol↔Vol+Vol),
+  // re-point rows that still hold an auto-filled routine; manual picks and an
+  // explicit "No routine" are never touched.
+  useEffect(() => {
+    setSheetRows(prev => {
+      if (prev.length === 0) return prev;
+      const kept = prev.filter(r => r.kept);
+      let changed = false;
+      const next = prev.map(row => {
+        const auto = sheetAutoFilledRows.current[row.key];
+        if (row.routineId !== "" && row.routineId !== auto) return row; // user's pick — hands off
+        const keptIdx = kept.indexOf(row);
+        if (keptIdx === -1) return row;
+        const want: "set" | "vol" = kept.length === 2 ? (sheetPairCategory === "vol_vol" ? "vol" : keptIdx === 0 ? "set" : "vol") : sheetCategory;
+        const match = (routines ?? []).find(r => r.archived !== 1 && r.category === want);
+        const value = match ? String(match.id) : "";
+        sheetAutoFilledRows.current[row.key] = value;
+        if (value === row.routineId) return row;
+        changed = true;
+        return { ...row, routineId: value };
+      });
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheetCategory, sheetPairCategory]);
   // Rendered at the bottom of each routine SelectContent (only one is mounted at a time).
   const archivedToggleRow = archivedRoutineCount > 0 ? (
     <button
@@ -1036,28 +1073,43 @@ export default function ScorePage() {
       }));
       setSheetFinalFor(finalFor);
       setSheetPhotoOriginal(dataUrl);
-      setSheetRows(rows);
       setSheetPhotoUrl(dataUrl);
+      // Category guesses. Finals are voluntary routines (two rows = e.g. semi +
+      // final voluntary). For fresh sheets: a blank DD line usually means the
+      // set routine; a printed DD on R1 of a pair suggests two voluntaries,
+      // while a blank/0 DD on R1 means the classic set + voluntary pair.
+      const first = parsed.routines[0];
+      const singleCat: "set" | "vol" = finalFor
+        ? "vol"
+        : rows.length === 1 && (first.difficulty == null || first.difficulty === 0) ? "set" : "vol";
+      const pairCat: "both" | "vol_vol" = finalFor
+        ? (rows.length === 2 ? "vol_vol" : "both")
+        : rows.length === 2 && first.difficulty != null && first.difficulty > 0 ? "vol_vol" : "both";
+      setSheetCategory(singleCat);
+      setSheetPairCategory(pairCat);
+      // Default each row's routine to the lineup labeled for that slot on the
+      // Routines page; the pickers stay fully editable. Track what we filled
+      // so a category correction can re-point it (never a manual pick).
+      const autoFills: Record<number, string> = {};
+      setSheetRows(rows.map((row, idx) => {
+        if (row.routineId) return row;
+        const want: "set" | "vol" = rows.length === 2 ? (pairCat === "vol_vol" ? "vol" : idx === 0 ? "set" : "vol") : singleCat;
+        const match = (routines ?? []).find(r => r.archived !== 1 && r.category === want);
+        autoFills[row.key] = match ? String(match.id) : "";
+        return match ? { ...row, routineId: String(match.id) } : row;
+      }));
+      sheetAutoFilledRows.current = autoFills;
       if (finalFor) {
         // Attaching a final to an existing competition — details come from it.
         setSheetDate(parsed.date ?? finalFor.date);
         setSheetCompName(finalFor.competitionName ?? "");
         setSheetRound("final");
         setSheetType(finalFor.type === "trial" ? "trial" : "competition");
-        // Finals are voluntary routines (two rows = e.g. semi + final voluntary).
-        setSheetCategory("vol");
-        setSheetPairCategory(rows.length === 2 ? "vol_vol" : "both");
       } else {
         setSheetDate(parsed.date ?? new Date().toISOString().split("T")[0]);
         setSheetCompName(parsed.competitionName ?? "");
         setSheetRound(parsed.round === "final" ? "final" : "prelims");
         setSheetType(parsed.competitionName || parsed.round ? "competition" : "practice");
-        // Single-routine sheet: a blank DD line usually means the set routine.
-        const first = parsed.routines[0];
-        setSheetCategory(rows.length === 1 && (first.difficulty == null || first.difficulty === 0) ? "set" : "vol");
-        // Two-routine sheet: a printed DD on the first routine suggests two voluntaries
-        // (e.g. a final); a blank/0 DD on R1 means the classic set + voluntary pair.
-        setSheetPairCategory(rows.length === 2 && first.difficulty != null && first.difficulty > 0 ? "vol_vol" : "both");
       }
       setSheetStep("review");
       // The photo path replaces the manual form — close it if it was open.
@@ -1336,6 +1388,30 @@ export default function ScorePage() {
 
   const [lastRoutineId, setLastRoutineId] = useState<number | undefined>();
   const [lastRoutineIdVol, setLastRoutineIdVol] = useState<number | undefined>();
+
+  // When adding a new score, default the routine slots to the lineups labeled
+  // on the Routines page ("set" / "vol" on the routine itself), and keep them
+  // in step while the score category changes — but ONLY while the slot still
+  // holds a value this effect set. A manual pick or an explicit "No routine"
+  // (null) is never overridden; edits of existing scores are never touched.
+  const autoFilledRoutines = useRef<{ main?: number; vol?: number }>({});
+  const watchedFormCategory = form.watch("category");
+  useEffect(() => {
+    if (!isAdding || editingScore || !routines) return;
+    const byCat = (c: "set" | "vol") => routines.find(r => r.archived !== 1 && r.category === c);
+    const fill = (field: "routineId" | "routineIdVol", key: "main" | "vol", want: "set" | "vol") => {
+      const cur = form.getValues(field);
+      if (cur !== undefined && cur !== autoFilledRoutines.current[key]) return; // user's choice — hands off
+      const r = byCat(want);
+      if (!r) return;
+      if (cur !== r.id) form.setValue(field, r.id);
+      autoFilledRoutines.current[key] = r.id;
+    };
+    fill("routineId", "main", watchedFormCategory === "set" || watchedFormCategory === "both" ? "set" : "vol");
+    if (watchedFormCategory === "both" || watchedFormCategory === "vol_vol") {
+      fill("routineIdVol", "vol", "vol");
+    }
+  }, [isAdding, editingScore, watchedFormCategory, routines, form]);
 
   const watchFields = form.watch([
     "execution", "difficulty", "horizontal", "timeOfFlight",
@@ -1744,10 +1820,11 @@ export default function ScorePage() {
                     <FormField control={form.control} name="routineId" render={({ field }) => (
                       <FormItem className="flex-1">
                         <FormLabel>{form.watch("category") === "vol_vol" ? "Routine (Vol 1)" : "Routine"}</FormLabel>
-                        <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value?.toString()}>
+                        <Select onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))} value={field.value?.toString()}>
                           <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
                           <SelectContent>
-                            {routineOptions(field.value).map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.archived === 1 ? `${r.name} · archived` : r.name}</SelectItem>)}
+                            {field.value != null && <SelectItem value="none">No routine</SelectItem>}
+                            {routineOptions(field.value, form.watch("category") === "set" || form.watch("category") === "both" ? "set" : "vol").map(r => <SelectItem key={r.id} value={r.id.toString()}>{routineOptionLabel(r)}</SelectItem>)}
                             {archivedToggleRow}
                           </SelectContent>
                         </Select>
@@ -1836,10 +1913,11 @@ export default function ScorePage() {
                       <FormField control={form.control} name="routineIdVol" render={({ field }) => (
                         <FormItem className="flex-1">
                           <FormLabel>{form.watch("category") === "vol_vol" ? "Routine (Vol 2)" : "Routine (Vol)"}</FormLabel>
-                          <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value?.toString()}>
+                          <Select onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))} value={field.value?.toString()}>
                             <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
                             <SelectContent>
-                              {routineOptions(field.value).map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.archived === 1 ? `${r.name} · archived` : r.name}</SelectItem>)}
+                              {field.value != null && <SelectItem value="none">No routine</SelectItem>}
+                              {routineOptions(field.value, "vol").map(r => <SelectItem key={r.id} value={r.id.toString()}>{routineOptionLabel(r)}</SelectItem>)}
                             {archivedToggleRow}
                             </SelectContent>
                           </Select>
@@ -2062,8 +2140,8 @@ export default function ScorePage() {
                             <Select value={d.routineId} onValueChange={val => setExecDrafts(prev => prev.map(r => r.key === d.key ? { ...r, routineId: val } : r))}>
                               <SelectTrigger data-testid={`select-exec-draft-routine-${d.key}`}><SelectValue placeholder="Pick a routine" /></SelectTrigger>
                               <SelectContent>
-                                {routineOptions(d.routineId).map(r => (
-                                  <SelectItem key={r.id} value={String(r.id)}>{r.archived === 1 ? `${r.name} · archived` : r.name}</SelectItem>
+                                {routineOptions(d.routineId, d.category).map(r => (
+                                  <SelectItem key={r.id} value={String(r.id)}>{routineOptionLabel(r)}</SelectItem>
                                 ))}
                                 {archivedToggleRow}
                               </SelectContent>
@@ -2199,8 +2277,8 @@ export default function ScorePage() {
                     <SelectTrigger data-testid={`select-sheet-routine-${row.key}`}><SelectValue placeholder="No routine" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No routine</SelectItem>
-                      {routineOptions(row.routineId).map(r => (
-                        <SelectItem key={r.id} value={String(r.id)}>{r.archived === 1 ? `${r.name} · archived` : r.name}</SelectItem>
+                      {routineOptions(row.routineId, keptSheetRows.length === 2 ? (sheetPairCategory === "vol_vol" ? "vol" : idx === 0 ? "set" : "vol") : sheetCategory).map(r => (
+                        <SelectItem key={r.id} value={String(r.id)}>{routineOptionLabel(r)}</SelectItem>
                       ))}
                       {archivedToggleRow}
                     </SelectContent>

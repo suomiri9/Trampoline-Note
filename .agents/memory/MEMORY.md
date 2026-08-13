@@ -37,3 +37,4 @@
 - [Prod executeSql silent failures](prod-sql-silent-errors.md) — prod query errors return success:true with only "START TRANSACTION/ROLLBACK" output; probe SELECT 1 + information_schema; prod schema lags until publish.
 - [Offline mirrors are verbatim](offline-mirror-verbatim.md) — never filter archived rows out of mirrored reference lists; historical DD valuation needs them offline; notes never store DD, it's always computed.
 - [Offline read fallback](offline-read-fallback.md) — mirror-backed reads abort at 8s only when offline mode is ON; timeout+no-cache rethrows (never fake `[]`); "saved data" signal is per-key, cleared only after THAT read fully parses.
+- [Online-state trust rules](online-state-trust.md) — iOS PWA misses online events while suspended; queries+mutations stay networkMode 'always', useOnline re-syncs on foreground, offline cards always get a retry.

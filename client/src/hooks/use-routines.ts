@@ -30,6 +30,7 @@ export function useRoutines() {
           userId: routine.userId ?? null,
           name: routine.name,
           code: routine.code ?? null,
+          category: routine.category ?? null,
           skillIds: routine.skillIds,
           archived: 0,
           versions: [],
