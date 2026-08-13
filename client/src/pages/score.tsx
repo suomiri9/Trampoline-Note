@@ -1820,7 +1820,20 @@ export default function ScorePage() {
                     <FormField control={form.control} name="routineId" render={({ field }) => (
                       <FormItem className="flex-1">
                         <FormLabel>{form.watch("category") === "vol_vol" ? "Routine (Vol 1)" : "Routine"}</FormLabel>
-                        <Select onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))} value={field.value?.toString()}>
+                        <Select onValueChange={(val) => {
+                          if (val === "none") { field.onChange(null); return; }
+                          const id = Number(val);
+                          field.onChange(id);
+                          // Single-routine scores follow the picked lineup's tag: hand-pick
+                          // your Set routine while on "Vol Only" (or vice versa) and the
+                          // category flips to match. Two-routine days (both / vol_vol) are
+                          // a structural choice, so those are never changed here.
+                          const tag = (routines ?? []).find(r => r.id === id)?.category;
+                          const cat = form.getValues("category");
+                          if ((tag === "set" || tag === "vol") && (cat === "set" || cat === "vol") && tag !== cat) {
+                            form.setValue("category", tag);
+                          }
+                        }} value={field.value?.toString()}>
                           <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
                           <SelectContent>
                             {field.value != null && <SelectItem value="none">No routine</SelectItem>}
