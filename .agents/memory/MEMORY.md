@@ -36,3 +36,4 @@
 - [Artifact package wiring](artifact-package-wiring.md) — root is NOT a pnpm workspace; install each artifact standalone in its dir; cross-artifact deps use file:../<slug>, never workspace:*.
 - [Prod executeSql silent failures](prod-sql-silent-errors.md) — prod query errors return success:true with only "START TRANSACTION/ROLLBACK" output; probe SELECT 1 + information_schema; prod schema lags until publish.
 - [Offline mirrors are verbatim](offline-mirror-verbatim.md) — never filter archived rows out of mirrored reference lists; historical DD valuation needs them offline; notes never store DD, it's always computed.
+- [Offline read fallback](offline-read-fallback.md) — mirror-backed reads abort at 8s only when offline mode is ON; timeout+no-cache rethrows (never fake `[]`); "saved data" signal is per-key, cleared only after THAT read fully parses.

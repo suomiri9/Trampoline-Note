@@ -7,6 +7,7 @@ import { getQueryFn } from "./queryClient";
 import { cacheGet, cacheSet } from "./offline-db";
 import { setOfflineModeEnabled } from "./offline-mode";
 import { clearOfflineDataAndQueue } from "./offline-queue";
+import { getCacheServed, markCacheServed, markNetworkOk, resetCacheServed } from "./read-fallback";
 
 // getOfflineModeEnabled reads localStorage, which doesn't exist in node.
 const store = new Map<string, string>();
@@ -117,5 +118,98 @@ describe("clearOfflineDataAndQueue (runs when offline mode is disabled)", () => 
       await expect(cacheGet(cacheKey)).resolves.toBeNull();
     }
     await expect(cacheGet("notes")).resolves.toBeNull();
+  });
+});
+
+describe("getQueryFn 8s slow-network fallback", () => {
+  const path = "/api/scores";
+  const cacheKey = "scores";
+
+  // A fetch that never settles on its own but honours the abort signal —
+  // models a request hanging on flaky wifi.
+  function hangingFetch() {
+    const mock = vi.fn(
+      (_url: unknown, init?: { signal?: AbortSignal }) =>
+        new Promise<never>((_, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        }),
+    );
+    globalThis.fetch = mock as any;
+    return mock;
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+    resetCacheServed();
+  });
+
+  it("serves the cached list once the hang passes 8s while offline mode is ON", async () => {
+    setOfflineModeEnabled(true);
+    const cached = [{ id: 1 }, { id: 2 }];
+    await cacheSet(cacheKey, cached);
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    hangingFetch();
+    const p = run(path);
+    await vi.advanceTimersByTimeAsync(8100);
+    vi.useRealTimers();
+    await expect(p).resolves.toEqual(cached);
+    expect(getCacheServed()).toBe(true);
+  });
+
+  it("rejects — never a fake-empty [] — when the hang times out with no cache", async () => {
+    setOfflineModeEnabled(true);
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    hangingFetch();
+    const p = run(path);
+    const assertion = expect(p).rejects.toMatchObject({ name: "AbortError" });
+    await vi.advanceTimersByTimeAsync(8100);
+    vi.useRealTimers();
+    await assertion;
+  });
+
+  it("passes an abort signal only while offline mode is ON", async () => {
+    setOfflineModeEnabled(false);
+    okFetch([]);
+    await run(path);
+    expect((globalThis.fetch as any).mock.calls[0][1]?.signal).toBeUndefined();
+
+    setOfflineModeEnabled(true);
+    okFetch([]);
+    await run(path);
+    expect((globalThis.fetch as any).mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("clears the saved-data signal once THAT read reaches the network again", async () => {
+    setOfflineModeEnabled(true);
+    markCacheServed(cacheKey);
+    okFetch([{ id: 3 }]);
+    await run(path);
+    expect(getCacheServed()).toBe(false);
+  });
+
+  it("one query recovering does not hide the badge while another is still mirror-served", async () => {
+    setOfflineModeEnabled(true);
+    // Two different reads fell back to the mirror…
+    markCacheServed(cacheKey);
+    markCacheServed("notes");
+    // …then only the scores read succeeds against the network.
+    okFetch([{ id: 3 }]);
+    await run(path);
+    // Notes data on screen still came from the mirror — badge must stay.
+    expect(getCacheServed()).toBe(true);
+    markNetworkOk("notes");
+    expect(getCacheServed()).toBe(false);
+  });
+
+  it("a 401 on a returnNull query clears that key's saved-data signal", async () => {
+    setOfflineModeEnabled(true);
+    markCacheServed(cacheKey);
+    globalThis.fetch = vi.fn(async () => new Response("", { status: 401 })) as any;
+    await expect(
+      getQueryFn({ on401: "returnNull" })({ queryKey: [path] } as any),
+    ).resolves.toBeNull();
+    expect(getCacheServed()).toBe(false);
   });
 });

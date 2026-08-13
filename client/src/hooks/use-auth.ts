@@ -3,6 +3,7 @@ import type { SafeUser } from "@shared/models/auth";
 import { cacheGet, cacheSet, cacheClearAll } from "@/lib/offline-db";
 import { cancelPendingSettingsPush } from "@/lib/settings-sync";
 import { getOfflineModeEnabled } from "@/lib/offline-mode";
+import { fetchWithTimeout, markCacheServed, markNetworkOk } from "@/lib/read-fallback";
 
 const USER_CACHE_KEY = "user";
 const SESSION_MARKER_KEY = "tn-session-active";
@@ -27,12 +28,18 @@ function hasSessionMarker(): boolean {
 }
 
 async function fetchUser(): Promise<SafeUser | null> {
+  const offlineModeOn = getOfflineModeEnabled();
   try {
-    const response = await fetch("/api/auth/user", {
-      credentials: "include",
-    });
+    // Cap the wait when offline mode is on: on flaky wifi this request can
+    // hang for minutes while navigator.onLine still reads true, leaving the
+    // auth gate on a spinner forever (the cold-start deep-link hang).
+    const response = offlineModeOn
+      ? await fetchWithTimeout("/api/auth/user", { credentials: "include" })
+      : await fetch("/api/auth/user", { credentials: "include" });
 
     if (response.status === 401) {
+      // Definitive server answer — identity is no longer mirror-served.
+      markNetworkOk(USER_CACHE_KEY);
       setSessionMarker(false);
       await cacheClearAll();
       return null;
@@ -43,23 +50,25 @@ async function fetchUser(): Promise<SafeUser | null> {
     }
 
     const data = (await response.json()) as SafeUser;
+    // Fully parsed network result — clear this key's saved-data signal.
+    markNetworkOk(USER_CACHE_KEY);
     setSessionMarker(true);
     await cacheSet(USER_CACHE_KEY, data);
     return data;
   } catch (err) {
-    // Only fall back to cached identity when offline mode is on, the
-    // device is offline, AND we previously held a verified session
-    // (session marker present). This prevents a stale cached user from
-    // being shown when the session was invalidated or the user signed
-    // out on another device.
-    if (
-      getOfflineModeEnabled() &&
-      typeof navigator !== "undefined" &&
-      !navigator.onLine &&
-      hasSessionMarker()
-    ) {
+    // Fall back to the cached identity whenever the network layer failed
+    // (rejected, timed out, or the server errored) while offline mode is on
+    // AND we previously held a verified session (marker present). A real
+    // 401 never reaches this catch — it's handled above and wipes the
+    // cache — so a signed-out session can't be resurrected from here.
+    // Deliberately NOT gated on navigator.onLine: flaky "still online" wifi
+    // is exactly when the fallback is needed.
+    if (offlineModeOn && hasSessionMarker()) {
       const cached = await cacheGet<SafeUser>(USER_CACHE_KEY);
-      if (cached) return cached;
+      if (cached) {
+        markCacheServed(USER_CACHE_KEY);
+        return cached;
+      }
     }
     throw err;
   }

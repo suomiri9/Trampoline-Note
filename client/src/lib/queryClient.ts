@@ -1,6 +1,7 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { cacheGet, cacheSet, cacheDelete } from "./offline-db";
 import { getOfflineModeEnabled } from "./offline-mode";
+import { fetchWithTimeout, isAbortError, markCacheServed, markNetworkOk } from "./read-fallback";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -58,18 +59,30 @@ export const getQueryFn: <T>(options: {
     const fullPath = queryKey.join("/") as string;
     const cacheKey = OFFLINE_CACHE_KEYS[path] ?? genericOfflineCacheKey(fullPath);
     const isGenericKey = !OFFLINE_CACHE_KEYS[path];
+    // Per-query key for the "showing saved data" signal (see read-fallback).
+    const signalKey = cacheKey ?? fullPath;
     const offlineModeOn = getOfflineModeEnabled();
     try {
-      const res = await fetch(fullPath, {
-        credentials: "include",
-      });
+      // With offline mode on there is a mirror to fall back to, so cap how
+      // long a read may hang on flaky wifi; with it off, keep the browser's
+      // own behaviour — aborting would only replace a slow success with an
+      // error and there is nothing to serve instead.
+      const res = offlineModeOn
+        ? await fetchWithTimeout(fullPath, { credentials: "include" })
+        : await fetch(fullPath, { credentials: "include" });
 
       if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        // Definitive server answer — this key is no longer mirror-served.
+        markNetworkOk(signalKey);
         return null as T;
       }
 
       await throwIfResNotOk(res);
       const data = (await res.json()) as T;
+      // Clear the "served from mirror" signal only now, with a fully parsed
+      // network result. Clearing right after fetch resolved could drop the
+      // badge and then land in the mirror fallback anyway (bad status/parse).
+      markNetworkOk(signalKey);
       // Only mirror reference data into IndexedDB while offline mode is on.
       // When offline mode is off we must not repopulate the offline store —
       // that would defeat the wipe performed by disableOfflineMode() and
@@ -86,10 +99,15 @@ export const getQueryFn: <T>(options: {
     } catch (err) {
       if (cacheKey && offlineModeOn) {
         const cached = await cacheGet<T>(cacheKey);
-        if (cached !== null && cached !== undefined) return cached;
+        if (cached !== null && cached !== undefined) {
+          markCacheServed(signalKey);
+          return cached;
+        }
         // Sane offline default for known list endpoints so the UI does not
         // crash. Generic endpoints have arbitrary shapes — rethrow instead.
-        if (!isGenericKey) return [] as unknown as T;
+        // A TIMED-OUT request must also rethrow: returning [] would render a
+        // fake-empty list while a slow-but-alive connection is still usable.
+        if (!isGenericKey && !isAbortError(err)) return [] as unknown as T;
       }
       throw err;
     }

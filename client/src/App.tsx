@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import { lazy, Suspense, useState, useRef } from "react";
+import { getOfflineModeEnabled } from "@/lib/offline-mode";
+import { OFFLINE_READ_TIMEOUT_MS } from "@/lib/read-fallback";
 
 // Lazy route loader that doesn't blank the whole app when a page's JS chunk
 // can't be fetched (e.g. navigating offline to a page that was never loaded).
@@ -46,14 +48,40 @@ function lazyPage(load: () => Promise<{ default: React.ComponentType<any> }>) {
     ) {
       throw new Error("offline: skipping chunk import");
     }
+    const doLoad = async (): Promise<{ default: React.ComponentType<any> }> => {
+      try {
+        return await load();
+      } catch (err) {
+        const m = /https?:\/\/\S+\.js/.exec(String(err));
+        if (m) failedUrl = m[0];
+        if (!failedUrl) throw err;
+        // Fresh URL → fresh module-map entry → real network re-fetch.
+        return await import(/* @vite-ignore */ `${failedUrl}?retry=${++retrySeq}`);
+      }
+    };
+    // With offline mode on, chunks are precached by the service worker and
+    // normally resolve instantly from cache — a load still pending after 8s
+    // is wedged on flaky wifi. Reject so ChunkRecovery's card (with Retry)
+    // replaces the endless spinner. If the slow fetch completes later it
+    // still fills the browser's module cache, so the next retry is instant.
+    if (!getOfflineModeEnabled()) return doLoad();
+    const loading = doLoad();
+    // The race can settle first; keep a handler attached so a late
+    // rejection of the real load never surfaces as an unhandled rejection.
+    loading.catch(() => {});
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      return await load();
-    } catch (err) {
-      const m = /https?:\/\/\S+\.js/.exec(String(err));
-      if (m) failedUrl = m[0];
-      if (!failedUrl) throw err;
-      // Fresh URL → fresh module-map entry → real network re-fetch.
-      return await import(/* @vite-ignore */ `${failedUrl}?retry=${++retrySeq}`);
+      return await Promise.race([
+        loading,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error("offline: chunk load timed out")),
+            OFFLINE_READ_TIMEOUT_MS,
+          );
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
     }
   };
 

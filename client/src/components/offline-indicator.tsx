@@ -2,21 +2,27 @@ import { Link } from "wouter";
 import { WifiOff } from "lucide-react";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { useOnline } from "@/hooks/use-online";
+import { useCacheServed } from "@/hooks/use-cache-served";
 import { useQueueCount } from "@/lib/offline-queue";
 
 export function OfflineIndicator() {
   const [offlineModeEnabled] = useOfflineMode();
   const online = useOnline();
   const pendingCount = useQueueCount();
+  // Reads fell back to the on-device mirror (slow/hanging network) even
+  // though the browser still reports being online.
+  const cacheServed = useCacheServed();
 
   if (!offlineModeEnabled) return null;
-  if (online && pendingCount === 0) return null;
+  if (online && pendingCount === 0 && !cacheServed) return null;
 
-  const label = online
-    ? `Syncing — ${pendingCount} pending`
-    : pendingCount > 0
+  const label = !online
+    ? pendingCount > 0
       ? `Offline — ${pendingCount} pending`
-      : "Offline";
+      : "Offline"
+    : pendingCount > 0
+      ? `Syncing — ${pendingCount} pending`
+      : "Slow connection — saved data";
 
   return (
     <Link href="/settings#offline">

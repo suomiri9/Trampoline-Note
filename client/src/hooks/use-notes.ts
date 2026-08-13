@@ -3,6 +3,7 @@ import { api, buildUrl, type NoteInput, type NoteUpdateInput } from "@shared/rou
 import { isQueuedOfflineResult, tryNetworkOrEnqueue, tryNetworkOrEnqueueChange, type OfflineQueuedResult } from "@/lib/offline-queue";
 import { cacheGet, cacheSet } from "@/lib/offline-db";
 import { getOfflineModeEnabled } from "@/lib/offline-mode";
+import { fetchWithTimeout, markCacheServed, markNetworkOk } from "@/lib/read-fallback";
 import { invalidateCoachPush } from "@/lib/coach-push";
 import type { z } from "zod";
 
@@ -29,9 +30,13 @@ export function useNotes() {
     queryFn: async () => {
       const offlineModeOn = getOfflineModeEnabled();
       try {
-        const res = await fetch(api.notes.list.path, { credentials: "include" });
+        const res = offlineModeOn
+          ? await fetchWithTimeout(api.notes.list.path, { credentials: "include" })
+          : await fetch(api.notes.list.path, { credentials: "include" });
         const data = await handleResponse(res, "Failed to fetch notes");
         const parsed = api.notes.list.responses[200].parse(data);
+        // Fully parsed network result — this key is no longer mirror-served.
+        markNetworkOk("notes");
         // Mirror into IndexedDB so the list still renders offline (only while
         // offline mode is on — see queryClient.ts for the privacy rationale).
         if (offlineModeOn) await cacheSet("notes", parsed);
@@ -39,7 +44,10 @@ export function useNotes() {
       } catch (err) {
         if (offlineModeOn) {
           const cached = await cacheGet<NoteList>("notes");
-          if (cached != null) return cached;
+          if (cached != null) {
+            markCacheServed("notes");
+            return cached;
+          }
         }
         throw err;
       }
@@ -56,10 +64,14 @@ export function useNotesPage(limit: number, options?: { enabled?: boolean }) {
       const offlineModeOn = getOfflineModeEnabled();
       try {
         const url = `${api.notes.list.path}?limit=${limit}`;
-        const res = await fetch(url, { credentials: "include" });
+        const res = offlineModeOn
+          ? await fetchWithTimeout(url, { credentials: "include" })
+          : await fetch(url, { credentials: "include" });
         const totalHeader = res.headers.get("X-Total-Count");
         const data = await handleResponse(res, "Failed to fetch notes");
         const all = api.notes.list.responses[200].parse(data);
+        // Fully parsed network result — this key is no longer mirror-served.
+        markNetworkOk("notes");
         const total = totalHeader !== null ? parseInt(totalHeader, 10) : all.length;
         const hasMore = all.length < total;
         // Mirror into IndexedDB so the list renders offline. Keep the longest
@@ -78,6 +90,7 @@ export function useNotesPage(limit: number, options?: { enabled?: boolean }) {
         if (offlineModeOn) {
           const cached = await cacheGet<NoteList>("notes");
           if (cached != null) {
+            markCacheServed("notes");
             const items = cached.slice(0, limit);
             return { items, hasMore: items.length < cached.length, total: cached.length };
           }
