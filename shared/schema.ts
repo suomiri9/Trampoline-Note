@@ -115,6 +115,10 @@ export const tofSessions = pgTable("tof_sessions", {
   // jump1 ToF minus jump1's "Difference".
   preJumpTof: real("pre_jump_tof"),
   note: text("note"),
+  // Where this run happened: normal training ("practice", default) or a
+  // competition ("comp"). Comp sessions carry the competition's name.
+  context: text("context").notNull().default("practice"),
+  compName: text("comp_name"),
 });
 
 // Execution deduction tracker sessions (per user). Each session records the
@@ -139,6 +143,10 @@ export const executionSessions = pgTable("execution_sessions", {
   // recorded (e.g. interrupted routine with no landing judged).
   landingDeduction: real("landing_deduction"),
   note: text("note"),
+  // Where this run happened: normal training ("practice", default) or a
+  // competition ("comp"). Comp sessions carry the competition's name.
+  context: text("context").notNull().default("practice"),
+  compName: text("comp_name"),
 });
 
 // AI coach chat history (per user). Read-only advisor; messages persist so
@@ -188,6 +196,8 @@ export const insertTofSessionSchema = createInsertSchema(tofSessions)
     tofValues: z.array(z.number().gt(0).max(30)).min(1).max(10),
     preJumpTof: z.number().gt(0).max(30).nullable().optional(),
     skillIds: z.array(z.number().int().positive()).min(2).max(10).nullable().optional(),
+    context: z.enum(["practice", "comp"]).optional(),
+    compName: z.string().trim().max(80).nullable().optional(),
   });
 
 // Deductions are in points (a printed "2" is stored as 0.2). A skill can have
@@ -201,6 +211,8 @@ export const insertExecutionSessionSchema = createInsertSchema(executionSessions
     deductions: z.array(z.number().min(0).max(3)).min(1).max(10),
     landingDeduction: z.number().min(0).max(3).nullable().optional(),
     skillIds: z.array(z.number().int().positive()).min(2).max(10).nullable().optional(),
+    context: z.enum(["practice", "comp"]).optional(),
+    compName: z.string().trim().max(80).nullable().optional(),
   });
 
 export type InsertNote = z.infer<typeof insertNoteSchema>;

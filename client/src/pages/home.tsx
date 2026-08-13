@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { Plus, Wrench, BookOpen, Loader2, ChevronDown } from "lucide-react";
 import { useNotes, useNotesPage } from "@/hooks/use-notes";
@@ -15,6 +15,7 @@ import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { useOnline } from "@/hooks/use-online";
 import { type Note } from "@shared/schema";
+import { bottomNavClearance } from "@/lib/utils";
 
 const PAGE_SIZE = 30;
 
@@ -37,6 +38,32 @@ export default function Home() {
     root.addEventListener("scroll", onScroll, { passive: true });
     return () => root.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Keep the hero actions reachable: once the real row scrolls out of view,
+  // a floating copy docks above the bottom nav.
+  const actionRowRef = useRef<HTMLDivElement>(null);
+  const [floatActions, setFloatActions] = useState(false);
+  const [navClear, setNavClear] = useState(88);
+  useEffect(() => {
+    const el = actionRowRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([entry]) => setFloatActions(!entry.isIntersecting), { threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!floatActions) return;
+    // Re-measure while visible: rotation / browser-chrome / safe-area changes
+    // move the nav, and a stale offset would let the nav cover the bar.
+    const measure = () => setNavClear(bottomNavClearance());
+    measure();
+    window.addEventListener("resize", measure);
+    window.visualViewport?.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.visualViewport?.removeEventListener("resize", measure);
+    };
+  }, [floatActions]);
 
   const handleCreateNew = () => {
     setNoteToEdit(null);
@@ -144,7 +171,7 @@ export default function Home() {
           )}
 
           {/* Action row */}
-          <div className={`flex items-center gap-2 transition-[margin] duration-300 ease-in-out-strong ${scrolled ? "mt-2" : "mt-0"}`}>
+          <div ref={actionRowRef} className={`flex items-center gap-2 transition-[margin] duration-300 ease-in-out-strong ${scrolled ? "mt-2" : "mt-0"}`}>
             <button
               onClick={() => setIsPointsOpen(true)}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] pressable"
@@ -282,6 +309,38 @@ export default function Home() {
           </>
         )}
       </main>
+
+      {/* Floating copy of the hero actions — docks above the bottom nav once
+          the real row scrolls away. Always mounted so it can animate out. */}
+      <div
+        className={`fixed left-1/2 -translate-x-1/2 z-50 w-max flex items-center gap-2 whitespace-nowrap transition-[opacity,transform] duration-300 ease-in-out-strong ${
+          floatActions ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none"
+        }`}
+        style={{ bottom: navClear }}
+      >
+        <button
+          onClick={() => setIsPointsOpen(true)}
+          tabIndex={floatActions ? 0 : -1}
+          aria-hidden={!floatActions}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/[0.08] bg-card/85 backdrop-blur-md text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] pressable"
+          data-testid="btn-points-float"
+        >
+          <Wrench className="w-3.5 h-3.5" />
+          Points to Fix
+        </button>
+        <button
+          onClick={handleCreateNew}
+          tabIndex={floatActions ? 0 : -1}
+          aria-hidden={!floatActions}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-semibold bg-gradient-cta text-primary-foreground pressable"
+          style={{ boxShadow: "0 0 22px hsl(var(--primary)/0.28)" }}
+          aria-label="New session"
+          data-testid="btn-new-note-float"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Start Training
+        </button>
+      </div>
 
       <NoteDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} noteToEdit={noteToEdit} />
     </PageLayout>

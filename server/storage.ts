@@ -512,10 +512,26 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Practice/comp invariant (storage-enforced like the target rules): a
+  // "comp" session must carry a non-empty competition name, and a practice
+  // session never keeps one — so a comp→practice flip can't leave a stale name.
+  private normalizeSessionContext(
+    context: string | null | undefined,
+    compName: string | null | undefined,
+  ): { context: "practice" | "comp"; compName: string | null } {
+    const ctx = context === "comp" ? "comp" : "practice";
+    const name = (compName ?? "").trim();
+    if (ctx === "comp" && !name) {
+      throw new TofRoutineError("Competition sessions need the competition's name");
+    }
+    return { context: ctx, compName: ctx === "comp" ? name : null };
+  }
+
   async createTofSession(userId: string, session: InsertTofSession): Promise<TofSession> {
     const seqLen = await this.assertSessionTarget(userId, session.routineId, session.skillId, session.skillIds);
     this.assertValuesFitTarget(session.tofValues.length, seqLen);
-    const [row] = await db.insert(tofSessions).values({ ...session, userId }).returning();
+    const norm = this.normalizeSessionContext(session.context, session.compName);
+    const [row] = await db.insert(tofSessions).values({ ...session, ...norm, userId }).returning();
     return row;
   }
 
@@ -534,6 +550,19 @@ export class DatabaseStorage implements IStorage {
       const values = updates.tofValues !== undefined ? updates.tofValues : existing.tofValues;
       this.assertValuesFitTarget(values?.length ?? 0, seqLen);
     }
+    if (updates.context !== undefined || updates.compName !== undefined) {
+      const [row] = await db.select({ context: tofSessions.context, compName: tofSessions.compName })
+        .from(tofSessions)
+        .where(and(eq(tofSessions.id, id), eq(tofSessions.userId, userId)));
+      if (!row) return undefined;
+      updates = {
+        ...updates,
+        ...this.normalizeSessionContext(
+          updates.context !== undefined ? updates.context : row.context,
+          updates.compName !== undefined ? updates.compName : row.compName,
+        ),
+      };
+    }
     const [updated] = await db.update(tofSessions)
       .set(updates)
       .where(and(eq(tofSessions.id, id), eq(tofSessions.userId, userId)))
@@ -550,7 +579,8 @@ export class DatabaseStorage implements IStorage {
   async createExecutionSession(userId: string, session: InsertExecutionSession): Promise<ExecutionSession> {
     const seqLen = await this.assertSessionTarget(userId, session.routineId, session.skillId, session.skillIds);
     this.assertValuesFitTarget(session.deductions.length, seqLen);
-    const [row] = await db.insert(executionSessions).values({ ...session, userId }).returning();
+    const norm = this.normalizeSessionContext(session.context, session.compName);
+    const [row] = await db.insert(executionSessions).values({ ...session, ...norm, userId }).returning();
     return row;
   }
 
@@ -568,6 +598,19 @@ export class DatabaseStorage implements IStorage {
       );
       const values = updates.deductions !== undefined ? updates.deductions : existing.deductions;
       this.assertValuesFitTarget(values?.length ?? 0, seqLen);
+    }
+    if (updates.context !== undefined || updates.compName !== undefined) {
+      const [row] = await db.select({ context: executionSessions.context, compName: executionSessions.compName })
+        .from(executionSessions)
+        .where(and(eq(executionSessions.id, id), eq(executionSessions.userId, userId)));
+      if (!row) return undefined;
+      updates = {
+        ...updates,
+        ...this.normalizeSessionContext(
+          updates.context !== undefined ? updates.context : row.context,
+          updates.compName !== undefined ? updates.compName : row.compName,
+        ),
+      };
     }
     const [updated] = await db.update(executionSessions)
       .set(updates)

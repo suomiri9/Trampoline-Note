@@ -144,6 +144,10 @@ async function runMigrations() {
       ALTER TABLE execution_sessions ALTER COLUMN routine_id DROP NOT NULL;
       ALTER TABLE tof_sessions ADD COLUMN IF NOT EXISTS skill_ids integer[];
       ALTER TABLE execution_sessions ADD COLUMN IF NOT EXISTS skill_ids integer[];
+      ALTER TABLE tof_sessions ADD COLUMN IF NOT EXISTS context text NOT NULL DEFAULT 'practice';
+      ALTER TABLE tof_sessions ADD COLUMN IF NOT EXISTS comp_name text;
+      ALTER TABLE execution_sessions ADD COLUMN IF NOT EXISTS context text NOT NULL DEFAULT 'practice';
+      ALTER TABLE execution_sessions ADD COLUMN IF NOT EXISTS comp_name text;
       CREATE TABLE IF NOT EXISTS routine_versions (
         id serial PRIMARY KEY,
         user_id varchar,

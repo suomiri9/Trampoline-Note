@@ -35,6 +35,8 @@ export function useQueuedTofSessions(): PendingTofSession[] {
               tofValues: body.tofValues ?? [],
               preJumpTof: body.preJumpTof ?? null,
               note: body.note ?? null,
+              context: body.context ?? "practice",
+              compName: body.compName ?? null,
               _pending: true,
             } as PendingTofSession;
           })

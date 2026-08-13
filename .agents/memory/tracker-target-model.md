@@ -19,3 +19,5 @@ Both `tof_sessions` and `execution_sessions` target **exactly one of** `routineI
 - Set/vol category and implied E score are **routine-only** concepts; skill-target sessions store category "vol" and suppress E everywhere (pass-through props like `showE` on shared summary components, not duplicated logic).
 
 **Units quirk:** execution `deductions` are stored in **points** (each ≤ 3.0, e.g. 0.2), while the UI grids collect **tenths as printed** (2 = 0.2). Test payloads hitting the API directly must use points or zod rejects (`deductions.N ≤ 3`) before any target validation runs.
+
+**Practice/comp context:** both session tables carry `context` ("practice" default | "comp") + `compName`. The cross-field invariant (comp ⇒ non-empty name; practice ⇒ name forced null, so flips can't leave stale names) is enforced in storage's normalizeSessionContext — same pattern as the target rules, NOT zod (create schemas keep both fields optional so legacy offline queue bodies replay as practice). Comp UI: violet COMP badge on cards/detail pages; forms + the judges'-sheet photo flow all have the Practice/Competition segment.

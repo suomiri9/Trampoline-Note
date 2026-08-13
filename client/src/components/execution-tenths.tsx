@@ -65,7 +65,7 @@ export function parseTenthsRow(cells: string[], maxSkills: number = EXECUTION_SK
 
 export function tenthsRowToInsert(
   cells: string[],
-  base: { date: string; routineId: number | null; skillId: number | null; skillIds?: number[] | null; category: "set" | "vol"; note: string | null },
+  base: { date: string; routineId: number | null; skillId: number | null; skillIds?: number[] | null; category: "set" | "vol"; note: string | null; context?: "practice" | "comp"; compName?: string | null },
   maxSkills: number = EXECUTION_SKILL_COUNT,
 ): InsertExecutionSession {
   const p = parseTenthsRow(cells, maxSkills);
@@ -80,6 +80,8 @@ export function tenthsRowToInsert(
     deductions: p.skills.map(tenthsToPoints),
     landingDeduction: p.landing != null ? tenthsToPoints(p.landing) : null,
     note: base.note,
+    context: base.context ?? "practice",
+    compName: base.compName ?? null,
   };
 }
 

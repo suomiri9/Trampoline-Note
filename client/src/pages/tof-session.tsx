@@ -7,7 +7,7 @@ import { useSkills } from "@/hooks/use-skills";
 import { skillDisplayCode } from "@/lib/training-utils";
 import { resolveTarget, targetSkillIdAt, targetName } from "@/lib/tracker-target";
 import { PageLayout } from "@/components/page-layout";
-import { Timer, Loader2, TrendingDown } from "lucide-react";
+import { Timer, Loader2, TrendingDown, Trophy } from "lucide-react";
 import { BackLink } from "@/components/back-link";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -132,6 +132,11 @@ export default function TofSessionPage() {
           <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50">
             {format(parseISO(session.date), "dd-MM-yyyy")}
           </div>
+          {session.context === "comp" && (
+            <div className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-violet-500/25 bg-violet-500/10 text-[10px] font-medium text-violet-600 dark:text-violet-400" data-testid="badge-tof-session-comp">
+              <Trophy className="w-3 h-3" /> {session.compName || "Competition"}
+            </div>
+          )}
         </div>
       </div>
 

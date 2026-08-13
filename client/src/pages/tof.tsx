@@ -67,6 +67,8 @@ export default function TofPage() {
   const [values, setValues] = useState<string[]>(emptyValues());
   const [preJump, setPreJump] = useState("");
   const [note, setNote] = useState("");
+  const [context, setContext] = useState<"practice" | "comp">("practice");
+  const [compName, setCompName] = useState("");
   const [parsing, setParsing] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<TofSession | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -79,6 +81,8 @@ export default function TofPage() {
     setValues(emptyValues());
     setPreJump("");
     setNote("");
+    setContext("practice");
+    setCompName("");
   };
 
   const openNew = () => { resetForm(); setShowForm(true); };
@@ -93,6 +97,8 @@ export default function TofPage() {
     setValues(vals);
     setPreJump(s.preJumpTof != null ? String(s.preJumpTof) : "");
     setNote(s.note ?? "");
+    setContext(s.context === "comp" ? "comp" : "practice");
+    setCompName(s.compName ?? "");
     setShowForm(true);
   };
 
@@ -237,6 +243,10 @@ export default function TofPage() {
 
   const handleSave = () => {
     if (!canSave) return;
+    if (context === "comp" && !compName.trim()) {
+      toast({ title: "Competition name?", description: "Add which comp this was — or switch back to Practice.", variant: "destructive" });
+      return;
+    }
     const adhoc = targetValue === "adhoc";
     const decoded = decodeTarget(adhoc ? "" : targetValue);
     const body = {
@@ -247,6 +257,8 @@ export default function TofPage() {
       tofValues: parsedValues,
       preJumpTof: parsedPreJump,
       note: note.trim() || null,
+      context,
+      compName: context === "comp" ? compName.trim() : null,
     };
     if (editing) updateMutation.mutate({ id: editing.id, ...body });
     else createMutation.mutate(body as InsertTofSession);
@@ -401,6 +413,11 @@ export default function TofPage() {
               {(target?.kind === "skill" || target?.kind === "adhoc") && (
                 <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 h-4 border-transparent bg-[hsl(var(--page-accent)/0.15)] text-[hsl(var(--page-accent))]" data-testid={`badge-tof-kind-${s.id}`}>
                   {target.kind === "adhoc" ? "CUSTOM" : skillKindLabel(target.skill).toUpperCase()}
+                </Badge>
+              )}
+              {s.context === "comp" && (
+                <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 h-4 border-transparent bg-violet-500/15 text-violet-600 dark:text-violet-400 max-w-[150px] truncate" data-testid={`badge-tof-comp-${s.id}`}>
+                  {s.compName ? `COMP · ${s.compName}` : "COMP"}
                 </Badge>
               )}
               {seqLen != null && vals.length < seqLen && <Badge variant="secondary" className="text-[10px]">{vals.length}/{seqLen} jumps</Badge>}
@@ -588,6 +605,38 @@ export default function TofPage() {
                   testId="select-tof-target"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Practice or competition?</label>
+              <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/[0.08] bg-white/[0.02] p-1">
+                {(["practice", "comp"] as const).map(val => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setContext(val)}
+                    className={cn(
+                      "h-8 rounded-lg text-xs font-medium transition-colors pressable",
+                      context === val
+                        ? "bg-[hsl(var(--page-accent)/0.16)] text-[hsl(var(--page-accent))] font-semibold"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                    data-testid={`button-tof-context-${val}`}
+                  >
+                    {val === "practice" ? "Practice" : "Competition"}
+                  </button>
+                ))}
+              </div>
+              {context === "comp" && (
+                <Input
+                  value={compName}
+                  onChange={e => setCompName(e.target.value)}
+                  placeholder="Competition name — e.g. Nationals 2026"
+                  className="mt-2"
+                  maxLength={80}
+                  data-testid="input-tof-comp-name"
+                />
+              )}
             </div>
 
             {targetValue !== "adhoc" && (

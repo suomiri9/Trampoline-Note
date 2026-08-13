@@ -101,6 +101,8 @@ export default function ExecutionPage() {
   const [targetValue, setTargetValue] = useState<string>(""); // "r:<routineId>" | "s:<skillId>" | "adhoc"
   const [adhocIds, setAdhocIds] = useState<number[]>([]); // "connect skills" sequence when targetValue === "adhoc"
   const [category, setCategory] = useState<"set" | "vol">("vol");
+  const [context, setContext] = useState<"practice" | "comp">("practice");
+  const [compName, setCompName] = useState("");
   const [tenths, setTenths] = useState<string[]>(emptyTenths());
   const [landingOn, setLandingOn] = useState(false); // landing cell hidden & null until toggled on
   const [note, setNote] = useState("");
@@ -112,6 +114,8 @@ export default function ExecutionPage() {
   const [photoRows, setPhotoRows] = useState<PhotoRow[]>([]);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoDate, setPhotoDate] = useState(() => new Date().toISOString().substring(0, 10));
+  const [photoContext, setPhotoContext] = useState<"practice" | "comp">("practice");
+  const [photoCompName, setPhotoCompName] = useState("");
   const [parsingPhoto, setParsingPhoto] = useState(false);
   const [savingPhoto, setSavingPhoto] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -122,6 +126,8 @@ export default function ExecutionPage() {
     setTargetValue("");
     setAdhocIds([]);
     setCategory("vol");
+    setContext("practice");
+    setCompName("");
     setTenths(emptyTenths());
     setLandingOn(false);
     setNote("");
@@ -143,6 +149,8 @@ export default function ExecutionPage() {
     setTenths(cells);
     setLandingOn(s.landingDeduction != null);
     setNote(s.note ?? "");
+    setContext(s.context === "comp" ? "comp" : "practice");
+    setCompName(s.compName ?? "");
     setShowForm(true);
   };
 
@@ -263,6 +271,10 @@ export default function ExecutionPage() {
 
   const handleSave = () => {
     if (!canSave) return;
+    if (context === "comp" && !compName.trim()) {
+      toast({ title: "Competition name?", description: "Add which comp this was — or switch back to Practice.", variant: "destructive" });
+      return;
+    }
     const adhoc = targetValue === "adhoc";
     const decoded = decodeTarget(adhoc ? "" : targetValue);
     const body = tenthsRowToInsert(tenths, {
@@ -273,6 +285,8 @@ export default function ExecutionPage() {
       // Set/voluntary only applies to full routine attempts.
       category: decoded.routineId != null ? category : "vol",
       note: note.trim() || null,
+      context,
+      compName: context === "comp" ? compName.trim() : null,
     }, formMaxSkills);
     if (editing) updateMutation.mutate({ id: editing.id, ...body });
     else createMutation.mutate(body);
@@ -285,6 +299,8 @@ export default function ExecutionPage() {
     setPhotoRows([]);
     setPhotoUrl(null);
     setPhotoDate(new Date().toISOString().substring(0, 10));
+    setPhotoContext("practice");
+    setPhotoCompName("");
   };
 
   const handlePhoto = async (file: File) => {
@@ -355,6 +371,10 @@ export default function ExecutionPage() {
 
   const savePhotoSessions = async () => {
     if (!detailsValid || savingPhoto) return;
+    if (photoContext === "comp" && !photoCompName.trim()) {
+      toast({ title: "Competition name?", description: "Add which comp this sheet is from — or switch back to Practice.", variant: "destructive" });
+      return;
+    }
     setSavingPhoto(true);
     let saved = 0;
     let queued = 0;
@@ -370,6 +390,8 @@ export default function ExecutionPage() {
           skillId: decoded.skillId,
           category: decoded.routineId != null ? row.category : "vol",
           note: null,
+          context: photoContext,
+          compName: photoContext === "comp" ? photoCompName.trim() : null,
         }, rowMax);
         const result = await postSession(body);
         if (isQueuedOfflineResult(result)) queued += 1;
@@ -518,6 +540,11 @@ export default function ExecutionPage() {
                   {target.kind === "adhoc" ? "CUSTOM" : skillKindLabel(target.skill).toUpperCase()}
                 </Badge>
               ) : null}
+              {s.context === "comp" && (
+                <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 h-4 border-transparent bg-violet-500/15 text-violet-600 dark:text-violet-400 max-w-[150px] truncate" data-testid={`badge-execution-comp-${s.id}`}>
+                  {s.compName ? `COMP · ${s.compName}` : "COMP"}
+                </Badge>
+              )}
               {e != null && (
                 <Badge variant="secondary" className="text-[10px]" data-testid={`badge-execution-total-${s.id}`}>
                   −{total.toFixed(1)} total
@@ -802,6 +829,38 @@ export default function ExecutionPage() {
               </div>
             </div>
 
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Practice or competition?</label>
+              <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/[0.08] bg-white/[0.02] p-1">
+                {(["practice", "comp"] as const).map(val => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setContext(val)}
+                    className={cn(
+                      "h-8 rounded-lg text-xs font-medium transition-colors pressable",
+                      context === val
+                        ? "bg-[hsl(var(--page-accent)/0.16)] text-[hsl(var(--page-accent))] font-semibold"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                    data-testid={`button-exec-context-${val}`}
+                  >
+                    {val === "practice" ? "Practice" : "Competition"}
+                  </button>
+                ))}
+              </div>
+              {context === "comp" && (
+                <Input
+                  value={compName}
+                  onChange={e => setCompName(e.target.value)}
+                  placeholder="Competition name — e.g. Nationals 2026"
+                  className="mt-2"
+                  maxLength={80}
+                  data-testid="input-exec-comp-name"
+                />
+              )}
+            </div>
+
             {targetValue !== "adhoc" && (
               <button
                 type="button"
@@ -955,6 +1014,37 @@ export default function ExecutionPage() {
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
                 <Input type="date" value={photoDate} onChange={e => setPhotoDate(e.target.value)} data-testid="input-exec-photo-date" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Practice or competition?</label>
+                <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/[0.08] bg-white/[0.02] p-1">
+                  {(["practice", "comp"] as const).map(val => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setPhotoContext(val)}
+                      className={cn(
+                        "h-8 rounded-lg text-xs font-medium transition-colors pressable",
+                        photoContext === val
+                          ? "bg-[hsl(var(--page-accent)/0.16)] text-[hsl(var(--page-accent))] font-semibold"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                      data-testid={`button-exec-photo-context-${val}`}
+                    >
+                      {val === "practice" ? "Practice" : "Competition"}
+                    </button>
+                  ))}
+                </div>
+                {photoContext === "comp" && (
+                  <Input
+                    value={photoCompName}
+                    onChange={e => setPhotoCompName(e.target.value)}
+                    placeholder="Competition name — e.g. Nationals 2026"
+                    className="mt-2"
+                    maxLength={80}
+                    data-testid="input-exec-photo-comp-name"
+                  />
+                )}
               </div>
               {keptRows.map(row => {
                 const p = parseTenthsRow(row.tenths);

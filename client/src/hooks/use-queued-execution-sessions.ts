@@ -36,6 +36,8 @@ export function useQueuedExecutionSessions(): PendingExecutionSession[] {
               deductions: body.deductions ?? [],
               landingDeduction: body.landingDeduction ?? null,
               note: body.note ?? null,
+              context: body.context ?? "practice",
+              compName: body.compName ?? null,
               _pending: true,
             } as PendingExecutionSession;
           })
