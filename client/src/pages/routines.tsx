@@ -14,6 +14,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { SearchPicker } from "@/components/search-picker";
@@ -131,8 +132,27 @@ export default function RoutinesPage() {
     setSelectedSkillIds(prev => arrayMove([...prev], oldIdx, newIdx));
   };
 
+  // Save is always tappable — a tap on an incomplete form says exactly
+  // what's missing instead of silently greying the button out.
+  const [tagWarning, setTagWarning] = useState(false);
+  const tagGroupRef = useRef<HTMLDivElement>(null);
+
   const handleCreate = async () => {
-    if (!name || selectedSkillIds.length !== 10) return;
+    if (!name.trim()) {
+      toast({ title: "Name this routine first", variant: "destructive" });
+      return;
+    }
+    if (category == null) {
+      setTagWarning(true);
+      tagGroupRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      toast({ title: "Set or voluntary?", description: "Tap one — score entry reads this tag to fill everything in automatically.", variant: "destructive" });
+      return;
+    }
+    const skillCount = selectedSkillIds.filter(id => id != null).length;
+    if (skillCount !== 10) {
+      toast({ title: "A routine needs 10 skills", description: `This one has ${skillCount} so far.`, variant: "destructive" });
+      return;
+    }
 
     if (editingRoutine) {
       const lineupChanged = !sameLineup(selectedSkillIds, editingRoutine.skillIds);
@@ -206,6 +226,7 @@ export default function RoutinesPage() {
     setName(routine.name);
     setCategory(routine.category === "set" || routine.category === "vol" ? routine.category : null);
     setSelectedSkillIds(routine.skillIds.slice(0, 10));
+    setTagWarning(false);
     setShowBuilder(true);
   };
 
@@ -222,10 +243,13 @@ export default function RoutinesPage() {
 
   const openBuilder = () => {
     setEditingRoutine(null);
-    // A fresh create session always starts untagged — a stale Set/Vol tag from
-    // an abandoned draft (or "duplicate from existing") would silently
-    // mislabel the new routine.
+    // A fresh create session always starts clean — a stale name/lineup/tag
+    // from an abandoned draft (or "duplicate from existing") would silently
+    // carry over into the new routine.
+    setName("");
     setCategory(null);
+    setSelectedSkillIds([]);
+    setTagWarning(false);
     setShowBuilder(true);
   };
 
@@ -311,7 +335,7 @@ export default function RoutinesPage() {
             />
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Set or voluntary?</label>
-              <div className="grid grid-cols-2 gap-1 rounded-xl border border-input bg-background p-1" role="group" aria-label="Set or voluntary">
+              <div ref={tagGroupRef} className={cn("grid grid-cols-2 gap-1 rounded-xl border bg-background p-1 transition-colors", tagWarning && category == null ? "border-amber-500/70 ring-1 ring-amber-500/25" : "border-input")} role="group" aria-label="Set or voluntary">
                 {([["set", "Set"], ["vol", "Voluntary"]] as const).map(([val, label]) => {
                   const active = category === val;
                   return (
@@ -333,8 +357,10 @@ export default function RoutinesPage() {
                   );
                 })}
               </div>
-              <p className="text-[10px] text-muted-foreground/60 mt-1">
-                Required — score entry reads this tag to fill everything in automatically.
+              <p className={cn("text-[10px] mt-1", tagWarning && category == null ? "text-amber-500 dark:text-amber-400" : "text-muted-foreground/60")}>
+                {tagWarning && category == null
+                  ? "Pick Set or Voluntary to save this routine."
+                  : "Required — score entry reads this tag to fill everything in automatically."}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -414,7 +440,8 @@ export default function RoutinesPage() {
               <Button 
                 className="flex-1 h-11" 
                 onClick={handleCreate} 
-                disabled={isCreating || isUpdating || !name || category == null || selectedSkillIds.length !== 10}
+                disabled={isCreating || isUpdating}
+                data-testid="button-save-routine"
               >
                 {isCreating || isUpdating ? "Saving..." : editingRoutine ? "Update Routine" : "Save Routine"}
               </Button>

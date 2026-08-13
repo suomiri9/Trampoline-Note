@@ -19,3 +19,5 @@ Offline-delete flows for *synced* scores: when truly offline the score page hide
 **Test-account gap:** the dev test account has no skills, so UI buttons gated on a full lineup (e.g. routine save needs 10 skills) stay disabled — seed test rows via in-page `fetch` against the API instead of driving those forms.
 
 **Test-data hygiene:** seed/cleanup must live in try/finally and clean up BY NAME PREFIX (e.g. every routine named `ZZ Test%`), not by remembered ids — a script that dies mid-run leaves strays, and duplicate-named rows then break strict-mode text locators (two identical `[role="option"]`s) on the next run. Prefer stable data-testids over text/regex locators for triggers.
+
+**Test-account fixture:** the dev test account's skills CAN be wiped by past cleanups — never assume they exist. Seed-if-missing at script start (POST /api/skills needs name/code/difficulty) and KEEP fixture skills; only `ZZ `-prefixed throwaway rows get cleaned. A seed that reads `/api/skills` while it's empty silently creates routines with empty lineups (the API stores exactly what you send).
