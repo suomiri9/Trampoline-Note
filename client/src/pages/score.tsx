@@ -47,7 +47,7 @@ const scoreDefaults = {
   attempt: null as number | null,
   attemptVol: null as number | null,
   type: "practice" as string,
-  category: "vol" as string,
+  category: "vol" as "set" | "vol" | "both" | "vol_vol",
   competitionName: "",
   competitionId: null as string | null,
   round: null as string | null,
@@ -1129,6 +1129,26 @@ export default function ScorePage() {
   };
 
   const keptSheetRows = sheetRows.filter(r => r.kept);
+
+  // Sheet flow mirrors the main form: the category follows the first kept
+  // row's routine tag; the fallback selects only render when there's no tag
+  // to read from (no routine picked, or an untagged/legacy one).
+  const sheetRow0 = keptSheetRows[0];
+  const sheetRow0Tag = sheetRow0 && sheetRow0.routineId && sheetRow0.routineId !== "none"
+    ? (routines ?? []).find(r => String(r.id) === sheetRow0.routineId)?.category
+    : undefined;
+  const sheetCategoryLocked = sheetRow0Tag === "set" || sheetRow0Tag === "vol";
+  const sheetRowsFingerprint = keptSheetRows.map(r => `${r.key}:${r.routineId}`).join(",");
+  useEffect(() => {
+    if (sheetRow0Tag !== "set" && sheetRow0Tag !== "vol") return;
+    if (keptSheetRows.length === 2) {
+      setSheetPairCategory(sheetRow0Tag === "set" ? "both" : "vol_vol");
+    } else if (keptSheetRows.length === 1) {
+      setSheetCategory(sheetRow0Tag);
+    }
+    // sheetRow0Tag also covers routines hydrating after the photo was parsed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheetRowsFingerprint, sheetRow0Tag, keptSheetRows.length]);
   const sheetReviewValid = keptSheetRows.length > 0 && keptSheetRows.length <= 2 && keptSheetRows.every(sheetRowValid);
   const isSheetComp = sheetType === "competition" || sheetType === "trial";
   // In "final from photo" mode the name comes from the existing comp (may be blank on legacy rows).
@@ -1412,6 +1432,56 @@ export default function ScorePage() {
       fill("routineIdVol", "vol", "vol");
     }
   }, [isAdding, editingScore, watchedFormCategory, routines, form]);
+
+  // The Category dropdown is gone: a score's category now follows the picked
+  // routine's Set/Vol tag. A small segmented fallback appears only when the
+  // main slot has no tag to read from (no routine, or an untagged/legacy one).
+  const watchedMainRoutineId = form.watch("routineId");
+  const mainRoutineTag = watchedMainRoutineId != null
+    ? (routines ?? []).find(r => r.id === watchedMainRoutineId)?.category
+    : undefined;
+  const categoryLocked = mainRoutineTag === "set" || mainRoutineTag === "vol";
+  const isTwoRoutineCategory = watchedFormCategory === "both" || watchedFormCategory === "vol_vol";
+  // Keep category consistent with the main slot's tag even when the slot is
+  // filled programmatically (prefill, routines refetching, a re-tagged
+  // lineup) — manual picks are also handled synchronously in onValueChange.
+  // New scores only: a saved score keeps its stored category unless the user
+  // changes its routine by hand.
+  useEffect(() => {
+    if (!isAdding || editingScore) return;
+    if (mainRoutineTag !== "set" && mainRoutineTag !== "vol") return;
+    const cat = form.getValues("category");
+    const two = cat === "both" || cat === "vol_vol";
+    const next = two ? (mainRoutineTag === "set" ? "both" : "vol_vol") : mainRoutineTag;
+    if (next !== cat) form.setValue("category", next);
+  }, [isAdding, editingScore, mainRoutineTag, form]);
+  // One vs two routines is an explicit add/remove now, not a dropdown option.
+  const addSecondRoutine = () => {
+    const cur = form.getValues("routineId");
+    const tag = cur != null ? (routines ?? []).find(r => r.id === cur)?.category : undefined;
+    const autoOwned = cur != null && cur === autoFilledRoutines.current.main;
+    // A hand-picked vol routine plus a second one is a Vol and Vol day.
+    if (tag === "vol" && !autoOwned) { form.setValue("category", "vol_vol"); return; }
+    if (tag === "vol" && autoOwned) {
+      // Auto-filled vol slot: swap the set lineup in ourselves so the state is
+      // consistent in one step (Set and Vol is the default two-routine day).
+      // No set lineup to swap in means two vols is all it can be.
+      const setLineup = (routines ?? []).find(r => r.archived !== 1 && r.category === "set");
+      if (setLineup) {
+        form.setValue("routineId", setLineup.id);
+        autoFilledRoutines.current.main = setLineup.id;
+        form.setValue("category", "both");
+      } else {
+        form.setValue("category", "vol_vol");
+      }
+      return;
+    }
+    // Set-tagged, untagged, or empty slot: Set and Vol.
+    form.setValue("category", "both");
+  };
+  const removeSecondRoutine = () => {
+    form.setValue("category", mainRoutineTag === "set" ? "set" : "vol");
+  };
 
   const watchFields = form.watch([
     "execution", "difficulty", "horizontal", "timeOfFlight",
@@ -1720,7 +1790,7 @@ export default function ScorePage() {
                   )} />
                   <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="type" render={({ field }) => (
-                      <FormItem>
+                      <FormItem className={categoryLocked ? "col-span-2" : undefined}>
                         <FormLabel>Type</FormLabel>
                         <Select onValueChange={(val) => {
                           field.onChange(val);
@@ -1741,20 +1811,35 @@ export default function ScorePage() {
                         </Select>
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="category" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Category</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger></FormControl>
-                          <SelectContent>
-                            <SelectItem value="set">Set Only</SelectItem>
-                            <SelectItem value="vol">Vol Only</SelectItem>
-                            <SelectItem value="both">Set and Vol</SelectItem>
-                            <SelectItem value="vol_vol">Vol and Vol</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )} />
+                    {!categoryLocked && (
+                      <FormField control={form.control} name="category" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{isTwoRoutineCategory ? "Which two?" : "Set or vol?"}</FormLabel>
+                          <div className="grid grid-cols-2 gap-1 rounded-xl border border-input bg-background p-1 h-11" role="group" aria-label="Set or voluntary">
+                            {(isTwoRoutineCategory
+                              ? ([["both", "Set + Vol"], ["vol_vol", "Vol + Vol"]] as const)
+                              : ([["set", "Set"], ["vol", "Vol"]] as const)
+                            ).map(([val, label]) => (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => field.onChange(val)}
+                                aria-pressed={field.value === val}
+                                className={cn(
+                                  "rounded-lg text-xs font-medium transition-colors",
+                                  field.value === val
+                                    ? "bg-[hsl(var(--page-accent)/0.18)] text-foreground"
+                                    : "text-muted-foreground hover:text-foreground",
+                                )}
+                                data-testid={`button-score-category-${val}`}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </FormItem>
+                      )} />
+                    )}
                   </div>
                   <FormField control={form.control} name="synchro" render={({ field }) => (
                     <FormItem>
@@ -1824,17 +1909,19 @@ export default function ScorePage() {
                           if (val === "none") { field.onChange(null); return; }
                           const id = Number(val);
                           field.onChange(id);
-                          // Single-routine scores follow the picked lineup's tag: hand-pick
-                          // your Set routine while on "Vol Only" (or vice versa) and the
-                          // category flips to match. Two-routine days (both / vol_vol) are
-                          // a structural choice, so those are never changed here.
+                          // The category follows the picked routine's tag: single scores
+                          // become Set/Vol, two-routine days become Set and Vol / Vol and
+                          // Vol. Untagged routines leave it alone (the fallback control
+                          // stays visible for those).
                           const tag = (routines ?? []).find(r => r.id === id)?.category;
-                          const cat = form.getValues("category");
-                          if ((tag === "set" || tag === "vol") && (cat === "set" || cat === "vol") && tag !== cat) {
-                            form.setValue("category", tag);
+                          if (tag === "set" || tag === "vol") {
+                            const cat = form.getValues("category");
+                            const two = cat === "both" || cat === "vol_vol";
+                            const next = two ? (tag === "set" ? "both" : "vol_vol") : tag;
+                            if (next !== cat) form.setValue("category", next);
                           }
-                        }} value={field.value?.toString()}>
-                          <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
+                        }} value={field.value?.toString() ?? ""}>
+                          <FormControl><SelectTrigger className="rounded-xl h-11" data-testid="select-score-routine"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
                           <SelectContent>
                             {field.value != null && <SelectItem value="none">No routine</SelectItem>}
                             {routineOptions(field.value, form.watch("category") === "set" || form.watch("category") === "both" ? "set" : "vol").map(r => <SelectItem key={r.id} value={r.id.toString()}>{routineOptionLabel(r)}</SelectItem>)}
@@ -1917,17 +2004,38 @@ export default function ScorePage() {
                   </div>
                 </div>
 
+                {!isTwoRoutineCategory && (
+                  <button
+                    type="button"
+                    onClick={addSecondRoutine}
+                    className="w-full h-10 rounded-xl border border-dashed border-primary/25 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors inline-flex items-center justify-center gap-1.5"
+                    data-testid="button-add-second-routine"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Add second routine
+                  </button>
+                )}
+
                 {(form.watch("category") === "both" || form.watch("category") === "vol_vol") && (
                   <div className="space-y-4 pt-4 border-t border-primary/10 relative min-h-[280px]">
-                    <h3 className="font-bold text-sm uppercase tracking-wider text-[hsl(var(--page-accent)/0.7)]">
-                      {form.watch("category") === "vol_vol" ? "Vol Score 2" : "Vol Score"}
-                    </h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-bold text-sm uppercase tracking-wider text-[hsl(var(--page-accent)/0.7)]">
+                        {form.watch("category") === "vol_vol" ? "Vol Score 2" : "Vol Score"}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={removeSecondRoutine}
+                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        data-testid="button-remove-second-routine"
+                      >
+                        <X className="h-3.5 w-3.5" /> Remove
+                      </button>
+                    </div>
                     <div className="flex gap-2 items-end">
                       <FormField control={form.control} name="routineIdVol" render={({ field }) => (
                         <FormItem className="flex-1">
                           <FormLabel>{form.watch("category") === "vol_vol" ? "Routine (Vol 2)" : "Routine (Vol)"}</FormLabel>
-                          <Select onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))} value={field.value?.toString()}>
-                            <FormControl><SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
+                          <Select onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))} value={field.value?.toString() ?? ""}>
+                            <FormControl><SelectTrigger className="rounded-xl h-11" data-testid="select-score-routine-vol"><SelectValue placeholder="Select a routine" /></SelectTrigger></FormControl>
                             <SelectContent>
                               {field.value != null && <SelectItem value="none">No routine</SelectItem>}
                               {routineOptions(field.value, "vol").map(r => <SelectItem key={r.id} value={r.id.toString()}>{routineOptionLabel(r)}</SelectItem>)}
@@ -2200,14 +2308,18 @@ export default function ScorePage() {
               {sheetPhotoUrl && <SheetPhotoPreview src={sheetPhotoUrl} testId="img-sheet-photo-details" />}
               {keptSheetRows.length === 2 && (
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">What are the two routines?</label>
-                  <Select value={sheetPairCategory} onValueChange={(val) => setSheetPairCategory(val === "vol_vol" ? "vol_vol" : "both")}>
-                    <SelectTrigger data-testid="select-sheet-pair-category"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="both">Set and Vol</SelectItem>
-                      <SelectItem value="vol_vol">Vol and Vol</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {!sheetCategoryLocked && (
+                    <>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">What are the two routines?</label>
+                      <Select value={sheetPairCategory} onValueChange={(val) => setSheetPairCategory(val === "vol_vol" ? "vol_vol" : "both")}>
+                        <SelectTrigger data-testid="select-sheet-pair-category"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="both">Set and Vol</SelectItem>
+                          <SelectItem value="vol_vol">Vol and Vol</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </>
+                  )}
                   <p className="text-[10px] text-muted-foreground mt-1" data-testid="text-sheet-pair-hint">
                     {sheetPairCategory === "vol_vol"
                       ? `Saved as one entry with two voluntary routines (${keptSheetRows[0].label} = Vol 1, ${keptSheetRows[1].label} = Vol 2) — the best one counts.`
@@ -2265,7 +2377,7 @@ export default function ScorePage() {
                   )}
                 </>
               )}
-              {keptSheetRows.length === 1 && (
+              {keptSheetRows.length === 1 && !sheetCategoryLocked && (
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Set routine or voluntary?</label>
                   <Select value={sheetCategory} onValueChange={(val) => setSheetCategory(val === "set" ? "set" : "vol")}>

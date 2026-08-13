@@ -311,14 +311,14 @@ export default function RoutinesPage() {
             />
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Set or voluntary?</label>
-              <div className="grid grid-cols-3 gap-1 rounded-xl border border-input bg-background p-1" role="group" aria-label="Set or voluntary">
-                {([["none", "Neither"], ["set", "Set"], ["vol", "Voluntary"]] as const).map(([val, label]) => {
-                  const active = (category ?? "none") === val;
+              <div className="grid grid-cols-2 gap-1 rounded-xl border border-input bg-background p-1" role="group" aria-label="Set or voluntary">
+                {([["set", "Set"], ["vol", "Voluntary"]] as const).map(([val, label]) => {
+                  const active = category === val;
                   return (
                     <button
                       key={val}
                       type="button"
-                      onClick={() => setCategory(val === "none" ? null : val)}
+                      onClick={() => setCategory(val)}
                       aria-pressed={active}
                       className={cn(
                         "h-8 rounded-lg text-xs font-medium transition-colors",
@@ -334,7 +334,7 @@ export default function RoutinesPage() {
                 })}
               </div>
               <p className="text-[10px] text-muted-foreground/60 mt-1">
-                Tag your set and voluntary lineups — score entry will pick them automatically.
+                Required — score entry reads this tag to fill everything in automatically.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -414,7 +414,7 @@ export default function RoutinesPage() {
               <Button 
                 className="flex-1 h-11" 
                 onClick={handleCreate} 
-                disabled={isCreating || isUpdating || !name || selectedSkillIds.length !== 10}
+                disabled={isCreating || isUpdating || !name || category == null || selectedSkillIds.length !== 10}
               >
                 {isCreating || isUpdating ? "Saving..." : editingRoutine ? "Update Routine" : "Save Routine"}
               </Button>

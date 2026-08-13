@@ -17,3 +17,5 @@ When the testing subagent repeatedly reports browser-notebook instability, run e
 Offline-delete flows for *synced* scores: when truly offline the score page hides synced cards behind OfflinePlaceholder, so the queued-delete path only triggers when navigator.onLine is true but the network fails ("onLine lies"). Test it with `page.route(..., route.abort('internetdisconnected'))` on the DELETE requests, not `ctx.setOffline(true)`; use setOffline only for the reload-persistence and reconnect-drain phases.
 
 **Test-account gap:** the dev test account has no skills, so UI buttons gated on a full lineup (e.g. routine save needs 10 skills) stay disabled — seed test rows via in-page `fetch` against the API instead of driving those forms.
+
+**Test-data hygiene:** seed/cleanup must live in try/finally and clean up BY NAME PREFIX (e.g. every routine named `ZZ Test%`), not by remembered ids — a script that dies mid-run leaves strays, and duplicate-named rows then break strict-mode text locators (two identical `[role="option"]`s) on the next run. Prefer stable data-testids over text/regex locators for triggers.

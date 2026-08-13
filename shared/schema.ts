@@ -175,7 +175,13 @@ export const insertRoutineSchema = createInsertSchema(routines)
     // silently break badges and score-entry defaulting.
     category: z.enum(["set", "vol"]).nullable().optional(),
   });
-export const insertScoreSchema = createInsertSchema(scores).omit({ id: true });
+export const insertScoreSchema = createInsertSchema(scores)
+  .omit({ id: true })
+  .extend({
+    // The client derives this from the picked routine's tag; reject junk here
+    // so nothing can write a category the stats splits don't understand.
+    category: z.enum(["set", "vol", "both", "vol_vol"]).optional(),
+  });
 export const insertTofSessionSchema = createInsertSchema(tofSessions)
   .omit({ id: true })
   .extend({
