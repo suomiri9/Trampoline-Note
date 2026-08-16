@@ -198,9 +198,19 @@ export function PageHeader({
               {/* Padding lives INSIDE the overflow-hidden child — on the grid item
                   it would floor the 0fr row at the padding height when collapsed. */}
               <div className="overflow-hidden">
-                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[hsl(var(--page-accent)/0.7)] pb-2">
-                  {kicker}
-                </p>
+                {centered ? (
+                  /* Home-hero badge: pill with a live green dot. */
+                  <p className="pb-4">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border/25 bg-card/60 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/60">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden />
+                      {kicker}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[hsl(var(--page-accent)/0.7)] pb-2">
+                    {kicker}
+                  </p>
+                )}
               </div>
             </div>
           )}
