@@ -15,6 +15,9 @@ export const primaryActionClass = cn(
   "bg-primary text-primary-foreground hover:bg-primary/90 btn-3d",
 );
 
+/** Outlined amber/gold secondary action (e.g. "Points to Fix"). */
+export const goldActionClass = cn(headerActionClass, "btn-gold relative");
+
 /** Collapse once scrolled past this point… */
 const COLLAPSE_AT = 48;
 /** …and only expand again when back near the very top (hysteresis to avoid jitter). */
