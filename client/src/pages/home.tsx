@@ -138,7 +138,7 @@ export default function Home() {
 
       {/* Stats strip — bordered panel, shown once there are sessions */}
       {total > 0 && (
-        <div className="mb-6">
+        <div className="mb-2">
           <div className="flex divide-x divide-white/[0.06] rounded-2xl overflow-hidden border border-white/[0.07] bg-white/[0.025]">
             {STATS.map((s) => (
               <div key={s.label} className="flex-1 flex flex-col items-center py-3 gap-1">
@@ -212,7 +212,7 @@ export default function Home() {
         ) : (
           <>
             {/* Sticky section header */}
-            <div className="flex items-center justify-between sticky z-10 bg-background/90 backdrop-blur-md py-4 -mx-4 sm:-mx-6 px-4 sm:px-6" style={{ top: "var(--page-header-h, 96px)" }}>
+            <div className="flex items-center justify-between sticky z-20 full-bleed-bar py-2 bg-background/90 backdrop-blur-md border-b border-white/[0.08]" style={{ top: "var(--page-header-h, 96px)" }}>
               <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/55">
                 Recent sessions
               </span>
