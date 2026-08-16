@@ -22,7 +22,7 @@
 - [Tracker target model](tracker-target-model.md) — ToF/exec sessions target exactly one of routine|skill|ad-hoc skillIds (storage-enforced, not zod); bound values to target seqLen at every layer; deductions API takes points, UI tenths.
 - [User-scoped localStorage fallbacks](user-scoped-local-fallback.md) — per-account prefs with a local fallback must namespace the key by user id; server null → empty, never the device blob.
 - [Offline download mirroring](offline-download-mirroring.md) — invalidateQueries won't refetch unmounted queries; force-mirror with prefetch/refetch or the offline "download" stalls forever.
-- [Service worker shell cache safety](sw-shell-cache.md) — a SW update on flaky wifi could wipe the offline shell (native browser offline page); install must salvage-or-abort, activate must verify `/` before deleting old caches.
+- [Service worker shell cache safety](sw-shell-cache.md) — install salvage-or-abort, activate verifies `/`; launch self-heal refills evicted files, and whole-cache rebuild parses the cache name from sw.js (re-register never re-installs).
 - [Offline lazy route chunks](offline-lazy-chunks.md) — never rebuild a suspended React.lazy (infinite remount loop) and never import() while offline (module-map poisoning); recovery component owns retries.
 - [Save-on-close must survive unmount](dialog-unmount-save.md) — route-page dialogs: location-watch effects never fire when the host page unmounts (nav sits above overlays); flush drafts in a mount-once cleanup via refs.
 - [Local headless e2e fallback](local-headless-e2e.md) — when the testing subagent's browser is down, run playwright-core locally via LD_LIBRARY_PATH + $REPLIT_DEV_DOMAIN (Secure cookies fail on http).

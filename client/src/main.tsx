@@ -4,15 +4,22 @@ import "./index.css";
 // Intent design-system tokens (generated bridge — see script/sync-intent-tokens.mjs).
 // Imported after index.css so its :root/.dark variable blocks are authoritative.
 import "./intent-tokens.css";
-import { getOfflineModeEnabled } from "./lib/offline-mode";
-import { registerServiceWorker } from "./lib/offline-control";
+import { ensureOfflineReady } from "./lib/offline-control";
 import { applyTheme, getTheme } from "./lib/theme";
 
-if (getOfflineModeEnabled()) {
-  window.addEventListener("load", () => {
-    void registerServiceWorker();
-  });
-}
+// Offline self-heal: whenever the app is open with a connection (launch,
+// reconnect, foreground-resume), re-register the service worker, refill any
+// cached files the OS evicted, and re-mirror core reference data. Each call
+// self-gates on the offline-mode toggle and is throttled internally.
+window.addEventListener("load", () => {
+  void ensureOfflineReady();
+});
+window.addEventListener("online", () => {
+  void ensureOfflineReady();
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") void ensureOfflineReady();
+});
 
 const RESIZE_OBSERVER_RE = /ResizeObserver loop (completed with undelivered notifications|limit exceeded)/;
 

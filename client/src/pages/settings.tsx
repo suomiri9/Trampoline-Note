@@ -67,6 +67,7 @@ import {
   enableOfflineMode,
   disableOfflineMode,
   registerServiceWorker,
+  backfillShellCache,
   findShellCacheName,
   APP_SHELL_URLS,
   getOfflineAssetUrls,
@@ -344,36 +345,10 @@ export default function SettingsPage() {
           void queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
         if (shellIncomplete) {
           // Re-register the service worker and backfill any missing shell
-          // files straight into its CURRENT cache from the page. If no shell
-          // cache exists yet, skip — the service worker's install step will
-          // create and precache it.
+          // files straight into its CURRENT cache (same shared repair that
+          // ensureOfflineReady runs on every app launch).
           void registerServiceWorker();
-          void (async () => {
-            try {
-              if (typeof caches === "undefined") return;
-              const shellCacheName = await findShellCacheName();
-              if (!shellCacheName) return;
-              const cache = await caches.open(shellCacheName);
-              const assetUrls = await getOfflineAssetUrls();
-              const targets = [...APP_SHELL_URLS, ...(assetUrls ?? [])];
-              await Promise.all(
-                targets.map(async (u) => {
-                  if (await cache.match(u)) return;
-                  // Hashed /assets/ files are immutable — let the HTTP cache
-                  // help; everything else must bypass it.
-                  const res = await fetch(
-                    u,
-                    u.startsWith("/assets/")
-                      ? { credentials: "same-origin" }
-                      : { cache: "reload", credentials: "same-origin" },
-                  );
-                  if (res.ok) await cache.put(u, res);
-                }),
-              );
-            } catch {
-              // best-effort
-            }
-          })();
+          void backfillShellCache();
         }
       }
       if (!alive) return;

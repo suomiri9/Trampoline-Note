@@ -1,6 +1,7 @@
-import { setOfflineModeEnabled } from "./offline-mode";
+import { setOfflineModeEnabled, getOfflineModeEnabled } from "./offline-mode";
 import { drainQueue, clearOfflineDataAndQueue } from "./offline-queue";
 import { queryClient } from "./queryClient";
+import { cacheGet } from "./offline-db";
 
 /** App-shell URLs — must stay in sync with APP_SHELL in client/public/sw.js. */
 export const APP_SHELL_URLS = [
@@ -171,6 +172,95 @@ export async function registerServiceWorker(): Promise<void> {
     wireUpdateHandling(reg);
   } catch {
     // ignore — service worker is best-effort.
+  }
+}
+
+/** Backfill any missing app-shell / built-asset files straight into the
+ * service worker's CURRENT cache. Shared by the Settings download card and
+ * the launch-time self-heal. No cache yet → skip; the SW install will
+ * precache everything itself. */
+/** Whole-cache eviction fallback: when no tn-shell-vN cache exists at all,
+ * read the cache name baked into the server's sw.js source. An unchanged,
+ * already-active SW never re-runs its install step (and re-registering the
+ * same URL just resurrects the registration without reinstalling), so the
+ * page must be able to recreate the cache itself — caches.open() creates it
+ * on demand and the normal backfill loop fills it. */
+async function parseShellCacheNameFromSource(): Promise<string | null> {
+  try {
+    const res = await fetch("/sw.js", { cache: "reload", credentials: "same-origin" });
+    if (!res.ok) return null;
+    const m = (await res.text()).match(/CACHE\s*=\s*['"](tn-shell-v\d+)['"]/);
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function backfillShellCache(): Promise<void> {
+  try {
+    if (typeof caches === "undefined") return;
+    let shellCacheName = await findShellCacheName();
+    if (!shellCacheName) {
+      // Don't race a first install that is still creating the cache — it
+      // owns the initial precache (salvage-or-abort keeps it atomic).
+      if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration().catch(() => null);
+        if (reg && (reg.installing || reg.waiting)) return;
+      }
+      shellCacheName = await parseShellCacheNameFromSource();
+      if (!shellCacheName) return;
+    }
+    const cache = await caches.open(shellCacheName);
+    const assetUrls = await getOfflineAssetUrls();
+    const targets = [...APP_SHELL_URLS, ...(assetUrls ?? [])];
+    await Promise.all(
+      targets.map(async (u) => {
+        if (await cache.match(u)) return;
+        // Hashed /assets/ files are immutable — let the HTTP cache help;
+        // everything else must bypass it.
+        const res = await fetch(
+          u,
+          u.startsWith("/assets/")
+            ? { credentials: "same-origin" }
+            : { cache: "reload", credentials: "same-origin" },
+        );
+        if (res.ok) await cache.put(u, res);
+      }),
+    );
+  } catch {
+    // best-effort
+  }
+}
+
+let lastEnsureAt = 0;
+
+/** Launch-time self-heal for devices with offline mode on. The OS can evict
+ * individual cached files (iOS does under storage pressure) and a download
+ * can be interrupted — previously the only repair path was the Settings
+ * page's polling card, so a device stayed broken until the user happened to
+ * sit in Settings while online. This runs the same repair on every launch,
+ * reconnect, and foreground-resume: re-register the SW, refill missing
+ * shell/chunk files, and re-mirror core reference data if IndexedDB lost it.
+ * Self-gates on the toggle + connectivity; throttled to once a minute. */
+export async function ensureOfflineReady(): Promise<void> {
+  if (!getOfflineModeEnabled()) return;
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+  const now = Date.now();
+  if (now - lastEnsureAt < 60_000) return;
+  lastEnsureAt = now;
+  await registerServiceWorker();
+  void backfillShellCache();
+  try {
+    const [user, skills, routines] = await Promise.all([
+      cacheGet("user"),
+      cacheGet("skills"),
+      cacheGet("routines"),
+    ]);
+    if (!skills) void queryClient.prefetchQuery({ queryKey: ["/api/skills"], staleTime: 0 });
+    if (!routines) void queryClient.prefetchQuery({ queryKey: ["/api/routines"], staleTime: 0 });
+    if (!user) void queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
+  } catch {
+    // best-effort
   }
 }
 
