@@ -10,7 +10,7 @@ import { NoteCard } from "@/components/note-card";
 import { NoteDialog } from "@/components/note-dialog";
 import { PointsToFix } from "@/components/points-to-fix";
 import { PageLayout } from "@/components/page-layout";
-import { PageHeader, primaryActionClass, headerActionClass } from "@/components/page-header";
+import { PageHeader, headerActionClass } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
@@ -128,7 +128,7 @@ export default function Home() {
               <span className="group-data-[collapsed=true]/pageheader:hidden">Points to Fix</span>
             </Button>
             <Button
-              className={cn(primaryActionClass, "shrink-0")}
+              className={cn(headerActionClass, "bg-gradient-cta text-primary-foreground btn-3d shrink-0")}
               onClick={handleCreateNew}
               aria-label="New session"
               data-testid="btn-new-note"
