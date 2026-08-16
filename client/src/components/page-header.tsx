@@ -34,6 +34,12 @@ interface PageHeaderProps {
   actions?: ReactNode;
   /** Optional back-navigation link (a BackLink) rendered as the header's top strip, inside the glow. */
   backLink?: ReactNode;
+  /**
+   * Centered hero variant (home): kicker/title/subtitle center-aligned and the
+   * actions row sits centered BELOW the subtitle instead of beside the title.
+   * The collapsed (scrolled) state keeps the standard left title + right actions row.
+   */
+  centered?: boolean;
   className?: string;
 }
 
@@ -44,6 +50,7 @@ export function PageHeader({
   subtitle,
   actions,
   backLink,
+  centered,
   className,
 }: PageHeaderProps) {
   const headerRef = useRef<HTMLDivElement>(null);
@@ -177,8 +184,12 @@ export function PageHeader({
           wrap below on screens too narrow to fit both. */}
       <div
         className={cn(
-          "relative flex flex-wrap gap-x-3 gap-y-2",
-          collapsed ? "items-center" : "items-end",
+          "relative flex gap-x-3 gap-y-2",
+          collapsed
+            ? "flex-wrap items-center"
+            : centered
+              ? "flex-col items-center text-center"
+              : "flex-wrap items-end",
         )}
       >
         <div className="min-w-0">
@@ -207,7 +218,7 @@ export function PageHeader({
             </span>
           </h1>
         </div>
-        {actions && (
+        {actions && (!centered || collapsed) && (
           <div
             className={cn(
               "flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0",
@@ -221,8 +232,20 @@ export function PageHeader({
       {subtitle && (
         <div className={cn("relative", collapsibleRow(!collapsed))} aria-hidden={collapsed}>
           <div className="overflow-hidden">
-            <p className="text-muted-foreground/70 text-[11px] leading-snug sm:text-sm pt-2 sm:pt-3">{subtitle}</p>
+            <p
+              className={cn(
+                "text-muted-foreground/70 text-[11px] leading-snug sm:text-sm pt-2 sm:pt-3",
+                centered && "text-center mx-auto max-w-[240px] sm:max-w-none",
+              )}
+            >
+              {subtitle}
+            </p>
           </div>
+        </div>
+      )}
+      {actions && centered && !collapsed && (
+        <div className="relative flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 pt-4 sm:pt-5">
+          {actions}
         </div>
       )}
     </div>

@@ -110,6 +110,7 @@ export default function Home() {
       />
       {/* ── Header — same sticky collapsing header as every other page ── */}
       <PageHeader
+        centered
         kicker="Training Log"
         title="Track every jump."
         accent="jump."
