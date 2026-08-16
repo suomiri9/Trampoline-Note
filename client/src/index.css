@@ -352,21 +352,6 @@
     0 0 16px -2px hsl(var(--primary) / 0.45);
 }
 
-/* Outlined warm/gold secondary action ("Points to Fix"). */
-.btn-gold {
-  border: 1px solid hsl(var(--gold) / 0.45);
-  background: hsl(var(--gold) / 0.06);
-  color: hsl(var(--gold));
-  transition: border-color 0.18s ease, background-color 0.18s ease;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .btn-gold:hover {
-    border-color: hsl(var(--gold) / 0.7);
-    background: hsl(var(--gold) / 0.12);
-  }
-}
-
 .icon-3d {
   border: 1px solid hsl(var(--border));
 }

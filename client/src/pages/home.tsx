@@ -10,7 +10,7 @@ import { NoteCard } from "@/components/note-card";
 import { NoteDialog } from "@/components/note-dialog";
 import { PointsToFix } from "@/components/points-to-fix";
 import { PageLayout } from "@/components/page-layout";
-import { PageHeader, primaryActionClass, goldActionClass } from "@/components/page-header";
+import { PageHeader, primaryActionClass, headerActionClass } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
@@ -116,15 +116,16 @@ export default function Home() {
         subtitle="Every session, skill, and difficulty point — in one place."
         actions={
           <>
-            <button
+            <Button
+              variant="outline"
               onClick={() => setIsPointsOpen(true)}
-              className={cn(goldActionClass, "shrink-0")}
+              className={cn(headerActionClass, "shrink-0")}
               aria-label="Points to Fix"
               data-testid="btn-points-to-fix"
             >
               <Wrench className="w-4 h-4" />
               <span className="group-data-[collapsed=true]/pageheader:hidden">Points to Fix</span>
-            </button>
+            </Button>
             <Button
               className={cn(primaryActionClass, "shrink-0")}
               onClick={handleCreateNew}
