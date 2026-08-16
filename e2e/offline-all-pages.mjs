@@ -44,7 +44,17 @@ const fail = (msg) => {
 };
 const ok = (msg) => console.log("ok:", msg);
 
-const browser = await chromium.launch({ headless: true });
+// CHROME_BIN: use a system chromium (e.g. from /nix/store) instead of the
+// playwright-managed download, which isn't always installed in this env.
+const browser = await chromium.launch({
+  headless: true,
+  ...(process.env.CHROME_BIN
+    ? {
+        executablePath: process.env.CHROME_BIN,
+        args: ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"],
+      }
+    : {}),
+});
 const ctx = await browser.newContext();
 const page = await ctx.newPage();
 
