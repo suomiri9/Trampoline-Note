@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { Plus, Wrench, BookOpen, Loader2, ChevronDown } from "lucide-react";
 import { useNotes, useNotesPage } from "@/hooks/use-notes";
@@ -10,12 +10,13 @@ import { NoteCard } from "@/components/note-card";
 import { NoteDialog } from "@/components/note-dialog";
 import { PointsToFix } from "@/components/points-to-fix";
 import { PageLayout } from "@/components/page-layout";
+import { PageHeader, primaryActionClass, goldActionClass } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { OfflinePlaceholder } from "@/components/offline-placeholder";
 import { useOfflineMode } from "@/hooks/use-offline-mode";
 import { useOnline } from "@/hooks/use-online";
 import { type Note } from "@shared/schema";
-import { bottomNavClearance } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 30;
 
@@ -29,41 +30,6 @@ export default function Home() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
   const [isPointsOpen, setIsPointsOpen] = useState(false);
-
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const root = document.getElementById("root");
-    if (!root) return;
-    const onScroll = () => setScrolled(root.scrollTop > 40);
-    root.addEventListener("scroll", onScroll, { passive: true });
-    return () => root.removeEventListener("scroll", onScroll);
-  }, []);
-
-  // Keep the hero actions reachable: once the real row scrolls out of view,
-  // a floating copy docks above the bottom nav.
-  const actionRowRef = useRef<HTMLDivElement>(null);
-  const [floatActions, setFloatActions] = useState(false);
-  const [navClear, setNavClear] = useState(88);
-  useEffect(() => {
-    const el = actionRowRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(([entry]) => setFloatActions(!entry.isIntersecting), { threshold: 0 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-  useEffect(() => {
-    if (!floatActions) return;
-    // Re-measure while visible: rotation / browser-chrome / safe-area changes
-    // move the nav, and a stale offset would let the nav cover the bar.
-    const measure = () => setNavClear(bottomNavClearance());
-    measure();
-    window.addEventListener("resize", measure);
-    window.visualViewport?.addEventListener("resize", measure);
-    return () => {
-      window.removeEventListener("resize", measure);
-      window.visualViewport?.removeEventListener("resize", measure);
-    };
-  }, [floatActions]);
 
   const handleCreateNew = () => {
     setNoteToEdit(null);
@@ -133,91 +99,67 @@ export default function Home() {
 
   return (
     <PageLayout>
-      {/* ── Hero ─────────────────────────────────────────────────── */}
-      <div className="relative -mx-4 sm:-mx-6 -mt-6 md:-mt-8 px-6 pt-safe-top pb-0 overflow-hidden">
-        {/* Blue glow backdrop */}
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-80"
-          style={{
-            background:
-              "radial-gradient(ellipse at 50% 0%, hsl(var(--primary)/0.18) 0%, hsl(var(--primary)/0.04) 55%, transparent 78%)",
-          }}
-        />
-
-        {/* Hero — full at top, compact when scrolled */}
-        <div className={`relative flex flex-col items-center text-center transition-[padding] duration-300 ease-in-out-strong ${scrolled ? "pt-3 pb-3" : "pt-7 pb-6"}`}>
-          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border/25 bg-card/60 text-[9px] font-mono text-muted-foreground/60 tracking-[0.18em] uppercase transition-[margin] duration-300 ease-in-out-strong ${scrolled ? "mb-3" : "mb-6"}`}>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            Training Log
-          </div>
-
-          {/* Headline */}
-          <h1
-            className="font-black leading-[0.94] tracking-[-0.05em] transition-[font-size,margin] duration-300 ease-in-out-strong"
-            style={{ fontSize: scrolled ? "clamp(22px,6vw,26px)" : "clamp(38px,10vw,48px)", marginBottom: scrolled ? "0" : "12px" }}
-          >
-            <span className="text-foreground">Track every</span>
-            <br />
-            <span className="text-gradient-primary">
-              jump.
-            </span>
-          </h1>
-
-          {/* Subtitle — hidden when scrolled */}
-          {!scrolled && (
-            <p className="text-[11px] text-muted-foreground/50 leading-relaxed mb-6 max-w-[200px]">
-              Every session, skill, and difficulty point — in one place.
-            </p>
-          )}
-
-          {/* Action row */}
-          <div ref={actionRowRef} className={`flex items-center gap-2 transition-[margin] duration-300 ease-in-out-strong ${scrolled ? "mt-2" : "mt-0"}`}>
+      {/* Page-accent glow behind the header, same as every other page */}
+      <div
+        className="pointer-events-none fixed inset-x-0 top-0 h-72 -z-10"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 0%, hsl(var(--page-accent)/0.14) 0%, hsl(var(--page-accent)/0.03) 55%, transparent 78%)",
+        }}
+        aria-hidden="true"
+      />
+      {/* ── Header — same sticky collapsing header as every other page ── */}
+      <PageHeader
+        kicker="Training Log"
+        title="Track every jump."
+        accent="jump."
+        subtitle="Every session, skill, and difficulty point — in one place."
+        actions={
+          <>
             <button
               onClick={() => setIsPointsOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/[0.07] bg-white/[0.025] text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] pressable"
+              className={cn(goldActionClass, "shrink-0")}
+              data-testid="btn-points-to-fix"
             >
-              <Wrench className="w-3.5 h-3.5" />
-              Points to Fix
+              <Wrench className="w-4 h-4" /> Points to Fix
             </button>
-            <PointsToFix hideTrigger open={isPointsOpen} onOpenChange={setIsPointsOpen} />
-            <button
+            <Button
+              className={cn(primaryActionClass, "shrink-0")}
               onClick={handleCreateNew}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-medium pressable ${scrolled ? "border border-white/[0.07] bg-white/[0.025] text-foreground/70 hover:bg-white/[0.06]" : "bg-gradient-cta text-primary-foreground font-semibold"}`}
-              style={scrolled ? {} : { boxShadow: "0 0 22px hsl(var(--primary)/0.28)" }}
               aria-label="New session"
               data-testid="btn-new-note"
             >
-              <Plus className="w-3.5 h-3.5" />
-              Start Training
-            </button>
+              <Plus className="w-5 h-5" /> Start Training
+            </Button>
+          </>
+        }
+      />
+      <PointsToFix hideTrigger open={isPointsOpen} onOpenChange={setIsPointsOpen} />
+
+      {/* Stats strip — bordered panel, shown once there are sessions */}
+      {total > 0 && (
+        <div className="mb-6">
+          <div className="flex divide-x divide-white/[0.06] rounded-2xl overflow-hidden border border-white/[0.07] bg-white/[0.025]">
+            {STATS.map((s) => (
+              <div key={s.label} className="flex-1 flex flex-col items-center py-3 gap-1">
+                <span
+                  className="text-[18px] font-bold tabular-nums leading-none"
+                  style={{
+                    background: "linear-gradient(135deg,#60a5fa,#a78bfa)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}
+                >
+                  {s.value}
+                </span>
+                <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
+                  {s.label}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
-
-        {/* Stats strip — bordered panel, shown once there are sessions */}
-        {total > 0 && (
-          <div className="relative -mx-6 px-4 pb-4">
-            <div className="flex divide-x divide-white/[0.06] rounded-2xl overflow-hidden border border-white/[0.07] bg-white/[0.025]">
-              {STATS.map((s) => (
-                <div key={s.label} className="flex-1 flex flex-col items-center py-3 gap-1">
-                  <span
-                    className="text-[18px] font-bold tabular-nums leading-none"
-                    style={{
-                      background: "linear-gradient(135deg,#60a5fa,#a78bfa)",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                    }}
-                  >
-                    {s.value}
-                  </span>
-                  <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
-                    {s.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* ── Session list ─────────────────────────────────────────── */}
       <main>
@@ -270,7 +212,7 @@ export default function Home() {
         ) : (
           <>
             {/* Sticky section header */}
-            <div className="flex items-center justify-between sticky top-0 z-10 bg-background/90 backdrop-blur-md py-4 -mx-4 sm:-mx-6 px-4 sm:px-6">
+            <div className="flex items-center justify-between sticky z-10 bg-background/90 backdrop-blur-md py-4 -mx-4 sm:-mx-6 px-4 sm:px-6" style={{ top: "var(--page-header-h, 96px)" }}>
               <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/55">
                 Recent sessions
               </span>
@@ -309,38 +251,6 @@ export default function Home() {
           </>
         )}
       </main>
-
-      {/* Floating copy of the hero actions — docks above the bottom nav once
-          the real row scrolls away. Always mounted so it can animate out. */}
-      <div
-        className={`fixed left-1/2 -translate-x-1/2 z-50 w-max flex items-center gap-2 whitespace-nowrap transition-[opacity,transform] duration-300 ease-in-out-strong ${
-          floatActions ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none"
-        }`}
-        style={{ bottom: navClear }}
-      >
-        <button
-          onClick={() => setIsPointsOpen(true)}
-          tabIndex={floatActions ? 0 : -1}
-          aria-hidden={!floatActions}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/[0.08] bg-card/85 backdrop-blur-md text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06] pressable"
-          data-testid="btn-points-float"
-        >
-          <Wrench className="w-3.5 h-3.5" />
-          Points to Fix
-        </button>
-        <button
-          onClick={handleCreateNew}
-          tabIndex={floatActions ? 0 : -1}
-          aria-hidden={!floatActions}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-semibold bg-gradient-cta text-primary-foreground pressable"
-          style={{ boxShadow: "0 0 22px hsl(var(--primary)/0.28)" }}
-          aria-label="New session"
-          data-testid="btn-new-note-float"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Start Training
-        </button>
-      </div>
 
       <NoteDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} noteToEdit={noteToEdit} />
     </PageLayout>
