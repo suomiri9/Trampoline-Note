@@ -9,6 +9,25 @@ import { lazy, Suspense, useState, useRef } from "react";
 import { getOfflineModeEnabled } from "@/lib/offline-mode";
 import { OFFLINE_READ_TIMEOUT_MS } from "@/lib/read-fallback";
 
+// A stale tab/PWA (still running a previous build) that lazy-loads a page
+// AFTER a newer build went live asks for a chunk hash that no longer exists:
+// the server replaced the file and the new service worker pruned it from the
+// cache. While online the cure is a full reload (fresh HTML + new chunks), so
+// ChunkRecovery does that automatically — but at most once per minute, so a
+// genuinely broken server can never reload-loop the app.
+function autoReloadOncePerMinute(): boolean {
+  try {
+    const KEY = "tn-chunk-auto-reload-at";
+    const last = Number(sessionStorage.getItem(KEY) || 0);
+    if (Date.now() - last < 60_000) return false;
+    sessionStorage.setItem(KEY, String(Date.now()));
+    return true;
+  } catch {
+    // Storage unavailable (private mode etc.) — never risk a reload loop.
+    return false;
+  }
+}
+
 // Lazy route loader that doesn't blank the whole app when a page's JS chunk
 // can't be fetched (e.g. navigating offline to a page that was never loaded).
 // Instead it renders a small "not downloaded yet" screen with a retry button.
@@ -117,11 +136,16 @@ function lazyPage(load: () => Promise<{ default: React.ComponentType<any> }>) {
           // An in-place retry can't cure a poisoned module map: once an
           // offline import failed, the browser cached rejections for the
           // chunk and/or its static deps, so the same URLs reject instantly
-          // even after reconnecting. If the user tapped Retry and the browser
-          // agrees we're online yet the import STILL failed, a full reload is
-          // the one path that always recovers (fresh module map; also picks
-          // up a newer build when the old chunk is gone).
-          if (isUserRetry && navigator.onLine !== false) {
+          // even after reconnecting. While the browser agrees we're online, a
+          // full reload is the one path that always recovers (fresh module
+          // map; also picks up a newer build when the old chunk is gone) —
+          // taken unconditionally for a user-tapped Retry, and automatically
+          // (guarded to once a minute) for the common stale-build case so the
+          // user never even sees the card.
+          if (
+            navigator.onLine !== false &&
+            (isUserRetry || autoReloadOncePerMinute())
+          ) {
             window.location.reload();
             return;
           }
@@ -134,11 +158,20 @@ function lazyPage(load: () => Promise<{ default: React.ComponentType<any> }>) {
 
     if (Comp) return <Comp {...props} />;
     if (!failedNow) return <PageLoader />;
+    // Honest copy: "offline" wording only when the browser is actually
+    // offline. Online failures are almost always a stale build (or a server
+    // hiccup), where "reconnect" is misleading.
+    const offlineNow =
+      typeof navigator !== "undefined" && navigator.onLine === false;
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 px-6 text-center" data-testid="card-chunk-offline">
-        <p className="text-lg font-medium">This page isn't available offline yet</p>
+        <p className="text-lg font-medium">
+          {offlineNow ? "This page isn't available offline yet" : "This page didn't load"}
+        </p>
         <p className="text-sm text-muted-foreground">
-          It hasn't been downloaded to this device. Reconnect and try again.
+          {offlineNow
+            ? "It hasn't been downloaded to this device. Reconnect and try again."
+            : "The app may have just been updated. Retry reloads it."}
         </p>
         <button
           className="mt-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm"
