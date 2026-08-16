@@ -149,8 +149,9 @@ export function PageHeader({
   return (
     <div
       ref={headerRef}
+      data-collapsed={collapsed}
       className={cn(
-        "sticky top-0 z-30 full-bleed-bar page-header-safe mb-6 bg-background/90 backdrop-blur-md border-b border-border/60",
+        "group/pageheader sticky top-0 z-30 full-bleed-bar page-header-safe mb-6 bg-background/90 backdrop-blur-md border-b border-border/60",
         "transition-[padding] duration-300 ease-in-out-strong motion-reduce:transition-none",
         collapsed ? "pb-3" : "pb-5 sm:pb-6",
         className,
@@ -186,9 +187,13 @@ export function PageHeader({
         <div className="min-w-0">
           {kicker && (
             <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
-              <p className="overflow-hidden font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[hsl(var(--page-accent)/0.7)] pb-2">
-                {kicker}
-              </p>
+              {/* Padding lives INSIDE the overflow-hidden child — on the grid item
+                  it would floor the 0fr row at the padding height when collapsed. */}
+              <div className="overflow-hidden">
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[hsl(var(--page-accent)/0.7)] pb-2">
+                  {kicker}
+                </p>
+              </div>
             </div>
           )}
           <h1
@@ -218,7 +223,9 @@ export function PageHeader({
       </div>
       {subtitle && (
         <div className={cn("relative", collapsibleRow(!collapsed))} aria-hidden={collapsed}>
-          <p className="overflow-hidden text-muted-foreground/70 text-[11px] leading-snug sm:text-sm pt-2 sm:pt-3">{subtitle}</p>
+          <div className="overflow-hidden">
+            <p className="text-muted-foreground/70 text-[11px] leading-snug sm:text-sm pt-2 sm:pt-3">{subtitle}</p>
+          </div>
         </div>
       )}
     </div>

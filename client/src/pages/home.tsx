@@ -119,9 +119,11 @@ export default function Home() {
             <button
               onClick={() => setIsPointsOpen(true)}
               className={cn(goldActionClass, "shrink-0")}
+              aria-label="Points to Fix"
               data-testid="btn-points-to-fix"
             >
-              <Wrench className="w-4 h-4" /> Points to Fix
+              <Wrench className="w-4 h-4" />
+              <span className="group-data-[collapsed=true]/pageheader:hidden">Points to Fix</span>
             </button>
             <Button
               className={cn(primaryActionClass, "shrink-0")}
@@ -129,7 +131,8 @@ export default function Home() {
               aria-label="New session"
               data-testid="btn-new-note"
             >
-              <Plus className="w-5 h-5" /> Start Training
+              <Plus className="w-5 h-5" />
+              <span className="group-data-[collapsed=true]/pageheader:hidden">Start Training</span>
             </Button>
           </>
         }
