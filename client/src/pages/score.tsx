@@ -1667,7 +1667,7 @@ export default function ScorePage() {
         }
       />
 
-      <div className="flex flex-col gap-4 pt-2">
+      <div className="flex flex-col gap-4">
         <div className="mt-0 order-2">
 
       {hasComps && (
@@ -2544,7 +2544,7 @@ export default function ScorePage() {
       </div>
         </div>
 
-        <div className="mt-2 space-y-5 order-1">
+        <div className="space-y-5 order-1">
           {(() => {
             const graphScores = (!offlineModeEnabled || isOnline) ? (scores ?? []) : [];
             const individual = graphScores.filter((s) => !s.synchro);
