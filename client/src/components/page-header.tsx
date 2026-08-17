@@ -180,11 +180,12 @@ export function PageHeader({
           </div>
         </div>
       )}
-      {/* Headline and actions share one row; buttons sit on the right and only
-          wrap below on screens too narrow to fit both. */}
+      {/* Desktop (sm+): headline left + buttons right on one row, subtitle
+          full-width below. Phone (expanded): stacked — headline, subtitle,
+          then the buttons. Collapsed (any width): compact title + buttons row. */}
       <div
         className={cn(
-          "relative flex gap-x-3 gap-y-2",
+          "relative flex gap-x-3",
           collapsed
             ? "flex-wrap items-center"
             : centered
@@ -192,7 +193,7 @@ export function PageHeader({
               : "flex-wrap items-end",
         )}
       >
-        <div className="min-w-0">
+        <div className={cn("min-w-0 order-1", !centered && !collapsed && "basis-full sm:basis-auto")}>
           {kicker && (
             <div className={collapsibleRow(!collapsed)} aria-hidden={collapsed}>
               {/* Padding lives INSIDE the overflow-hidden child — on the grid item
@@ -228,36 +229,43 @@ export function PageHeader({
             </span>
           </h1>
         </div>
-        {actions && (!centered || collapsed) && (
+        {subtitle && (
           <div
             className={cn(
-              "flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0",
-              !collapsed && "mb-1",
+              "relative",
+              (!centered || collapsed) && "basis-full",
+              collapsed ? "order-3" : "order-2 sm:order-3",
+              collapsibleRow(!collapsed),
+            )}
+            aria-hidden={collapsed}
+          >
+            <div className="overflow-hidden">
+              <p
+                className={cn(
+                  "text-muted-foreground/70 text-[11px] leading-snug sm:text-sm pt-2 sm:pt-3",
+                  centered && "text-center mx-auto max-w-[240px] sm:max-w-none",
+                )}
+              >
+                {subtitle}
+              </p>
+            </div>
+          </div>
+        )}
+        {actions && (
+          <div
+            className={cn(
+              "flex items-center gap-1.5 sm:gap-2",
+              collapsed
+                ? "order-2 ml-auto shrink-0"
+                : centered
+                  ? "order-3 flex-wrap justify-center mt-4 sm:mt-5"
+                  : "order-3 sm:order-2 shrink-0 mt-3 sm:mt-2 sm:mb-1 sm:ml-auto",
             )}
           >
             {actions}
           </div>
         )}
       </div>
-      {subtitle && (
-        <div className={cn("relative", collapsibleRow(!collapsed))} aria-hidden={collapsed}>
-          <div className="overflow-hidden">
-            <p
-              className={cn(
-                "text-muted-foreground/70 text-[11px] leading-snug sm:text-sm pt-2 sm:pt-3",
-                centered && "text-center mx-auto max-w-[240px] sm:max-w-none",
-              )}
-            >
-              {subtitle}
-            </p>
-          </div>
-        </div>
-      )}
-      {actions && centered && !collapsed && (
-        <div className="relative flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 pt-4 sm:pt-5">
-          {actions}
-        </div>
-      )}
     </div>
   );
 }
