@@ -637,3 +637,38 @@ html [data-sonner-toast][data-removed='true'][data-front='true'][data-swipe-out=
     animation-duration: 0.01ms !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   On-screen keyboard awareness (iOS/iPadOS PWA + Android overlays-content).
+   The layout viewport never shrinks when the virtual keyboard opens, so fixed
+   dialogs centered (or bottom-anchored) against it can end up fully behind
+   the keyboard. lib/keyboard-inset.ts publishes the visible strip as
+   --kb-vvh / --kb-off / --kb-inset-b CSS vars + html[data-kb-open]; while the
+   keyboard is up, keyboard-aware overlays (ui/dialog.tsx sets data-kb-aware)
+   re-center inside that strip and cap their height so every field stays
+   reachable by scrolling. Bottom-sheet-style dialogs (data-kb-anchor="bottom")
+   keep their bottom anchoring and instead ride up on --kb-inset-b at their
+   call sites (skills.tsx). Poppers (skill/date pickers) stay clear via the
+   keyboard-aware collisionPadding in ui/popover.tsx. */
+html[data-kb-open] [data-kb-aware]:not([data-kb-anchor="bottom"]) {
+  top: calc(var(--kb-off, 0px) + var(--kb-vvh, 100dvh) / 2);
+  /* !important: while the keyboard is up, the visible strip is always the
+     tightest cap — it must beat any caller max-h utility (even !-suffixed
+     ones) or content behind the keyboard becomes unreachable. */
+  max-height: calc(var(--kb-vvh, 100dvh) - 1.5rem) !important;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+html[data-kb-open] [data-kb-aware][data-kb-anchor="bottom"] {
+  max-height: calc(var(--kb-vvh, 100dvh) - 0.75rem) !important;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* Ease the re-center instead of snapping while iOS animates the keyboard
+     in; top is static during Radix's transform-based open/close animations,
+     so this transition only ever runs on keyboard open/close. */
+  [data-kb-aware]:not([data-kb-anchor="bottom"]) {
+    transition: top 200ms var(--ease-out-strong);
+  }
+}

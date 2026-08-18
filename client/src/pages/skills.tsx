@@ -599,7 +599,7 @@ export default function SkillsPage() {
         <TabsContent value="skills">
           <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-              <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8" style={pageAccentStyle("skills")}>
+              <DialogContent aria-describedby={undefined} data-kb-anchor="bottom" className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-[var(--kb-inset-b,0px)] max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8" style={pageAccentStyle("skills")}>
                 <DialogHero icon={Target} eyebrow="The Arsenal" title={editingSkill ? "Edit skill" : "Add skill"} />
                   <Form {...skillForm}>
                     <form onSubmit={skillForm.handleSubmit(onSkillSubmit, () => setFormStep(1))} className="space-y-3">
@@ -805,7 +805,7 @@ export default function SkillsPage() {
         <TabsContent value="drills">
           <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-              <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8" style={pageAccentStyle("skills")}>
+              <DialogContent aria-describedby={undefined} data-kb-anchor="bottom" className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-[var(--kb-inset-b,0px)] max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8" style={pageAccentStyle("skills")}>
                 <DialogHero icon={Dumbbell} eyebrow="The Arsenal" title={editingSkill ? "Edit drill" : "Add drill"} />
                   <Form {...drillForm}>
                     <form onSubmit={drillForm.handleSubmit(onDrillSubmit, () => setFormStep(1))} className="space-y-3">
@@ -990,7 +990,7 @@ export default function SkillsPage() {
         <TabsContent value="connections">
           <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-              <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8" style={pageAccentStyle("skills")}>
+              <DialogContent aria-describedby={undefined} data-kb-anchor="bottom" className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-[var(--kb-inset-b,0px)] max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8" style={pageAccentStyle("skills")}>
                 <DialogHero icon={Link2} eyebrow="The Arsenal" title={editingSkill ? "Edit connection" : "Add connection"} />
                   <div className="space-y-3">
                     {!editingSkill && activeConnections.length > 0 && (
@@ -1211,7 +1211,7 @@ export default function SkillsPage() {
         <TabsContent value="parts">
           <div>
             <Dialog open={(showForm || !!editingSkill) && !reorderMode} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
-              <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8" style={pageAccentStyle("skills")}>
+              <DialogContent aria-describedby={undefined} data-kb-anchor="bottom" className="sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-[var(--kb-inset-b,0px)] max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8" style={pageAccentStyle("skills")}>
                 <DialogHero icon={Puzzle} eyebrow="The Arsenal" title={editingSkill ? "Edit routine part" : "Add routine part"} />
                   <div className="space-y-3">
                     <div className="space-y-2">
