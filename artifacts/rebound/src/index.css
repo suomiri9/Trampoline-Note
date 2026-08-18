@@ -1,0 +1,618 @@
+/* GENERATED FROM tokens.json BY scripts/build-tokens.mjs -- DO NOT EDIT.
+ * Edit tokens.json instead; the dev server regenerates this file on change. */
+@import "tailwindcss";
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+/* Register this package's own components so any consumer that imports this
+ * stylesheet (via `@import "<pkg>/styles.css"`) gets their utility classes
+ * generated -- Tailwind does not scan node_modules by default. Resolved
+ * relative to this file, so it points at this package's components whether it
+ * runs in the design system's own preview or inside a consuming app/sandbox. */
+@source "./components";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover-border: hsl(var(--popover-border));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-border: var(--primary-border);
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary-border: var(--secondary-border);
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted-border: var(--muted-border);
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent-border: var(--accent-border);
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive-border: var(--destructive-border);
+
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-primary-border: var(--sidebar-primary-border);
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-accent-border: var(--sidebar-accent-border);
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+  --font-display: var(--app-font-sans);
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: calc(1 / 0.75);
+  --text-sm: 0.875rem;
+  --text-sm--line-height: calc(1.25 / 0.875);
+  --text-base: 1rem;
+  --text-base--line-height: calc(1.5 / 1);
+  --text-lg: 1.125rem;
+  --text-lg--line-height: calc(1.75 / 1.125);
+  --text-xl: 1.25rem;
+  --text-xl--line-height: calc(1.75 / 1.25);
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: calc(2 / 1.5);
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: calc(2.25 / 1.875);
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: calc(2.5 / 2.25);
+  --text-5xl: 3rem;
+  --text-5xl--line-height: 1;
+  --text-6xl: 3.75rem;
+  --text-6xl--line-height: 1;
+  --text-7xl: 4.5rem;
+  --text-7xl--line-height: 1;
+  --text-8xl: 6rem;
+  --text-8xl--line-height: 1;
+  --text-9xl: 8rem;
+  --text-9xl--line-height: 1;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* LIGHT MODE */
+:root {
+  --button-outline: rgba(0,0,0, .10);
+  --badge-outline: rgba(0,0,0, .05);
+
+  /* Automatic computation of border around primary / danger buttons */
+  --opaque-button-border-intensity: -8; /* In terms of percentages */
+
+  /* Backgrounds applied on top of other backgrounds when hovered/active */
+  --elevate-1: rgba(0,0,0, .03);
+  --elevate-2: rgba(0,0,0, .08);
+
+  --background: 0 0% 100%;
+  --foreground: 210 33.3% 5.9%;
+  --border: 216 12.2% 92%;
+  --card: 0 0% 100%;
+  --card-foreground: 210 33.3% 5.9%;
+  --sidebar: 210 14.3% 97.3%;
+  --sidebar-foreground: 212 10.5% 28%;
+  --sidebar-border: 216 12.2% 92%;
+  --sidebar-primary: 200 98% 39.4%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 206 84% 95.1%;
+  --sidebar-accent-foreground: 201 90% 27.5%;
+  --sidebar-ring: 200 98% 39.4%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 210 33.3% 5.9%;
+  --primary: 221 83.2% 53.3%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 18.2% 95.7%;
+  --secondary-foreground: 214 21.2% 12.9%;
+  --muted: 210 18.2% 95.7%;
+  --muted-foreground: 211 11.1% 44.1%;
+  --accent: 211 100% 93.9%;
+  --accent-foreground: 221 83.4% 37.8%;
+  --destructive: 347 77.2% 49.8%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 214 13.7% 90%;
+  --ring: 221 83.2% 53.3%;
+  --chart-1: 221 83.2% 53.3%;
+  --chart-2: 161 93.5% 30.4%;
+  --chart-3: 32 94.6% 43.7%;
+  --chart-4: 239 82.6% 61.8%;
+  --chart-5: 347 77.2% 49.8%;
+
+  --app-font-sans: Inter, sans-serif;
+  --app-font-serif: Inter, sans-serif;
+  --app-font-mono: Inter, sans-serif;
+  --radius: 0.75rem;
+  --spacing: 0.25rem;
+
+  /* Rebound language: warm accent for PB/gold surfaces (re-resolves per mode). */
+  --gold: var(--chart-3);
+  /* Per-page accent identity: sections recolor kickers, glows and the
+     .text-gradient-page utility by overriding this pair (see .page-accent-*). */
+  --page-accent: var(--primary);
+  --page-accent-2: var(--chart-4);
+
+  /* Computed contrast borders (fallback then modern color-mix syntax). */
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --primary-border: hsl(var(--primary));
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --secondary-border: hsl(var(--secondary));
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --muted-border: hsl(var(--muted));
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --accent-border: hsl(var(--accent));
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --destructive-border: hsl(var(--destructive));
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  --card-border: hsl(var(--card));
+  --popover-border: hsl(var(--popover));
+}
+
+.dark {
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+
+  --opaque-button-border-intensity: 9;  /* In terms of percentages */
+
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+
+  --background: 0 0% 0%;
+  --foreground: 180 6.7% 97.1%;
+  --border: 0 0% 10.2%;
+  --card: 0 0% 3.5%;
+  --card-foreground: 180 6.7% 97.1%;
+  --sidebar: 0 0% 3.1%;
+  --sidebar-foreground: 216 8.1% 63.7%;
+  --sidebar-border: 0 0% 10.2%;
+  --sidebar-primary: 217 91.2% 59.8%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 217 41.2% 10%;
+  --sidebar-accent-foreground: 213 93.9% 67.8%;
+  --sidebar-ring: 217 91.2% 59.8%;
+  --popover: 0 0% 5.1%;
+  --popover-foreground: 180 6.7% 97.1%;
+  --primary: 217 91.2% 59.8%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 7.8%;
+  --secondary-foreground: 213 13% 86.5%;
+  --muted: 0 0% 7.1%;
+  --muted-foreground: 216 6.9% 57.5%;
+  --accent: 217 41.2% 10%;
+  --accent-foreground: 213 93.9% 67.8%;
+  --destructive: 350 89.2% 60.2%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 0 0% 11%;
+  --ring: 217 91.2% 59.8%;
+  --chart-1: 213 93.9% 67.8%;
+  --chart-2: 158 64.4% 51.6%;
+  --chart-3: 43 96.4% 56.3%;
+  --chart-4: 234 89.5% 73.9%;
+  --chart-5: 351 94.5% 71.4%;
+
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --primary-border: hsl(var(--primary));
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --secondary-border: hsl(var(--secondary));
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --muted-border: hsl(var(--muted));
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --accent-border: hsl(var(--accent));
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --destructive-border: hsl(var(--destructive));
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  --card-border: hsl(var(--card));
+  --popover-border: hsl(var(--popover));
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  /* Hide ugly search cancel button in Chrome until we can style it properly */
+  input[type="search"]::-webkit-search-cancel-button {
+    @apply hidden;
+  }
+
+  /* Placeholder styling for contentEditable div */
+  [contenteditable][data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+  }
+
+  .no-default-hover-elevate {}
+
+  .no-default-active-elevate {}
+
+  .toggle-elevate::before,
+  .toggle-elevate-2::before {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0px;
+    border-radius: inherit;
+    z-index: -1;
+  }
+
+  .toggle-elevate.toggle-elevated::before {
+    background-color: var(--elevate-2);
+  }
+
+  .border.toggle-elevate::before {
+    inset: -1px;
+  }
+
+  .hover-elevate:not(.no-default-hover-elevate),
+  .active-elevate:not(.no-default-active-elevate),
+  .hover-elevate-2:not(.no-default-hover-elevate),
+  .active-elevate-2:not(.no-default-active-elevate) {
+    position: relative;
+    z-index: 0;
+  }
+
+  .hover-elevate:not(.no-default-hover-elevate)::after,
+  .active-elevate:not(.no-default-active-elevate)::after,
+  .hover-elevate-2:not(.no-default-hover-elevate)::after,
+  .active-elevate-2:not(.no-default-active-elevate)::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0px;
+    border-radius: inherit;
+    z-index: 999;
+  }
+
+  /* Hover tints only for devices that truly hover -- on touch screens :hover
+     sticks after a tap. Press (:active) tints stay ungated: that IS the touch
+     feedback. */
+  @media (hover: hover) and (pointer: fine) {
+    .hover-elevate:hover:not(.no-default-hover-elevate)::after {
+      background-color: var(--elevate-1);
+    }
+
+    .hover-elevate-2:hover:not(.no-default-hover-elevate)::after {
+      background-color: var(--elevate-2);
+    }
+  }
+
+  .active-elevate:active:not(.no-default-active-elevate)::after {
+    background-color: var(--elevate-1);
+  }
+
+  .active-elevate-2:active:not(.no-default-active-elevate)::after {
+    background-color: var(--elevate-2);
+  }
+
+  .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
+  .border.active-elevate:not(.no-active-interaction-elevate)::after,
+  .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
+  .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
+  .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
+    inset: -1px;
+  }
+}
+
+/* ==========================================================================
+   REBOUND LANGUAGE LAYER
+   Hand-authored signature utilities extracted from Trampoline Note. Lives in
+   the template so regeneration preserves it. Everything is token-driven; the
+   only literals are values the app itself hardcodes.
+   ========================================================================== */
+
+/* Motion vocabulary: strong ease-out for entrances, symmetric strong for
+   morphs, the iOS-drawer curve for sheets. @theme registers each as both a
+   CSS variable and a Tailwind ease-* utility. Spinners run fast (0.65s). */
+@theme {
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --animate-spin: spin 0.65s linear infinite;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Kill the 300ms double-tap delay and accidental zooms on controls. */
+  button, [role="button"], a, input, select, textarea, label {
+    touch-action: manipulation;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  /* iOS zooms the page when a focused control renders under 16px. */
+  @supports (-webkit-touch-callout: none) {
+    input, select, textarea {
+      font-size: max(16px, 1em);
+    }
+  }
+}
+
+/* Gold pair for PB/celebration surfaces (amber head, orange tail -- the
+   orange tail is a literal in the app too). */
+:root {
+  --gold-2: #ea580c;
+}
+.dark {
+  --gold-2: #fb923c;
+}
+
+/* --- Type voice ------------------------------------------------------- */
+
+/* Uppercase micro-labels: 10px, wide tracking, ligatures off. This is the
+   system's metadata voice (section kickers, stat captions, code chips). */
+.micro-label,
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-feature-settings: "liga" 0, "calt" 0;
+}
+
+.eyebrow {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Tighter tracking for narrow chips and dense rows. */
+.eyebrow-compact {
+  letter-spacing: 0.12em;
+}
+
+/* Meta text that historically used mono: keeps the token but renders Inter
+   (monospace is banned); slight tracking stands in for mono rhythm. */
+.font-mono-meta {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  font-feature-settings: "liga" 0, "calt" 0;
+}
+
+/* Display voice for page titles and hero figures. */
+.page-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+}
+
+/* --- Gradient ink ------------------------------------------------------ */
+
+.text-gradient-primary,
+.text-gradient-gold,
+.text-gradient-page {
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  /* Paint-box fix: pad the clip box then pull it back so descenders and
+     tight tracking are not sheared off. */
+  padding: 0.1em 0.08em;
+  margin: -0.1em -0.08em;
+}
+
+.text-gradient-primary {
+  background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--chart-4)));
+}
+
+.text-gradient-gold {
+  background-image: linear-gradient(135deg, hsl(var(--gold)), var(--gold-2));
+}
+
+.text-gradient-page {
+  background-image: linear-gradient(135deg, hsl(var(--page-accent)), hsl(var(--page-accent-2)));
+}
+
+/* --- Surfaces ----------------------------------------------------------- */
+
+/* The signature panel: transparent fill, hairline border. (.card-3d is the
+   legacy app alias -- the treatment is flat.) */
+.panel-hairline,
+.card-3d {
+  background: transparent;
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: var(--radius);
+  transition: border-color 150ms var(--ease-out-strong), transform 150ms var(--ease-out-strong);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .panel-hairline-hover:hover,
+  .card-3d-hover:hover {
+    border-color: hsl(var(--border));
+  }
+}
+
+.panel-hairline-hover:active,
+.card-3d-hover:active {
+  transform: scale(0.99);
+}
+
+/* Frosted chrome for headers/nav floating over content. */
+.glass-surface {
+  background: hsl(var(--background) / 0.72);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid hsl(var(--border) / 0.5);
+}
+
+/* Denser frost for bottom sheets and drawers. */
+.sheet-material {
+  background: hsl(var(--popover) / 0.92);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  backdrop-filter: blur(28px) saturate(1.6);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass-surface,
+  .sheet-material {
+    background: hsl(var(--popover));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Ambient page glow driven by the page accent pair. */
+.bg-mesh {
+  background-image:
+    radial-gradient(42rem 42rem at 12% -10%, hsl(var(--page-accent) / 0.08), transparent 60%),
+    radial-gradient(36rem 36rem at 95% 15%, hsl(var(--page-accent-2) / 0.06), transparent 55%);
+}
+
+/* Primary CTA gradient; light mode deepens both endpoints for contrast. */
+.bg-gradient-cta {
+  background-image: linear-gradient(135deg, hsl(221 83% 48%), hsl(239 64% 52%));
+}
+
+.dark .bg-gradient-cta {
+  background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--chart-4)));
+}
+
+/* Soft glow under gradient CTAs. */
+.btn-3d {
+  box-shadow: 0 8px 24px -8px hsl(var(--primary) / 0.5);
+}
+
+/* --- Feedback & motion --------------------------------------------------- */
+
+/* Standalone press feedback for anything tappable that has no elevate
+   treatment. Scale via --press-scale (default 0.97). */
+.pressable {
+  transition: transform 150ms var(--ease-out-strong);
+  will-change: transform;
+}
+
+.pressable:active {
+  transform: scale(var(--press-scale, 0.97));
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 400ms var(--ease-out-strong) both;
+}
+
+@keyframes materialize-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+.animate-materialize {
+  animation: materialize-in 500ms var(--ease-out-strong) both;
+}
+
+@keyframes morph-blur-in {
+  from { opacity: 0; filter: blur(12px); transform: scale(1.02); }
+  to { opacity: 1; filter: none; transform: none; }
+}
+
+.animate-morph-blur {
+  animation: morph-blur-in 450ms var(--ease-out-strong) both;
+}
+
+/* 50ms entrance stagger steps for lists and stat grids. */
+.stagger-1 { animation-delay: 50ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 150ms; }
+.stagger-4 { animation-delay: 200ms; }
+.stagger-5 { animation-delay: 250ms; }
+
+@keyframes reduced-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-materialize,
+  .animate-morph-blur {
+    animation: reduced-fade 150ms ease-out both;
+  }
+
+  .pressable:active,
+  .panel-hairline-hover:active,
+  .card-3d-hover:active {
+    transform: none;
+  }
+}
+
+/* --- Per-page accent identity -------------------------------------------- */
+
+/* Each product area owns an accent pair; setting it recolors .text-gradient-page,
+   .bg-mesh and any hsl(var(--page-accent)) usage below that node. Home keeps the
+   default primary/indigo pair. Values are H S% L% channels. */
+.page-accent-score, [data-page-accent="score"] { --page-accent: 48 96% 53%; --page-accent-2: 27 96% 61%; }
+.page-accent-progress, [data-page-accent="progress"] { --page-accent: 142 69% 58%; --page-accent-2: 158 64% 52%; }
+.page-accent-skills, [data-page-accent="skills"] { --page-accent: 0 91% 71%; --page-accent-2: 351 95% 71%; }
+.page-accent-routines, [data-page-accent="routines"] { --page-accent: 270 95% 75%; --page-accent-2: 292 91% 73%; }
+.page-accent-recovery, [data-page-accent="recovery"] { --page-accent: 351 95% 71%; --page-accent-2: 329 86% 70%; }
+.page-accent-coach, [data-page-accent="coach"] { --page-accent: 188 86% 53%; --page-accent-2: 198 93% 60%; }
+.page-accent-timer, [data-page-accent="timer"] { --page-accent: 43 96% 56%; --page-accent-2: 25 95% 53%; }
+.page-accent-execution, [data-page-accent="execution"] { --page-accent: 158 64% 52%; --page-accent-2: 172 66% 50%; }
+
+/* --- Small utilities ------------------------------------------------------ */
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Toasts leave faster than they enter. */
+[data-sonner-toast][data-removed="true"] {
+  transition-duration: 150ms !important;
+}

@@ -1,0 +1,19 @@
+kind = "design-system"
+previewPath = "/__rebound/"
+title = "Rebound Design System"
+description = "Trampoline Note's visual language, extracted from the live app: near-black minimal surfaces, Inter-only type with uppercase micro-labels, sky-to-indigo gradient accents, hairline panels, per-page accent identities, and the fluid-motion layer (strong easing, press feedback, glass materials)."
+version = "1.0.0"
+id = "artifacts/rebound"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/__rebound/" ]
+localPort = 21972
+
+[services.development]
+run = "pnpm --filter @workspace/rebound run dev"
+
+[services.env]
+PORT = "21972"
+BASE_PATH = "/__rebound/"
