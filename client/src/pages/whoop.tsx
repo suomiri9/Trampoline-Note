@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Unplug, AlertTriangle, RefreshCw, Lock, HeartPulse, Heart, Moon, Zap, Activity } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, subDays } from "date-fns";
 import whoopLogoPath from "@assets/image_1784922999270.png";
 
 type WhoopRange = 7 | 30 | 90 | 180;
@@ -24,6 +24,82 @@ interface WhoopData {
   sleep: Array<{ date: string; start: string; end: string; nap: boolean; asleepHours: number | null; performancePct: number | null }>;
   cycles: Array<{ date: string; strain: number | null; avgHeartRate: number | null; maxHeartRate: number | null }>;
   workouts: Array<{ id: string; sport: string; start: string; end: string; durationMin: number; strain: number | null; avgHeartRate: number | null }>;
+}
+
+// ── Sample data for the unlinked state ──
+// Deterministic per-date PRNG so the preview doesn't reshuffle on every
+// render/refetch, and overlapping ranges (7/30/90/180) agree with each other.
+function mulberry32(seed: number) {
+  return function () {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+function generateSampleWhoopData(days: number): WhoopData {
+  const recovery: WhoopData["recovery"] = [];
+  const sleep: WhoopData["sleep"] = [];
+  const cycles: WhoopData["cycles"] = [];
+  const workouts: WhoopData["workouts"] = [];
+  const today = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const day = subDays(today, i);
+    const date = format(day, "yyyy-MM-dd");
+    const d = Math.floor(day.getTime() / 86_400_000); // day index since epoch = per-date seed
+    const rng = mulberry32(d * 2654435761);
+
+    // Slow overlapping waves + per-day noise → organic-looking trends.
+    const rec = clamp(62 + 16 * Math.sin(d / 3.9) + 10 * Math.sin(d / 11.3) + (rng() - 0.5) * 16, 22, 98);
+    const hrv = clamp(58 + (rec - 50) * 0.55 + (rng() - 0.5) * 14, 38, 125);
+    const rhr = clamp(55 - (rec - 50) * 0.09 + (rng() - 0.5) * 3, 45, 62);
+    recovery.push({ date, recoveryScore: Math.round(rec), restingHeartRate: Math.round(rhr), hrvMs: Math.round(hrv) });
+
+    const rough = rng() < 0.14; // the odd short night
+    const asleepH = rough ? 4.6 + rng() * 1.4 : 6.4 + rng() * 2.2;
+    const perf = clamp(Math.round(52 + asleepH * 5.5 + (rng() - 0.5) * 10), 48, 99);
+    const bed = new Date(day);
+    bed.setDate(bed.getDate() - 1);
+    bed.setHours(21, 40 + Math.round(rng() * 110), 0, 0); // 21:40 – 23:30
+    const wake = new Date(bed.getTime() + (asleepH + 0.4 + rng() * 0.5) * 3_600_000);
+    sleep.push({
+      date,
+      start: bed.toISOString(),
+      end: wake.toISOString(),
+      nap: false,
+      asleepHours: Math.round(asleepH * 10) / 10,
+      performancePct: perf,
+    });
+
+    const restDay = rng() < 0.2;
+    const strain = restDay ? 3 + rng() * 3.5 : 7.5 + rng() * 9;
+    const avgHr = clamp(88 + strain * 2.6 + (rng() - 0.5) * 8, 80, 150);
+    const maxHr = clamp(avgHr + 35 + rng() * 25, 120, 196);
+    cycles.push({ date, strain: Math.round(strain * 10) / 10, avgHeartRate: Math.round(avgHr), maxHeartRate: Math.round(maxHr) });
+
+    if (!restDay && rng() < 0.85) {
+      const sports = ["Trampolining", "Trampolining", "Strength", "Running", "Mobility"];
+      const sport = sports[Math.floor(rng() * sports.length)];
+      const startAt = new Date(day);
+      startAt.setHours(16 + Math.floor(rng() * 3), Math.round(rng() * 59), 0, 0);
+      const durationMin = Math.round(45 + rng() * 70);
+      workouts.push({
+        id: `sample-${date}`,
+        sport,
+        start: startAt.toISOString(),
+        end: new Date(startAt.getTime() + durationMin * 60_000).toISOString(),
+        durationMin,
+        strain: Math.round(clamp(strain * (0.65 + rng() * 0.3), 2, 19) * 10) / 10,
+        avgHeartRate: Math.round(avgHr + 8 + rng() * 10),
+      });
+    }
+  }
+  workouts.reverse(); // newest first, matching the API
+  return { recovery, sleep, cycles, workouts };
 }
 
 const tooltipStyle = {
@@ -132,6 +208,16 @@ export default function WhoopPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const errMessage = error instanceof Error ? error.message : "";
+  const notConnected = errMessage.startsWith("503");
+  // No WHOOP linked → show the dashboard filled with generated sample data,
+  // clearly labelled, with the sign-in entry in a banner instead of a wall.
+  // A 503 is the server's authoritative "no account linked", so it wins over
+  // any stale cached data — never present old real data as current.
+  const sampleData = useMemo(() => generateSampleWhoopData(range), [range]);
+  const demoMode = notConnected;
+  const whoop = demoMode ? sampleData : data;
+
   // Self-heal when connectivity returns: if the last attempt failed and the
   // online signal flips back on, fetch again instead of stranding the page
   // on the offline card until an app restart.
@@ -143,13 +229,13 @@ export default function WhoopPage() {
   // ── Summary stat strip: range-average figures across the trends ──
   // Computed before any early return so hook order stays stable.
   const summaryStats = useMemo(() => {
-    const recoveryData = (data?.recovery ?? []).filter(
+    const recoveryData = (whoop?.recovery ?? []).filter(
       (r) => r.recoveryScore != null || r.hrvMs != null || r.restingHeartRate != null,
     );
-    const sleepData = (data?.sleep ?? []).filter(
+    const sleepData = (whoop?.sleep ?? []).filter(
       (s) => !s.nap && (s.asleepHours != null || s.performancePct != null),
     );
-    const strainData = (data?.cycles ?? []).filter((c) => c.strain != null);
+    const strainData = (whoop?.cycles ?? []).filter((c) => c.strain != null);
     const avg = (nums: Array<number | null | undefined>) => {
       const vals = nums.filter((n): n is number => n != null);
       return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
@@ -164,14 +250,16 @@ export default function WhoopPage() {
       { label: "Strain", value: str != null ? str.toFixed(1) : "—", accent: "page" as const, testId: "stat-whoop-strain" },
       { label: "HRV", value: hrv != null ? `${Math.round(hrv)}` : "—", accent: "page" as const, testId: "stat-whoop-hrv" },
     ];
-  }, [data]);
+  }, [whoop]);
 
   const disconnectMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("POST", "/api/whoop/disconnect");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/whoop/data"] });
+      // Reset (not just invalidate) so no stale real data survives the unlink —
+      // the refetch 503s and the page lands cleanly in sample mode.
+      queryClient.resetQueries({ queryKey: ["/api/whoop/data"] });
       queryClient.invalidateQueries({ queryKey: ["/api/whoop/daily"] });
       invalidateCoachPush(queryClient);
       toast({ title: "WHOOP disconnected", description: "Your WHOOP account was unlinked." });
@@ -204,8 +292,21 @@ export default function WhoopPage() {
     );
   }
 
-  const errMessage = error instanceof Error ? error.message : "";
-  const notConnected = errMessage.startsWith("503");
+  // Breaks out of the preview iframe: WHOOP's login page refuses to render
+  // inside one, so navigate the top-level window (new tab if that's blocked).
+  const signInWithWhoop = () => {
+    const url = "/api/whoop/auth";
+    const framed = window.self !== window.top;
+    if (framed) {
+      try {
+        window.top!.location.href = url;
+      } catch {
+        window.open(url, "_blank", "noopener");
+      }
+    } else {
+      window.location.href = url;
+    }
+  };
 
   const rangeSelect = (
     <div className="flex items-center justify-between mb-4 gap-2">
@@ -213,16 +314,18 @@ export default function WhoopPage() {
         Last {range} days
       </span>
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => disconnectMutation.mutate()}
-          disabled={disconnectMutation.isPending}
-          className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-white/[0.07] bg-white/[0.025] font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/60 hover:bg-white/[0.06] pressable disabled:opacity-50"
-          data-testid="button-whoop-disconnect"
-        >
-          <Unplug className="w-3.5 h-3.5" />
-          {disconnectMutation.isPending ? "Unlinking…" : "Disconnect"}
-        </button>
+        {!demoMode && (
+          <button
+            type="button"
+            onClick={() => disconnectMutation.mutate()}
+            disabled={disconnectMutation.isPending}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-white/[0.07] bg-white/[0.025] font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/60 hover:bg-white/[0.06] pressable disabled:opacity-50"
+            data-testid="button-whoop-disconnect"
+          >
+            <Unplug className="w-3.5 h-3.5" />
+            {disconnectMutation.isPending ? "Unlinking…" : "Disconnect"}
+          </button>
+        )}
         <Select value={String(range)} onValueChange={(v) => setRange(Number(v) as WhoopRange)}>
           <SelectTrigger className="w-[130px] h-8 rounded-xl text-xs border-white/[0.07] bg-white/[0.025] font-mono" data-testid="select-whoop-range">
             <SelectValue />
@@ -238,147 +341,27 @@ export default function WhoopPage() {
     </div>
   );
 
-  if (error) {
+  if (error && !notConnected) {
     return (
       <PageLayout accent="whoop">
         {hero}
-        {notConnected ? (
-          <div
-            className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] px-5 py-10 sm:p-10 flex flex-col items-center text-center"
-            data-testid="card-whoop-not-connected"
-          >
-            {/* Rose body-pulse glow — the same identity device the connected
-                vitals band uses, so the empty state already belongs to the page. */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-16 h-52 w-52 rounded-full blur-2xl"
-              style={{ background: "radial-gradient(circle, hsl(var(--page-accent) / 0.2) 0%, transparent 70%)" }}
-            />
-
-            {/* The handoff: WHOOP's signal flowing into the app. */}
-            <div className="relative flex items-center gap-2.5 mb-6" data-testid="icon-whoop-link">
-              <img
-                src={whoopLogoPath}
-                alt="WHOOP"
-                className="w-14 h-14 rounded-2xl border border-white/[0.08]"
-                data-testid="icon-whoop-logo"
-              />
-              <svg
-                width="72"
-                height="24"
-                viewBox="0 0 72 24"
-                fill="none"
-                aria-hidden
-                className="text-[hsl(var(--page-accent))] animate-pulse motion-reduce:animate-none"
-              >
-                <path
-                  d="M0 12 H22 L28 12 L32 4 L38 20 L42 12 H72"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  opacity="0.8"
-                />
-              </svg>
-              <img
-                src="/icon-192.png"
-                alt="Trampoline Note"
-                className="w-14 h-14 rounded-2xl border border-white/[0.08]"
-                data-testid="icon-app-logo"
-              />
-            </div>
-
-            <h3 className="relative text-2xl font-black tracking-tight mb-2">
-              Connect WHOOP<span className="text-[hsl(var(--page-accent))]">.</span>
-            </h3>
-            <p className="relative text-sm text-muted-foreground max-w-sm leading-relaxed">
-              Recovery, sleep, strain and heart — next to every session you log.
-            </p>
-            {oauthError && (
-              <p className="relative text-xs font-mono text-amber-400 max-w-sm mt-3" data-testid="text-whoop-oauth-error">
-                {oauthError}
-              </p>
-            )}
-
-            {/* Ghosted vitals strip — exactly what appears once linked. Purely
-                decorative preview (placeholder dashes), so hidden from AT. */}
-            <div aria-hidden className="relative w-full max-w-md grid grid-cols-4 border-y border-white/[0.06] divide-x divide-white/[0.05] py-3.5 my-7">
-              {[
-                { icon: Zap, color: "text-emerald-400/60", label: "Recovery" },
-                { icon: Moon, color: "text-[hsl(var(--chart-4)/0.6)]", label: "Sleep" },
-                { icon: Activity, color: "text-amber-400/60", label: "Strain" },
-                { icon: Heart, color: "text-[hsl(var(--page-accent)/0.6)]", label: "HRV" },
-              ].map(({ icon: Icon, color, label }) => (
-                <div key={label} className="flex flex-col items-center gap-1.5 px-1 min-w-0">
-                  <Icon className={cn("w-3.5 h-3.5", color)} />
-                  <span className="text-base font-extrabold tracking-[-0.04em] leading-none tabular-nums text-foreground/25">
-                    —
-                  </span>
-                  <span className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.14em] text-muted-foreground truncate w-full">
-                    {label}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <Button
-              className="relative bg-gradient-cta text-primary-foreground font-semibold rounded-xl h-11 px-6 pressable"
-              onClick={() => {
-                // WHOOP's login page refuses to load inside an iframe (e.g. the
-                // Replit preview pane), so break out to the top-level window —
-                // falling back to a new tab if top navigation is blocked.
-                const url = "/api/whoop/auth";
-                const framed = window.self !== window.top;
-                if (framed) {
-                  try {
-                    window.top!.location.href = url;
-                  } catch {
-                    window.open(url, "_blank", "noopener");
-                  }
-                } else {
-                  window.location.href = url;
-                }
-              }}
-              data-testid="button-whoop-signin"
-            >
-              Sign in with WHOOP
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="relative mt-2 rounded-xl font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60"
-              onClick={() => refetch()}
-              disabled={isRefetching}
-              data-testid="button-whoop-recheck"
-            >
-              <RefreshCw className={cn("w-4 h-4 mr-2", isRefetching && "animate-spin")} />
-              {isRefetching ? "Checking…" : "Check connection"}
-            </Button>
-
-            <p className="relative flex items-center gap-1.5 mt-6 text-[11px] text-muted-foreground">
-              <Lock className="w-3 h-3 shrink-0" />
-              Sign-in happens on WHOOP&apos;s own page — this app never sees your password.
-            </p>
+        <div
+          className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-8 flex flex-col items-center text-center"
+          data-testid="card-whoop-error"
+        >
+          <div className="w-12 h-12 mb-4 rounded-2xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center">
+            <AlertTriangle className="w-6 h-6 text-amber-400" />
           </div>
-        ) : (
-          <div
-            className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-8 flex flex-col items-center text-center"
-            data-testid="card-whoop-error"
-          >
-            <div className="w-12 h-12 mb-4 rounded-2xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-amber-400" />
-            </div>
-            <h3 className="text-xl font-black tracking-tight mb-2">Couldn&apos;t load WHOOP data</h3>
-            <p className="text-sm text-muted-foreground max-w-sm break-words leading-relaxed">
-              {errMessage.replace(/^\d+:\s*/, "") || "The WHOOP service returned an error. Try again shortly."}
-            </p>
-          </div>
-        )}
+          <h3 className="text-xl font-black tracking-tight mb-2">Couldn&apos;t load WHOOP data</h3>
+          <p className="text-sm text-muted-foreground max-w-sm break-words leading-relaxed">
+            {errMessage.replace(/^\d+:\s*/, "") || "The WHOOP service returned an error. Try again shortly."}
+          </p>
+        </div>
       </PageLayout>
     );
   }
 
-  if (isLoading || !data) {
+  if (isLoading || !whoop) {
     return (
       <PageLayout accent="whoop">
         {hero}
@@ -392,15 +375,70 @@ export default function WhoopPage() {
     );
   }
 
-  const recoveryData = data.recovery.filter((r) => r.recoveryScore != null || r.hrvMs != null || r.restingHeartRate != null);
-  const sleepData = data.sleep.filter((s) => !s.nap && (s.asleepHours != null || s.performancePct != null));
-  const strainData = data.cycles.filter((c) => c.strain != null);
+  const recoveryData = whoop.recovery.filter((r) => r.recoveryScore != null || r.hrvMs != null || r.restingHeartRate != null);
+  const sleepData = whoop.sleep.filter((s) => !s.nap && (s.asleepHours != null || s.performancePct != null));
+  const strainData = whoop.cycles.filter((c) => c.strain != null);
   const hasAny =
-    recoveryData.length > 0 || sleepData.length > 0 || strainData.length > 0 || data.workouts.length > 0;
+    recoveryData.length > 0 || sleepData.length > 0 || strainData.length > 0 || whoop.workouts.length > 0;
 
   return (
     <PageLayout accent="whoop">
       {hero}
+
+      {demoMode && (
+        <div
+          className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 sm:p-5 mb-6"
+          data-testid="card-whoop-sample-banner"
+        >
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -left-8 -top-10 h-32 w-32 rounded-full blur-2xl"
+            style={{ background: "radial-gradient(circle, hsl(var(--page-accent) / 0.18) 0%, transparent 70%)" }}
+          />
+          <div className="relative flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <img src={whoopLogoPath} alt="WHOOP" className="w-10 h-10 rounded-xl border border-white/[0.08] shrink-0" />
+              <div className="min-w-0">
+                <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-[hsl(var(--page-accent)/0.8)]">
+                  Sample data
+                </div>
+                <p className="text-sm text-muted-foreground leading-snug mt-1">
+                  These numbers are made up. Sign in with WHOOP to see your own recovery, sleep and strain here.
+                </p>
+                {oauthError && (
+                  <p className="text-xs font-mono text-amber-400 mt-2" data-testid="text-whoop-oauth-error">
+                    {oauthError}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 sm:self-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-xl font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60"
+                onClick={() => refetch()}
+                disabled={isRefetching}
+                data-testid="button-whoop-recheck"
+                aria-label="Check connection"
+              >
+                <RefreshCw className={cn("w-4 h-4", isRefetching && "animate-spin")} />
+              </Button>
+              <Button
+                className="bg-gradient-cta text-primary-foreground font-semibold rounded-xl h-10 px-5 pressable"
+                onClick={signInWithWhoop}
+                data-testid="button-whoop-signin"
+              >
+                Sign in with WHOOP
+              </Button>
+            </div>
+          </div>
+          <p className="relative flex items-center gap-1.5 mt-3 text-[11px] text-muted-foreground">
+            <Lock className="w-3 h-3 shrink-0" />
+            Sign-in happens on WHOOP&apos;s own page — this app never sees your password.
+          </p>
+        </div>
+      )}
 
       {hasAny && (
         <div className="mb-6">
@@ -545,7 +583,7 @@ export default function WhoopPage() {
         </div>
       )}
 
-      {data.workouts.length > 0 && (
+      {whoop.workouts.length > 0 && (
         <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 mt-4" data-testid="card-whoop-workouts">
           <div className="flex items-center gap-2.5 mb-4">
             <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-[hsl(var(--page-accent)/0.1)] border border-[hsl(var(--page-accent)/0.2)] shrink-0">
@@ -557,7 +595,7 @@ export default function WhoopPage() {
             </div>
           </div>
           <div className="divide-y divide-white/[0.05]">
-            {data.workouts.slice(0, 20).map((w) => (
+            {whoop.workouts.slice(0, 20).map((w) => (
               <div key={w.id} className="flex items-center justify-between gap-3 py-3" data-testid={`row-workout-${w.id}`}>
                 <div className="min-w-0">
                   <div className="font-semibold text-sm truncate" data-testid={`text-workout-sport-${w.id}`}>{w.sport}</div>
