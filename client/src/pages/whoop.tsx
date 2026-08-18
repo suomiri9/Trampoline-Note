@@ -50,6 +50,13 @@ function mulberry32(seed: number) {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
+// WHOOP recovery zones: green ≥ 67 %, yellow 34–66 %, red ≤ 33 %.
+const REC_GREEN = "#34d399";
+const REC_YELLOW = "#fbbf24";
+const REC_RED = "#fb7185";
+const recoveryZoneColor = (v: number | null | undefined) =>
+  v == null ? REC_GREEN : v >= 67 ? REC_GREEN : v >= 34 ? REC_YELLOW : REC_RED;
+
 function generateSampleWhoopData(days: number): WhoopData {
   const recovery: WhoopData["recovery"] = [];
   const sleep: WhoopData["sleep"] = [];
@@ -490,6 +497,15 @@ export default function WhoopPage() {
   }
 
   const recoveryData = whoop.recovery.filter((r) => r.recoveryScore != null || r.hrvMs != null || r.restingHeartRate != null);
+
+  // Recovery line colored by WHOOP zone. SVG gradients map onto the drawn
+  // path's bounding box (data min…max for the curve, 0…max for the fill), so
+  // convert the 67/34 zone edges into offsets within those spans.
+  const recScores = recoveryData.map((r) => r.recoveryScore).filter((v): v is number => v != null);
+  const recMax = recScores.length ? Math.max(...recScores) : 100;
+  const recMin = recScores.length ? Math.min(...recScores) : 0;
+  const strokeOff = (v: number) => clamp((recMax - v) / Math.max(recMax - recMin, 1), 0, 1);
+  const fillOff = (v: number) => clamp((recMax - v) / Math.max(recMax, 1), 0, 1);
   const sleepData = whoop.sleep.filter((s) => !s.nap && (s.asleepHours != null || s.performancePct != null));
   const strainData = whoop.cycles.filter((c) => c.strain != null);
   const hasAny =
@@ -593,9 +609,20 @@ export default function WhoopPage() {
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={recoveryData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
                 <defs>
+                  {/* Hard color stops at the zone edges so the line switches
+                      red/yellow/green exactly where WHOOP does. */}
+                  <linearGradient id="whoopRecoveryStroke" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset={strokeOff(66.5)} stopColor={REC_GREEN} />
+                    <stop offset={strokeOff(66.5)} stopColor={REC_YELLOW} />
+                    <stop offset={strokeOff(33.5)} stopColor={REC_YELLOW} />
+                    <stop offset={strokeOff(33.5)} stopColor={REC_RED} />
+                  </linearGradient>
                   <linearGradient id="whoopRecoveryFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--chart-2))" stopOpacity={0.22} />
-                    <stop offset="100%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
+                    <stop offset={fillOff(66.5)} stopColor={REC_GREEN} stopOpacity={0.16} />
+                    <stop offset={fillOff(66.5)} stopColor={REC_YELLOW} stopOpacity={0.12} />
+                    <stop offset={fillOff(33.5)} stopColor={REC_YELLOW} stopOpacity={0.12} />
+                    <stop offset={fillOff(33.5)} stopColor={REC_RED} stopOpacity={0.1} />
+                    <stop offset="100%" stopColor={REC_RED} stopOpacity={0.03} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={<AxisTick />} interval="preserveStartEnd" />
@@ -606,7 +633,25 @@ export default function WhoopPage() {
                   formatter={(v: any) => [`${Math.round(Number(v))} %`, "Recovery"]}
                   cursor={{ stroke: "hsl(var(--primary) / 0.3)", strokeWidth: 1 }}
                 />
-                <Area type="monotone" dataKey="recoveryScore" stroke="hsl(var(--chart-2))" strokeWidth={2} fill="url(#whoopRecoveryFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
+                <Area
+                  type="monotone"
+                  dataKey="recoveryScore"
+                  stroke="url(#whoopRecoveryStroke)"
+                  strokeWidth={2}
+                  fill="url(#whoopRecoveryFill)"
+                  connectNulls
+                  dot={false}
+                  activeDot={(p: any) => (
+                    <circle
+                      cx={p.cx}
+                      cy={p.cy}
+                      r={4}
+                      fill={recoveryZoneColor(p.payload?.recoveryScore)}
+                      stroke="hsl(var(--card))"
+                      strokeWidth={1.5}
+                    />
+                  )}
+                />
               </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
