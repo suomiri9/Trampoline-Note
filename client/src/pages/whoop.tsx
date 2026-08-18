@@ -26,6 +26,15 @@ interface WhoopData {
   workouts: Array<{ id: string; sport: string; start: string; end: string; durationMin: number; strain: number | null; avgHeartRate: number | null }>;
 }
 
+// Sample mode is a dev-preview aid only — the published app keeps the real
+// connect card. The dev workspace also builds with NODE_ENV=production, so
+// build flags can't tell the two apart; the hostname can.
+const isDevHost = () =>
+  typeof window !== "undefined" &&
+  (window.location.hostname.endsWith(".replit.dev") ||
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1");
+
 // ── Sample data for the unlinked state ──
 // Deterministic per-date PRNG so the preview doesn't reshuffle on every
 // render/refetch, and overlapping ranges (7/30/90/180) agree with each other.
@@ -210,12 +219,12 @@ export default function WhoopPage() {
 
   const errMessage = error instanceof Error ? error.message : "";
   const notConnected = errMessage.startsWith("503");
-  // No WHOOP linked → show the dashboard filled with generated sample data,
-  // clearly labelled, with the sign-in entry in a banner instead of a wall.
-  // A 503 is the server's authoritative "no account linked", so it wins over
-  // any stale cached data — never present old real data as current.
+  // Dev preview only: no WHOOP linked → show the dashboard filled with
+  // generated sample data, clearly labelled, with the sign-in entry in a
+  // banner. A 503 is the server's authoritative "no account linked", so it
+  // wins over any stale cached data — never present old real data as current.
   const sampleData = useMemo(() => generateSampleWhoopData(range), [range]);
-  const demoMode = notConnected;
+  const demoMode = notConnected && isDevHost();
   const whoop = demoMode ? sampleData : data;
 
   // Self-heal when connectivity returns: if the last attempt failed and the
@@ -341,22 +350,127 @@ export default function WhoopPage() {
     </div>
   );
 
-  if (error && !notConnected) {
+  if (error && !demoMode) {
     return (
       <PageLayout accent="whoop">
         {hero}
-        <div
-          className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-8 flex flex-col items-center text-center"
-          data-testid="card-whoop-error"
-        >
-          <div className="w-12 h-12 mb-4 rounded-2xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center">
-            <AlertTriangle className="w-6 h-6 text-amber-400" />
+        {notConnected ? (
+          <div
+            className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] px-5 py-10 sm:p-10 flex flex-col items-center text-center"
+            data-testid="card-whoop-not-connected"
+          >
+            {/* Rose body-pulse glow — the same identity device the connected
+                vitals band uses, so the empty state already belongs to the page. */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-16 h-52 w-52 rounded-full blur-2xl"
+              style={{ background: "radial-gradient(circle, hsl(var(--page-accent) / 0.2) 0%, transparent 70%)" }}
+            />
+
+            {/* The handoff: WHOOP's signal flowing into the app. */}
+            <div className="relative flex items-center gap-2.5 mb-6" data-testid="icon-whoop-link">
+              <img
+                src={whoopLogoPath}
+                alt="WHOOP"
+                className="w-14 h-14 rounded-2xl border border-white/[0.08]"
+                data-testid="icon-whoop-logo"
+              />
+              <svg
+                width="72"
+                height="24"
+                viewBox="0 0 72 24"
+                fill="none"
+                aria-hidden
+                className="text-[hsl(var(--page-accent))] animate-pulse motion-reduce:animate-none"
+              >
+                <path
+                  d="M0 12 H22 L28 12 L32 4 L38 20 L42 12 H72"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity="0.8"
+                />
+              </svg>
+              <img
+                src="/icon-192.png"
+                alt="Trampoline Note"
+                className="w-14 h-14 rounded-2xl border border-white/[0.08]"
+                data-testid="icon-app-logo"
+              />
+            </div>
+
+            <h3 className="relative text-2xl font-black tracking-tight mb-2">
+              Connect WHOOP<span className="text-[hsl(var(--page-accent))]">.</span>
+            </h3>
+            <p className="relative text-sm text-muted-foreground max-w-sm leading-relaxed">
+              Recovery, sleep, strain and heart — next to every session you log.
+            </p>
+            {oauthError && (
+              <p className="relative text-xs font-mono text-amber-400 max-w-sm mt-3" data-testid="text-whoop-oauth-error">
+                {oauthError}
+              </p>
+            )}
+
+            {/* Ghosted vitals strip — exactly what appears once linked. Purely
+                decorative preview (placeholder dashes), so hidden from AT. */}
+            <div aria-hidden className="relative w-full max-w-md grid grid-cols-4 border-y border-white/[0.06] divide-x divide-white/[0.05] py-3.5 my-7">
+              {[
+                { icon: Zap, color: "text-emerald-400/60", label: "Recovery" },
+                { icon: Moon, color: "text-[hsl(var(--chart-4)/0.6)]", label: "Sleep" },
+                { icon: Activity, color: "text-amber-400/60", label: "Strain" },
+                { icon: Heart, color: "text-[hsl(var(--page-accent)/0.6)]", label: "HRV" },
+              ].map(({ icon: Icon, color, label }) => (
+                <div key={label} className="flex flex-col items-center gap-1.5 px-1 min-w-0">
+                  <Icon className={cn("w-3.5 h-3.5", color)} />
+                  <span className="text-base font-extrabold tracking-[-0.04em] leading-none tabular-nums text-foreground/25">
+                    —
+                  </span>
+                  <span className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.14em] text-muted-foreground truncate w-full">
+                    {label}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <Button
+              className="relative bg-gradient-cta text-primary-foreground font-semibold rounded-xl h-11 px-6 pressable"
+              onClick={signInWithWhoop}
+              data-testid="button-whoop-signin"
+            >
+              Sign in with WHOOP
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="relative mt-2 rounded-xl font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60"
+              onClick={() => refetch()}
+              disabled={isRefetching}
+              data-testid="button-whoop-recheck"
+            >
+              <RefreshCw className={cn("w-4 h-4 mr-2", isRefetching && "animate-spin")} />
+              {isRefetching ? "Checking…" : "Check connection"}
+            </Button>
+
+            <p className="relative flex items-center gap-1.5 mt-6 text-[11px] text-muted-foreground">
+              <Lock className="w-3 h-3 shrink-0" />
+              Sign-in happens on WHOOP&apos;s own page — this app never sees your password.
+            </p>
           </div>
-          <h3 className="text-xl font-black tracking-tight mb-2">Couldn&apos;t load WHOOP data</h3>
-          <p className="text-sm text-muted-foreground max-w-sm break-words leading-relaxed">
-            {errMessage.replace(/^\d+:\s*/, "") || "The WHOOP service returned an error. Try again shortly."}
-          </p>
-        </div>
+        ) : (
+          <div
+            className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-8 flex flex-col items-center text-center"
+            data-testid="card-whoop-error"
+          >
+            <div className="w-12 h-12 mb-4 rounded-2xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 text-amber-400" />
+            </div>
+            <h3 className="text-xl font-black tracking-tight mb-2">Couldn&apos;t load WHOOP data</h3>
+            <p className="text-sm text-muted-foreground max-w-sm break-words leading-relaxed">
+              {errMessage.replace(/^\d+:\s*/, "") || "The WHOOP service returned an error. Try again shortly."}
+            </p>
+          </div>
+        )}
       </PageLayout>
     );
   }
