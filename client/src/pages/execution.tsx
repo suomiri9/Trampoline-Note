@@ -29,7 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardCheck, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDown, RotateCcw, X, Link2, ChevronRight } from "lucide-react";
+import { ClipboardCheck, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDown, RotateCcw, X, Link2, ChevronRight, Camera } from "lucide-react";
 import { DialogHero } from "@/components/dialog-hero";
 import { pageAccentStyle } from "@/lib/page-accent";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,7 @@ import { tryNetworkOrEnqueue, tryNetworkOrEnqueueChange, isQueuedOfflineResult, 
 import type { ExecutionSession, InsertExecutionSession } from "@shared/schema";
 import { fileToDataUrl } from "@/lib/image-file";
 import { SheetPhotoPreview } from "@/components/sheet-photo-preview";
+import { PhotoAreaSelect, type PhotoAreaSelectHandle } from "@/components/photo-area-select";
 import {
   EXECUTION_SKILL_COUNT,
   tenthsToPoints,
@@ -119,6 +120,14 @@ export default function ExecutionPage() {
   const [parsingPhoto, setParsingPhoto] = useState(false);
   const [savingPhoto, setSavingPhoto] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  // Picker dialog (upload → crop), same flow as the training menu's photo scan.
+  const [photoPickOpen, setPhotoPickOpen] = useState(false);
+  const [photoPickStep, setPhotoPickStep] = useState<"upload" | "crop">("upload");
+  const [photoPickDataUrl, setPhotoPickDataUrl] = useState<string | null>(null);
+  const [sheetCropCount, setSheetCropCount] = useState(0);
+  const sheetCropRef = useRef<PhotoAreaSelectHandle>(null);
+  // Bumped on close so a file read finishing after Cancel can't resurrect the picker.
+  const photoPickSession = useRef(0);
 
   const resetForm = () => {
     setEditing(null);
@@ -303,16 +312,44 @@ export default function ExecutionPage() {
     setPhotoCompName("");
   };
 
-  const handlePhoto = async (file: File) => {
-    setParsingPhoto(true);
+  const closePhotoPicker = () => {
+    photoPickSession.current += 1;
+    setPhotoPickOpen(false);
+    setPhotoPickStep("upload");
+    setPhotoPickDataUrl(null);
+    setSheetCropCount(0);
+  };
+
+  const pickSheetFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    const session = photoPickSession.current;
     try {
       const dataUrl = await fileToDataUrl(file);
-      const res = await apiRequest("POST", "/api/execution-sessions/parse-photo", { images: [dataUrl] });
+      if (session !== photoPickSession.current) return; // picker closed mid-read
+      setPhotoPickDataUrl(dataUrl);
+      setPhotoPickStep("crop");
+    } catch {
+      if (session === photoPickSession.current) {
+        toast({ title: "Couldn't read that file", description: "Try a different photo.", variant: "destructive" });
+      }
+    } finally {
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  };
+
+  const parseSheetPhoto = async () => {
+    // Selected areas stitched into one image; falls back to the whole photo.
+    const source = sheetCropRef.current?.buildCropDataUrl() ?? photoPickDataUrl;
+    if (!source || parsingPhoto) return;
+    setParsingPhoto(true);
+    try {
+      const res = await apiRequest("POST", "/api/execution-sessions/parse-photo", { images: [source] });
       const parsed = (await res.json()) as {
         rows: { label: string; deductions: number[]; landing: number | null }[];
         date: string | null;
       };
       if (!parsed.rows || parsed.rows.length === 0) {
+        // Stay on the crop step so the selection can be adjusted and retried.
         toast({
           title: "No deduction rows found",
           description: "Couldn't read R1/R2 deductions from that photo. Try a closer crop of your rows, or enter them manually.",
@@ -336,11 +373,12 @@ export default function ExecutionPage() {
         };
       });
       setPhotoRows(rows);
-      setPhotoUrl(dataUrl);
+      setPhotoUrl(source);
       setPhotoDate(parsed.date ?? new Date().toISOString().substring(0, 10));
       setPhotoStep("review");
       // The photo path replaces the manual form — close it if it was open.
       setShowForm(false);
+      closePhotoPicker();
       setPhotoOpen(true);
     } catch (e) {
       toast({
@@ -350,7 +388,6 @@ export default function ExecutionPage() {
       });
     } finally {
       setParsingPhoto(false);
-      if (photoInputRef.current) photoInputRef.current.value = "";
     }
   };
 
@@ -696,19 +733,9 @@ export default function ExecutionPage() {
         accent="the clean."
         subtitle="Every tenth a judge takes is a break they saw. Log the scorecard — from a sheet photo or by hand — and find the skills quietly draining your E score."
         actions={
-          <>
-            <input
-              ref={photoInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f); }}
-              data-testid="input-execution-photo"
-            />
-            <Button onClick={openNew} className={primaryActionClass} data-testid="button-new-execution-session">
-              <Plus className="w-5 h-5" /> New Session
-            </Button>
-          </>
+          <Button onClick={openNew} className={primaryActionClass} data-testid="button-new-execution-session">
+            <Plus className="w-5 h-5" /> New Session
+          </Button>
         }
       />
 
@@ -800,12 +827,11 @@ export default function ExecutionPage() {
                 type="button"
                 variant="outline"
                 className="h-8 rounded-lg px-2.5 text-xs font-semibold gap-1.5 shrink-0 pressable"
-                disabled={parsingPhoto}
-                onClick={() => photoInputRef.current?.click()}
+                onClick={() => setPhotoPickOpen(true)}
                 data-testid="button-upload-execution-photo"
               >
-                {parsingPhoto ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageUp className="w-3.5 h-3.5" />}
-                {parsingPhoto ? "Reading..." : "From photo"}
+                <ImageUp className="w-3.5 h-3.5" />
+                From photo
               </Button>
             )}
           />
@@ -933,6 +959,96 @@ export default function ExecutionPage() {
       </Dialog>
 
       {/* ---- Photo confirmation dialog (review → details) ---- */}
+      {/* ---- Sheet photo picker: upload → crop, like the training-menu scan ---- */}
+      <Dialog open={photoPickOpen} onOpenChange={o => { if (!o && !parsingPhoto) closePhotoPicker(); }}>
+        <DialogContent
+          aria-describedby={undefined}
+          className="sm:max-w-lg max-h-[80dvh] top-[calc(50%-2rem)] flex flex-col gap-0 p-0 overflow-hidden"
+          style={pageAccentStyle("execution")}
+        >
+          <DialogHeader className="px-4 pt-4 pb-2 shrink-0 border-b">
+            <DialogTitle className="flex items-center gap-2 text-sm">
+              <Camera className="h-4 w-4 text-primary" />
+              {photoPickStep === "upload" ? "Pick a sheet photo" : "Select the rows to read"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto flex flex-col">
+            {photoPickStep === "upload" && (
+              <div className="p-4 flex flex-col gap-4">
+                <div
+                  className="relative rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer select-none"
+                  onClick={() => photoInputRef.current?.click()}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={e => {
+                    e.preventDefault();
+                    const f = e.dataTransfer.files?.[0];
+                    if (f && f.type.startsWith("image/")) pickSheetFile(f);
+                  }}
+                  data-testid="sheet-photo-dropzone"
+                >
+                  <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
+                    <Camera className="h-10 w-10 opacity-30" />
+                    <p className="text-sm font-medium">Tap to pick a photo</p>
+                    <p className="text-xs opacity-60">or drag one in · jpg, png, webp</p>
+                  </div>
+                </div>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  aria-hidden="true"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) pickSheetFile(f); }}
+                  data-testid="input-execution-photo"
+                />
+              </div>
+            )}
+
+            {photoPickDataUrl && photoPickStep === "crop" && (
+              <div className="p-4">
+                <PhotoAreaSelect
+                  ref={sheetCropRef}
+                  photoDataUrl={photoPickDataUrl}
+                  active={photoPickStep === "crop"}
+                  testIdPrefix="sheet-crop"
+                  topHint="Draw a rectangle over your R1/R2 deduction rows. Skip to use the whole photo."
+                  bottomHint="Draw rectangles on the photo to select the areas to read. You can select multiple."
+                  onSelectionChange={setSheetCropCount}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="shrink-0 flex justify-between gap-2 px-4 py-3 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-xl"
+              onClick={() => { if (photoPickStep === "crop") setPhotoPickStep("upload"); else closePhotoPicker(); }}
+              disabled={parsingPhoto}
+              data-testid="btn-sheet-photo-back"
+            >
+              {photoPickStep === "upload" ? "Cancel" : "← Back"}
+            </Button>
+            {photoPickStep === "crop" && (
+              <Button
+                type="button"
+                size="sm"
+                className="rounded-xl gap-1.5"
+                onClick={parseSheetPhoto}
+                disabled={parsingPhoto}
+                data-testid="btn-sheet-photo-proceed"
+              >
+                {parsingPhoto ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+                {parsingPhoto ? "Reading…" : sheetCropCount > 1 ? `Use ${sheetCropCount} areas` : sheetCropCount === 1 ? "Use selection" : "Use whole photo"}
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={photoOpen} onOpenChange={o => { if (!o && !savingPhoto) closePhoto(); }}>
         <DialogContent aria-describedby={undefined} className="sm:max-w-lg max-h-[90dvh] overflow-y-auto" style={pageAccentStyle("execution")}>
           <DialogHero
@@ -1214,9 +1330,8 @@ export default function ExecutionPage() {
             </p>
             <div className="flex justify-center gap-2">
               <button
-                onClick={() => photoInputRef.current?.click()}
-                disabled={parsingPhoto}
-                className="flex items-center gap-1.5 px-4 h-10 rounded-xl border border-white/[0.07] bg-white/[0.025] text-sm font-medium text-muted-foreground hover:bg-white/[0.06] pressable disabled:opacity-60"
+                onClick={() => setPhotoPickOpen(true)}
+                className="flex items-center gap-1.5 px-4 h-10 rounded-xl border border-white/[0.07] bg-white/[0.025] text-sm font-medium text-muted-foreground hover:bg-white/[0.06] pressable"
                 data-testid="button-photo-execution-empty"
               >
                 <ImageUp className="w-4 h-4" /> From photo
