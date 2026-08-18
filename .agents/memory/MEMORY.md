@@ -1,7 +1,7 @@
 - [Trampoline repl verification quirks](trampoline-verification.md) — auth gate makes app_preview screenshots show the login page; type-only TS errors are esbuild-safe, but TS2304 missing names crash pages at runtime.
 - [Fluid motion conventions](fluid-motion.md) — .pressable (standalone scale), vaul z-70, strong-easing tokens, hover gated to real pointers, Sonner toasts; specs: apple-design doc + emil-design-eng skill.
 - [App-wide design language](design-language.md) — Fey/Apple minimal + per-page accent identity (--page-accent from nav-icon color); monospace banned (--font-mono→sans); home stays blue; no card-3d.
-- [Intent DS → app bridge](intent-ds-bridge.md) — main app consumes artifacts/intent via a generated token bridge (v3 app vs v4 DS); never import DS components; codes in badges need normal-case.
+- [Rebound DS → app bridge](rebound-ds-bridge.md) — app consumes artifacts/rebound via a generated token bridge (v3 app vs v4 DS); never import DS components; badge codes need normal-case; intent retired.
 - [Schema changes need three touchpoints](schema-migration-touchpoints.md) — drizzle schema + startup ALTER block (prod migrates at boot, not db:push) + any client-local row interfaces.
 - [Follow-up task cancellation is irreversible](followup-task-irreversible.md) — markFollowUpTaskObsolete is terminal; verify a follow-up's real title/content before retracting it.
 - [Radix portaled menu clicks bubble to ancestor onClick](radix-portal-event-bubbling.md) — clickable card + Radix menu: items are portaled but React events bubble the component tree; stopPropagation on the Content.

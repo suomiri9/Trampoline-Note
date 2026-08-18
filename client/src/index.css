@@ -14,12 +14,13 @@
     --font-serif: 'Inter', sans-serif;
     --font-mono: var(--font-sans); /* user banned monospace (Aug 2026) — micro-labels render in the sans stack */
 
-    /* Color tokens live in intent-tokens.css — GENERATED from the Intent
-       design system (artifacts/intent/tokens.json). Only app-specific
+    /* Color tokens live in rebound-tokens.css — GENERATED from the Rebound
+       design system (artifacts/rebound/tokens.json). Only app-specific
        extras belong here. */
 
     /* Accent used for "Points to Fix" / secondary warm action — unified with
-       the Intent amber chart token (re-resolves per mode). */
+       the amber chart token (re-resolves per mode; Rebound exports the same
+       --gold alias from the bridge). */
     --gold: var(--chart-3);
 
     /* Strong easing curves (emil-design-eng, .agents/skills/emil-design-eng):
@@ -36,7 +37,7 @@
   }
 
   /* Dark is the default theme (class set in index.html before first paint;
-     Settings → Appearance toggles it off). Values come from intent-tokens.css. */
+     Settings → Appearance toggles it off). Values come from rebound-tokens.css. */
   .dark {
     color-scheme: dark;
   }
@@ -441,8 +442,8 @@ html, body {
 .stagger-5 { animation-delay: 200ms; }
 
 /* ---------------------------------------------------------------------------
-   Intent interaction elevation (ported from the design system): hover/active
-   overlay tints driven by --elevate-1 / --elevate-2 (intent-tokens.css).
+   Rebound interaction elevation (ported from the design system): hover/active
+   overlay tints driven by --elevate-1 / --elevate-2 (rebound-tokens.css).
    Buttons and badges opt in via `hover-elevate` / `active-elevate-2`. */
 .no-default-hover-elevate {}
 .no-default-active-elevate {}

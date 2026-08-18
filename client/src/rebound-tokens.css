@@ -1,6 +1,6 @@
-/* GENERATED FROM artifacts/intent (Intent design system) — DO NOT EDIT.
- * Edit artifacts/intent/tokens.json, run `pnpm tokens` in artifacts/intent,
- * then re-run `node script/sync-intent-tokens.mjs` from the repo root.
+/* GENERATED FROM artifacts/rebound (Rebound design system) — DO NOT EDIT.
+ * Edit artifacts/rebound/tokens.json, run `pnpm tokens` in artifacts/rebound,
+ * then re-run `node script/sync-rebound-tokens.mjs` from the repo root.
  * Imported by client/src/main.tsx after index.css. */
 
 :root {
@@ -29,29 +29,36 @@
   --sidebar-ring: 200 98% 39.4%;
   --popover: 0 0% 100%;
   --popover-foreground: 210 33.3% 5.9%;
-  --primary: 221 83% 53%;
+  --primary: 221 83.2% 53.3%;
   --primary-foreground: 0 0% 100%;
   --secondary: 210 18.2% 95.7%;
   --secondary-foreground: 214 21.2% 12.9%;
   --muted: 210 18.2% 95.7%;
   --muted-foreground: 211 11.1% 44.1%;
-  --accent: 214 100% 94%;
-  --accent-foreground: 221 83% 38%;
+  --accent: 211 100% 93.9%;
+  --accent-foreground: 221 83.4% 37.8%;
   --destructive: 347 77.2% 49.8%;
   --destructive-foreground: 0 0% 100%;
   --input: 214 13.7% 90%;
-  --ring: 221 83% 53%;
-  --chart-1: 221 83% 53%;
+  --ring: 221 83.2% 53.3%;
+  --chart-1: 221 83.2% 53.3%;
   --chart-2: 161 93.5% 30.4%;
   --chart-3: 32 94.6% 43.7%;
-  --chart-4: 239 84% 62%;
+  --chart-4: 239 82.6% 61.8%;
   --chart-5: 347 77.2% 49.8%;
 
   --app-font-sans: Inter, sans-serif;
-  --app-font-serif: Georgia, serif;
-  --app-font-mono: IBM Plex Mono, ui-monospace, monospace;
+  --app-font-serif: Inter, sans-serif;
+  --app-font-mono: Inter, sans-serif;
   --radius: 0.75rem;
   --spacing: 0.25rem;
+
+  /* Rebound language: warm accent for PB/gold surfaces (re-resolves per mode). */
+  --gold: var(--chart-3);
+  /* Per-page accent identity: sections recolor kickers, glows and the
+     .text-gradient-page utility by overriding this pair (see .page-accent-*). */
+  --page-accent: var(--primary);
+  --page-accent-2: var(--chart-4);
 
   /* Computed contrast borders (fallback then modern color-mix syntax). */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
@@ -84,35 +91,35 @@
 
   --background: 0 0% 0%;
   --foreground: 180 6.7% 97.1%;
-  --border: 0 0% 10%;
+  --border: 0 0% 10.2%;
   --card: 0 0% 3.5%;
   --card-foreground: 180 6.7% 97.1%;
-  --sidebar: 0 0% 3%;
+  --sidebar: 0 0% 3.1%;
   --sidebar-foreground: 216 8.1% 63.7%;
-  --sidebar-border: 0 0% 10%;
-  --sidebar-primary: 217 91% 60%;
+  --sidebar-border: 0 0% 10.2%;
+  --sidebar-primary: 217 91.2% 59.8%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 217 40% 10%;
-  --sidebar-accent-foreground: 213 94% 68%;
-  --sidebar-ring: 217 91% 60%;
-  --popover: 0 0% 5%;
+  --sidebar-accent: 217 41.2% 10%;
+  --sidebar-accent-foreground: 213 93.9% 67.8%;
+  --sidebar-ring: 217 91.2% 59.8%;
+  --popover: 0 0% 5.1%;
   --popover-foreground: 180 6.7% 97.1%;
-  --primary: 217 91% 60%;
+  --primary: 217 91.2% 59.8%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 8%;
+  --secondary: 0 0% 7.8%;
   --secondary-foreground: 213 13% 86.5%;
-  --muted: 0 0% 7%;
+  --muted: 0 0% 7.1%;
   --muted-foreground: 216 6.9% 57.5%;
-  --accent: 217 40% 10%;
-  --accent-foreground: 213 94% 68%;
+  --accent: 217 41.2% 10%;
+  --accent-foreground: 213 93.9% 67.8%;
   --destructive: 350 89.2% 60.2%;
   --destructive-foreground: 0 0% 100%;
   --input: 0 0% 11%;
-  --ring: 217 91% 60%;
-  --chart-1: 213 94% 68%;
+  --ring: 217 91.2% 59.8%;
+  --chart-1: 213 93.9% 67.8%;
   --chart-2: 158 64.4% 51.6%;
   --chart-3: 43 96.4% 56.3%;
-  --chart-4: 239 84% 67%;
+  --chart-4: 234 89.5% 73.9%;
   --chart-5: 351 94.5% 71.4%;
 
   --sidebar-primary-border: hsl(var(--sidebar-primary));

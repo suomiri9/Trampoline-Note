@@ -1,9 +1,9 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
-// Intent design-system tokens (generated bridge — see script/sync-intent-tokens.mjs).
+// Rebound design-system tokens (generated bridge — see script/sync-rebound-tokens.mjs).
 // Imported after index.css so its :root/.dark variable blocks are authoritative.
-import "./intent-tokens.css";
+import "./rebound-tokens.css";
 import { ensureOfflineReady } from "./lib/offline-control";
 import { applyTheme, getTheme } from "./lib/theme";
 
