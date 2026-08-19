@@ -203,6 +203,8 @@ function lazyPage(load: () => Promise<{ default: React.ComponentType<any> }>) {
 
 const Home = lazyPage(() => import("@/pages/home"));
 const SkillsPage = lazyPage(() => import("@/pages/skills"));
+
+const DictionaryPage = lazyPage(() => import("@/pages/dictionary"));
 const SkillDetailPage = lazyPage(() => import("@/pages/skill-detail"));
 const RoutinesPage = lazyPage(() => import("@/pages/routines"));
 const RoutineDetailPage = lazyPage(() => import("@/pages/routine-detail"));
@@ -377,6 +379,8 @@ function Router() {
         <Route path="/score/debuts" component={DebutsPage} />
         <Route path="/stats" component={StatsPage} />
         <Route path="/skills" component={SkillsPage} />
+        {/* Must come before /skills/:id so "dictionary" isn't parsed as an id. */}
+        <Route path="/skills/dictionary" component={DictionaryPage} />
         <Route path="/skills/:id" component={SkillDetailPage} />
         <Route path="/routines" component={RoutinesPage} />
         <Route path="/routines/:id" component={RoutineDetailPage} />

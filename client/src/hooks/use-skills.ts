@@ -38,6 +38,9 @@ export function useSkills() {
           archived: 0,
           parentSkillId: skill.parentSkillId ?? null,
           shape: skill.shape ?? null,
+          // Keep dictionary provenance on offline-created copies so the
+          // dictionary tab marks the entry as "Added" immediately.
+          dictionaryEntryId: skill.dictionaryEntryId ?? null,
         }) as Skill & { id: number },
         async (signal) => {
           const res = await fetch(api.skills.create.path, {

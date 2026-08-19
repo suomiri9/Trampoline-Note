@@ -35,6 +35,10 @@ export const users = pgTable("users", {
   // display, turn tracking, archive cascade) so they follow the account
   // across devices. Device-specific settings (offline mode) are NOT here.
   appSettings: text("app_settings"),
+  // App-owner flag: gates curation of the shared skills & drills dictionary
+  // (entry editor + suggestion review queue). Granted to the owner's account
+  // by the startup migration; every admin endpoint re-checks it server-side.
+  isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

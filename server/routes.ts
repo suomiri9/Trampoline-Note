@@ -1,9 +1,9 @@
 import type { Express } from "express";
 import type { Server } from "http";
-import { storage, SkillLinkError, TofRoutineError } from "./storage";
+import { storage, SkillLinkError, TofRoutineError, DictionaryError } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { isAuthenticated, getUserId, getBaseUrl } from "./auth";
+import { isAuthenticated, isAdmin, getUserId, getBaseUrl } from "./auth";
 import { getPushRecommendation, clearCoachPushCache, coachChat, parseMenuPhoto, parseTofScreenshot, parseExecutionSheet, parseScoreSheet, menuChat, CoachUnavailableError, CoachStoppedError } from "./coach";
 import { serveCoachImage } from "./coach-images";
 import { db } from "./db";
@@ -196,6 +196,110 @@ export async function registerRoutes(
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Shared skills & drills dictionary. Browsing + suggesting is open to any
+  // signed-in user; entry curation and the review queue are admin-only and
+  // enforced HERE via the isAdmin middleware — hiding buttons client-side is
+  // never the security boundary.
+  app.get(api.dictionary.list.path, isAuthenticated, async (req, res) => {
+    try {
+      const user = await storage.getUser(getUserId(req));
+      // Admins also receive archived entries so they can review/unarchive
+      // them; everyone else only ever sees active rows.
+      const entries = await storage.getDictionaryEntries(!!user?.isAdmin);
+      res.json(entries);
+    } catch (err) {
+      console.error("Dictionary list error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post(api.dictionary.create.path, isAdmin, async (req, res) => {
+    try {
+      const input = api.dictionary.create.input.parse(req.body);
+      const entry = await storage.createDictionaryEntry(input);
+      res.status(201).json(entry);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join(".") });
+      }
+      console.error("Dictionary create error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put(api.dictionary.update.path, isAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(404).json({ message: "Entry not found" });
+      }
+      const input = api.dictionary.update.input.parse(req.body);
+      const entry = await storage.updateDictionaryEntry(id, input);
+      if (!entry) {
+        return res.status(404).json({ message: "Entry not found" });
+      }
+      res.json(entry);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join(".") });
+      }
+      console.error("Dictionary update error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post(api.dictionary.suggest.path, isAuthenticated, async (req, res) => {
+    try {
+      const entryId = Number(req.params.id);
+      if (!Number.isInteger(entryId) || entryId <= 0) {
+        return res.status(404).json({ message: "Dictionary entry not found" });
+      }
+      const input = api.dictionary.suggest.input.parse(req.body);
+      const suggestion = await storage.createDictionarySuggestion(getUserId(req), entryId, input);
+      res.status(201).json(suggestion);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join(".") });
+      }
+      if (err instanceof DictionaryError) {
+        const status = err.code === "not_found" ? 404 : err.code === "duplicate" ? 409 : 400;
+        return res.status(status).json({ message: err.message });
+      }
+      console.error("Dictionary suggest error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get(api.dictionary.suggestions.path, isAdmin, async (_req, res) => {
+    try {
+      res.json(await storage.getPendingDictionarySuggestions());
+    } catch (err) {
+      console.error("Dictionary suggestions error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post(api.dictionary.resolveSuggestion.path, isAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(404).json({ message: "Suggestion not found" });
+      }
+      const { action } = api.dictionary.resolveSuggestion.input.parse(req.body);
+      const result = await storage.resolveDictionarySuggestion(id, action);
+      if (!result) {
+        return res.status(404).json({ message: "Suggestion not found or already resolved" });
+      }
+      res.json(result);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      console.error("Dictionary resolve error:", err);
       res.status(500).json({ message: "Internal server error" });
     }
   });

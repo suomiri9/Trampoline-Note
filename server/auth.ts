@@ -372,6 +372,25 @@ export const isAuthenticated: RequestHandler = (req, res, next) => {
   return res.status(401).json({ message: "Unauthorized" });
 };
 
+// Owner/admin gate for the shared skills & drills dictionary (entry curation
+// and the suggestion review queue). Always re-checks the users row on the
+// server — the client's isAdmin flag only hides UI, it grants nothing.
+export const isAdmin: RequestHandler = async (req, res, next) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  try {
+    const user = await storage.getUser(req.session.userId);
+    if (!user?.isAdmin) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    return next();
+  } catch (err) {
+    console.error("Admin check failed:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 export function getUserId(req: Request): string {
   return req.session.userId!;
 }

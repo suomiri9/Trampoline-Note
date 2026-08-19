@@ -1,5 +1,6 @@
 import { pgTable, text, serial, integer, date, real, varchar, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
+import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 export const notes = pgTable("notes", {
@@ -27,6 +28,11 @@ export const skills = pgTable("skills", {
   parentSkillId: integer("parent_skill_id"), // when set, this skill row is a SHAPE of the referenced base skill
   shape: text("shape"), // shape symbol/label (e.g. "o" tuck, "<" pike, "/" straight); null for non-shape rows
   sourceRoutineId: integer("source_routine_id"), // for routine parts (isDrill 3): the routine this part was sliced from; null for legacy/other rows
+  // When set, this personal row was adopted (copied) from the shared
+  // dictionary entry with this id. Used ONLY to mark "already in your
+  // library" in the dictionary UI — there is no sync-back; later dictionary
+  // edits never touch adopted copies.
+  dictionaryEntryId: integer("dictionary_entry_id"),
 });
 
 export const routines = pgTable("routines", {
@@ -163,6 +169,38 @@ export const coachMessages = pgTable("coach_messages", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Shared skills & drills dictionary, curated by the app owner (users.isAdmin).
+// GLOBAL rows — no userId. Every signed-in user can browse/search entries and
+// copy one into their personal library ("adopt" = a plain skills-row copy);
+// entries are flat (no shape groups) and adopted copies never sync back.
+export const dictionaryEntries = pgTable("dictionary_entries", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  code: text("code").notNull(),
+  isDrill: integer("is_drill").notNull().default(0), // 0 = skill, 1 = drill
+  difficulty: real("difficulty").notNull().default(0),
+  description: text("description"),
+  // Accepted "also called ..." names, appended when the owner accepts a
+  // user suggestion (never edited directly through the entry editor).
+  altNames: text("alt_names").array().notNull().default(sql`'{}'::text[]`),
+  archived: integer("archived").notNull().default(0), // 0 = active, 1 = archived (hidden from non-admins)
+  sortOrder: integer("sort_order"),
+});
+
+// User-submitted corrections for dictionary entries ("this skill is also
+// called X"). Pending rows form the owner's review queue; accepting stores
+// the text on the entry's altNames, rejecting just resolves the row.
+export const dictionarySuggestions = pgTable("dictionary_suggestions", {
+  id: serial("id").primaryKey(),
+  entryId: integer("entry_id").notNull(),
+  userId: varchar("user_id").notNull(), // submitting user
+  suggestedName: text("suggested_name").notNull(),
+  note: text("note"),
+  status: text("status").notNull().default("pending"), // "pending" | "accepted" | "rejected"
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
 // Per-user WHOOP OAuth tokens ("Sign in with WHOOP"). One row per user;
 // tokens live server-side only and are never sent to the frontend.
 export const whoopTokens = pgTable("whoop_tokens", {
@@ -215,6 +253,25 @@ export const insertExecutionSessionSchema = createInsertSchema(executionSessions
     compName: z.string().trim().max(80).nullable().optional(),
   });
 
+// altNames is deliberately NOT part of the entry editor payload — it can only
+// grow via accepted suggestions (storage-side), so the editor can't clobber it.
+export const insertDictionaryEntrySchema = createInsertSchema(dictionaryEntries)
+  .omit({ id: true, altNames: true })
+  .extend({
+    name: z.string().trim().min(1, "Name is required").max(120),
+    code: z.string().trim().min(1, "Code is required").max(40),
+    isDrill: z.union([z.literal(0), z.literal(1)]).optional(), // dictionary entries are only skills or drills
+    difficulty: z.number().min(0).max(30).optional(),
+    description: z.string().trim().max(500).nullable().optional(),
+  });
+
+// What a user fills in on the per-entry "suggest a correction" form; the
+// entry id comes from the URL and everything else is server-set.
+export const dictionarySuggestionFormSchema = z.object({
+  suggestedName: z.string().trim().min(1, "Suggested name is required").max(120),
+  note: z.string().trim().max(500).nullable().optional(),
+});
+
 export type InsertNote = z.infer<typeof insertNoteSchema>;
 export type Note = typeof notes.$inferSelect;
 
@@ -239,6 +296,20 @@ export type InsertTofSession = z.infer<typeof insertTofSessionSchema>;
 
 export type ExecutionSession = typeof executionSessions.$inferSelect;
 export type InsertExecutionSession = z.infer<typeof insertExecutionSessionSchema>;
+
+export type DictionaryEntry = typeof dictionaryEntries.$inferSelect;
+export type InsertDictionaryEntry = z.infer<typeof insertDictionaryEntrySchema>;
+
+export type DictionarySuggestion = typeof dictionarySuggestions.$inferSelect;
+export type DictionarySuggestionForm = z.infer<typeof dictionarySuggestionFormSchema>;
+// A pending suggestion as shown in the owner's review queue: joined with the
+// entry it corrects and the submitting user's display info.
+export type DictionarySuggestionWithMeta = DictionarySuggestion & {
+  entryName: string;
+  entryCode: string;
+  entryIsDrill: number;
+  submitterName: string | null;
+};
 
 export type WhoopToken = typeof whoopTokens.$inferSelect;
 

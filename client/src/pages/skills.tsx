@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Pencil, X, Link2, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore, MoreVertical, Search, ChevronRight, ChevronDown, Shapes, Unlink, Target, Dumbbell, Puzzle } from "lucide-react";
+import { Trash2, Plus, Pencil, X, Link2, GripVertical, ArrowUpDown, Check, Archive, ArchiveRestore, MoreVertical, Search, ChevronRight, ChevronDown, Shapes, Unlink, Target, Dumbbell, Puzzle, BookOpen } from "lucide-react";
 import { DialogHero } from "@/components/dialog-hero";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useForm } from "react-hook-form";
@@ -595,6 +595,23 @@ export default function SkillsPage() {
             </div>
           </div>
         </div>
+
+        {/* The shared dictionary lives on its own page — this is the door to it. */}
+        <button
+          type="button"
+          onClick={() => navigate("/skills/dictionary")}
+          className="pressable group flex w-full items-center gap-3 rounded-2xl border border-[hsl(var(--page-accent)/0.16)] bg-[hsl(var(--page-accent)/0.05)] px-4 py-3 text-left transition-colors hover:bg-[hsl(var(--page-accent)/0.09)]"
+          data-testid="button-open-dictionary"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[hsl(var(--page-accent)/0.12)]" aria-hidden="true">
+            <BookOpen className="h-4 w-4 text-[hsl(var(--page-accent))]" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">Skill Dictionary</span>
+            <span className="block truncate text-xs text-muted-foreground">Curated skills &amp; drills — add any entry to your library</span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform duration-200 group-hover:translate-x-0.5" />
+        </button>
 
         <TabsContent value="skills">
           <div>

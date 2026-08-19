@@ -25,7 +25,13 @@ import {
   whoopTokens,
   type WhoopToken,
   coachMessages,
-  type CoachMessage
+  type CoachMessage,
+  dictionaryEntries,
+  type DictionaryEntry,
+  type InsertDictionaryEntry,
+  dictionarySuggestions,
+  type DictionarySuggestion,
+  type DictionarySuggestionWithMeta,
 } from "@shared/schema";
 import {
   users,
@@ -52,6 +58,19 @@ export class TofRoutineError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "TofRoutineError";
+  }
+}
+
+// Thrown when a dictionary suggestion can't be created (entry missing or a
+// duplicate/pointless submission). Routes map codes to 404/409/400 so users
+// get a friendly message instead of a silent 500.
+export class DictionaryError extends Error {
+  constructor(
+    message: string,
+    public code: "not_found" | "duplicate" | "invalid" = "invalid",
+  ) {
+    super(message);
+    this.name = "DictionaryError";
   }
 }
 
@@ -94,6 +113,15 @@ export interface IStorage {
   createExecutionSession(userId: string, session: InsertExecutionSession): Promise<ExecutionSession>;
   updateExecutionSession(id: number, userId: string, updates: Partial<InsertExecutionSession>): Promise<ExecutionSession | undefined>;
   deleteExecutionSession(id: number, userId: string): Promise<void>;
+
+  // Shared skills & drills dictionary (owner-curated, global rows)
+  getDictionaryEntries(includeArchived: boolean): Promise<DictionaryEntry[]>;
+  getDictionaryEntry(id: number): Promise<DictionaryEntry | undefined>;
+  createDictionaryEntry(entry: InsertDictionaryEntry): Promise<DictionaryEntry>;
+  updateDictionaryEntry(id: number, updates: Partial<InsertDictionaryEntry>): Promise<DictionaryEntry | undefined>;
+  createDictionarySuggestion(userId: string, entryId: number, form: { suggestedName: string; note?: string | null }): Promise<DictionarySuggestion>;
+  getPendingDictionarySuggestions(): Promise<DictionarySuggestionWithMeta[]>;
+  resolveDictionarySuggestion(id: number, action: "accept" | "reject"): Promise<{ suggestion: DictionarySuggestion; entry: DictionaryEntry | null } | undefined>;
 
   // Reorder
   reorderSkills(userId: string, orderedIds: number[]): Promise<void>;
@@ -625,6 +653,138 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTofSession(id: number, userId: string): Promise<void> {
     await db.delete(tofSessions).where(and(eq(tofSessions.id, id), eq(tofSessions.userId, userId)));
+  }
+
+  // ---- Shared skills & drills dictionary ----
+
+  async getDictionaryEntries(includeArchived: boolean): Promise<DictionaryEntry[]> {
+    const base = db.select().from(dictionaryEntries);
+    const query = includeArchived ? base : base.where(eq(dictionaryEntries.archived, 0));
+    // Same feel as the personal library: explicit sort order first (nulls
+    // last), then hardest skills first, then insertion order.
+    return await query.orderBy(
+      sql`coalesce(${dictionaryEntries.sortOrder}, 2147483647)`,
+      desc(dictionaryEntries.difficulty),
+      asc(dictionaryEntries.id),
+    );
+  }
+
+  async getDictionaryEntry(id: number): Promise<DictionaryEntry | undefined> {
+    const [entry] = await db.select().from(dictionaryEntries).where(eq(dictionaryEntries.id, id));
+    return entry;
+  }
+
+  async createDictionaryEntry(entry: InsertDictionaryEntry): Promise<DictionaryEntry> {
+    const [created] = await db.insert(dictionaryEntries).values(entry).returning();
+    return created;
+  }
+
+  async updateDictionaryEntry(id: number, updates: Partial<InsertDictionaryEntry>): Promise<DictionaryEntry | undefined> {
+    if (Object.keys(updates).length === 0) {
+      return await this.getDictionaryEntry(id);
+    }
+    const [updated] = await db.update(dictionaryEntries)
+      .set(updates)
+      .where(eq(dictionaryEntries.id, id))
+      .returning();
+    return updated;
+  }
+
+  async createDictionarySuggestion(
+    userId: string,
+    entryId: number,
+    form: { suggestedName: string; note?: string | null },
+  ): Promise<DictionarySuggestion> {
+    const entry = await this.getDictionaryEntry(entryId);
+    if (!entry || entry.archived === 1) {
+      throw new DictionaryError("Dictionary entry not found", "not_found");
+    }
+    const suggestedName = form.suggestedName.trim();
+    const normalized = suggestedName.toLowerCase();
+    const alreadyListed = [entry.name, ...(entry.altNames ?? [])]
+      .some((n) => n.trim().toLowerCase() === normalized);
+    if (alreadyListed) {
+      throw new DictionaryError("That name is already listed on this entry", "duplicate");
+    }
+    // Obvious-duplicate guard: the same user re-submitting the same text for
+    // the same entry while the first one is still pending.
+    const [dup] = await db.select({ id: dictionarySuggestions.id })
+      .from(dictionarySuggestions)
+      .where(and(
+        eq(dictionarySuggestions.entryId, entryId),
+        eq(dictionarySuggestions.userId, userId),
+        eq(dictionarySuggestions.status, "pending"),
+        sql`lower(trim(${dictionarySuggestions.suggestedName})) = ${normalized}`,
+      ))
+      .limit(1);
+    if (dup) {
+      throw new DictionaryError("You've already suggested this — it's waiting for review", "duplicate");
+    }
+    const note = (form.note ?? "").trim();
+    const [created] = await db.insert(dictionarySuggestions)
+      .values({ entryId, userId, suggestedName, note: note || null })
+      .returning();
+    return created;
+  }
+
+  async getPendingDictionarySuggestions(): Promise<DictionarySuggestionWithMeta[]> {
+    const rows = await db
+      .select({
+        suggestion: dictionarySuggestions,
+        entryName: dictionaryEntries.name,
+        entryCode: dictionaryEntries.code,
+        entryIsDrill: dictionaryEntries.isDrill,
+        submitterDisplayName: users.displayName,
+        submitterEmail: users.email,
+      })
+      .from(dictionarySuggestions)
+      .leftJoin(dictionaryEntries, eq(dictionarySuggestions.entryId, dictionaryEntries.id))
+      .leftJoin(users, eq(dictionarySuggestions.userId, users.id))
+      .where(eq(dictionarySuggestions.status, "pending"))
+      .orderBy(asc(dictionarySuggestions.createdAt), asc(dictionarySuggestions.id));
+    return rows.map((r) => ({
+      ...r.suggestion,
+      entryName: r.entryName ?? "(deleted entry)",
+      entryCode: r.entryCode ?? "",
+      entryIsDrill: r.entryIsDrill ?? 0,
+      submitterName: r.submitterDisplayName || r.submitterEmail || null,
+    }));
+  }
+
+  async resolveDictionarySuggestion(
+    id: number,
+    action: "accept" | "reject",
+  ): Promise<{ suggestion: DictionarySuggestion; entry: DictionaryEntry | null } | undefined> {
+    return await db.transaction(async (tx) => {
+      // Conditional update is the atomic guard: only a PENDING row resolves,
+      // so a double-click can't accept the same suggestion twice.
+      const [suggestion] = await tx.update(dictionarySuggestions)
+        .set({ status: action === "accept" ? "accepted" : "rejected", resolvedAt: new Date() })
+        .where(and(eq(dictionarySuggestions.id, id), eq(dictionarySuggestions.status, "pending")))
+        .returning();
+      if (!suggestion) return undefined;
+
+      let entry: DictionaryEntry | null = null;
+      if (action === "accept") {
+        const [existing] = await tx.select().from(dictionaryEntries)
+          .where(eq(dictionaryEntries.id, suggestion.entryId));
+        if (existing) {
+          entry = existing;
+          const name = suggestion.suggestedName.trim();
+          const normalized = name.toLowerCase();
+          const alreadyListed = [existing.name, ...(existing.altNames ?? [])]
+            .some((n) => n.trim().toLowerCase() === normalized);
+          if (!alreadyListed) {
+            const [updated] = await tx.update(dictionaryEntries)
+              .set({ altNames: [...(existing.altNames ?? []), name] })
+              .where(eq(dictionaryEntries.id, existing.id))
+              .returning();
+            entry = updated ?? existing;
+          }
+        }
+      }
+      return { suggestion, entry };
+    });
   }
 
   async reorderSkills(userId: string, orderedIds: number[]): Promise<void> {

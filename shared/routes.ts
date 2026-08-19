@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertNoteSchema, notes, skills, routines, scores, tofSessions, executionSessions, insertSkillSchema, insertRoutineSchema, insertScoreSchema, insertTofSessionSchema, insertExecutionSessionSchema, type RoutineWithVersions } from './schema';
+import { insertNoteSchema, notes, skills, routines, scores, tofSessions, executionSessions, dictionaryEntries, dictionarySuggestions, insertSkillSchema, insertRoutineSchema, insertScoreSchema, insertTofSessionSchema, insertExecutionSessionSchema, insertDictionaryEntrySchema, dictionarySuggestionFormSchema, type RoutineWithVersions, type DictionaryEntry, type DictionarySuggestion, type DictionarySuggestionWithMeta } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -221,6 +221,65 @@ export const api = {
       path: '/api/execution-sessions/:id' as const,
       responses: {
         204: z.void(),
+        404: errorSchemas.notFound,
+      },
+    },
+  },
+  dictionary: {
+    // Shared skills & drills dictionary. Browsing + suggesting is open to any
+    // signed-in user; create/update and the suggestion queue are admin-only
+    // (enforced server-side via the users.isAdmin flag, not just hidden UI).
+    list: {
+      method: 'GET' as const,
+      path: '/api/dictionary' as const,
+      responses: {
+        200: z.array(z.custom<typeof dictionaryEntries.$inferSelect>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/dictionary' as const,
+      input: insertDictionaryEntrySchema,
+      responses: {
+        201: z.custom<typeof dictionaryEntries.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/dictionary/:id' as const,
+      input: insertDictionaryEntrySchema.partial(),
+      responses: {
+        200: z.custom<typeof dictionaryEntries.$inferSelect>(),
+        400: errorSchemas.validation,
+        404: errorSchemas.notFound,
+      },
+    },
+    suggest: {
+      method: 'POST' as const,
+      path: '/api/dictionary/:id/suggest' as const,
+      input: dictionarySuggestionFormSchema,
+      responses: {
+        201: z.custom<typeof dictionarySuggestions.$inferSelect>(),
+        400: errorSchemas.validation,
+        404: errorSchemas.notFound,
+        409: errorSchemas.validation, // duplicate pending suggestion / name already listed
+      },
+    },
+    suggestions: {
+      method: 'GET' as const,
+      path: '/api/dictionary/suggestions' as const,
+      responses: {
+        200: z.array(z.custom<DictionarySuggestionWithMeta>()),
+      },
+    },
+    resolveSuggestion: {
+      method: 'POST' as const,
+      path: '/api/dictionary/suggestions/:id/resolve' as const,
+      input: z.object({ action: z.enum(['accept', 'reject']) }),
+      responses: {
+        200: z.custom<{ suggestion: DictionarySuggestion; entry: DictionaryEntry | null }>(),
+        400: errorSchemas.validation,
         404: errorSchemas.notFound,
       },
     },
