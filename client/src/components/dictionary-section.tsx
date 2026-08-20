@@ -6,7 +6,7 @@ import {
   type DictionaryEntry,
   type InsertDictionaryEntry,
 } from "@shared/schema";
-import { useDictionary, useDictionarySuggestions } from "@/hooks/use-dictionary";
+import { useDictionary, useDictionaryImport, useDictionarySuggestions } from "@/hooks/use-dictionary";
 import { useSkills } from "@/hooks/use-skills";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DialogHero } from "@/components/dialog-hero";
@@ -31,14 +31,16 @@ import {
   Archive,
   ArchiveRestore,
   RefreshCw,
+  ListPlus,
 } from "lucide-react";
 
 // Same phone bottom-sheet treatment as the other Arsenal dialogs.
 const sheetClass =
-  "!z-[70] sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8";
+  "!z-[70] sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-[var(--kb-inset-b,0px)] max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8";
 
 const blankEntryForm: InsertDictionaryEntry = {
   name: "",
+  longName: "",
   code: "",
   isDrill: 0,
   difficulty: 0,
@@ -89,6 +91,15 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
     isResolving,
     refetch: refetchSuggestions,
   } = useDictionarySuggestions(isAdmin);
+  const [importOpen, setImportOpen] = useState(false);
+  const {
+    data: importPreview,
+    isLoading: importPreviewLoading,
+    error: importPreviewError,
+    refetch: refetchImportPreview,
+    importLibrary,
+    isImporting,
+  } = useDictionaryImport(isAdmin && importOpen);
 
   // ---- Adoption ("Add to my skills") ----
   // A personal copy remembers which entry it came from (dictionaryEntryId),
@@ -146,6 +157,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
     setEditingEntry(entry);
     editorForm.reset({
       name: entry.name,
+      longName: entry.longName ?? "",
       code: entry.code,
       isDrill: entry.isDrill === 1 ? 1 : 0,
       difficulty: entry.difficulty,
@@ -155,6 +167,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
   const onEditorSubmit = editorForm.handleSubmit(async (values) => {
     const payload = {
       ...values,
+      longName: values.longName?.trim() ? values.longName.trim() : null,
       description: values.description?.trim() ? values.description.trim() : null,
     };
     try {
@@ -178,6 +191,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
   const matchesSearch = (e: DictionaryEntry) =>
     !q ||
     e.name.toLowerCase().includes(q) ||
+    (e.longName ?? "").toLowerCase().includes(q) ||
     e.code.toLowerCase().includes(q) ||
     (e.altNames ?? []).some((n) => n.toLowerCase().includes(q)) ||
     (e.description ?? "").toLowerCase().includes(q);
@@ -202,27 +216,39 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
             <span className="text-muted-foreground/50 tabular-nums">{visible.length}</span>
           </span>
           {isAdmin && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => {
-                setReviewOpen(true);
-                void refetchSuggestions();
-              }}
-              data-testid="button-review-suggestions"
-            >
-              <Inbox className="h-4 w-4" />
-              <span className="hidden sm:inline">Review</span>
-              {pendingCount > 0 && (
-                <span
-                  className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[hsl(var(--page-accent))] px-1 text-[9px] font-bold text-white tabular-nums"
-                  data-testid="badge-pending-count"
-                >
-                  {pendingCount}
-                </span>
-              )}
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setImportOpen(true)}
+                data-testid="button-import-library"
+              >
+                <ListPlus className="h-4 w-4" />
+                <span className="hidden sm:inline">Import</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  setReviewOpen(true);
+                  void refetchSuggestions();
+                }}
+                data-testid="button-review-suggestions"
+              >
+                <Inbox className="h-4 w-4" />
+                <span className="hidden sm:inline">Review</span>
+                {pendingCount > 0 && (
+                  <span
+                    className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[hsl(var(--page-accent))] px-1 text-[9px] font-bold text-white tabular-nums"
+                    data-testid="badge-pending-count"
+                  >
+                    {pendingCount}
+                  </span>
+                )}
+              </Button>
+            </div>
           )}
         </div>
 
@@ -293,6 +319,11 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
                             <span>{entry.name}</span>
                             {kindBadge(entry.isDrill, `badge-kind-${entry.id}`)}
                           </span>
+                          {entry.longName && (
+                            <div className="text-[11px] text-muted-foreground mt-0.5" data-testid={`text-long-name-${entry.id}`}>
+                              {entry.longName}
+                            </div>
+                          )}
                           {(entry.altNames ?? []).length > 0 && (
                             <div className="text-[11px] text-muted-foreground/80 mt-0.5" data-testid={`text-alt-names-${entry.id}`}>
                               also called {(entry.altNames ?? []).join(", ")}
@@ -388,7 +419,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
 
       {/* Suggest-a-correction sheet (any user) */}
       <Dialog open={!!suggestTarget} onOpenChange={(o) => { if (!o) setSuggestTarget(null); }}>
-        <DialogContent aria-describedby={undefined} className={sheetClass} style={pageAccentStyle("skills")}>
+        <DialogContent data-kb-anchor="bottom" aria-describedby={undefined} className={sheetClass} style={pageAccentStyle("skills")}>
           <DialogHero icon={MessageSquarePlus} eyebrow="The Arsenal" title="Suggest a correction" />
           <div className="space-y-4">
             <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-sm flex items-center gap-2 flex-wrap">
@@ -443,7 +474,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
       {/* Entry editor (admin only) */}
       {isAdmin && (
         <Dialog open={editorOpen} onOpenChange={(o) => { if (!o) closeEditor(); }}>
-          <DialogContent aria-describedby={undefined} className={sheetClass} style={pageAccentStyle("skills")}>
+          <DialogContent data-kb-anchor="bottom" aria-describedby={undefined} className={sheetClass} style={pageAccentStyle("skills")}>
             <DialogHero icon={BookOpen} eyebrow="The Arsenal" title={editingEntry ? "Edit entry" : "Add entry"} />
             <Form {...editorForm}>
               <form onSubmit={onEditorSubmit} className="space-y-3">
@@ -451,6 +482,21 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
                   <FormItem>
                     <FormLabel>Name</FormLabel>
                     <FormControl><Input {...field} placeholder="Barani" data-testid="input-entry-name" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={editorForm.control} name="longName" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Long name <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value ?? ""}
+                        maxLength={200}
+                        placeholder="Full technical name"
+                        data-testid="input-entry-long-name"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -507,7 +553,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
       {/* Suggestion review queue (admin only) */}
       {isAdmin && (
         <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
-          <DialogContent aria-describedby={undefined} className={sheetClass} style={pageAccentStyle("skills")}>
+          <DialogContent data-kb-anchor="bottom" aria-describedby={undefined} className={sheetClass} style={pageAccentStyle("skills")}>
             <DialogHero icon={Inbox} eyebrow="The Arsenal" title="Review suggestions" />
             <div className="space-y-3">
               {suggestionsLoading ? (
@@ -564,6 +610,78 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
                 ))
               )}
             </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Owner-only, preview-first personal-library import. */}
+      {isAdmin && (
+        <Dialog open={importOpen} onOpenChange={setImportOpen}>
+          <DialogContent data-kb-anchor="bottom" aria-describedby={undefined} className={sheetClass} style={pageAccentStyle("skills")}>
+            <DialogHero icon={ListPlus} eyebrow="The Arsenal" title="Import my library" />
+            {importPreviewLoading ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">Checking your library…</div>
+            ) : importPreviewError || !importPreview ? (
+              <div className="py-6 text-center">
+                <p className="text-sm text-muted-foreground">Couldn't check your library.</p>
+                <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={() => refetchImportPreview()}>
+                  <RefreshCw className="h-3.5 w-3.5" /> Retry
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-xs text-muted-foreground">
+                  This copies your active skills and drills into the shared dictionary. Long names stay blank so you can add them later.
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-center">
+                    <div className="text-lg font-bold tabular-nums text-foreground">{importPreview.counts.toAdd}</div>
+                    <div className="text-[10px] text-muted-foreground">to add</div>
+                  </div>
+                  <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-center">
+                    <div className="text-lg font-bold tabular-nums text-foreground">{importPreview.counts.reused}</div>
+                    <div className="text-[10px] text-muted-foreground">already there</div>
+                  </div>
+                  <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-center">
+                    <div className="text-lg font-bold tabular-nums text-foreground">{importPreview.counts.skipped}</div>
+                    <div className="text-[10px] text-muted-foreground">skipped</div>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-white/[0.08] divide-y divide-white/[0.06] max-h-64 overflow-y-auto">
+                  {importPreview.candidates.length === 0 ? (
+                    <p className="p-4 text-center text-xs text-muted-foreground">No eligible skills or drills found.</p>
+                  ) : (
+                    importPreview.candidates.map((candidate) => (
+                      <div key={candidate.skillId} className="flex items-center gap-3 px-3 py-2">
+                        <span className="w-20 shrink-0 text-xs text-muted-foreground normal-case">{candidate.code}</span>
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium">{candidate.name}</span>
+                        <Badge variant="outline" className="shrink-0 text-[9px]">
+                          {candidate.status === "new" ? "New" : "Existing"}
+                        </Badge>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1"
+                    disabled={isImporting || importPreview.candidates.length === 0}
+                    onClick={async () => {
+                      try {
+                        await importLibrary();
+                        setImportOpen(false);
+                      } catch {
+                        // hook keeps the sheet open and shows the reason
+                      }
+                    }}
+                    data-testid="button-confirm-import-library"
+                  >
+                    {isImporting ? "Importing…" : "Import library"}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setImportOpen(false)}>Cancel</Button>
+                </div>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       )}

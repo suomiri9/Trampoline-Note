@@ -272,6 +272,24 @@ export async function registerRoutes(
     }
   });
 
+  app.get(api.dictionary.importPreview.path, isAdmin, async (req, res) => {
+    try {
+      res.json(await storage.previewDictionaryImport(getUserId(req)));
+    } catch (err) {
+      console.error("Dictionary import preview error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post(api.dictionary.importLibrary.path, isAdmin, async (req, res) => {
+    try {
+      res.json(await storage.importLibraryToDictionary(getUserId(req)));
+    } catch (err) {
+      console.error("Dictionary library import error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.post(api.dictionary.adopt.path, isAuthenticated, async (req, res) => {
     try {
       const entryId = Number(req.params.id);

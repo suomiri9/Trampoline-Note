@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertNoteSchema, notes, skills, routines, scores, tofSessions, executionSessions, dictionaryEntries, dictionarySuggestions, insertSkillSchema, insertRoutineSchema, insertScoreSchema, insertTofSessionSchema, insertExecutionSessionSchema, insertDictionaryEntrySchema, dictionarySuggestionFormSchema, type RoutineWithVersions, type DictionaryEntry, type DictionarySuggestion, type DictionarySuggestionWithMeta, type DictionaryAdoptionResult } from './schema';
+import { insertNoteSchema, notes, skills, routines, scores, tofSessions, executionSessions, dictionaryEntries, dictionarySuggestions, insertSkillSchema, insertRoutineSchema, insertScoreSchema, insertTofSessionSchema, insertExecutionSessionSchema, insertDictionaryEntrySchema, dictionarySuggestionFormSchema, type RoutineWithVersions, type DictionaryEntry, type DictionarySuggestion, type DictionarySuggestionWithMeta, type DictionaryAdoptionResult, type DictionaryImportPreview, type DictionaryImportResult } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -253,6 +253,20 @@ export const api = {
         200: z.custom<typeof dictionaryEntries.$inferSelect>(),
         400: errorSchemas.validation,
         404: errorSchemas.notFound,
+      },
+    },
+    importPreview: {
+      method: 'GET' as const,
+      path: '/api/dictionary/import-library/preview' as const,
+      responses: {
+        200: z.custom<DictionaryImportPreview>(),
+      },
+    },
+    importLibrary: {
+      method: 'POST' as const,
+      path: '/api/dictionary/import-library' as const,
+      responses: {
+        200: z.custom<DictionaryImportResult>(),
       },
     },
     adopt: {

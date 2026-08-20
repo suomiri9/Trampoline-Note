@@ -8,6 +8,8 @@ import type {
   DictionarySuggestionForm,
   DictionarySuggestionWithMeta,
   DictionaryAdoptionResult,
+  DictionaryImportPreview,
+  DictionaryImportResult,
   Skill,
 } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -193,5 +195,46 @@ export function useDictionarySuggestions(enabled: boolean) {
     pendingCount: query.data?.length ?? 0,
     resolve: resolveMutation.mutateAsync,
     isResolving: resolveMutation.isPending,
+  };
+}
+
+// Owner-only preview + confirmed import of the current personal library into
+// the shared dictionary. The server re-checks admin rights and performs the
+// import transactionally; this hook only drives the confirmation sheet.
+export function useDictionaryImport(enabled: boolean) {
+  const { toast } = useToast();
+  const preview = useQuery<DictionaryImportPreview>({
+    queryKey: [api.dictionary.importPreview.path],
+    enabled,
+    staleTime: 0,
+  });
+
+  const importMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", api.dictionary.importLibrary.path);
+      return (await res.json()) as DictionaryImportResult;
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: [api.dictionary.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.dictionary.importPreview.path] });
+      toast({
+        title: "Library imported",
+        description: `${result.added} added, ${result.reused} already there, ${result.skipped} skipped.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Couldn't import the library",
+        description: friendlyMessage(error, "Please try again."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  return {
+    ...preview,
+    importLibrary: importMutation.mutateAsync,
+    isImporting: importMutation.isPending,
   };
 }

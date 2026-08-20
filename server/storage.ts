@@ -30,9 +30,12 @@ import {
   type DictionaryEntry,
   type InsertDictionaryEntry,
   dictionarySuggestions,
+  dictionaryLibraryImports,
   type DictionarySuggestion,
   type DictionarySuggestionWithMeta,
   type DictionaryAdoptionResult,
+  type DictionaryImportPreview,
+  type DictionaryImportResult,
 } from "@shared/schema";
 import {
   users,
@@ -43,6 +46,7 @@ import {
 } from "@shared/models/auth";
 import { eq, desc, asc, and, isNull, sql, gte, gt, inArray } from "drizzle-orm";
 import { applyLineupChange, normalizeVersions, sameLineup } from "@shared/routine-versions";
+import { buildDictionaryImportPreview } from "@shared/dictionary-import";
 
 // Thrown when a shape grouping link (parentSkillId) is invalid. Routes map this
 // to a 400 so bad links never silently persist.
@@ -120,6 +124,9 @@ export interface IStorage {
   getDictionaryEntry(id: number): Promise<DictionaryEntry | undefined>;
   createDictionaryEntry(entry: InsertDictionaryEntry): Promise<DictionaryEntry>;
   updateDictionaryEntry(id: number, updates: Partial<InsertDictionaryEntry>): Promise<DictionaryEntry | undefined>;
+  previewDictionaryImport(userId: string): Promise<DictionaryImportPreview>;
+  importLibraryToDictionary(userId: string): Promise<DictionaryImportResult>;
+  ensureInitialDictionaryImport(userId: string): Promise<DictionaryImportResult | null>;
   adoptDictionaryEntry(userId: string, entryId: number): Promise<DictionaryAdoptionResult>;
   createDictionarySuggestion(userId: string, entryId: number, form: { suggestedName: string; note?: string | null }): Promise<DictionarySuggestion>;
   getPendingDictionarySuggestions(): Promise<DictionarySuggestionWithMeta[]>;
@@ -690,6 +697,128 @@ export class DatabaseStorage implements IStorage {
       .where(eq(dictionaryEntries.id, id))
       .returning();
     return updated;
+  }
+
+  async previewDictionaryImport(userId: string): Promise<DictionaryImportPreview> {
+    const [library, entries] = await Promise.all([
+      db.select().from(skills).where(eq(skills.userId, userId)),
+      db.select().from(dictionaryEntries),
+    ]);
+    return buildDictionaryImportPreview(library, entries);
+  }
+
+  private async runDictionaryImport(
+    userId: string,
+    claimInitialImport: boolean,
+  ): Promise<DictionaryImportResult | null> {
+    return await db.transaction(async (tx) => {
+      // Dictionary rows are global, so every import shares ONE lock. A per-user
+      // lock lets two admins create the same normalized entry concurrently.
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${"dictionary-library-import"}))`,
+      );
+
+      if (claimInitialImport) {
+        const [completed] = await tx
+          .select({ userId: dictionaryLibraryImports.userId })
+          .from(dictionaryLibraryImports)
+          .where(eq(dictionaryLibraryImports.userId, userId))
+          .limit(1);
+        if (completed) return null;
+      }
+
+      const [library, entries] = await Promise.all([
+        tx.select().from(skills).where(eq(skills.userId, userId)),
+        tx.select().from(dictionaryEntries),
+      ]);
+      const preview = buildDictionaryImportPreview(library, entries);
+      const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
+      const linkedEntryIds = new Set(
+        library
+          .map((skill) => skill.dictionaryEntryId)
+          .filter((id): id is number => id != null),
+      );
+      let added = 0;
+      let reused = 0;
+      let linked = 0;
+
+      for (const candidate of preview.candidates) {
+        let entryId = candidate.dictionaryEntryId;
+        if (entryId == null) {
+          const [created] = await tx
+            .insert(dictionaryEntries)
+            .values({
+              name: candidate.name,
+              longName: null,
+              code: candidate.code,
+              isDrill: candidate.isDrill,
+              difficulty: candidate.difficulty,
+              description: null,
+              sortOrder: candidate.sortOrder,
+              archived: 0,
+            })
+            .returning();
+          entryId = created.id;
+          entriesById.set(created.id, created);
+          added += 1;
+        } else {
+          reused += 1;
+          const existing = entriesById.get(entryId);
+          if (existing?.archived === 1) {
+            await tx
+              .update(dictionaryEntries)
+              .set({ archived: 0 })
+              .where(eq(dictionaryEntries.id, entryId));
+            entriesById.set(entryId, { ...existing, archived: 0 });
+          }
+        }
+
+        // Linking the original row makes the dictionary show "Added" for the
+        // owner and is the durable idempotency key after an entry is renamed.
+        // A duplicate personal row may resolve to an entry already linked by
+        // its twin; in that case the shared entry is still correctly reused.
+        if (!linkedEntryIds.has(entryId)) {
+          const [sourceLinked] = await tx
+            .update(skills)
+            .set({ dictionaryEntryId: entryId })
+            .where(and(
+              eq(skills.id, candidate.skillId),
+              eq(skills.userId, userId),
+              isNull(skills.dictionaryEntryId),
+            ))
+            .returning({ id: skills.id });
+          if (sourceLinked) {
+            linked += 1;
+            linkedEntryIds.add(entryId);
+          }
+        }
+      }
+
+      if (claimInitialImport) {
+        await tx
+          .insert(dictionaryLibraryImports)
+          .values({ userId });
+      }
+
+      return {
+        total: preview.counts.total,
+        added,
+        reused,
+        linked,
+        skipped: preview.counts.skipped,
+      };
+    });
+  }
+
+  async importLibraryToDictionary(userId: string): Promise<DictionaryImportResult> {
+    const result = await this.runDictionaryImport(userId, false);
+    // A manual import never claims the startup marker, so this cannot be null.
+    if (!result) throw new Error("Dictionary import unexpectedly skipped");
+    return result;
+  }
+
+  async ensureInitialDictionaryImport(userId: string): Promise<DictionaryImportResult | null> {
+    return await this.runDictionaryImport(userId, true);
   }
 
   async adoptDictionaryEntry(

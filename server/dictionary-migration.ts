@@ -8,6 +8,7 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
   dictionary_entries: [
     "id",
     "name",
+    "long_name",
     "code",
     "is_drill",
     "difficulty",
@@ -26,6 +27,7 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
     "created_at",
     "resolved_at",
   ],
+  dictionary_library_imports: ["user_id", "completed_at"],
   skills: ["dictionary_entry_id"],
   users: ["is_admin"],
 };
@@ -42,6 +44,7 @@ export async function runDictionaryMigration(
       CREATE TABLE IF NOT EXISTS dictionary_entries (
         id serial PRIMARY KEY,
         name text NOT NULL,
+        long_name text,
         code text NOT NULL,
         is_drill integer NOT NULL DEFAULT 0,
         difficulty real NOT NULL DEFAULT 0,
@@ -53,6 +56,7 @@ export async function runDictionaryMigration(
 
       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS id serial;
       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS name text;
+      ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS long_name text;
       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS code text;
       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS is_drill integer DEFAULT 0;
       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS difficulty real DEFAULT 0;
@@ -152,6 +156,29 @@ export async function runDictionaryMigration(
       ALTER TABLE dictionary_suggestions ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending';
       ALTER TABLE dictionary_suggestions ADD COLUMN IF NOT EXISTS created_at timestamp DEFAULT now();
       ALTER TABLE dictionary_suggestions ADD COLUMN IF NOT EXISTS resolved_at timestamp;
+
+      CREATE TABLE IF NOT EXISTS dictionary_library_imports (
+        user_id varchar PRIMARY KEY,
+        completed_at timestamp NOT NULL DEFAULT now()
+      );
+      ALTER TABLE dictionary_library_imports ADD COLUMN IF NOT EXISTS user_id varchar;
+      ALTER TABLE dictionary_library_imports ADD COLUMN IF NOT EXISTS completed_at timestamp DEFAULT now();
+      UPDATE dictionary_library_imports SET completed_at = now() WHERE completed_at IS NULL;
+      ALTER TABLE dictionary_library_imports ALTER COLUMN user_id SET NOT NULL;
+      ALTER TABLE dictionary_library_imports ALTER COLUMN completed_at SET DEFAULT now();
+      ALTER TABLE dictionary_library_imports ALTER COLUMN completed_at SET NOT NULL;
+
+      DO $dictionary_library_imports_pk$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conrelid = 'dictionary_library_imports'::regclass AND contype = 'p'
+        ) THEN
+          ALTER TABLE dictionary_library_imports
+            ADD CONSTRAINT dictionary_library_imports_pkey PRIMARY KEY (user_id);
+        END IF;
+      END
+      $dictionary_library_imports_pk$;
 
       UPDATE dictionary_suggestions SET status = 'pending' WHERE status IS NULL;
       UPDATE dictionary_suggestions SET created_at = now() WHERE created_at IS NULL;

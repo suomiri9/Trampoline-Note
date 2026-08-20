@@ -5,9 +5,11 @@ import { createServer } from "http";
 import { setupAuth } from "./auth";
 import { pool } from "./db";
 import {
+  DICTIONARY_ADMIN_USER_ID,
   ensureDictionaryAdminGrant,
   runDictionaryMigration,
 } from "./dictionary-migration";
+import { storage } from "./storage";
 
 const app = express();
 const httpServer = createServer(app);
@@ -180,6 +182,17 @@ async function runMigrations() {
   // setupAuth creates the owner on a fresh database, so apply and verify the
   // grant after auth setup as well as repairing the schema first.
   await ensureDictionaryAdminGrant(pool);
+  // The owner explicitly confirmed this one-time population. Each environment
+  // records completion so later personal skills are never auto-published on a
+  // routine restart; the owner-only Import button handles future batches.
+  const imported = await storage.ensureInitialDictionaryImport(
+    DICTIONARY_ADMIN_USER_ID,
+  );
+  if (imported) {
+    console.log(
+      `Dictionary library import applied: ${imported.added} added, ${imported.reused} reused, ${imported.skipped} skipped`,
+    );
+  }
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

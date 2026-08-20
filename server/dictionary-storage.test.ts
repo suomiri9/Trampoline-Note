@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { users } from "@shared/models/auth";
 import {
   dictionaryEntries,
+  dictionaryLibraryImports,
   dictionarySuggestions,
   skills,
 } from "@shared/schema";
@@ -142,5 +143,167 @@ describe.skipIf(!hasDatabase)("dictionary storage invariants", () => {
     expect(entry?.altNames).toEqual(
       expect.arrayContaining(["First accepted name", "Second accepted name"]),
     );
+  });
+
+  it("imports a personal library once, reuses matches, links sources, and leaves long names blank", async () => {
+    const importUserId = `dictionary-import-${randomUUID()}`;
+    const marker = randomUUID();
+    const existingName = `Existing ${marker}`;
+    const newName = `New ${marker}`;
+    const existingEntryId = await createEntry(existingName);
+    const existingEntry = await storage.getDictionaryEntry(existingEntryId);
+    let createdEntryId: number | undefined;
+
+    await db.insert(users).values({
+      id: importUserId,
+      email: `${importUserId}@test.local`,
+      displayName: "Import Test",
+    });
+    try {
+      await db.insert(skills).values([
+        {
+          userId: importUserId,
+          name: existingName,
+          code: existingEntry!.code,
+          difficulty: 0.5,
+          isDrill: 0,
+        },
+        {
+          userId: importUserId,
+          name: newName,
+          code: `N-${marker.slice(0, 8)}`,
+          difficulty: 0.8,
+          isDrill: 0,
+        },
+      ]);
+
+      const preview = await storage.previewDictionaryImport(importUserId);
+      expect(preview.counts).toEqual({
+        total: 2,
+        toAdd: 1,
+        reused: 1,
+        skipped: 0,
+      });
+
+      const first = await storage.importLibraryToDictionary(importUserId);
+      expect(first).toEqual({
+        total: 2,
+        added: 1,
+        reused: 1,
+        linked: 2,
+        skipped: 0,
+      });
+
+      const second = await storage.importLibraryToDictionary(importUserId);
+      expect(second).toEqual({
+        total: 2,
+        added: 0,
+        reused: 2,
+        linked: 0,
+        skipped: 0,
+      });
+
+      // A manual import does not consume the one-time startup claim. The first
+      // startup pass still runs (reusing everything) and claims it atomically;
+      // later startup processes skip it.
+      const initial = await storage.ensureInitialDictionaryImport(importUserId);
+      expect(initial).toEqual({
+        total: 2,
+        added: 0,
+        reused: 2,
+        linked: 0,
+        skipped: 0,
+      });
+      expect(await storage.ensureInitialDictionaryImport(importUserId)).toBeNull();
+
+      const sourceRows = await db
+        .select()
+        .from(skills)
+        .where(eq(skills.userId, importUserId));
+      expect(sourceRows.every((row) => row.dictionaryEntryId != null)).toBe(true);
+
+      const [created] = await db
+        .select()
+        .from(dictionaryEntries)
+        .where(eq(dictionaryEntries.name, newName));
+      expect(created).toMatchObject({
+        name: newName,
+        longName: null,
+        archived: 0,
+      });
+      createdEntryId = created.id;
+    } finally {
+      await db
+        .delete(dictionaryLibraryImports)
+        .where(eq(dictionaryLibraryImports.userId, importUserId));
+      await db.delete(skills).where(eq(skills.userId, importUserId));
+      if (createdEntryId != null) {
+        await db.delete(dictionaryEntries).where(eq(dictionaryEntries.id, createdEntryId));
+      }
+      await db.delete(users).where(eq(users.id, importUserId));
+    }
+  });
+
+  it("serializes imports from different admins so a global entry is created once", async () => {
+    const firstUserId = `dictionary-import-a-${randomUUID()}`;
+    const secondUserId = `dictionary-import-b-${randomUUID()}`;
+    const marker = randomUUID();
+    const sharedName = `Shared ${marker}`;
+    const sharedCode = `S-${marker.slice(0, 8)}`;
+    let createdEntryId: number | undefined;
+
+    await db.insert(users).values([
+      { id: firstUserId, email: `${firstUserId}@test.local` },
+      { id: secondUserId, email: `${secondUserId}@test.local` },
+    ]);
+    await db.insert(skills).values([
+      {
+        userId: firstUserId,
+        name: sharedName,
+        code: sharedCode,
+        difficulty: 0.7,
+        isDrill: 0,
+      },
+      {
+        userId: secondUserId,
+        name: sharedName,
+        code: sharedCode,
+        difficulty: 0.7,
+        isDrill: 0,
+      },
+    ]);
+
+    try {
+      const results = await Promise.all([
+        storage.importLibraryToDictionary(firstUserId),
+        storage.importLibraryToDictionary(secondUserId),
+      ]);
+      expect(results.map((result) => result.added).sort()).toEqual([0, 1]);
+      expect(results.map((result) => result.reused).sort()).toEqual([0, 1]);
+
+      const matching = await db
+        .select()
+        .from(dictionaryEntries)
+        .where(and(
+          eq(dictionaryEntries.name, sharedName),
+          eq(dictionaryEntries.code, sharedCode),
+        ));
+      expect(matching).toHaveLength(1);
+      createdEntryId = matching[0].id;
+
+      const linkedSources = await db
+        .select()
+        .from(skills)
+        .where(inArray(skills.userId, [firstUserId, secondUserId]));
+      expect(new Set(linkedSources.map((row) => row.dictionaryEntryId))).toEqual(
+        new Set([createdEntryId]),
+      );
+    } finally {
+      await db.delete(skills).where(inArray(skills.userId, [firstUserId, secondUserId]));
+      if (createdEntryId != null) {
+        await db.delete(dictionaryEntries).where(eq(dictionaryEntries.id, createdEntryId));
+      }
+      await db.delete(users).where(inArray(users.id, [firstUserId, secondUserId]));
+    }
   });
 });

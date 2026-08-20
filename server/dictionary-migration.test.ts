@@ -74,15 +74,17 @@ describe.skipIf(!hasDatabase)("dictionary startup migration", () => {
         SELECT table_name, column_name
         FROM information_schema.columns
         WHERE table_schema = current_schema()
-          AND table_name IN ('dictionary_entries', 'dictionary_suggestions', 'skills', 'users')
+          AND table_name IN ('dictionary_entries', 'dictionary_suggestions', 'dictionary_library_imports', 'skills', 'users')
       `);
       const names = new Set(
         columns.rows.map((row) => `${row.table_name}.${row.column_name}`),
       );
       expect(names.has("dictionary_entries.alt_names")).toBe(true);
       expect(names.has("dictionary_entries.description")).toBe(true);
+      expect(names.has("dictionary_entries.long_name")).toBe(true);
       expect(names.has("dictionary_suggestions.status")).toBe(true);
       expect(names.has("dictionary_suggestions.resolved_at")).toBe(true);
+      expect(names.has("dictionary_library_imports.completed_at")).toBe(true);
       expect(names.has("skills.dictionary_entry_id")).toBe(true);
       expect(names.has("users.is_admin")).toBe(true);
 

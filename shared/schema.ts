@@ -186,6 +186,9 @@ export const coachMessages = pgTable("coach_messages", {
 export const dictionaryEntries = pgTable("dictionary_entries", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  // Optional fully expanded name. The familiar short name stays the primary
+  // label; the owner can fill this in later without renaming adopted skills.
+  longName: text("long_name"),
   code: text("code").notNull(),
   isDrill: integer("is_drill").notNull().default(0), // 0 = skill, 1 = drill
   difficulty: real("difficulty").notNull().default(0),
@@ -209,6 +212,15 @@ export const dictionarySuggestions = pgTable("dictionary_suggestions", {
   status: text("status").notNull().default("pending"), // "pending" | "accepted" | "rejected"
   createdAt: timestamp("created_at").notNull().defaultNow(),
   resolvedAt: timestamp("resolved_at"),
+});
+
+// Marks the owner's explicitly confirmed one-time library import as complete
+// in each environment. The normal Import button can still be run later for
+// newly added personal skills; this marker only prevents startup from silently
+// importing future additions on every deploy/restart.
+export const dictionaryLibraryImports = pgTable("dictionary_library_imports", {
+  userId: varchar("user_id").primaryKey(),
+  completedAt: timestamp("completed_at").notNull().defaultNow(),
 });
 
 // Per-user WHOOP OAuth tokens ("Sign in with WHOOP"). One row per user;
@@ -269,6 +281,7 @@ export const insertDictionaryEntrySchema = createInsertSchema(dictionaryEntries)
   .omit({ id: true, altNames: true })
   .extend({
     name: z.string().trim().min(1, "Name is required").max(120),
+    longName: z.string().trim().max(200).nullable().optional(),
     code: z.string().trim().min(1, "Code is required").max(40),
     isDrill: z.union([z.literal(0), z.literal(1)]).optional(), // dictionary entries are only skills or drills
     difficulty: z.number().min(0).max(30).optional(),
@@ -324,6 +337,42 @@ export type DictionarySuggestionWithMeta = DictionarySuggestion & {
 export type DictionaryAdoptionResult = {
   skill: Skill;
   status: "created" | "existing" | "restored";
+};
+
+export type DictionaryImportCandidate = {
+  skillId: number;
+  name: string;
+  code: string;
+  isDrill: 0 | 1;
+  difficulty: number;
+  sortOrder: number | null;
+  status: "new" | "linked" | "matched";
+  dictionaryEntryId: number | null;
+};
+
+export type DictionaryImportSkipped = {
+  skillId: number;
+  name: string;
+  reason: "archived" | "not-a-skill-or-drill" | "shape-group" | "invalid" | "duplicate";
+};
+
+export type DictionaryImportPreview = {
+  candidates: DictionaryImportCandidate[];
+  skipped: DictionaryImportSkipped[];
+  counts: {
+    total: number;
+    toAdd: number;
+    reused: number;
+    skipped: number;
+  };
+};
+
+export type DictionaryImportResult = {
+  total: number;
+  added: number;
+  reused: number;
+  linked: number;
+  skipped: number;
 };
 
 export type WhoopToken = typeof whoopTokens.$inferSelect;
