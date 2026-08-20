@@ -128,6 +128,16 @@ export async function registerRoutes(
   app.post(api.skills.create.path, isAuthenticated, async (req, res) => {
     try {
       const input = api.skills.create.input.parse(req.body);
+      // Backward compatibility for an adoption queued by the previous client:
+      // never trust the copied fields. Resolve the active dictionary entry on
+      // the server and use the same idempotent operation as the new endpoint.
+      if (input.dictionaryEntryId != null) {
+        const result = await storage.adoptDictionaryEntry(
+          getUserId(req),
+          input.dictionaryEntryId,
+        );
+        return res.status(201).json(result.skill);
+      }
       const skill = await storage.createSkill(getUserId(req), input);
       res.status(201).json(skill);
     } catch (err) {
@@ -139,6 +149,10 @@ export async function registerRoutes(
       }
       if (err instanceof SkillLinkError) {
         return res.status(400).json({ message: err.message });
+      }
+      if (err instanceof DictionaryError) {
+        const status = err.code === "not_found" ? 404 : 400;
+        return res.status(status).json({ message: err.message });
       }
       res.status(500).json({ message: "Internal server error" });
     }
@@ -152,6 +166,12 @@ export async function registerRoutes(
   app.put(api.skills.update.path, isAuthenticated, async (req, res) => {
     try {
       const input = api.skills.update.input.parse(req.body);
+      if (input.dictionaryEntryId !== undefined) {
+        return res.status(400).json({
+          message: "A skill's dictionary source cannot be changed",
+          field: "dictionaryEntryId",
+        });
+      }
       const userId = getUserId(req);
       const skillId = Number(req.params.id);
       const skill = await storage.updateSkill(skillId, userId, input);
@@ -248,6 +268,27 @@ export async function registerRoutes(
         return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join(".") });
       }
       console.error("Dictionary update error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post(api.dictionary.adopt.path, isAuthenticated, async (req, res) => {
+    try {
+      const entryId = Number(req.params.id);
+      if (!Number.isInteger(entryId) || entryId <= 0) {
+        return res.status(404).json({ message: "Dictionary entry not found" });
+      }
+      const result = await storage.adoptDictionaryEntry(
+        getUserId(req),
+        entryId,
+      );
+      res.json(result);
+    } catch (err) {
+      if (err instanceof DictionaryError) {
+        const status = err.code === "not_found" ? 404 : 400;
+        return res.status(status).json({ message: err.message });
+      }
+      console.error("Dictionary adopt error:", err);
       res.status(500).json({ message: "Internal server error" });
     }
   });

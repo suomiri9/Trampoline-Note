@@ -7,6 +7,8 @@ import type {
   DictionarySuggestion,
   DictionarySuggestionForm,
   DictionarySuggestionWithMeta,
+  DictionaryAdoptionResult,
+  Skill,
 } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
@@ -95,6 +97,46 @@ export function useDictionary() {
     },
   });
 
+  const adoptMutation = useMutation({
+    mutationFn: async (entryId: number) => {
+      const res = await apiRequest(
+        "POST",
+        buildUrl(api.dictionary.adopt.path, { id: entryId }),
+      );
+      return (await res.json()) as DictionaryAdoptionResult;
+    },
+    onSuccess: (result) => {
+      queryClient.setQueryData<Skill[]>(
+        [api.skills.list.path],
+        (current) => {
+          if (!current) return current;
+          const found = current.some((skill) => skill.id === result.skill.id);
+          return found
+            ? current.map((skill) =>
+                skill.id === result.skill.id ? result.skill : skill,
+              )
+            : [...current, result.skill];
+        },
+      );
+      queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
+      toast({
+        title:
+          result.status === "restored"
+            ? "Restored to your library"
+            : result.status === "existing"
+              ? "Already in your library"
+              : "Added to your library",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Couldn't add to your library",
+        description: friendlyMessage(error, "Please try again."),
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     ...query,
     createEntry: createEntryMutation.mutateAsync,
@@ -103,6 +145,10 @@ export function useDictionary() {
     isUpdatingEntry: updateEntryMutation.isPending,
     suggest: suggestMutation.mutateAsync,
     isSuggesting: suggestMutation.isPending,
+    adoptEntry: adoptMutation.mutateAsync,
+    adoptingEntryId: adoptMutation.isPending
+      ? adoptMutation.variables
+      : undefined,
   };
 }
 

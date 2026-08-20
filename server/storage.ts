@@ -32,6 +32,7 @@ import {
   dictionarySuggestions,
   type DictionarySuggestion,
   type DictionarySuggestionWithMeta,
+  type DictionaryAdoptionResult,
 } from "@shared/schema";
 import {
   users,
@@ -119,6 +120,7 @@ export interface IStorage {
   getDictionaryEntry(id: number): Promise<DictionaryEntry | undefined>;
   createDictionaryEntry(entry: InsertDictionaryEntry): Promise<DictionaryEntry>;
   updateDictionaryEntry(id: number, updates: Partial<InsertDictionaryEntry>): Promise<DictionaryEntry | undefined>;
+  adoptDictionaryEntry(userId: string, entryId: number): Promise<DictionaryAdoptionResult>;
   createDictionarySuggestion(userId: string, entryId: number, form: { suggestedName: string; note?: string | null }): Promise<DictionarySuggestion>;
   getPendingDictionarySuggestions(): Promise<DictionarySuggestionWithMeta[]>;
   resolveDictionarySuggestion(id: number, action: "accept" | "reject"): Promise<{ suggestion: DictionarySuggestion; entry: DictionaryEntry | null } | undefined>;
@@ -690,6 +692,127 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async adoptDictionaryEntry(
+    userId: string,
+    entryId: number,
+  ): Promise<DictionaryAdoptionResult> {
+    return await db.transaction(async (tx) => {
+      const [entry] = await tx
+        .select()
+        .from(dictionaryEntries)
+        .where(and(
+          eq(dictionaryEntries.id, entryId),
+          eq(dictionaryEntries.archived, 0),
+        ))
+        .limit(1);
+      if (!entry) {
+        throw new DictionaryError("Dictionary entry not found", "not_found");
+      }
+
+      const findExisting = async () => {
+        const [existing] = await tx
+          .select()
+          .from(skills)
+          .where(and(
+            eq(skills.userId, userId),
+            eq(skills.dictionaryEntryId, entryId),
+          ))
+          .limit(1);
+        return existing;
+      };
+
+      const restoreOrReturn = async (
+        existing: Skill,
+      ): Promise<DictionaryAdoptionResult> => {
+        if (existing.archived !== 1) {
+          return { skill: existing, status: "existing" };
+        }
+        const [restored] = await tx
+          .update(skills)
+          .set({ archived: 0 })
+          .where(and(eq(skills.id, existing.id), eq(skills.userId, userId)))
+          .returning();
+        return { skill: restored ?? { ...existing, archived: 0 }, status: "restored" };
+      };
+
+      const existing = await findExisting();
+      if (existing) return await restoreOrReturn(existing);
+
+      const sameCategory = await tx
+        .select()
+        .from(skills)
+        .where(and(
+          eq(skills.userId, userId),
+          eq(skills.isDrill, entry.isDrill),
+        ));
+      const sorted = sameCategory
+        .map((skill) => ({
+          id: skill.id,
+          sortOrder: skill.sortOrder ?? 999999,
+          difficulty: skill.difficulty,
+        }))
+        .sort((a, b) =>
+          a.sortOrder !== b.sortOrder
+            ? a.sortOrder - b.sortOrder
+            : b.difficulty - a.difficulty,
+        );
+      let insertIdx = sorted.length;
+      for (let i = 0; i < sorted.length; i += 1) {
+        if (entry.difficulty >= sorted[i].difficulty) {
+          insertIdx = i;
+          break;
+        }
+      }
+
+      await Promise.all(
+        sorted.slice(insertIdx).map((skill, offset) =>
+          tx
+            .update(skills)
+            .set({ sortOrder: insertIdx + offset + 1 })
+            .where(eq(skills.id, skill.id)),
+        ),
+      );
+      for (let i = 0; i < insertIdx; i += 1) {
+        if (sorted[i].sortOrder !== i) {
+          await tx
+            .update(skills)
+            .set({ sortOrder: i })
+            .where(eq(skills.id, sorted[i].id));
+        }
+      }
+
+      const [created] = await tx
+        .insert(skills)
+        .values({
+          userId,
+          name: entry.name,
+          code: entry.code,
+          difficulty: entry.difficulty,
+          isDrill: entry.isDrill,
+          sortOrder: insertIdx,
+          dictionaryEntryId: entry.id,
+        })
+        .onConflictDoNothing({
+          target: [skills.userId, skills.dictionaryEntryId],
+          // drizzle-orm 0.39 types this partial-index predicate as `where`
+          // (newer releases call it targetWhere).
+          where: sql`${skills.dictionaryEntryId} IS NOT NULL`,
+        })
+        .returning();
+      if (created) {
+        return { skill: created, status: "created" };
+      }
+
+      // A concurrent retry won the unique-index race. READ COMMITTED gives
+      // this statement a fresh snapshot, so return that same copy.
+      const raced = await findExisting();
+      if (!raced) {
+        throw new DictionaryError("Couldn't add this entry to your library");
+      }
+      return await restoreOrReturn(raced);
+    });
+  }
+
   async createDictionarySuggestion(
     userId: string,
     entryId: number,
@@ -721,10 +844,19 @@ export class DatabaseStorage implements IStorage {
       throw new DictionaryError("You've already suggested this — it's waiting for review", "duplicate");
     }
     const note = (form.note ?? "").trim();
-    const [created] = await db.insert(dictionarySuggestions)
-      .values({ entryId, userId, suggestedName, note: note || null })
-      .returning();
-    return created;
+    try {
+      const [created] = await db.insert(dictionarySuggestions)
+        .values({ entryId, userId, suggestedName, note: note || null })
+        .returning();
+      return created;
+    } catch (error) {
+      // The partial expression index is the race-safe counterpart to the
+      // friendly pre-check above.
+      if ((error as { code?: string } | null)?.code === "23505") {
+        throw new DictionaryError("You've already suggested this — it's waiting for review", "duplicate");
+      }
+      throw error;
+    }
   }
 
   async getPendingDictionarySuggestions(): Promise<DictionarySuggestionWithMeta[]> {
@@ -772,15 +904,26 @@ export class DatabaseStorage implements IStorage {
           entry = existing;
           const name = suggestion.suggestedName.trim();
           const normalized = name.toLowerCase();
-          const alreadyListed = [existing.name, ...(existing.altNames ?? [])]
-            .some((n) => n.trim().toLowerCase() === normalized);
-          if (!alreadyListed) {
-            const [updated] = await tx.update(dictionaryEntries)
-              .set({ altNames: [...(existing.altNames ?? []), name] })
-              .where(eq(dictionaryEntries.id, existing.id))
-              .returning();
-            entry = updated ?? existing;
-          }
+          // Compute the append inside the UPDATE so two different accepted
+          // suggestions cannot overwrite each other's altNames arrays.
+          const [updated] = await tx.update(dictionaryEntries)
+            .set({
+              altNames: sql`
+                CASE
+                  WHEN lower(btrim(${dictionaryEntries.name})) = ${normalized}
+                    OR EXISTS (
+                      SELECT 1
+                      FROM unnest(${dictionaryEntries.altNames}) AS listed(name)
+                      WHERE lower(btrim(listed.name)) = ${normalized}
+                    )
+                  THEN ${dictionaryEntries.altNames}
+                  ELSE array_append(${dictionaryEntries.altNames}, ${name})
+                END
+              `,
+            })
+            .where(eq(dictionaryEntries.id, existing.id))
+            .returning();
+          entry = updated ?? existing;
         }
       }
       return { suggestion, entry };

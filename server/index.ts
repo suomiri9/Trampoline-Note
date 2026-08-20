@@ -4,6 +4,10 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { setupAuth } from "./auth";
 import { pool } from "./db";
+import {
+  ensureDictionaryAdminGrant,
+  runDictionaryMigration,
+} from "./dictionary-migration";
 
 const app = express();
 const httpServer = createServer(app);
@@ -156,36 +160,15 @@ async function runMigrations() {
         effective_until date NOT NULL,
         created_at timestamp NOT NULL DEFAULT now()
       );
-      CREATE TABLE IF NOT EXISTS dictionary_entries (
-        id serial PRIMARY KEY,
-        name text NOT NULL,
-        code text NOT NULL,
-        is_drill integer NOT NULL DEFAULT 0,
-        difficulty real NOT NULL DEFAULT 0,
-        description text,
-        alt_names text[] NOT NULL DEFAULT '{}',
-        archived integer NOT NULL DEFAULT 0,
-        sort_order integer
-      );
-      CREATE TABLE IF NOT EXISTS dictionary_suggestions (
-        id serial PRIMARY KEY,
-        entry_id integer NOT NULL,
-        user_id varchar NOT NULL,
-        suggested_name text NOT NULL,
-        note text,
-        status text NOT NULL DEFAULT 'pending',
-        created_at timestamp NOT NULL DEFAULT now(),
-        resolved_at timestamp
-      );
-      ALTER TABLE skills ADD COLUMN IF NOT EXISTS dictionary_entry_id integer;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin boolean NOT NULL DEFAULT false;
-      -- The app owner curates the shared dictionary. Dev and prod share this
-      -- user id, so the grant lands in both without manual database steps.
-      UPDATE users SET is_admin = true WHERE id = '55504735';
     `);
+    await runDictionaryMigration(client);
     console.log("Database migrations applied");
   } catch (err) {
-    console.error("Migration error (non-fatal):", err);
+    // Starting against a partially migrated schema only moves the failure to
+    // user requests. Fail closed so a rollout can never appear healthy while
+    // dictionary tables, constraints, or permissions are missing.
+    console.error("Migration error (startup aborted):", err);
+    throw err;
   } finally {
     client.release();
   }
@@ -194,6 +177,9 @@ async function runMigrations() {
 (async () => {
   await runMigrations();
   await setupAuth(app);
+  // setupAuth creates the owner on a fresh database, so apply and verify the
+  // grant after auth setup as well as repairing the schema first.
+  await ensureDictionaryAdminGrant(pool);
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, date, real, varchar, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, date, real, varchar, timestamp, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
@@ -15,25 +15,35 @@ export const notes = pgTable("notes", {
   sleepScore: integer("sleep_score"), // 0 to 100
 });
 
-export const skills = pgTable("skills", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id"),
-  name: text("name").notNull(),
-  code: text("code").notNull(),
-  difficulty: real("difficulty").notNull(),
-  isDrill: integer("is_drill").notNull().default(0), // 0 for skill, 1 for drill, 2 for frequent connection, 3 for part of routine
-  skillIds: integer("skill_ids").array(), // For frequent connections (type 2) and routine parts (type 3)
-  sortOrder: integer("sort_order"),
-  archived: integer("archived").notNull().default(0), // 0 = active, 1 = archived
-  parentSkillId: integer("parent_skill_id"), // when set, this skill row is a SHAPE of the referenced base skill
-  shape: text("shape"), // shape symbol/label (e.g. "o" tuck, "<" pike, "/" straight); null for non-shape rows
-  sourceRoutineId: integer("source_routine_id"), // for routine parts (isDrill 3): the routine this part was sliced from; null for legacy/other rows
-  // When set, this personal row was adopted (copied) from the shared
-  // dictionary entry with this id. Used ONLY to mark "already in your
-  // library" in the dictionary UI — there is no sync-back; later dictionary
-  // edits never touch adopted copies.
-  dictionaryEntryId: integer("dictionary_entry_id"),
-});
+export const skills = pgTable(
+  "skills",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id"),
+    name: text("name").notNull(),
+    code: text("code").notNull(),
+    difficulty: real("difficulty").notNull(),
+    isDrill: integer("is_drill").notNull().default(0), // 0 for skill, 1 for drill, 2 for frequent connection, 3 for part of routine
+    skillIds: integer("skill_ids").array(), // For frequent connections (type 2) and routine parts (type 3)
+    sortOrder: integer("sort_order"),
+    archived: integer("archived").notNull().default(0), // 0 = active, 1 = archived
+    parentSkillId: integer("parent_skill_id"), // when set, this skill row is a SHAPE of the referenced base skill
+    shape: text("shape"), // shape symbol/label (e.g. "o" tuck, "<" pike, "/" straight); null for non-shape rows
+    sourceRoutineId: integer("source_routine_id"), // for routine parts (isDrill 3): the routine this part was sliced from; null for legacy/other rows
+    // When set, this personal row was adopted (copied) from the shared
+    // dictionary entry with this id. Used ONLY to mark "already in your
+    // library" in the dictionary UI — there is no sync-back; later dictionary
+    // edits never touch adopted copies.
+    dictionaryEntryId: integer("dictionary_entry_id"),
+  },
+  (table) => [
+    // One provenance-linked copy per athlete. Archived copies keep the link so
+    // adopting again can restore the same row instead of creating a duplicate.
+    uniqueIndex("skills_user_dictionary_entry_unique")
+      .on(table.userId, table.dictionaryEntryId)
+      .where(sql`${table.dictionaryEntryId} IS NOT NULL`),
+  ],
+);
 
 export const routines = pgTable("routines", {
   id: serial("id").primaryKey(),
@@ -309,6 +319,11 @@ export type DictionarySuggestionWithMeta = DictionarySuggestion & {
   entryCode: string;
   entryIsDrill: number;
   submitterName: string | null;
+};
+
+export type DictionaryAdoptionResult = {
+  skill: Skill;
+  status: "created" | "existing" | "restored";
 };
 
 export type WhoopToken = typeof whoopTokens.$inferSelect;

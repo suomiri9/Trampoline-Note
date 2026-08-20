@@ -35,7 +35,7 @@ import {
 
 // Same phone bottom-sheet treatment as the other Arsenal dialogs.
 const sheetClass =
-  "sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8";
+  "!z-[70] sm:max-w-md max-h-[90dvh] overflow-y-auto max-sm:!top-auto max-sm:!bottom-0 max-sm:!translate-y-0 max-sm:!max-w-full max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[85dvh] max-sm:data-[state=open]:slide-in-from-bottom-8";
 
 const blankEntryForm: InsertDictionaryEntry = {
   name: "",
@@ -77,8 +77,10 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
     isUpdatingEntry,
     suggest,
     isSuggesting,
+    adoptEntry,
+    adoptingEntryId,
   } = useDictionary();
-  const { data: allItems, createSkill, isCreating } = useSkills();
+  const { data: allItems } = useSkills();
   const {
     data: suggestions,
     isLoading: suggestionsLoading,
@@ -98,15 +100,9 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
   );
   const adopt = async (entry: DictionaryEntry) => {
     try {
-      await createSkill({
-        name: entry.name,
-        code: entry.code,
-        difficulty: entry.difficulty,
-        isDrill: entry.isDrill,
-        dictionaryEntryId: entry.id,
-      });
+      await adoptEntry(entry.id);
     } catch {
-      // useSkills already toasts failures
+      // useDictionary already toasts failures
     }
   };
 
@@ -324,11 +320,12 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
                                   size="sm"
                                   variant="outline"
                                   className="h-7 gap-1 px-2 text-[11px]"
-                                  disabled={isCreating}
+                                  disabled={adoptingEntryId === entry.id}
                                   onClick={() => adopt(entry)}
                                   data-testid={`button-adopt-${entry.id}`}
                                 >
-                                  <Plus className="h-3.5 w-3.5" /> Add
+                                  <Plus className="h-3.5 w-3.5" />
+                                  {adoptingEntryId === entry.id ? "Adding…" : "Add"}
                                 </Button>
                               ))}
                             <DropdownMenu>
