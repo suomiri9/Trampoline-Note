@@ -487,13 +487,13 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
                 )} />
                 <FormField control={editorForm.control} name="longName" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Long name <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                    <FormLabel>Short name <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
                     <FormControl>
                       <Input
                         {...field}
                         value={field.value ?? ""}
                         maxLength={200}
-                        placeholder="Full technical name"
+                        placeholder="Shorter name"
                         data-testid="input-entry-long-name"
                       />
                     </FormControl>
@@ -502,7 +502,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
                 )} />
                 <FormField control={editorForm.control} name="code" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Code</FormLabel>
+                    <FormLabel>Numeric</FormLabel>
                     <FormControl><Input {...field} placeholder="41/" data-testid="input-entry-code" /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -631,7 +631,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
             ) : (
               <div className="space-y-4">
                 <p className="text-xs text-muted-foreground">
-                  This copies your active skills and drills into the shared dictionary. Long names stay blank so you can add them later.
+                  This copies your active skills and drills into the shared dictionary. Short names stay blank so you can add them later.
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-center">
