@@ -749,8 +749,8 @@ export class DatabaseStorage implements IStorage {
             .insert(dictionaryEntries)
             .values({
               name: candidate.name,
-              longName: null,
-              code: candidate.code,
+              shortName: candidate.shortName,
+              numeric: null,
               isDrill: candidate.isDrill,
               difficulty: candidate.difficulty,
               description: null,
@@ -915,7 +915,7 @@ export class DatabaseStorage implements IStorage {
         .values({
           userId,
           name: entry.name,
-          code: entry.code,
+          code: entry.shortName,
           difficulty: entry.difficulty,
           isDrill: entry.isDrill,
           sortOrder: insertIdx,
@@ -993,7 +993,7 @@ export class DatabaseStorage implements IStorage {
       .select({
         suggestion: dictionarySuggestions,
         entryName: dictionaryEntries.name,
-        entryCode: dictionaryEntries.code,
+        entryShortName: dictionaryEntries.shortName,
         entryIsDrill: dictionaryEntries.isDrill,
         submitterDisplayName: users.displayName,
         submitterEmail: users.email,
@@ -1006,7 +1006,7 @@ export class DatabaseStorage implements IStorage {
     return rows.map((r) => ({
       ...r.suggestion,
       entryName: r.entryName ?? "(deleted entry)",
-      entryCode: r.entryCode ?? "",
+      entryShortName: r.entryShortName ?? "",
       entryIsDrill: r.entryIsDrill ?? 0,
       submitterName: r.submitterDisplayName || r.submitterEmail || null,
     }));

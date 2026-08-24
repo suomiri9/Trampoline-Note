@@ -19,12 +19,14 @@ const entryIds: number[] = [];
 async function createEntry(
   name: string,
   archived = 0,
+  numeric: string | null = null,
 ): Promise<number> {
   const [entry] = await db
     .insert(dictionaryEntries)
     .values({
       name,
-      code: name.slice(0, 12),
+      shortName: name.slice(0, 12),
+      numeric,
       difficulty: 0.5,
       isDrill: 0,
       archived,
@@ -61,7 +63,7 @@ describe.skipIf(!hasDatabase)("dictionary storage invariants", () => {
   });
 
   it("returns one personal copy under concurrent adoption retries", async () => {
-    const entryId = await createEntry(`Concurrent ${randomUUID()}`);
+    const entryId = await createEntry(`Concurrent ${randomUUID()}`, 0, "41/");
     const results = await Promise.all([
       storage.adoptDictionaryEntry(userId, entryId),
       storage.adoptDictionaryEntry(userId, entryId),
@@ -72,6 +74,8 @@ describe.skipIf(!hasDatabase)("dictionary storage invariants", () => {
       "created",
       "existing",
     ]);
+    const entry = await storage.getDictionaryEntry(entryId);
+    expect(results[0].skill.code).toBe(entry?.shortName);
 
     const copies = await db
       .select()
@@ -145,7 +149,7 @@ describe.skipIf(!hasDatabase)("dictionary storage invariants", () => {
     );
   });
 
-  it("imports a personal library once, reuses matches, links sources, and leaves long names blank", async () => {
+  it("imports personal codes as short names and leaves optional numerics blank", async () => {
     const importUserId = `dictionary-import-${randomUUID()}`;
     const marker = randomUUID();
     const existingName = `Existing ${marker}`;
@@ -164,7 +168,7 @@ describe.skipIf(!hasDatabase)("dictionary storage invariants", () => {
         {
           userId: importUserId,
           name: existingName,
-          code: existingEntry!.code,
+          code: existingEntry!.shortName,
           difficulty: 0.5,
           isDrill: 0,
         },
@@ -228,7 +232,8 @@ describe.skipIf(!hasDatabase)("dictionary storage invariants", () => {
         .where(eq(dictionaryEntries.name, newName));
       expect(created).toMatchObject({
         name: newName,
-        longName: null,
+        shortName: `N-${marker.slice(0, 8)}`,
+        numeric: null,
         archived: 0,
       });
       createdEntryId = created.id;
@@ -286,7 +291,7 @@ describe.skipIf(!hasDatabase)("dictionary storage invariants", () => {
         .from(dictionaryEntries)
         .where(and(
           eq(dictionaryEntries.name, sharedName),
-          eq(dictionaryEntries.code, sharedCode),
+          eq(dictionaryEntries.shortName, sharedCode),
         ));
       expect(matching).toHaveLength(1);
       createdEntryId = matching[0].id;

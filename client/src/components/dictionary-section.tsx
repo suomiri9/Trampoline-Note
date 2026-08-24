@@ -40,8 +40,8 @@ const sheetClass =
 
 const blankEntryForm: InsertDictionaryEntry = {
   name: "",
-  longName: "",
-  code: "",
+  shortName: "",
+  numeric: "",
   isDrill: 0,
   difficulty: 0,
   description: "",
@@ -157,8 +157,8 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
     setEditingEntry(entry);
     editorForm.reset({
       name: entry.name,
-      longName: entry.longName ?? "",
-      code: entry.code,
+      shortName: entry.shortName,
+      numeric: entry.numeric ?? "",
       isDrill: entry.isDrill === 1 ? 1 : 0,
       difficulty: entry.difficulty,
       description: entry.description ?? "",
@@ -167,7 +167,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
   const onEditorSubmit = editorForm.handleSubmit(async (values) => {
     const payload = {
       ...values,
-      longName: values.longName?.trim() ? values.longName.trim() : null,
+      numeric: values.numeric?.trim() ? values.numeric.trim() : null,
       description: values.description?.trim() ? values.description.trim() : null,
     };
     try {
@@ -191,8 +191,8 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
   const matchesSearch = (e: DictionaryEntry) =>
     !q ||
     e.name.toLowerCase().includes(q) ||
-    (e.longName ?? "").toLowerCase().includes(q) ||
-    e.code.toLowerCase().includes(q) ||
+    e.shortName.toLowerCase().includes(q) ||
+    (e.numeric ?? "").toLowerCase().includes(q) ||
     (e.altNames ?? []).some((n) => n.toLowerCase().includes(q)) ||
     (e.description ?? "").toLowerCase().includes(q);
   const visible = (entries ?? []).filter(
@@ -297,7 +297,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
               <Table>
                 <TableHeader>
                   <TableRow className="border-white/[0.08] hover:bg-transparent">
-                    <TableHead className="eyebrow w-24">Code</TableHead>
+                    <TableHead className="eyebrow w-24">Numeric</TableHead>
                     <TableHead className="eyebrow">Name</TableHead>
                     <TableHead className="eyebrow text-right">DD</TableHead>
                     <TableHead className="w-28" />
@@ -313,17 +313,17 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
                   ) : (
                     visible.map((entry) => (
                       <TableRow key={entry.id} className="hover:bg-white/[0.02]" data-testid={`row-dict-${entry.id}`}>
-                        <TableCell className="font-mono text-sm text-muted-foreground w-24 normal-case">{entry.code}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground w-24 normal-case">
+                          {entry.numeric || "—"}
+                        </TableCell>
                         <TableCell className="font-medium text-foreground">
                           <span className="inline-flex items-center gap-2 flex-wrap">
                             <span>{entry.name}</span>
                             {kindBadge(entry.isDrill, `badge-kind-${entry.id}`)}
                           </span>
-                          {entry.longName && (
-                            <div className="text-[11px] text-muted-foreground mt-0.5" data-testid={`text-long-name-${entry.id}`}>
-                              {entry.longName}
-                            </div>
-                          )}
+                          <div className="text-[11px] text-muted-foreground mt-0.5" data-testid={`text-short-name-${entry.id}`}>
+                            {entry.shortName}
+                          </div>
                           {(entry.altNames ?? []).length > 0 && (
                             <div className="text-[11px] text-muted-foreground/80 mt-0.5" data-testid={`text-alt-names-${entry.id}`}>
                               also called {(entry.altNames ?? []).join(", ")}
@@ -423,8 +423,11 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
           <DialogHero icon={MessageSquarePlus} eyebrow="The Arsenal" title="Suggest a correction" />
           <div className="space-y-4">
             <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-sm flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-muted-foreground normal-case">{suggestTarget?.code}</span>
+              {suggestTarget?.numeric && (
+                <span className="text-muted-foreground normal-case">{suggestTarget.numeric}</span>
+              )}
               <span className="font-medium">{suggestTarget?.name}</span>
+              <span className="text-muted-foreground">{suggestTarget?.shortName}</span>
               {suggestTarget && kindBadge(suggestTarget.isDrill)}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -485,25 +488,32 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
                     <FormMessage />
                   </FormItem>
                 )} />
-                <FormField control={editorForm.control} name="longName" render={({ field }) => (
+                <FormField control={editorForm.control} name="shortName" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Short name <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                    <FormLabel>Short name</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        value={field.value ?? ""}
-                        maxLength={200}
-                        placeholder="Shorter name"
-                        data-testid="input-entry-long-name"
+                        maxLength={40}
+                        placeholder="Warm up"
+                        data-testid="input-entry-short-name"
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
-                <FormField control={editorForm.control} name="code" render={({ field }) => (
+                <FormField control={editorForm.control} name="numeric" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Numeric</FormLabel>
-                    <FormControl><Input {...field} placeholder="41/" data-testid="input-entry-code" /></FormControl>
+                    <FormLabel>Numeric <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value ?? ""}
+                        maxLength={40}
+                        placeholder="41/"
+                        data-testid="input-entry-numeric"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -571,7 +581,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
                     data-testid={`card-suggestion-${s.id}`}
                   >
                     <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                      <span className="font-mono normal-case">{s.entryCode}</span>
+                      <span className="normal-case">{s.entryShortName}</span>
                       <span className="font-medium text-foreground">{s.entryName}</span>
                       {kindBadge(s.entryIsDrill)}
                     </div>
@@ -631,7 +641,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
             ) : (
               <div className="space-y-4">
                 <p className="text-xs text-muted-foreground">
-                  This copies your active skills and drills into the shared dictionary. Short names stay blank so you can add them later.
+                  This copies your active skills and drills into the shared dictionary. Their existing codes become Short names; Numeric stays blank when it isn't available.
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-center">
@@ -653,7 +663,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
                   ) : (
                     importPreview.candidates.map((candidate) => (
                       <div key={candidate.skillId} className="flex items-center gap-3 px-3 py-2">
-                        <span className="w-20 shrink-0 text-xs text-muted-foreground normal-case">{candidate.code}</span>
+                        <span className="w-20 shrink-0 text-xs text-muted-foreground normal-case">{candidate.shortName}</span>
                         <span className="min-w-0 flex-1 truncate text-sm font-medium">{candidate.name}</span>
                         <Badge variant="outline" className="shrink-0 text-[9px]">
                           {candidate.status === "new" ? "New" : "Existing"}

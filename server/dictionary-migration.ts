@@ -8,8 +8,8 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
   dictionary_entries: [
     "id",
     "name",
-    "long_name",
     "code",
+    "numeric",
     "is_drill",
     "difficulty",
     "description",
@@ -44,8 +44,8 @@ export async function runDictionaryMigration(
       CREATE TABLE IF NOT EXISTS dictionary_entries (
         id serial PRIMARY KEY,
         name text NOT NULL,
-        long_name text,
         code text NOT NULL,
+        numeric text,
         is_drill integer NOT NULL DEFAULT 0,
         difficulty real NOT NULL DEFAULT 0,
         description text,
@@ -56,8 +56,8 @@ export async function runDictionaryMigration(
 
       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS id serial;
       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS name text;
-      ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS long_name text;
       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS code text;
+      ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS numeric text;
       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS is_drill integer DEFAULT 0;
       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS difficulty real DEFAULT 0;
       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS description text;

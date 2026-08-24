@@ -186,10 +186,11 @@ export const coachMessages = pgTable("coach_messages", {
 export const dictionaryEntries = pgTable("dictionary_entries", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  // Optional fully expanded name. The familiar short name stays the primary
-  // label; the owner can fill this in later without renaming adopted skills.
-  longName: text("long_name"),
-  code: text("code").notNull(),
+  // `code` is the legacy physical column name. In the product this value is
+  // the familiar short name copied into a personal skill's `code` field.
+  shortName: text("code").notNull(),
+  // Trampoline numeric notation is separate and not available for every item.
+  numeric: text("numeric"),
   isDrill: integer("is_drill").notNull().default(0), // 0 = skill, 1 = drill
   difficulty: real("difficulty").notNull().default(0),
   description: text("description"),
@@ -281,8 +282,8 @@ export const insertDictionaryEntrySchema = createInsertSchema(dictionaryEntries)
   .omit({ id: true, altNames: true })
   .extend({
     name: z.string().trim().min(1, "Name is required").max(120),
-    longName: z.string().trim().max(200).nullable().optional(),
-    code: z.string().trim().min(1, "Code is required").max(40),
+    shortName: z.string().trim().min(1, "Short name is required").max(40),
+    numeric: z.string().trim().max(40).nullable().optional(),
     isDrill: z.union([z.literal(0), z.literal(1)]).optional(), // dictionary entries are only skills or drills
     difficulty: z.number().min(0).max(30).optional(),
     description: z.string().trim().max(500).nullable().optional(),
@@ -329,7 +330,7 @@ export type DictionarySuggestionForm = z.infer<typeof dictionarySuggestionFormSc
 // entry it corrects and the submitting user's display info.
 export type DictionarySuggestionWithMeta = DictionarySuggestion & {
   entryName: string;
-  entryCode: string;
+  entryShortName: string;
   entryIsDrill: number;
   submitterName: string | null;
 };
@@ -342,7 +343,7 @@ export type DictionaryAdoptionResult = {
 export type DictionaryImportCandidate = {
   skillId: number;
   name: string;
-  code: string;
+  shortName: string;
   isDrill: 0 | 1;
   difficulty: number;
   sortOrder: number | null;

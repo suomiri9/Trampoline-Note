@@ -81,12 +81,18 @@ describe.skipIf(!hasDatabase)("dictionary startup migration", () => {
       );
       expect(names.has("dictionary_entries.alt_names")).toBe(true);
       expect(names.has("dictionary_entries.description")).toBe(true);
-      expect(names.has("dictionary_entries.long_name")).toBe(true);
+      expect(names.has("dictionary_entries.numeric")).toBe(true);
       expect(names.has("dictionary_suggestions.status")).toBe(true);
       expect(names.has("dictionary_suggestions.resolved_at")).toBe(true);
       expect(names.has("dictionary_library_imports.completed_at")).toBe(true);
       expect(names.has("skills.dictionary_entry_id")).toBe(true);
       expect(names.has("users.is_admin")).toBe(true);
+
+      const migratedEntry = await client.query<{
+        code: string;
+        numeric: string | null;
+      }>("SELECT code, numeric FROM dictionary_entries WHERE id = 1");
+      expect(migratedEntry.rows[0]).toEqual({ code: "41o", numeric: null });
 
       const linked = await client.query<{ count: string }>(`
         SELECT count(*)::text AS count

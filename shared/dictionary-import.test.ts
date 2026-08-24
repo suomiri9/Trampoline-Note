@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { DictionaryEntry, Skill } from "./schema";
+import {
+  insertDictionaryEntrySchema,
+  type DictionaryEntry,
+  type Skill,
+} from "./schema";
 import { buildDictionaryImportPreview } from "./dictionary-import";
 
 function skill(overrides: Partial<Skill> & Pick<Skill, "id" | "name" | "code">): Skill {
@@ -18,9 +22,11 @@ function skill(overrides: Partial<Skill> & Pick<Skill, "id" | "name" | "code">):
   };
 }
 
-function entry(overrides: Partial<DictionaryEntry> & Pick<DictionaryEntry, "id" | "name" | "code">): DictionaryEntry {
+function entry(
+  overrides: Partial<DictionaryEntry> & Pick<DictionaryEntry, "id" | "name" | "shortName">,
+): DictionaryEntry {
   return {
-    longName: null,
+    numeric: null,
     isDrill: 0,
     difficulty: 0,
     description: null,
@@ -32,6 +38,32 @@ function entry(overrides: Partial<DictionaryEntry> & Pick<DictionaryEntry, "id" 
 }
 
 describe("dictionary library import preview", () => {
+  it("keeps Short name required and Numeric optional in the editor payload", () => {
+    expect(insertDictionaryEntrySchema.parse({
+      name: "Warm up turn",
+      shortName: "Warm up",
+      numeric: null,
+      isDrill: 1,
+      difficulty: 0,
+      description: null,
+    })).toMatchObject({
+      name: "Warm up turn",
+      shortName: "Warm up",
+      numeric: null,
+    });
+
+    const missingShortName = insertDictionaryEntrySchema.safeParse({
+      name: "Warm up turn",
+      numeric: "41/",
+      isDrill: 1,
+      difficulty: 0,
+    });
+    expect(missingShortName.success).toBe(false);
+    if (!missingShortName.success) {
+      expect(missingShortName.error.issues[0].path).toEqual(["shortName"]);
+    }
+  });
+
   it("flattens loggable shapes and excludes groups, archives, sequences, and duplicates", () => {
     const library = [
       skill({ id: 1, name: "Back somersault", code: "4" }),
@@ -48,7 +80,7 @@ describe("dictionary library import preview", () => {
       skill({ id: 5, name: "Old drill", code: "OD", isDrill: 1, archived: 1 }),
       skill({ id: 6, name: "Connection", code: "C", isDrill: 2 }),
     ];
-    const entries = [entry({ id: 10, name: "Barani", code: "41/", difficulty: 0.6 })];
+    const entries = [entry({ id: 10, name: "Barani", shortName: "41/", difficulty: 0.6 })];
 
     const preview = buildDictionaryImportPreview(library, entries);
 
@@ -62,7 +94,7 @@ describe("dictionary library import preview", () => {
       expect.objectContaining({
         skillId: 2,
         name: "Tuck",
-        code: "4o",
+        shortName: "4o",
         status: "new",
       }),
       expect.objectContaining({
@@ -82,7 +114,7 @@ describe("dictionary library import preview", () => {
   });
 
   it("keeps a provenance link authoritative after the personal copy is renamed", () => {
-    const linkedEntry = entry({ id: 20, name: "Original dictionary name", code: "OD" });
+    const linkedEntry = entry({ id: 20, name: "Original dictionary name", shortName: "OD" });
     const preview = buildDictionaryImportPreview(
       [skill({
         id: 7,

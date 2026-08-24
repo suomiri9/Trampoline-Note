@@ -11,15 +11,15 @@ function normalizedPart(value: string): string {
 }
 
 export function dictionaryEntryKey(
-  value: Pick<DictionaryEntry, "name" | "code" | "isDrill">,
+  value: Pick<DictionaryEntry, "name" | "shortName" | "isDrill">,
 ): string {
-  return `${value.isDrill}:${normalizedPart(value.name)}:${normalizedPart(value.code)}`;
+  return `${value.isDrill}:${normalizedPart(value.name)}:${normalizedPart(value.shortName)}`;
 }
 
 function candidateKey(
-  value: Pick<DictionaryImportCandidate, "name" | "code" | "isDrill">,
+  value: Pick<DictionaryImportCandidate, "name" | "shortName" | "isDrill">,
 ): string {
-  return `${value.isDrill}:${normalizedPart(value.name)}:${normalizedPart(value.code)}`;
+  return `${value.isDrill}:${normalizedPart(value.name)}:${normalizedPart(value.shortName)}`;
 }
 
 function byLibraryOrder(a: Skill, b: Skill): number {
@@ -71,7 +71,7 @@ export function buildDictionaryImportPreview(
 
     const parent = skill.parentSkillId == null ? undefined : byId.get(skill.parentSkillId);
     const name = skill.name.trim();
-    const code = (
+    const shortName = (
       parent
         ? `${parent.code}${skill.shape || skill.code}`
         : skill.code
@@ -80,8 +80,8 @@ export function buildDictionaryImportPreview(
     if (
       !name ||
       name.length > 120 ||
-      !code ||
-      code.length > 40 ||
+      !shortName ||
+      shortName.length > 40 ||
       !Number.isFinite(difficulty) ||
       difficulty < 0 ||
       difficulty > 30
@@ -93,7 +93,7 @@ export function buildDictionaryImportPreview(
     const baseCandidate = {
       skillId: skill.id,
       name,
-      code,
+      shortName,
       isDrill: skill.isDrill as 0 | 1,
       difficulty,
       sortOrder: skill.sortOrder,
