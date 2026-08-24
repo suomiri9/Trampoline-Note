@@ -750,7 +750,9 @@ export class DatabaseStorage implements IStorage {
             .values({
               name: candidate.name,
               shortName: candidate.shortName,
-              numeric: null,
+              // Most existing personal codes are the numeric notation. Copy
+              // every value so the owner only has to clear the exceptions.
+              numeric: candidate.shortName,
               isDrill: candidate.isDrill,
               difficulty: candidate.difficulty,
               description: null,

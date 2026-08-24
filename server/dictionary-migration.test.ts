@@ -92,7 +92,16 @@ describe.skipIf(!hasDatabase)("dictionary startup migration", () => {
         code: string;
         numeric: string | null;
       }>("SELECT code, numeric FROM dictionary_entries WHERE id = 1");
-      expect(migratedEntry.rows[0]).toEqual({ code: "41o", numeric: null });
+      expect(migratedEntry.rows[0]).toEqual({ code: "41o", numeric: "41o" });
+
+      // Once the owner clears an exception, later restarts must not repopulate
+      // it from Short name.
+      await client.query("UPDATE dictionary_entries SET numeric = NULL WHERE id = 1");
+      await runDictionaryMigration(client);
+      const afterRestart = await client.query<{ numeric: string | null }>(
+        "SELECT numeric FROM dictionary_entries WHERE id = 1",
+      );
+      expect(afterRestart.rows[0].numeric).toBeNull();
 
       const linked = await client.query<{ count: string }>(`
         SELECT count(*)::text AS count

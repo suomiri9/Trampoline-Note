@@ -641,7 +641,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
             ) : (
               <div className="space-y-4">
                 <p className="text-xs text-muted-foreground">
-                  This copies your active skills and drills into the shared dictionary. Their existing codes become Short names; Numeric stays blank when it isn't available.
+                  This copies your active skills and drills into the shared dictionary. Their existing codes become both Short names and Numeric values, so you can clear or adjust the exceptions afterward.
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-center">

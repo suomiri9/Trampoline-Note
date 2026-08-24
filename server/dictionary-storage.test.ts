@@ -149,7 +149,7 @@ describe.skipIf(!hasDatabase)("dictionary storage invariants", () => {
     );
   });
 
-  it("imports personal codes as short names and leaves optional numerics blank", async () => {
+  it("imports personal codes into both short names and editable numerics", async () => {
     const importUserId = `dictionary-import-${randomUUID()}`;
     const marker = randomUUID();
     const existingName = `Existing ${marker}`;
@@ -233,7 +233,7 @@ describe.skipIf(!hasDatabase)("dictionary storage invariants", () => {
       expect(created).toMatchObject({
         name: newName,
         shortName: `N-${marker.slice(0, 8)}`,
-        numeric: null,
+        numeric: `N-${marker.slice(0, 8)}`,
         archived: 0,
       });
       createdEntryId = created.id;

@@ -28,6 +28,7 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
     "resolved_at",
   ],
   dictionary_library_imports: ["user_id", "completed_at"],
+  dictionary_data_migrations: ["key", "completed_at"],
   skills: ["dictionary_entry_id"],
   users: ["is_admin"],
 };
@@ -179,6 +180,24 @@ export async function runDictionaryMigration(
         END IF;
       END
       $dictionary_library_imports_pk$;
+
+      CREATE TABLE IF NOT EXISTS dictionary_data_migrations (
+        key text PRIMARY KEY,
+        completed_at timestamp NOT NULL DEFAULT now()
+      );
+
+      -- One-time backfill only. The marker prevents future app restarts from
+      -- restoring Numeric after the owner intentionally clears an exception.
+      WITH claimed AS (
+        INSERT INTO dictionary_data_migrations (key)
+        VALUES ('copy-short-name-to-numeric-v1')
+        ON CONFLICT (key) DO NOTHING
+        RETURNING key
+      )
+      UPDATE dictionary_entries
+      SET numeric = code
+      FROM claimed
+      WHERE numeric IS NULL;
 
       UPDATE dictionary_suggestions SET status = 'pending' WHERE status IS NULL;
       UPDATE dictionary_suggestions SET created_at = now() WHERE created_at IS NULL;
