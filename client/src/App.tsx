@@ -205,6 +205,7 @@ const Home = lazyPage(() => import("@/pages/home"));
 const SkillsPage = lazyPage(() => import("@/pages/skills"));
 
 const DictionaryPage = lazyPage(() => import("@/pages/dictionary"));
+const DictionaryAdminPage = lazyPage(() => import("@/pages/dictionary-admin"));
 const SkillDetailPage = lazyPage(() => import("@/pages/skill-detail"));
 const RoutinesPage = lazyPage(() => import("@/pages/routines"));
 const RoutineDetailPage = lazyPage(() => import("@/pages/routine-detail"));
@@ -246,6 +247,12 @@ import { SplashScreen } from "@/components/splash-screen";
 function Navigation() {
   const [location] = useLocation();
   const { user } = useAuth();
+
+  // Hide bottom nav entirely on the hidden admin workspace so a dedicated
+  // hostname feels like a focused tool rather than an athlete app.
+  if (location === "/dictionary-admin" || location.startsWith("/dictionary-admin/")) {
+    return null;
+  }
   const navItems = [
     { href: "/", label: "Training", icon: LayoutDashboard, lightColor: "text-blue-400/45", activeColor: "bg-blue-500/15 text-blue-400" },
     { href: "/score", label: "Score", icon: Trophy, lightColor: "text-yellow-400/45", activeColor: "bg-yellow-500/15 text-yellow-400" },
@@ -368,13 +375,30 @@ function BodyLockCleanup() {
   return null;
 }
 
+// Hostname-based redirect: if VITE_DICTIONARY_ADMIN_HOSTNAME matches
+// window.location.hostname (case-insensitive), redirect path "/" to
+// /dictionary-admin. No guessing — only fires when the env var is set.
+function useAdminHostnameRedirect(): boolean {
+  const adminHostname = import.meta.env.VITE_DICTIONARY_ADMIN_HOSTNAME as string | undefined;
+  if (!adminHostname) return false;
+  return adminHostname.toLowerCase() === window.location.hostname.toLowerCase();
+}
+
 function Router() {
+  const isAdminHostname = useAdminHostnameRedirect();
+  const [location] = useLocation();
+  const isAdminPage = location === "/dictionary-admin" || location.startsWith("/dictionary-admin/");
+
   return (
-    <div className="pt-safe pb-nav-safe bg-mesh min-h-[100dvh]">
+    <div className={cn("pt-safe bg-mesh min-h-[100dvh]", isAdminPage ? "" : "pb-nav-safe")}>
       <BodyLockCleanup />
       <Suspense fallback={<PageLoader />}>
       <Switch>
-        <Route path="/" component={Home} />
+        {/* Hostname redirect: only on the configured admin hostname, / → /dictionary-admin */}
+        {isAdminHostname && (
+          <Route path="/" component={() => <Redirect to="/dictionary-admin" />} />
+        )}
+        {!isAdminHostname && <Route path="/" component={Home} />}
         <Route path="/score" component={ScorePage} />
         <Route path="/score/debuts" component={DebutsPage} />
         <Route path="/stats" component={StatsPage} />
@@ -396,6 +420,8 @@ function Router() {
         <Route path="/execution/session/:id" component={ExecutionSessionPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/privacy" component={PrivacyPage} />
+        {/* Hidden admin workspace — lazy-loaded, absent from athlete nav */}
+        <Route path="/dictionary-admin" component={DictionaryAdminPage} />
         <Route path="/forgot-password"><Redirect to="/" /></Route>
         <Route path="/reset-password"><Redirect to="/" /></Route>
         <Route component={NotFound} />

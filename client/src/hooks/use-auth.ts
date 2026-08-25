@@ -4,6 +4,7 @@ import { cacheGet, cacheSet, cacheClearAll } from "@/lib/offline-db";
 import { cancelPendingSettingsPush } from "@/lib/settings-sync";
 import { getOfflineModeEnabled } from "@/lib/offline-mode";
 import { fetchWithTimeout, markCacheServed, markNetworkOk } from "@/lib/read-fallback";
+import { queryClient as appQueryClient } from "@/lib/queryClient";
 
 const USER_CACHE_KEY = "user";
 const SESSION_MARKER_KEY = "tn-session-active";
@@ -42,6 +43,10 @@ async function fetchUser(): Promise<SafeUser | null> {
       markNetworkOk(USER_CACHE_KEY);
       setSessionMarker(false);
       await cacheClearAll();
+      appQueryClient.removeQueries({
+        predicate: (query) => query.queryKey[0] !== "/api/auth/user",
+      });
+      appQueryClient.getMutationCache().clear();
       return null;
     }
 
@@ -141,6 +146,7 @@ export function useAuth() {
   const loginMutation = useMutation({
     mutationFn: loginFn,
     onSuccess: (data) => {
+      queryClient.clear();
       queryClient.setQueryData(["/api/auth/user"], data);
     },
   });
@@ -148,6 +154,7 @@ export function useAuth() {
   const registerMutation = useMutation({
     mutationFn: registerFn,
     onSuccess: (data) => {
+      queryClient.clear();
       queryClient.setQueryData(["/api/auth/user"], data);
     },
   });
@@ -155,6 +162,7 @@ export function useAuth() {
   const logoutMutation = useMutation({
     mutationFn: logoutFn,
     onSuccess: () => {
+      queryClient.clear();
       queryClient.setQueryData(["/api/auth/user"], null);
     },
   });

@@ -6,7 +6,13 @@ import {
   type DictionaryEntry,
   type InsertDictionaryEntry,
 } from "@shared/schema";
-import { useDictionary, useDictionaryImport, useDictionarySuggestions } from "@/hooks/use-dictionary";
+import {
+  useDictionary,
+  useDictionaryImport,
+  useDictionarySuggestions,
+  useDictionaryImageActions,
+  dictionaryImageUrl,
+} from "@/hooks/use-dictionary";
 import { useSkills } from "@/hooks/use-skills";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DialogHero } from "@/components/dialog-hero";
@@ -32,6 +38,10 @@ import {
   ArchiveRestore,
   RefreshCw,
   ListPlus,
+  Sparkles,
+  ImageOff,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react";
 
 // Same phone bottom-sheet treatment as the other Arsenal dialogs.
@@ -53,21 +63,175 @@ function formatSuggestionDate(value: unknown): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-interface DictionarySectionProps {
+export interface DictionarySectionProps {
   searchQuery: string;
   showArchived: boolean;
-  isAdmin: boolean;
-  /** The page header's Add button toggles this (admin only). */
+  /** Controls which capabilities are exposed. athlete = browse/adopt/suggest only. admin = full curation bench. */
+  mode: "athlete" | "admin";
+  /** The page header's Add button toggles this (admin mode only). */
   formOpen: boolean;
   onFormOpenChange: (open: boolean) => void;
 }
 
-// The shared skills & drills Dictionary tab: browse/search for everyone,
-// one-tap "Add to my skills" adoption, a per-entry "suggest a correction"
-// sheet, and — for the app owner only — the entry editor plus the pending
-// suggestion review queue. Admin actions are ALSO enforced server-side; this
-// component only decides what to render.
-export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen, onFormOpenChange }: DictionarySectionProps) {
+// ---- Admin-only: Image Panel ----
+// Shows draft + approved images, generation controls, approve/remove actions.
+// Does not close the form on generation failure — form state is preserved.
+function ImagePanel({
+  entry,
+  generateImage,
+  isGenerating,
+  approveImage,
+  isApproving,
+  removeImage,
+  isRemoving,
+}: {
+  entry: DictionaryEntry;
+  generateImage: (id: number) => Promise<DictionaryEntry>;
+  isGenerating: boolean;
+  approveImage: (id: number) => Promise<DictionaryEntry>;
+  isApproving: boolean;
+  removeImage: (args: { entryId: number; target: "draft" | "approved" | "all" }) => Promise<DictionaryEntry>;
+  isRemoving: boolean;
+}) {
+  const hasDraft = !!entry.draftImageKey;
+  const hasApproved = !!entry.approvedImageKey;
+  // Timestamp for cache-busting: use the stored date strings from the entry.
+  const draftTs = entry.draftImageCreatedAt ? String(entry.draftImageCreatedAt) : undefined;
+  const approvedTs = entry.approvedImageApprovedAt ? String(entry.approvedImageApprovedAt) : undefined;
+
+  const busy = isGenerating || isApproving || isRemoving;
+
+  return (
+    <div className="space-y-3 pt-1" data-testid={`image-panel-${entry.id}`}>
+      <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Images</p>
+
+      {/* Draft image */}
+      <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-medium text-muted-foreground">Draft</span>
+          {hasDraft && entry.draftImageModel && (
+            <span className="text-[10px] text-muted-foreground/50 truncate max-w-[120px]">{entry.draftImageModel}</span>
+          )}
+        </div>
+        {hasDraft ? (
+          <div className="space-y-2">
+            <img
+              src={dictionaryImageUrl(entry.id, "draft", draftTs ?? null)}
+              alt={`Draft image for ${entry.name}`}
+              className="w-full rounded-lg object-cover max-h-48"
+              data-testid={`img-draft-${entry.id}`}
+            />
+            {entry.draftImagePrompt && (
+              <p className="text-[10px] text-muted-foreground/60 line-clamp-2">{entry.draftImagePrompt}</p>
+            )}
+            <div className="flex gap-1.5 flex-wrap">
+              <Button
+                size="sm"
+                className="h-7 px-2 text-[11px] gap-1 flex-1"
+                disabled={busy}
+                onClick={() => approveImage(entry.id).catch(() => {})}
+                data-testid={`button-approve-image-${entry.id}`}
+              >
+                {isApproving ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                Approve draft
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-[11px] gap-1"
+                disabled={busy}
+                onClick={() => generateImage(entry.id).catch(() => {})}
+                data-testid={`button-regen-image-${entry.id}`}
+              >
+                {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                Regenerate
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-[11px] gap-1 text-destructive hover:text-destructive"
+                disabled={busy}
+                onClick={() => removeImage({ entryId: entry.id, target: "draft" }).catch(() => {})}
+                data-testid={`button-remove-draft-${entry.id}`}
+              >
+                <ImageOff className="h-3 w-3" /> Remove draft
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-[11px] gap-1"
+              disabled={busy}
+              onClick={() => generateImage(entry.id).catch(() => {})}
+              data-testid={`button-gen-image-${entry.id}`}
+            >
+              {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+              {isGenerating ? "Generating..." : "Generate image"}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Approved image */}
+      <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-medium text-muted-foreground">Approved</span>
+          {hasApproved && entry.approvedImageModel && (
+            <span className="text-[10px] text-muted-foreground/50 truncate max-w-[120px]">{entry.approvedImageModel}</span>
+          )}
+        </div>
+        {hasApproved ? (
+          <div className="space-y-2">
+            <img
+              src={dictionaryImageUrl(entry.id, "approved", approvedTs ?? null)}
+              alt={`Approved image for ${entry.name}`}
+              className="w-full rounded-lg object-cover max-h-48"
+              data-testid={`img-approved-${entry.id}`}
+            />
+            {entry.approvedImagePrompt && (
+              <p className="text-[10px] text-muted-foreground/60 line-clamp-2">{entry.approvedImagePrompt}</p>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-[11px] gap-1 text-destructive hover:text-destructive"
+              disabled={busy}
+              onClick={() => removeImage({ entryId: entry.id, target: "approved" }).catch(() => {})}
+              data-testid={`button-remove-approved-${entry.id}`}
+            >
+              <ImageOff className="h-3 w-3" /> Remove approved
+            </Button>
+          </div>
+        ) : (
+          <p className="text-[11px] text-muted-foreground/50">No approved image yet.</p>
+        )}
+      </div>
+
+      {(hasDraft || hasApproved) && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 px-2 text-[11px] gap-1 text-destructive hover:text-destructive w-full"
+          disabled={busy}
+          onClick={() => removeImage({ entryId: entry.id, target: "all" }).catch(() => {})}
+          data-testid={`button-remove-all-images-${entry.id}`}
+        >
+          <ImageOff className="h-3 w-3" /> Remove all images
+        </Button>
+      )}
+    </div>
+  );
+}
+
+// The shared skills & drills Dictionary section.
+// mode='athlete' — browse/search/adopt/suggest; approved images shown in rows.
+// mode='admin' — full curation bench: create/edit/archive/import/review/image lifecycle.
+export function DictionarySection({ searchQuery, showArchived, mode, formOpen, onFormOpenChange }: DictionarySectionProps) {
+  const isAdmin = mode === "admin";
+
   const {
     data: entries,
     isLoading,
@@ -101,9 +265,18 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
     isImporting,
   } = useDictionaryImport(isAdmin && importOpen);
 
+  const {
+    generateImage,
+    isGenerating,
+    generatingEntryId,
+    approveImage,
+    isApproving,
+    approvingEntryId,
+    removeImage,
+    isRemoving,
+  } = useDictionaryImageActions();
+
   // ---- Adoption ("Add to my skills") ----
-  // A personal copy remembers which entry it came from (dictionaryEntryId),
-  // so entries already in the library show "Added" instead of duplicating.
   const adoptedIds = new Set(
     (allItems ?? [])
       .filter((s) => s.dictionaryEntryId != null && s.archived !== 1)
@@ -136,12 +309,14 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
       });
       setSuggestTarget(null);
     } catch {
-      // hook toasts the reason (e.g. duplicate pending) — keep the sheet open
+      // hook toasts the reason — keep the sheet open
     }
   };
 
   // ---- Admin: entry editor ----
   const [editingEntry, setEditingEntry] = useState<DictionaryEntry | null>(null);
+  // Track which tab is active in the editor: metadata vs images
+  const [editorTab, setEditorTab] = useState<"info" | "images">("info");
   const editorForm = useForm<InsertDictionaryEntry>({
     resolver: zodResolver(insertDictionaryEntrySchema),
     defaultValues: blankEntryForm,
@@ -150,11 +325,13 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
   const closeEditor = () => {
     onFormOpenChange(false);
     setEditingEntry(null);
+    setEditorTab("info");
     editorForm.reset(blankEntryForm);
   };
   const startEditEntry = (entry: DictionaryEntry) => {
     onFormOpenChange(false);
     setEditingEntry(entry);
+    setEditorTab("info");
     editorForm.reset({
       name: entry.name,
       shortName: entry.shortName,
@@ -172,11 +349,14 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
     };
     try {
       if (editingEntry) {
-        await updateEntry({ id: editingEntry.id, ...payload });
+        const updatedEntry = await updateEntry({ id: editingEntry.id, ...payload });
+        setEditingEntry(updatedEntry);
+        // Keep editor open after update so admin can switch to images tab
+        // — only close for new entries (where there's no image to manage yet).
       } else {
         await createEntry(payload);
+        closeEditor();
       }
-      closeEditor();
     } catch {
       // hook toasts failures — keep the form open
     }
@@ -186,7 +366,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
   const [reviewOpen, setReviewOpen] = useState(false);
 
   // ---- Filtering ----
-  const archivedView = isAdmin && showArchived; // non-admins never receive archived rows
+  const archivedView = isAdmin && showArchived;
   const q = searchQuery.trim().toLowerCase();
   const matchesSearch = (e: DictionaryEntry) =>
     !q ||
@@ -288,7 +468,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
           </div>
         ) : (
           <>
-            {!archivedView && (
+            {!archivedView && mode === "athlete" && (
               <p className="px-4 pt-3 text-xs text-muted-foreground">
                 Curated skills &amp; drills — tap <span className="font-medium text-foreground">Add</span> to copy one into your own library.
               </p>
@@ -332,13 +512,24 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
                           {entry.description && (
                             <div className="text-[11px] text-muted-foreground/60 mt-0.5 line-clamp-1">{entry.description}</div>
                           )}
+                          {/* Approved image thumbnail in athlete rows */}
+                          {entry.approvedImageApprovedAt && (
+                            <div className="mt-1.5">
+                              <img
+                                src={dictionaryImageUrl(entry.id, "approved", entry.approvedImageApprovedAt ? String(entry.approvedImageApprovedAt) : null)}
+                                alt={entry.name}
+                                className="h-12 w-16 rounded-md object-cover"
+                                data-testid={`img-approved-row-${entry.id}`}
+                              />
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="text-right font-mono font-bold text-[hsl(var(--page-accent)/0.9)] tabular-nums">
                           {entry.difficulty.toFixed(1)}
                         </TableCell>
                         <TableCell className="text-right whitespace-nowrap">
                           <span className="inline-flex items-center gap-1">
-                            {!archivedView &&
+                            {!isAdmin && !archivedView &&
                               (adoptedIds.has(entry.id) ? (
                                 <span
                                   className="inline-flex items-center gap-1 pr-1 text-[11px] font-medium text-[hsl(var(--page-accent)/0.9)]"
@@ -356,7 +547,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
                                   data-testid={`button-adopt-${entry.id}`}
                                 >
                                   <Plus className="h-3.5 w-3.5" />
-                                  {adoptingEntryId === entry.id ? "Adding…" : "Add"}
+                                  {adoptingEntryId === entry.id ? "Adding..." : "Add"}
                                 </Button>
                               ))}
                             <DropdownMenu>
@@ -366,7 +557,8 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-52 rounded-xl">
-                                {!archivedView && (
+                                {/* Suggest correction: available to all modes when not archived */}
+                                {!isAdmin && !archivedView && (
                                   <DropdownMenuItem
                                     className="cursor-pointer gap-2 text-xs"
                                     onClick={() => openSuggest(entry)}
@@ -375,6 +567,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
                                     <MessageSquarePlus className="h-3.5 w-3.5" /> Suggest a correction
                                   </DropdownMenuItem>
                                 )}
+                                {/* Admin-only actions */}
                                 {isAdmin && (
                                   <>
                                     <DropdownMenuItem
@@ -432,7 +625,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
             </div>
             <p className="text-xs text-muted-foreground">
               Know this {suggestTarget?.isDrill === 1 ? "drill" : "skill"} under a different name? Send it to the
-              developer — accepted names show up as "also called …".
+              developer — accepted names show up as "also called ...".
             </p>
             <div className="space-y-1.5">
               <label className="text-sm font-medium leading-none" htmlFor="suggest-name">Suggested name</label>
@@ -474,88 +667,152 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
         </DialogContent>
       </Dialog>
 
-      {/* Entry editor (admin only) */}
+      {/* Entry editor + image lifecycle (admin only) */}
       {isAdmin && (
         <Dialog open={editorOpen} onOpenChange={(o) => { if (!o) closeEditor(); }}>
           <DialogContent data-kb-anchor="bottom" aria-describedby={undefined} className={sheetClass} style={pageAccentStyle("skills")}>
             <DialogHero icon={BookOpen} eyebrow="The Arsenal" title={editingEntry ? "Edit entry" : "Add entry"} />
-            <Form {...editorForm}>
-              <form onSubmit={onEditorSubmit} className="space-y-3">
-                <FormField control={editorForm.control} name="name" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl><Input {...field} placeholder="Barani" data-testid="input-entry-name" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={editorForm.control} name="shortName" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Short name</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        maxLength={40}
-                        placeholder="Warm up"
-                        data-testid="input-entry-short-name"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={editorForm.control} name="numeric" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Numeric <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        value={field.value ?? ""}
-                        maxLength={40}
-                        placeholder="41/"
-                        data-testid="input-entry-numeric"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={editorForm.control} name="isDrill" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type</FormLabel>
-                    <Select value={String(field.value ?? 0)} onValueChange={(v) => field.onChange(parseInt(v))}>
-                      <FormControl><SelectTrigger data-testid="select-entry-kind"><SelectValue /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="0">Skill</SelectItem>
-                        <SelectItem value="1">Drill</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={editorForm.control} name="difficulty" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Difficulty</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.1" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value))} data-testid="input-entry-difficulty" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={editorForm.control} name="description" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
-                    <FormControl>
-                      <Textarea {...field} value={field.value ?? ""} rows={3} maxLength={500} placeholder="Cues, prerequisites, what to watch for..." data-testid="input-entry-description" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <div className="flex gap-2">
-                  <Button type="submit" className="flex-1" disabled={isCreatingEntry || isUpdatingEntry} data-testid="button-save-entry">
-                    {editingEntry ? "Update" : "Add Entry"}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={closeEditor}>Cancel</Button>
-                </div>
-              </form>
-            </Form>
+
+            {/* Tab strip — only shown when editing an existing entry (new entries have no image yet) */}
+            {editingEntry && (
+              <div className="flex gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] mb-1">
+                <button
+                  type="button"
+                  className={`flex-1 py-1.5 rounded-lg text-[11px] font-mono uppercase tracking-wider transition-colors pressable ${
+                    editorTab === "info"
+                      ? "bg-white/[0.08] text-foreground font-semibold"
+                      : "text-muted-foreground"
+                  }`}
+                  onClick={() => setEditorTab("info")}
+                  data-testid="tab-editor-info"
+                >
+                  Info
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 py-1.5 rounded-lg text-[11px] font-mono uppercase tracking-wider transition-colors pressable ${
+                    editorTab === "images"
+                      ? "bg-white/[0.08] text-foreground font-semibold"
+                      : "text-muted-foreground"
+                  }`}
+                  onClick={() => setEditorTab("images")}
+                  data-testid="tab-editor-images"
+                >
+                  Images
+                  {(editingEntry.draftImageKey || editingEntry.approvedImageKey) && (
+                    <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-[hsl(var(--page-accent)/0.7)]" />
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Info tab (always shown for new entries, conditionally for edits) */}
+            {(!editingEntry || editorTab === "info") && (
+              <Form {...editorForm}>
+                <form onSubmit={onEditorSubmit} className="space-y-3">
+                  <FormField control={editorForm.control} name="name" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name</FormLabel>
+                      <FormControl><Input {...field} placeholder="Barani" data-testid="input-entry-name" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={editorForm.control} name="shortName" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Short name</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          maxLength={40}
+                          placeholder="Warm up"
+                          data-testid="input-entry-short-name"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={editorForm.control} name="numeric" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Numeric <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value ?? ""}
+                          maxLength={40}
+                          placeholder="41/"
+                          data-testid="input-entry-numeric"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={editorForm.control} name="isDrill" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type</FormLabel>
+                      <Select value={String(field.value ?? 0)} onValueChange={(v) => field.onChange(parseInt(v))}>
+                        <FormControl><SelectTrigger data-testid="select-entry-kind"><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="0">Skill</SelectItem>
+                          <SelectItem value="1">Drill</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={editorForm.control} name="difficulty" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Difficulty</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.1" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value))} data-testid="input-entry-difficulty" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={editorForm.control} name="description" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                      <FormControl>
+                        <Textarea {...field} value={field.value ?? ""} rows={3} maxLength={500} placeholder="Cues, prerequisites, what to watch for..." data-testid="input-entry-description" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <div className="flex gap-2">
+                    <Button type="submit" className="flex-1" disabled={isCreatingEntry || isUpdatingEntry} data-testid="button-save-entry">
+                      {editingEntry
+                        ? (isUpdatingEntry ? "Saving..." : "Update")
+                        : (isCreatingEntry ? "Adding..." : "Add Entry")}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={closeEditor}>Cancel</Button>
+                  </div>
+                </form>
+              </Form>
+            )}
+
+            {/* Images tab (edit-only) */}
+            {editingEntry && editorTab === "images" && (
+              <ImagePanel
+                entry={editingEntry}
+                generateImage={async (id) => {
+                  const entry = await generateImage(id);
+                  setEditingEntry(entry);
+                  return entry;
+                }}
+                isGenerating={isGenerating && generatingEntryId === editingEntry.id}
+                approveImage={async (id) => {
+                  const entry = await approveImage(id);
+                  setEditingEntry(entry);
+                  return entry;
+                }}
+                isApproving={isApproving && approvingEntryId === editingEntry.id}
+                removeImage={async (args) => {
+                  const entry = await removeImage(args);
+                  setEditingEntry(entry);
+                  return entry;
+                }}
+                isRemoving={isRemoving}
+              />
+            )}
           </DialogContent>
         </Dialog>
       )}
@@ -567,7 +824,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
             <DialogHero icon={Inbox} eyebrow="The Arsenal" title="Review suggestions" />
             <div className="space-y-3">
               {suggestionsLoading ? (
-                <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
+                <p className="text-sm text-muted-foreground py-6 text-center">Loading...</p>
               ) : !suggestions || suggestions.length === 0 ? (
                 <div className="py-8 text-center" data-testid="text-queue-empty">
                   <p className="text-sm font-medium text-foreground">All clear</p>
@@ -630,7 +887,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
           <DialogContent data-kb-anchor="bottom" aria-describedby={undefined} className={sheetClass} style={pageAccentStyle("skills")}>
             <DialogHero icon={ListPlus} eyebrow="The Arsenal" title="Import my library" />
             {importPreviewLoading ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">Checking your library…</div>
+              <div className="py-8 text-center text-sm text-muted-foreground">Checking your library...</div>
             ) : importPreviewError || !importPreview ? (
               <div className="py-6 text-center">
                 <p className="text-sm text-muted-foreground">Couldn't check your library.</p>
@@ -686,7 +943,7 @@ export function DictionarySection({ searchQuery, showArchived, isAdmin, formOpen
                     }}
                     data-testid="button-confirm-import-library"
                   >
-                    {isImporting ? "Importing…" : "Import library"}
+                    {isImporting ? "Importing..." : "Import library"}
                   </Button>
                   <Button type="button" variant="outline" onClick={() => setImportOpen(false)}>Cancel</Button>
                 </div>

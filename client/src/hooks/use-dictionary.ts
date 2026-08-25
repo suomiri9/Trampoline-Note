@@ -13,6 +13,7 @@ import type {
   Skill,
 } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 // apiRequest throws `${status}: ${body}` where body is usually a JSON
 // {message} blob — surface the friendly message, not raw JSON.
@@ -32,9 +33,19 @@ function friendlyMessage(error: Error, fallback: string): string {
 // and additionally enforced server-side.
 export function useDictionary() {
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const query = useQuery<DictionaryEntry[]>({
-    queryKey: [api.dictionary.list.path],
+    queryKey: [
+      api.dictionary.list.path,
+      user?.id ?? "anonymous",
+      user?.isAdmin ? "admin" : "athlete",
+    ],
+    queryFn: async () => {
+      const res = await apiRequest("GET", api.dictionary.list.path);
+      return (await res.json()) as DictionaryEntry[];
+    },
+    enabled: !!user,
   });
 
   const createEntryMutation = useMutation({
@@ -237,4 +248,102 @@ export function useDictionaryImport(enabled: boolean) {
     importLibrary: importMutation.mutateAsync,
     isImporting: importMutation.isPending,
   };
+}
+
+// ---- Image management hooks (admin only) ----
+// All three update/invalidate the dictionary list and toast success/failure.
+
+export function useDictionaryImageActions() {
+  const { toast } = useToast();
+
+  const generateMutation = useMutation({
+    mutationFn: async (entryId: number) => {
+      const res = await apiRequest(
+        "POST",
+        buildUrl(api.dictionary.generateImage.path, { id: entryId }),
+      );
+      return (await res.json()) as DictionaryEntry;
+    },
+    onSuccess: (entry) => {
+      queryClient.invalidateQueries({ queryKey: [api.dictionary.list.path] });
+      toast({ title: "Draft image generated" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Image generation failed",
+        description: friendlyMessage(error, "Please try again."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async (entryId: number) => {
+      const res = await apiRequest(
+        "POST",
+        buildUrl(api.dictionary.approveImage.path, { id: entryId }),
+      );
+      return (await res.json()) as DictionaryEntry;
+    },
+    onSuccess: (entry) => {
+      queryClient.invalidateQueries({ queryKey: [api.dictionary.list.path] });
+      toast({ title: "Draft image approved" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Couldn't approve image",
+        description: friendlyMessage(error, "Please try again."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async ({
+      entryId,
+      target,
+    }: {
+      entryId: number;
+      target: "draft" | "approved" | "all";
+    }) => {
+      const res = await apiRequest(
+        "POST",
+        buildUrl(api.dictionary.removeImage.path, { id: entryId }),
+        { target },
+      );
+      return (await res.json()) as DictionaryEntry;
+    },
+    onSuccess: (entry) => {
+      queryClient.invalidateQueries({ queryKey: [api.dictionary.list.path] });
+      toast({ title: "Image removed" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Couldn't remove image",
+        description: friendlyMessage(error, "Please try again."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  return {
+    generateImage: generateMutation.mutateAsync,
+    isGenerating: generateMutation.isPending,
+    generatingEntryId: generateMutation.isPending ? generateMutation.variables : undefined,
+    approveImage: approveMutation.mutateAsync,
+    isApproving: approveMutation.isPending,
+    approvingEntryId: approveMutation.isPending ? approveMutation.variables : undefined,
+    removeImage: removeMutation.mutateAsync,
+    isRemoving: removeMutation.isPending,
+  };
+}
+
+/** Cache-busted URL for draft or approved image of a dictionary entry. */
+export function dictionaryImageUrl(
+  entryId: number,
+  target: "draft" | "approved",
+  cacheBust?: string | null,
+): string {
+  const base = `/api/dictionary/${entryId}/image/${target}`;
+  return cacheBust ? `${base}?t=${cacheBust}` : base;
 }

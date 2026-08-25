@@ -16,6 +16,10 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
     "alt_names",
     "archived",
     "sort_order",
+    "draft_image_key", "draft_image_content_type", "draft_image_prompt",
+    "draft_image_model", "draft_image_created_at", "approved_image_key",
+    "approved_image_content_type", "approved_image_prompt", "approved_image_model",
+    "approved_image_approved_at",
   ],
   dictionary_suggestions: [
     "id",
@@ -52,7 +56,12 @@ export async function runDictionaryMigration(
         description text,
         alt_names text[] NOT NULL DEFAULT '{}',
         archived integer NOT NULL DEFAULT 0,
-        sort_order integer
+        sort_order integer,
+        draft_image_key text, draft_image_content_type text, draft_image_prompt text,
+        draft_image_model text, draft_image_created_at timestamp,
+        approved_image_key text, approved_image_content_type text,
+        approved_image_prompt text, approved_image_model text,
+        approved_image_approved_at timestamp
       );
 
       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS id serial;
@@ -65,6 +74,16 @@ export async function runDictionaryMigration(
       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS alt_names text[] DEFAULT '{}';
       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS archived integer DEFAULT 0;
       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS sort_order integer;
+       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS draft_image_key text;
+       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS draft_image_content_type text;
+       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS draft_image_prompt text;
+       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS draft_image_model text;
+       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS draft_image_created_at timestamp;
+       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS approved_image_key text;
+       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS approved_image_content_type text;
+       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS approved_image_prompt text;
+       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS approved_image_model text;
+       ALTER TABLE dictionary_entries ADD COLUMN IF NOT EXISTS approved_image_approved_at timestamp;
 
       UPDATE dictionary_entries SET is_drill = 0 WHERE is_drill IS NULL;
       UPDATE dictionary_entries SET difficulty = 0 WHERE difficulty IS NULL;

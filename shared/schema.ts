@@ -199,6 +199,16 @@ export const dictionaryEntries = pgTable("dictionary_entries", {
   altNames: text("alt_names").array().notNull().default(sql`'{}'::text[]`),
   archived: integer("archived").notNull().default(0), // 0 = active, 1 = archived (hidden from non-admins)
   sortOrder: integer("sort_order"),
+  draftImageKey: text("draft_image_key"),
+  draftImageContentType: text("draft_image_content_type"),
+  draftImagePrompt: text("draft_image_prompt"),
+  draftImageModel: text("draft_image_model"),
+  draftImageCreatedAt: timestamp("draft_image_created_at"),
+  approvedImageKey: text("approved_image_key"),
+  approvedImageContentType: text("approved_image_content_type"),
+  approvedImagePrompt: text("approved_image_prompt"),
+  approvedImageModel: text("approved_image_model"),
+  approvedImageApprovedAt: timestamp("approved_image_approved_at"),
 });
 
 // User-submitted corrections for dictionary entries ("this skill is also
@@ -279,7 +289,13 @@ export const insertExecutionSessionSchema = createInsertSchema(executionSessions
 // altNames is deliberately NOT part of the entry editor payload — it can only
 // grow via accepted suggestions (storage-side), so the editor can't clobber it.
 export const insertDictionaryEntrySchema = createInsertSchema(dictionaryEntries)
-  .omit({ id: true, altNames: true })
+  .omit({
+    id: true, altNames: true,
+    draftImageKey: true, draftImageContentType: true, draftImagePrompt: true,
+    draftImageModel: true, draftImageCreatedAt: true,
+    approvedImageKey: true, approvedImageContentType: true,
+    approvedImagePrompt: true, approvedImageModel: true, approvedImageApprovedAt: true,
+  })
   .extend({
     name: z.string().trim().min(1, "Name is required").max(120),
     shortName: z.string().trim().min(1, "Short name is required").max(40),

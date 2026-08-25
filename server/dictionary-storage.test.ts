@@ -149,6 +149,60 @@ describe.skipIf(!hasDatabase)("dictionary storage invariants", () => {
     );
   });
 
+  it("keeps generated images private until approval and cleans metadata by target", async () => {
+    const entryId = await createEntry(`Images ${randomUUID()}`);
+
+    const drafted = await storage.setDictionaryDraftImage(entryId, {
+      key: `dictionary-images/${entryId}/draft.png`,
+      contentType: "image/png",
+      prompt: "Controlled sequence prompt",
+      model: "test-image-model",
+    });
+    expect(drafted.staleKeys).toEqual([]);
+    expect(drafted.entry).toMatchObject({
+      draftImageKey: `dictionary-images/${entryId}/draft.png`,
+      approvedImageKey: null,
+    });
+
+    const approved = await storage.approveDictionaryDraftImage(entryId);
+    expect(approved.staleKeys).toEqual([]);
+    expect(approved.entry).toMatchObject({
+      draftImageKey: null,
+      approvedImageKey: `dictionary-images/${entryId}/draft.png`,
+      approvedImagePrompt: "Controlled sequence prompt",
+      approvedImageModel: "test-image-model",
+    });
+    expect(approved.entry.approvedImageApprovedAt).toBeInstanceOf(Date);
+
+    const secondDraft = await storage.setDictionaryDraftImage(entryId, {
+      key: `dictionary-images/${entryId}/replacement.png`,
+      contentType: "image/png",
+      prompt: "Replacement prompt",
+      model: "test-image-model",
+    });
+    expect(secondDraft.entry.approvedImageKey).toBe(
+      `dictionary-images/${entryId}/draft.png`,
+    );
+
+    const removedDraft = await storage.removeDictionaryImage(entryId, "draft");
+    expect(removedDraft.staleKeys).toEqual([
+      `dictionary-images/${entryId}/replacement.png`,
+    ]);
+    expect(removedDraft.entry.draftImageKey).toBeNull();
+    expect(removedDraft.entry.approvedImageKey).toBe(
+      `dictionary-images/${entryId}/draft.png`,
+    );
+
+    const removedApproved = await storage.removeDictionaryImage(
+      entryId,
+      "approved",
+    );
+    expect(removedApproved.staleKeys).toEqual([
+      `dictionary-images/${entryId}/draft.png`,
+    ]);
+    expect(removedApproved.entry.approvedImageKey).toBeNull();
+  });
+
   it("imports personal codes into both short names and editable numerics", async () => {
     const importUserId = `dictionary-import-${randomUUID()}`;
     const marker = randomUUID();

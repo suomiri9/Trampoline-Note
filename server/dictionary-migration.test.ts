@@ -82,6 +82,8 @@ describe.skipIf(!hasDatabase)("dictionary startup migration", () => {
       expect(names.has("dictionary_entries.alt_names")).toBe(true);
       expect(names.has("dictionary_entries.description")).toBe(true);
       expect(names.has("dictionary_entries.numeric")).toBe(true);
+      expect(names.has("dictionary_entries.draft_image_key")).toBe(true);
+      expect(names.has("dictionary_entries.approved_image_key")).toBe(true);
       expect(names.has("dictionary_suggestions.status")).toBe(true);
       expect(names.has("dictionary_suggestions.resolved_at")).toBe(true);
       expect(names.has("dictionary_library_imports.completed_at")).toBe(true);

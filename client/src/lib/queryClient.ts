@@ -46,6 +46,10 @@ function genericOfflineCacheKey(fullPath: string): string | null {
   if (!fullPath.startsWith("/api/")) return null;
   if (fullPath.startsWith("/api/auth")) return null;
   if (fullPath.startsWith("/api/coach")) return null;
+  // Dictionary responses are role-sensitive: admins receive private draft
+  // metadata and archived entries. Never persist any dictionary endpoint in
+  // the account-agnostic offline mirror.
+  if (fullPath.startsWith("/api/dictionary")) return null;
   return `get:${fullPath}`;
 }
 

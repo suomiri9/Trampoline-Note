@@ -1,24 +1,17 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
 import { DictionarySection } from "@/components/dictionary-section";
 import { PageLayout } from "@/components/page-layout";
-import { PageHeader, primaryActionClass, headerActionClass } from "@/components/page-header";
+import { PageHeader } from "@/components/page-header";
 import { BackLink } from "@/components/back-link";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
-import { Plus, Archive, ArchiveRestore, Search } from "lucide-react";
+import { Search } from "lucide-react";
 
-// The shared skills & drills dictionary, on its own page under The Arsenal.
-// Everyone can browse/search and adopt entries; the owner additionally gets
-// the archived toggle, the entry editor, and the suggestion review queue
-// (all re-checked server-side).
+// The shared skills & drills dictionary, athlete-facing only.
+// Everyone can browse/search, adopt entries, and suggest corrections.
+// Admin controls (create/edit/archive/import/review/image) live on
+// /dictionary-admin and are never shown here, even to the owner.
 export default function DictionaryPage() {
-  const { user } = useAuth();
-  const isAdminUser = !!user?.isAdmin;
   const [searchQuery, setSearchQuery] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
-  const [showForm, setShowForm] = useState(false);
 
   return (
     <PageLayout accent="skills">
@@ -28,28 +21,6 @@ export default function DictionaryPage() {
         title="The shared dictionary."
         accent="dictionary."
         subtitle="Curated skills and drills for every athlete — browse the list, add anything straight into your own library, or suggest a correction."
-        actions={
-          isAdminUser ? (
-            <>
-              <Button
-                variant={showArchived ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowArchived((v) => !v)}
-                className={cn(headerActionClass, "shrink-0", !showArchived && "text-muted-foreground hover:text-foreground")}
-                data-testid="button-toggle-archived"
-              >
-                {showArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-              </Button>
-              <Button
-                className={cn(primaryActionClass, "shrink-0")}
-                onClick={() => setShowForm((v) => !v)}
-                data-testid="button-add-skill"
-              >
-                <Plus className="w-5 h-5" /> Add Entry
-              </Button>
-            </>
-          ) : undefined
-        }
       />
       <div
         className="sticky z-20 full-bleed-bar py-2 bg-background/90 backdrop-blur-md border-b border-white/[0.08] mb-4"
@@ -68,10 +39,10 @@ export default function DictionaryPage() {
       </div>
       <DictionarySection
         searchQuery={searchQuery}
-        showArchived={showArchived}
-        isAdmin={isAdminUser}
-        formOpen={showForm}
-        onFormOpenChange={setShowForm}
+        showArchived={false}
+        mode="athlete"
+        formOpen={false}
+        onFormOpenChange={() => {}}
       />
     </PageLayout>
   );

@@ -78,6 +78,7 @@ export class DictionaryError extends Error {
     this.name = "DictionaryError";
   }
 }
+export type DictionaryImageMutation = { entry: DictionaryEntry; staleKeys: string[] };
 
 export interface IStorage {
   // Notes
@@ -124,6 +125,9 @@ export interface IStorage {
   getDictionaryEntry(id: number): Promise<DictionaryEntry | undefined>;
   createDictionaryEntry(entry: InsertDictionaryEntry): Promise<DictionaryEntry>;
   updateDictionaryEntry(id: number, updates: Partial<InsertDictionaryEntry>): Promise<DictionaryEntry | undefined>;
+  setDictionaryDraftImage(id: number, image: { key: string; contentType: string; prompt: string; model: string }): Promise<DictionaryImageMutation>;
+  approveDictionaryDraftImage(id: number): Promise<DictionaryImageMutation>;
+  removeDictionaryImage(id: number, target: "draft" | "approved" | "all"): Promise<DictionaryImageMutation>;
   previewDictionaryImport(userId: string): Promise<DictionaryImportPreview>;
   importLibraryToDictionary(userId: string): Promise<DictionaryImportResult>;
   ensureInitialDictionaryImport(userId: string): Promise<DictionaryImportResult | null>;
@@ -697,6 +701,65 @@ export class DatabaseStorage implements IStorage {
       .where(eq(dictionaryEntries.id, id))
       .returning();
     return updated;
+  }
+
+  async setDictionaryDraftImage(
+    id: number,
+    image: { key: string; contentType: string; prompt: string; model: string },
+  ): Promise<DictionaryImageMutation> {
+    return await db.transaction(async (tx) => {
+      const [current] = await tx.select().from(dictionaryEntries)
+        .where(eq(dictionaryEntries.id, id)).for("update");
+      if (!current) throw new DictionaryError("Dictionary entry not found", "not_found");
+      const [entry] = await tx.update(dictionaryEntries).set({
+        draftImageKey: image.key, draftImageContentType: image.contentType,
+        draftImagePrompt: image.prompt, draftImageModel: image.model,
+        draftImageCreatedAt: new Date(),
+      }).where(eq(dictionaryEntries.id, id)).returning();
+      return { entry, staleKeys: current.draftImageKey ? [current.draftImageKey] : [] };
+    });
+  }
+
+  async approveDictionaryDraftImage(id: number): Promise<DictionaryImageMutation> {
+    return await db.transaction(async (tx) => {
+      const [current] = await tx.select().from(dictionaryEntries)
+        .where(eq(dictionaryEntries.id, id)).for("update");
+      if (!current) throw new DictionaryError("Dictionary entry not found", "not_found");
+      if (!current.draftImageKey || !current.draftImageContentType) {
+        throw new DictionaryError("Generate an image draft before approving it", "invalid");
+      }
+      const [entry] = await tx.update(dictionaryEntries).set({
+        approvedImageKey: current.draftImageKey,
+        approvedImageContentType: current.draftImageContentType,
+        approvedImagePrompt: current.draftImagePrompt,
+        approvedImageModel: current.draftImageModel,
+        approvedImageApprovedAt: new Date(),
+        draftImageKey: null, draftImageContentType: null, draftImagePrompt: null,
+        draftImageModel: null, draftImageCreatedAt: null,
+      }).where(eq(dictionaryEntries.id, id)).returning();
+      return { entry, staleKeys: current.approvedImageKey ? [current.approvedImageKey] : [] };
+    });
+  }
+
+  async removeDictionaryImage(
+    id: number, target: "draft" | "approved" | "all",
+  ): Promise<DictionaryImageMutation> {
+    return await db.transaction(async (tx) => {
+      const [current] = await tx.select().from(dictionaryEntries)
+        .where(eq(dictionaryEntries.id, id)).for("update");
+      if (!current) throw new DictionaryError("Dictionary entry not found", "not_found");
+      const removeDraft = target === "draft" || target === "all";
+      const removeApproved = target === "approved" || target === "all";
+      const [entry] = await tx.update(dictionaryEntries).set({
+        ...(removeDraft ? { draftImageKey: null, draftImageContentType: null, draftImagePrompt: null, draftImageModel: null, draftImageCreatedAt: null } : {}),
+        ...(removeApproved ? { approvedImageKey: null, approvedImageContentType: null, approvedImagePrompt: null, approvedImageModel: null, approvedImageApprovedAt: null } : {}),
+      }).where(eq(dictionaryEntries.id, id)).returning();
+      return {
+        entry,
+        staleKeys: [removeDraft ? current.draftImageKey : null, removeApproved ? current.approvedImageKey : null]
+          .filter((key): key is string => !!key),
+      };
+    });
   }
 
   async previewDictionaryImport(userId: string): Promise<DictionaryImportPreview> {

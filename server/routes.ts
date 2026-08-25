@@ -6,6 +6,7 @@ import { z } from "zod";
 import { isAuthenticated, isAdmin, getUserId, getBaseUrl } from "./auth";
 import { getPushRecommendation, clearCoachPushCache, coachChat, parseMenuPhoto, parseTofScreenshot, parseExecutionSheet, parseScoreSheet, menuChat, CoachUnavailableError, CoachStoppedError } from "./coach";
 import { serveCoachImage } from "./coach-images";
+import { generateDictionaryImage, deleteDictionaryImage, serveDictionaryImage, DictionaryImageUnavailableError } from "./dictionary-images";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
@@ -230,7 +231,13 @@ export async function registerRoutes(
       // Admins also receive archived entries so they can review/unarchive
       // them; everyone else only ever sees active rows.
       const entries = await storage.getDictionaryEntries(!!user?.isAdmin);
-      res.json(entries);
+      // Draft workflow metadata and private object keys are owner-only. Public
+      // consumers may still see approved provenance to show that an image exists.
+      res.json(user?.isAdmin ? entries : entries.map((entry) => ({
+        ...entry,
+        draftImageKey: null, draftImageContentType: null, draftImagePrompt: null,
+        draftImageModel: null, draftImageCreatedAt: null, approvedImageKey: null,
+      })));
     } catch (err) {
       console.error("Dictionary list error:", err);
       res.status(500).json({ message: "Internal server error" });
@@ -269,6 +276,116 @@ export async function registerRoutes(
       }
       console.error("Dictionary update error:", err);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  const dictionaryEntryId = (value: string | string[]): number | null => {
+    if (typeof value !== "string") return null;
+    const id = Number(value);
+    return Number.isInteger(id) && id > 0 ? id : null;
+  };
+  const dictionaryImageError = (err: unknown, res: import("express").Response) => {
+    if (err instanceof DictionaryError) {
+      return res.status(err.code === "not_found" ? 404 : 400).json({ message: err.message });
+    }
+    return false;
+  };
+
+  app.post(api.dictionary.generateImage.path, isAdmin, async (req, res) => {
+    const id = dictionaryEntryId(req.params.id);
+    if (!id) return res.status(404).json({ message: "Dictionary entry not found" });
+    let uploaded: Awaited<ReturnType<typeof generateDictionaryImage>> | undefined;
+    try {
+      const entry = await storage.getDictionaryEntry(id);
+      if (!entry) return res.status(404).json({ message: "Dictionary entry not found" });
+      uploaded = await generateDictionaryImage(entry);
+      const result = await storage.setDictionaryDraftImage(id, uploaded);
+      await Promise.all(result.staleKeys.map((key) => deleteDictionaryImage(id, key)));
+      res.json(result.entry);
+    } catch (err) {
+      if (uploaded) await deleteDictionaryImage(id, uploaded.key);
+      if (dictionaryImageError(err, res)) return;
+      if (err instanceof DictionaryImageUnavailableError) {
+        return res.status(502).json({ message: "Image generation is unavailable right now." });
+      }
+      res.status(502).json({ message: "Image generation is unavailable right now." });
+    }
+  });
+
+  app.post(api.dictionary.approveImage.path, isAdmin, async (req, res) => {
+    const id = dictionaryEntryId(req.params.id);
+    if (!id) return res.status(404).json({ message: "Dictionary entry not found" });
+    try {
+      const result = await storage.approveDictionaryDraftImage(id);
+      await Promise.all(result.staleKeys.map((key) => deleteDictionaryImage(id, key)));
+      res.json(result.entry);
+    } catch (err) {
+      if (dictionaryImageError(err, res)) return;
+      console.error("Dictionary image approval error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post(api.dictionary.removeImage.path, isAdmin, async (req, res) => {
+    const id = dictionaryEntryId(req.params.id);
+    if (!id) return res.status(404).json({ message: "Dictionary entry not found" });
+    try {
+      const { target } = api.dictionary.removeImage.input.parse(req.body);
+      const result = await storage.removeDictionaryImage(id, target);
+      await Promise.all(result.staleKeys.map((key) => deleteDictionaryImage(id, key)));
+      res.json(result.entry);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      if (dictionaryImageError(err, res)) return;
+      console.error("Dictionary image removal error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get(api.dictionary.draftImage.path, isAdmin, async (req, res) => {
+    const id = dictionaryEntryId(req.params.id);
+    if (!id) return res.status(404).json({ message: "Dictionary entry not found" });
+    // Drafts are revocable admin-only previews. Never let a shared browser
+    // reuse an admin's cached response after another account signs in.
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Pragma", "no-cache");
+    try {
+      const entry = await storage.getDictionaryEntry(id);
+      if (!entry || !await serveDictionaryImage(
+        id,
+        entry.draftImageKey,
+        entry.draftImageContentType,
+        res,
+        "no-store",
+      )) {
+        if (!res.headersSent) res.status(404).json({ message: "Draft image not found" });
+      }
+    } catch {
+      if (!res.headersSent) res.status(404).json({ message: "Draft image not found" });
+    }
+  });
+
+  app.get(api.dictionary.approvedImage.path, isAuthenticated, async (req, res) => {
+    const id = dictionaryEntryId(req.params.id);
+    if (!id) return res.status(404).json({ message: "Dictionary entry not found" });
+    // Approval can be revoked and archiving changes who may see the image.
+    // Shared-device browser caches must not outlive either authorization state.
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Pragma", "no-cache");
+    try {
+      const [entry, user] = await Promise.all([storage.getDictionaryEntry(id), storage.getUser(getUserId(req))]);
+      if (!entry || (!user?.isAdmin && entry.archived === 1) ||
+        !await serveDictionaryImage(
+          id,
+          entry.approvedImageKey,
+          entry.approvedImageContentType,
+          res,
+          "no-store",
+        )) {
+        if (!res.headersSent) res.status(404).json({ message: "Approved image not found" });
+      }
+    } catch {
+      if (!res.headersSent) res.status(404).json({ message: "Approved image not found" });
     }
   });
 

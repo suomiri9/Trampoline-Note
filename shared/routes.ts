@@ -255,6 +255,27 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
+    generateImage: {
+      method: 'POST' as const, path: '/api/dictionary/:id/image/generate' as const,
+      responses: { 200: z.custom<typeof dictionaryEntries.$inferSelect>(), 404: errorSchemas.notFound, 502: errorSchemas.internal },
+    },
+    approveImage: {
+      method: 'POST' as const, path: '/api/dictionary/:id/image/approve' as const,
+      responses: { 200: z.custom<typeof dictionaryEntries.$inferSelect>(), 400: errorSchemas.validation, 404: errorSchemas.notFound },
+    },
+    removeImage: {
+      method: 'POST' as const, path: '/api/dictionary/:id/image/remove' as const,
+      input: z.object({ target: z.enum(['draft', 'approved', 'all']) }),
+      responses: { 200: z.custom<typeof dictionaryEntries.$inferSelect>(), 400: errorSchemas.validation, 404: errorSchemas.notFound },
+    },
+    draftImage: {
+      method: 'GET' as const, path: '/api/dictionary/:id/image/draft' as const,
+      responses: { 200: z.any(), 404: errorSchemas.notFound },
+    },
+    approvedImage: {
+      method: 'GET' as const, path: '/api/dictionary/:id/image/approved' as const,
+      responses: { 200: z.any(), 404: errorSchemas.notFound },
+    },
     importPreview: {
       method: 'GET' as const,
       path: '/api/dictionary/import-library/preview' as const,

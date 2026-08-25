@@ -80,3 +80,4 @@
 - [Offline read fallback](offline-read-fallback.md) — mirror-backed reads abort at 8s only when offline mode is ON; timeout+no-cache rethrows (never fake `[]`); "saved data" signal is per-key, cleared only after THAT read fully parses.
 - [Online-state trust rules](online-state-trust.md) — iOS PWA misses online events while suspended; queries+mutations stay networkMode 'always', useOnline re-syncs on foreground, offline cards always get a retry.
 - [Dictionary & admin model](dictionary-model.md) — adoption is copy-only (no sync-back), altNames grow only via accepted suggestions, is_admin re-checked from DB per request.
+- [Dictionary image privacy](dictionary-image-privacy.md) — drafts are admin-only and never cacheable; athletes receive only approved images through entry-scoped authenticated routes.
