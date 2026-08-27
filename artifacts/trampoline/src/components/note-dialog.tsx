@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Clock, Loader2, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, Minus, X, Search, Shapes, ChevronDown, ChevronRight, Camera, Check, Merge, Split, Repeat, NotebookPen, Target, Dumbbell, Link2, Layers, Puzzle } from "lucide-react";
+import { AlertTriangle, CalendarIcon, Clock, Loader2, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, Minus, X, Search, Shapes, ChevronDown, ChevronRight, Camera, Check, Merge, Split, Repeat, NotebookPen, Target, Dumbbell, Link2, Layers, Puzzle } from "lucide-react";
 import { DialogHero } from "@/components/dialog-hero";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
@@ -31,6 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { bottomNavClearance, cn } from "@/lib/utils";
 import { compressDataUrl } from "@/lib/image-file";
+import { persistBeforeClose, startLockedSave } from "@/lib/training-save-guard";
 import { PhotoAreaSelect, type PhotoAreaSelectHandle } from "@/components/photo-area-select";
 import {
   Dialog,
@@ -157,6 +158,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const bottomNavCoverPx = useBottomNavCoverPx();
   
   const [selectedSkills, setSelectedSkills] = useState<SkillItem[]>([]);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isConnectMode, setIsConnectMode] = useState(false);
   const [editingRoutineIdx, setEditingRoutineIdx] = useState<number | null>(null);
   const [editingGroupIndices, setEditingGroupIndices] = useState<number[] | null>(null);
@@ -896,7 +900,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   const totalDifficulty = calculateTotalDD(selectedSkills, allItems, routines, noteDay);
 
-  const onSubmit = (values: FormValues) => {
+  const onSubmit = async (values: FormValues) => {
+    setSaveError(null);
     let payload: any;
     try {
       payload = {
@@ -913,56 +918,55 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         description: e instanceof Error ? e.message : "Bad form data.",
         variant: "destructive",
       });
+      setSaveError(e instanceof Error ? e.message : "The session data could not be prepared. Please check it and try again.");
       return;
     }
 
-    if (isEditing && noteToEdit) {
-      // Pending offline entries have negative ids (queue tempIds) and live
-      // only in IndexedDB until the queue drains. Editing one rewrites the
-      // queued payload instead of hitting the server.
-      if (noteToEdit.id < 0) {
-        void updateQueuedByTempId(noteToEdit.id, payload).then((ok) => {
-          if (ok) {
-            onOpenChange(false);
-            toast({ title: "Pending session updated" });
-          } else {
-            toast({
-              title: "Couldn't update session",
-              description: "This pending entry could not be found locally.",
-              variant: "destructive",
-            });
+    let result: unknown;
+    const saved = await persistBeforeClose(
+      async () => {
+        if (isEditing && noteToEdit) {
+          // Pending offline entries have negative ids (queue tempIds) and live
+          // only in IndexedDB until the queue drains. Editing one rewrites the
+          // queued payload instead of hitting the server.
+          if (noteToEdit.id < 0) {
+            const updated = await updateQueuedByTempId(noteToEdit.id, payload);
+            if (!updated) throw new Error("This pending entry could not be found locally.");
+            return { pendingEntryUpdated: true };
           }
-        });
-        return;
-      }
-      updateNote.mutate({ id: noteToEdit.id, ...payload }, {
-        onSuccess: (result) => {
-          onOpenChange(false);
-          const queued = !!(result && typeof result === "object" && "_queuedOffline" in result);
-          toast({ title: queued ? "Saved offline. Will sync when reconnected." : "Session updated" });
-        },
-        onError: (err) => {
-          toast({
-            title: "Couldn't update session",
-            description: err instanceof Error ? err.message : "Something went wrong. Please try again.",
-            variant: "destructive",
-          });
-        },
+          return await updateNote.mutateAsync({ id: noteToEdit.id, ...payload });
+        }
+        return await createNote.mutateAsync(payload as any);
+      },
+      (confirmedResult) => {
+        result = confirmedResult;
+        onOpenChange(false);
+      },
+      (err) => {
+        const fallback = "Your session is still here. Check your connection and try End training again.";
+        const detail = err instanceof Error && err.message ? err.message : fallback;
+        setSaveError(`${detail} Your session has not been discarded.`);
+      },
+    );
+
+    if (saved) {
+      const pendingEntryUpdated = !!(result && typeof result === "object" && "pendingEntryUpdated" in result);
+      const queued = !!(result && typeof result === "object" && "_queuedOffline" in result);
+      toast({
+        title: pendingEntryUpdated
+          ? "Pending session updated"
+          : queued
+            ? "Saved offline. Will sync when reconnected."
+            : isEditing
+              ? "Session updated"
+              : "Session logged!",
       });
     } else {
-      createNote.mutate(payload as any, {
-        onSuccess: (result) => {
-          onOpenChange(false);
-          const queued = !!(result && typeof result === "object" && "_queuedOffline" in result);
-          toast({ title: queued ? "Saved offline. Will sync when reconnected." : "Session logged!" });
-        },
-        onError: (err) => {
-          toast({
-            title: "Couldn't log session",
-            description: err instanceof Error ? err.message : "Something went wrong. Please try again.",
-            variant: "destructive",
-          });
-        },
+      const fallback = "Your session is still here. Check your connection and try End training again.";
+      toast({
+        title: isEditing ? "Couldn't update session" : "Couldn't log session",
+        description: fallback,
+        variant: "destructive",
       });
     }
   };
@@ -976,12 +980,20 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       description: firstMessage ?? "Please check the highlighted fields and try again.",
       variant: "destructive",
     });
+    setSaveError(`${firstMessage ?? "Please check the highlighted fields."} Your session is still open so you can correct it.`);
+    if (errors.date) setNoteStep(1);
   };
 
   const [noteStep, setNoteStep] = useState<1 | 2 | 3>(1);
   const isSavingRef = useRef(false);
   useEffect(() => {
-    if (open) { setNoteStep(1); isSavingRef.current = false; }
+    if (open) {
+      setNoteStep(1);
+      setSaveError(null);
+      setDiscardConfirmOpen(false);
+      setIsSaving(false);
+      isSavingRef.current = false;
+    }
   }, [open]);
 
   // If the user navigates with the bottom nav (which sits above the dialog)
@@ -1000,18 +1012,24 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLocation]);
 
-  // One shared "save whatever is in the editor" path, used by the normal
-  // close (X / backdrop / nav-away effect) and by the unmount flush below.
-  // Returns true when a save was kicked off — the submit/invalid callbacks
-  // then own closing the dialog.
+  const hasUnsavedContent = () => {
+    const v = form.getValues();
+    return !!(v.content || selectedSkills.length > 0 || v.startTime || v.endTime || v.rating || form.formState.isDirty);
+  };
+
+  // The lock is set synchronously, before react-query updates isPending, so
+  // rapid repeated taps can never start two create/update requests.
   const flushDraftSave = (): boolean => {
     if (isSavingRef.current) return false;
-    const v = form.getValues();
-    const hasContent = !!(v.content || selectedSkills.length > 0 || v.startTime || v.endTime || v.rating);
-    if (!hasContent && !form.formState.isDirty) return false;
-    isSavingRef.current = true;
-    form.handleSubmit(onSubmit, () => { isSavingRef.current = false; onOpenChange(false); })();
-    return true;
+    if (!hasUnsavedContent()) {
+      onOpenChange(false);
+      return false;
+    }
+    return startLockedSave(
+      isSavingRef,
+      setIsSaving,
+      form.handleSubmit(onSubmit, onInvalid as any),
+    );
   };
   // Cleanup closures capture the render they were created in, so the
   // unmount effect reads the LATEST flush + open state through refs.
@@ -1035,7 +1053,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   }, []);
 
   const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen && flushDraftSave()) return;
+    if (!newOpen && isSavingRef.current) return;
+    if (!newOpen && hasUnsavedContent()) {
+      setDiscardConfirmOpen(true);
+      return;
+    }
     onOpenChange(newOpen);
   };
 
@@ -2727,6 +2749,16 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   <FormItem><FormLabel className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Notes</FormLabel><FormControl><Textarea placeholder="How did the session go?" className="min-h-[100px] rounded-xl" {...field} /></FormControl></FormItem>
                 )} />
               </div>
+              {saveError && (
+                <div
+                  role="alert"
+                  className="flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+                  data-testid="note-save-error"
+                >
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span>{saveError}</span>
+                </div>
+              )}
               {noteStep === 1 ? (
                 <Button type="button" className="w-full h-12 rounded-xl text-lg font-semibold" onClick={() => setNoteStep(2)} data-testid="btn-note-next">
                   Skills →
@@ -2748,15 +2780,15 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   <Button
                     type="button"
                     className="flex-1 h-12 rounded-xl text-lg font-semibold"
-                    disabled={createNote.isPending || updateNote.isPending}
-                    onClick={() => handleOpenChange(false)}
+                    disabled={isSaving}
+                    onClick={flushDraftSave}
                     data-testid="btn-note-done"
                   >
                     <span
-                      key={String(createNote.isPending || updateNote.isPending)}
+                      key={String(isSaving)}
                       className="animate-morph-blur inline-flex items-center justify-center gap-2"
                     >
-                      {(createNote.isPending || updateNote.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : "End training"}
+                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "End training"}
                     </span>
                   </Button>
                 </div>
@@ -2945,6 +2977,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         })()}
       </DialogContent>
     </Dialog>
+    <ConfirmDialog
+      open={discardConfirmOpen}
+      onOpenChange={setDiscardConfirmOpen}
+      title="Discard this training session?"
+      description="This session has not been saved. Keep editing to preserve it, or discard it permanently."
+      confirmLabel="Discard session"
+      cancelLabel="Keep editing"
+      variant="destructive"
+      onConfirm={() => {
+        setDiscardConfirmOpen(false);
+        onOpenChange(false);
+      }}
+    />
 
     </>
   );
