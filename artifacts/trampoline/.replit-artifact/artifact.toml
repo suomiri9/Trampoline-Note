@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Trampoline"
+description = "The existing athlete training and performance tracking app."
+version = "1.0.0"
+id = "artifacts/trampoline"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21915
+
+[services.development]
+run = "pnpm --filter @workspace/trampoline run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/trampoline", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/trampoline/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21915"
+BASE_PATH = "/"

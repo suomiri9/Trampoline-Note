@@ -1,0 +1,674 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    /* Intent type stack: Inter everywhere — monospace is banned (user, Aug 2026);
+       --font-display stays as an alias so legacy font-display classes render
+       the same headline face. */
+    --font-display: 'Inter', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-sans: 'Inter', sans-serif;
+    --font-serif: 'Inter', sans-serif;
+    --font-mono: var(--font-sans); /* user banned monospace (Aug 2026) — micro-labels render in the sans stack */
+
+    /* Color tokens live in rebound-tokens.css — GENERATED from the Rebound
+       design system (artifacts/rebound/tokens.json). Only app-specific
+       extras belong here. */
+
+    /* Accent used for "Points to Fix" / secondary warm action — unified with
+       the amber chart token (re-resolves per mode; Rebound exports the same
+       --gold alias from the bridge). */
+    --gold: var(--chart-3);
+
+    /* Strong easing curves (emil-design-eng, .agents/skills/emil-design-eng):
+       the built-in CSS keywords are too weak to feel intentional. Registered
+       as Tailwind utilities ease-out-strong / ease-in-out-strong / ease-drawer
+       in tailwind.config.ts. */
+    --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Per-page accent identity (nav icon colors). Pages override via <PageLayout accent=...>. */
+  --page-accent: var(--primary);
+  --page-accent-2: var(--chart-4);
+  }
+
+  /* Dark is the default theme (class set in index.html before first paint;
+     Settings → Appearance toggles it off). Values come from rebound-tokens.css. */
+  .dark {
+    color-scheme: dark;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  /* Match Safari's autofill behavior: don't let Chrome paint the input yellow,
+     which makes inputs look like a different color than the rest of the form. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: hsl(var(--foreground));
+    -webkit-box-shadow: 0 0 0 1000px hsl(var(--background)) inset;
+    transition: background-color 9999s ease-in-out 0s;
+    caret-color: hsl(var(--foreground));
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-body);
+    @apply font-semibold tracking-tight;
+  }
+  /* Fluid interfaces (docs/apple-design-skill.md §1): the press feedback is
+     ours (.pressable), so kill the browser's gray tap flash, and drop the
+     double-tap-zoom wait on controls so taps commit instantly. */
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button, a, label, select, summary, input, textarea, [role="button"] {
+    touch-action: manipulation;
+  }
+}
+
+/* Safari / iOS fixes */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+.overflow-scroll-touch {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-x: contain;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Reserve space under page content for the floating bottom nav row
+   (bottom-4 offset + bar height; the coach launcher sits inline in the
+   same row) PLUS the iOS home-indicator inset, so the bar never covers
+   the last row of content on iPhone. */
+.pb-nav-safe {
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Sticky page header: extend its top padding (and the negative margin that
+   cancels PageLayout's py) by the iOS status-bar/notch inset, so when the
+   header pins to the top of the scroll container in standalone PWA mode the
+   title never slides under the clock/notch. Replaces -mt-6 md:-mt-8 pt-6 md:pt-8. */
+.page-header-safe {
+  margin-top: calc(-1.5rem - env(safe-area-inset-top, 0px));
+  padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
+}
+@media (min-width: 768px) {
+  .page-header-safe {
+    margin-top: calc(-2rem - env(safe-area-inset-top, 0px));
+    padding-top: calc(2rem + env(safe-area-inset-top, 0px));
+  }
+}
+
+/* Monospace meta helper — eyebrows, dates, numeric figures, badges */
+.font-mono-meta {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+/* Disable mono programming ligatures so skill codes (e.g. `-<`, `<=`, `->`)
+   render as literal characters instead of merged arrow/comparison glyphs. */
+.font-mono,
+.font-mono-meta,
+.eyebrow,
+.micro-label {
+  font-feature-settings: "liga" 0, "calt" 0;
+  font-variant-ligatures: none;
+}
+
+/* Intent micro-label — small uppercase monospace eyebrow: `// TRAINING LOG`.
+   (.micro-label is the design system's canonical name; .eyebrow is the app's
+   legacy alias — same recipe.) */
+.eyebrow,
+.micro-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Compact eyebrow for tight cards (e.g. 4-across stat cards on phones):
+   smaller + tighter tracking below the sm breakpoint, normal above. */
+.eyebrow-compact {
+  font-size: 0.55rem;
+  letter-spacing: 0.14em;
+}
+@media (min-width: 640px) {
+  .eyebrow-compact {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+  }
+}
+
+/* Large page/dialog title — Inter, tight and bold (Intent headline style). */
+.page-title {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+
+.title-accent {
+  color: hsl(var(--primary));
+}
+
+/* Intent signature: sky→indigo gradient text — headlines, stat figures,
+   accent words. Token-driven (primary → chart-4) so it adapts per mode. */
+.text-gradient-primary {
+  /* bg-clip-text only paints the line box: tight leading (0.92) lets descenders
+     hang below it and negative tracking lets the last glyph's ink pass its edge —
+     both got shaved to transparent. Pad the paint box back out; the negative
+     margins cancel any layout impact. */
+  padding: 0.16em 0.1em 0.22em 0.04em;
+  margin: -0.16em -0.1em -0.22em -0.04em;
+
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.text-gradient-gold {
+  /* bg-clip-text only paints the line box: tight leading (0.92) lets descenders
+     hang below it and negative tracking lets the last glyph's ink pass its edge —
+     both got shaved to transparent. Pad the paint box back out; the negative
+     margins cancel any layout impact. */
+  padding: 0.16em 0.1em 0.22em 0.04em;
+  margin: -0.16em -0.1em -0.22em -0.04em;
+
+  background: linear-gradient(135deg, #fbbf24 0%, #fb923c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.text-gradient-page {
+  /* bg-clip-text only paints the line box: tight leading (0.92) lets descenders
+     hang below it and negative tracking lets the last glyph's ink pass its edge —
+     both got shaved to transparent. Pad the paint box back out; the negative
+     margins cancel any layout impact. */
+  padding: 0.16em 0.1em 0.22em 0.04em;
+  margin: -0.16em -0.1em -0.22em -0.04em;
+
+  background: linear-gradient(135deg, hsl(var(--page-accent)) 0%, hsl(var(--page-accent-2)) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Custom subtle animations for clean minimal feel */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  /* emil-design-eng: list entrances stay under 300ms on the strong curve. */
+  animation: fade-in-up 250ms var(--ease-out-strong) forwards;
+}
+
+/* Splash screen: a trampoline-style bounce for the app mark. */
+@keyframes splash-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scaleX(1) scaleY(1);
+    animation-timing-function: cubic-bezier(0.33, 0, 0.4, 1);
+  }
+  45% {
+    transform: translateY(-26px) scaleX(0.97) scaleY(1.03);
+    animation-timing-function: cubic-bezier(0.6, 0, 0.67, 1);
+  }
+  90% {
+    transform: translateY(0) scaleX(1.05) scaleY(0.95);
+  }
+}
+
+.animate-splash-bounce {
+  animation: splash-bounce 0.95s infinite;
+  transform-origin: center bottom;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-splash-bounce {
+    animation: none;
+  }
+}
+
+/* Minimal flat panel: hairline border, no elevation (matches the
+   border-border/10 panels on Home/Stats — the app-wide design language).
+   (.card-3d is a legacy class name; ~50 call sites keep it as an alias.) */
+.card-3d {
+  background: transparent;
+  border: 1px solid hsl(var(--border) / 0.55);
+  box-shadow: none;
+  /* Press feedback uses the standalone `scale` property at the shared
+     100ms pointer-down timing (docs/apple-design-skill.md §1). */
+  transition: border-color 0.2s ease, scale 100ms var(--ease-out-strong);
+}
+
+.dark .card-3d {
+  background: transparent;
+  border: 1px solid hsl(var(--border) / 0.62);
+  box-shadow: none;
+}
+
+/* Hover tint only for devices that truly hover (emil-design-eng): on touch
+   screens :hover sticks after a tap until the next tap elsewhere. Presses
+   keep their own :active feedback. */
+@media (hover: hover) and (pointer: fine) {
+  .card-3d-hover:hover {
+    border-color: hsl(var(--primary) / 0.35);
+  }
+}
+
+.card-3d-hover:active {
+  /* Large surfaces press subtly — same treatment as .pressable, gentler depth. */
+  scale: 0.99;
+}
+
+/* Translucent surface for the nav bar and floating chips (neutral tint). */
+.glass-surface {
+  background: hsl(0 0% 100% / 0.78);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid hsl(var(--border));
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.6) inset,
+    0 12px 40px -16px hsl(0 0% 10% / 0.18);
+}
+
+.dark .glass-surface {
+  background: hsl(0 0% 4% / 0.85);
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.03) inset,
+    0 12px 40px -12px hsl(0 0% 0% / 0.7);
+}
+
+/* Glowing solid-blue primary action. Press scale comes from .pressable;
+   this class only dims the glow while pressed. */
+.btn-3d {
+  box-shadow:
+    0 0 0 1px hsl(var(--primary) / 0.5),
+    0 0 24px -2px hsl(var(--primary) / 0.55),
+    0 4px 16px -4px hsl(var(--primary) / 0.5);
+  transition: box-shadow 0.18s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-3d:hover {
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0.6),
+      0 0 32px 0 hsl(var(--primary) / 0.7),
+      0 6px 22px -4px hsl(var(--primary) / 0.6);
+  }
+}
+
+.btn-3d:active {
+  box-shadow:
+    0 0 0 1px hsl(var(--primary) / 0.5),
+    0 0 16px -2px hsl(var(--primary) / 0.45);
+}
+
+.icon-3d {
+  border: 1px solid hsl(var(--border));
+}
+
+.dark .icon-3d {
+  border: 1px solid hsl(var(--border));
+}
+
+/* CTA gradient for white-label buttons. Light mode uses deepened sky/indigo
+   endpoints so white text stays ≥4.5:1 (token light chart-4 is too light);
+   dark mode uses the standard primary → chart-4 tokens. */
+.bg-gradient-cta {
+  background: linear-gradient(135deg, hsl(221 83% 48%) 0%, hsl(239 64% 52%) 100%);
+}
+.dark .bg-gradient-cta {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-4)) 100%);
+}
+
+/* Soft canvas with a faint sky glow at the top — token-driven
+   (primary → chart-4, matching the Intent gradient axis). */
+.bg-mesh {
+  background:
+    radial-gradient(ellipse 70% 45% at 15% -5%, hsl(var(--primary) / 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 90% 0%, hsl(var(--chart-4) / 0.07) 0%, transparent 55%),
+    hsl(var(--background));
+}
+
+.dark .bg-mesh {
+  background:
+    radial-gradient(ellipse 70% 45% at 15% -5%, hsl(var(--primary) / 0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 90% 0%, hsl(var(--chart-4) / 0.05) 0%, transparent 55%),
+    hsl(var(--background));
+}
+
+/* Full-bleed sticky bars: stretch edge-to-edge past the centered column while
+   keeping their content aligned with the column. `50%` resolves against the
+   parent's content width, so `50vw - 50%` is exactly the gap from the column's
+   content edge to the viewport edge at every breakpoint. Any overshoot from a
+   scrollbar is clipped by #root's overflow-x: hidden. */
+.full-bleed-bar {
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding-left: calc(50vw - 50%);
+  padding-right: calc(50vw - 50%);
+}
+
+/* Lock html/body so iOS cannot scroll the viewport — all scroll happens inside #root */
+html, body {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  /* Desktop browsers' scroll anchoring fights the collapsing PageHeader: the
+     collapse shrinks the sticky header, anchoring "compensates" scrollTop back
+     under the expand threshold, and the header flip-flops mid-state when you
+     stop scrolling right at the boundary. iOS has no scroll anchoring, so this
+     only ever showed on desktop. */
+  overflow-anchor: none;
+}
+
+/* Horizontally scrollable rows (e.g. coach reply suggestions) — scrolls but
+   hides the scrollbar so chip rows stay clean on mobile. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Staggered list entrances (emil-design-eng: 30-80ms steps, never longer).
+   50ms steps: the whole cascade resolves within ~450ms instead of ~900ms,
+   reading as one gesture rather than a queue. Stagger is decorative — rows
+   are interactive from the first frame. */
+.stagger-1 { animation-delay: 0ms; }
+.stagger-2 { animation-delay: 50ms; }
+.stagger-3 { animation-delay: 100ms; }
+.stagger-4 { animation-delay: 150ms; }
+.stagger-5 { animation-delay: 200ms; }
+
+/* ---------------------------------------------------------------------------
+   Rebound interaction elevation (ported from the design system): hover/active
+   overlay tints driven by --elevate-1 / --elevate-2 (rebound-tokens.css).
+   Buttons and badges opt in via `hover-elevate` / `active-elevate-2`. */
+.no-default-hover-elevate {}
+.no-default-active-elevate {}
+
+.toggle-elevate::before,
+.toggle-elevate-2::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0px;
+  border-radius: inherit;
+  z-index: -1;
+}
+
+.toggle-elevate.toggle-elevated::before {
+  background-color: var(--elevate-2);
+}
+
+.border.toggle-elevate::before {
+  inset: -1px;
+}
+
+.hover-elevate:not(.no-default-hover-elevate),
+.active-elevate:not(.no-default-active-elevate),
+.hover-elevate-2:not(.no-default-hover-elevate),
+.active-elevate-2:not(.no-default-active-elevate) {
+  position: relative;
+  z-index: 0;
+}
+
+.hover-elevate:not(.no-default-hover-elevate)::after,
+.active-elevate:not(.no-default-active-elevate)::after,
+.hover-elevate-2:not(.no-default-hover-elevate)::after,
+.active-elevate-2:not(.no-default-active-elevate)::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0px;
+  border-radius: inherit;
+  z-index: 999;
+}
+
+/* Hover tints gated to real pointers (emil-design-eng) — Tailwind's hover:
+   utilities get the same gate via future.hoverOnlyWhenSupported. Active
+   (press) tints stay unconditional: that's the touch feedback. */
+@media (hover: hover) and (pointer: fine) {
+  .hover-elevate:hover:not(.no-default-hover-elevate)::after {
+    background-color: var(--elevate-1);
+  }
+
+  .hover-elevate-2:hover:not(.no-default-hover-elevate)::after {
+    background-color: var(--elevate-2);
+  }
+}
+
+.active-elevate:active:not(.no-default-active-elevate)::after {
+  background-color: var(--elevate-1);
+}
+
+.active-elevate-2:active:not(.no-default-active-elevate)::after {
+  background-color: var(--elevate-2);
+}
+
+.border.hover-elevate:not(.no-hover-interaction-elevate)::after,
+.border.active-elevate:not(.no-active-interaction-elevate)::after,
+.border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
+.border.active-elevate-2:not(.no-active-interaction-elevate)::after {
+  inset: -1px;
+}
+
+/* ---------------------------------------------------------------------------
+   Fluid-interface motion (docs/apple-design-skill.md).
+
+   .pressable — the app-wide press treatment (§1 response): feedback lands on
+   pointer-DOWN via :active, ~100ms, compositor-only. It uses the standalone
+   `scale` property so it composes with any transform utilities (hover
+   scales, centering translates) instead of overriding them. Depth is
+   tunable per control size with [--press-scale:0.9x] — small round controls
+   press deeper, large cards stay subtle. Color/opacity keep a slightly
+   longer settle so hover tints still ease. */
+.pressable {
+  transition:
+    scale 100ms var(--ease-out-strong),
+    transform 150ms var(--ease-out-strong),
+    background-color 150ms ease-out,
+    border-color 150ms ease-out,
+    color 150ms ease-out,
+    opacity 150ms ease-out,
+    box-shadow 150ms ease-out;
+}
+.pressable:active {
+  scale: var(--press-scale, 0.97);
+}
+
+/* Bottom-sheet material (§12): heavier blur than the nav's glass-surface —
+   bigger surfaces read thicker. Token-driven so light/dark both work. */
+.sheet-material {
+  background: hsl(var(--background) / 0.88);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+}
+
+/* Materialize (§12): a glass surface arrives as material — blur radius,
+   scale and opacity animate together (200ms, no overshoot). Pair with an
+   origin-* class so growth is anchored to its trigger (§7). */
+@keyframes materialize-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+.animate-materialize {
+  animation: materialize-in 200ms var(--ease-out-strong);
+}
+
+/* §14 reduced motion: presses keep their overlay tint but stop scaling;
+   entrances become quick cross-fades. Radix overlays handle this per
+   component via motion-safe/motion-reduce variants, and the vaul bottom
+   sheet is swapped for a centered dialog (use-bottom-sheet.ts). */
+@keyframes reduced-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pressable:active,
+  .card-3d-hover:active {
+    scale: none;
+  }
+  .animate-materialize {
+    animation: reduced-fade-in 150ms ease-out;
+  }
+  .animate-fade-in-up {
+    animation: reduced-fade-in 200ms ease-out forwards;
+  }
+}
+
+/* §14 reduced transparency: frost the glass solid. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass-surface,
+  .sheet-material {
+    background: hsl(var(--background));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+
+/* ---------------------------------------------------------------------------
+   emil-design-eng additions (.agents/skills/emil-design-eng). */
+
+/* Blur-crossfade for in-place content morphs (a button swapping label <-> a
+   spinner): re-key the wrapper on the state so the incoming content blurs in
+   instead of two overlapping states hard-swapping.
+   <span key={String(pending)} className="animate-morph-blur">...</span> */
+@keyframes morph-blur-in {
+  from {
+    opacity: 0.3;
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+.animate-morph-blur {
+  animation: morph-blur-in 180ms var(--ease-out-strong);
+}
+
+/* Sonner toasts: exits faster than enters. Enter keeps Sonner's unhurried
+   400ms ease (its signature feel); a dismissing front toast leaves in 200ms.
+   Swipe-out already runs ~200ms in Sonner's own keyframes. */
+html [data-sonner-toast][data-removed='true'][data-front='true'][data-swipe-out='false'] {
+  transition-duration: 200ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-morph-blur {
+    animation: reduced-fade-in 150ms ease-out;
+  }
+  /* Toasts appear/disappear as instant fades; stack shuffling stops sliding. */
+  [data-sonner-toast] {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   On-screen keyboard awareness (iOS/iPadOS PWA + Android overlays-content).
+   The layout viewport never shrinks when the virtual keyboard opens, so fixed
+   dialogs centered (or bottom-anchored) against it can end up fully behind
+   the keyboard. lib/keyboard-inset.ts publishes the visible strip as
+   --kb-vvh / --kb-off / --kb-inset-b CSS vars + html[data-kb-open]; while the
+   keyboard is up, keyboard-aware overlays (ui/dialog.tsx sets data-kb-aware)
+   re-center inside that strip and cap their height so every field stays
+   reachable by scrolling. Bottom-sheet-style dialogs (data-kb-anchor="bottom")
+   keep their bottom anchoring and instead ride up on --kb-inset-b at their
+   call sites (skills.tsx). Poppers (skill/date pickers) stay clear via the
+   keyboard-aware collisionPadding in ui/popover.tsx. */
+html[data-kb-open] [data-kb-aware]:not([data-kb-anchor="bottom"]) {
+  top: calc(var(--kb-off, 0px) + var(--kb-vvh, 100dvh) / 2);
+  /* !important: while the keyboard is up, the visible strip is always the
+     tightest cap — it must beat any caller max-h utility (even !-suffixed
+     ones) or content behind the keyboard becomes unreachable. */
+  max-height: calc(var(--kb-vvh, 100dvh) - 1.5rem) !important;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+html[data-kb-open] [data-kb-aware][data-kb-anchor="bottom"] {
+  max-height: calc(var(--kb-vvh, 100dvh) - 0.75rem) !important;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* Ease the re-center instead of snapping while iOS animates the keyboard
+     in; top is static during Radix's transform-based open/close animations,
+     so this transition only ever runs on keyboard open/close. */
+  [data-kb-aware]:not([data-kb-anchor="bottom"]) {
+    transition: top 200ms var(--ease-out-strong);
+  }
+}

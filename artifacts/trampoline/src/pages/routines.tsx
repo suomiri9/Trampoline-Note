@@ -1,0 +1,698 @@
+import { useState, useMemo, useRef } from "react";
+import { useLocation } from "wouter";
+import { useSkills } from "@/hooks/use-skills";
+import { useRoutines } from "@/hooks/use-routines";
+import { useNotes } from "@/hooks/use-notes";
+import { calcDDFromSkillIds, parseNoteSkills, skillDisplayCode, skillDisplayName, pickableSkills } from "@/lib/training-utils";
+import { SkillCode } from "@/components/skill-code";
+import { useLongPressDndSensors } from "@/hooks/use-dnd-sensors";
+import { useTypeToSearch } from "@/hooks/use-type-to-search";
+import { PageLayout } from "@/components/page-layout";
+import { PageHeader, primaryActionClass, headerActionClass } from "@/components/page-header";
+import { StatStrip } from "@/components/stat-strip";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
+import { SearchPicker } from "@/components/search-picker";
+import { Trash2, Pencil, X, Layers, Archive, ArchiveRestore, MoreVertical, Search, Plus } from "lucide-react";
+import { DialogHero } from "@/components/dialog-hero";
+import { pageAccentStyle } from "@/lib/page-accent";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { PendingSyncBadge } from "@/components/pending-sync-badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { format } from "date-fns";
+import { type Routine, type RoutineWithVersions, type Skill } from "@shared/schema";
+import { sameLineup, applyLineupChange } from "@shared/routine-versions";
+import { api } from "@shared/routes";
+import { queryClient } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
+import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { SortableChip } from "@/components/sortable-chip";
+import { useRecentSkills, addRecentSkill } from "@/hooks/use-recent-skills";
+import { getArchivePartsWithRoutine } from "@/lib/archive-cascade";
+
+export default function RoutinesPage() {
+  const [, navigate] = useLocation();
+  const { data: allItems, updateSkill } = useSkills();
+  const skills = allItems?.filter(item => item.isDrill === 0 && item.archived !== 1);
+  const { data: allRoutines, createRoutine, deleteRoutine, updateRoutine, isCreating, isUpdating } = useRoutines();
+  const { data: notes } = useNotes();
+
+  const firstPracticedByRoutine = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const note of notes ?? []) {
+      const ids = new Set<number>();
+      for (const it of parseNoteSkills(note.skills)) {
+        if (it.id === -2 && typeof it.routineId === "number") ids.add(it.routineId);
+      }
+      for (const rid of Array.from(ids)) {
+        const existing = map.get(rid);
+        if (!existing || note.date < existing) map.set(rid, note.date);
+      }
+    }
+    return map;
+  }, [notes]);
+
+  const [editingRoutine, setEditingRoutine] = useState<RoutineWithVersions | null>(null);
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState<"set" | "vol" | null>(null);
+  // "When does this change apply?" dialog for lineup edits on a routine with
+  // training history (from-a-day vs rewrite-all).
+  const [applyChangeOpen, setApplyChangeOpen] = useState(false);
+  const [applyMode, setApplyMode] = useState<"fromDay" | "rewrite">("fromDay");
+  const [applyFromDay, setApplyFromDay] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<{ id: number; name: string } | null>(null);
+  const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [topPickerOpen, setTopPickerOpen] = useState(false);
+  const topPickerInputRef = useRef<HTMLInputElement>(null);
+  useTypeToSearch(true, topPickerOpen, topPickerInputRef);
+
+  const routines = allRoutines?.filter(r => showArchived ? r.archived === 1 : r.archived !== 1);
+  const archivedCount = allRoutines ? allRoutines.filter(r => r.archived === 1).length : 0;
+
+  // Cascade a routine's archived flag to its OWN linked items — routine parts
+  // (isDrill === 3) AND connections (isDrill === 2) tagged with this routine via
+  // sourceRoutineId — when the "Archive Parts With Routine" preference is on
+  // (default). Gated client-side so the Settings toggle can disable it.
+  const cascadeArchiveToLinked = async (routineId: number, archived: number) => {
+    if (!getArchivePartsWithRoutine()) return;
+    // Don't treat unloaded skills data as "no linked items" — fetch fresh if needed.
+    const items =
+      allItems ??
+      ((await queryClient.fetchQuery({ queryKey: [api.skills.list.path] })) as Skill[]);
+    const linked = (items ?? []).filter(
+      (it) => (it.isDrill === 3 || it.isDrill === 2) && it.sourceRoutineId === routineId,
+    );
+    await Promise.all(linked.map((p) => updateSkill({ id: p.id, archived })));
+  };
+
+  const toggleArchive = async (routine: Routine) => {
+    if (routine.archived === 1) {
+      await updateRoutine({ id: routine.id, archived: 0 });
+      await cascadeArchiveToLinked(routine.id, 0);
+    } else {
+      setArchiveTarget({ id: routine.id, name: routine.name });
+    }
+  };
+
+  const confirmArchive = async () => {
+    if (!archiveTarget) return;
+    await updateRoutine({ id: archiveTarget.id, archived: 1 });
+    await cascadeArchiveToLinked(archiveTarget.id, 1);
+    setArchiveTarget(null);
+  };
+
+  const longPressSensors = useLongPressDndSensors();
+  const recentSkillIds = useRecentSkills();
+
+  const handleAddSkill = (skillId: number) => {
+    addRecentSkill(skillId);
+    setSelectedSkillIds(prev => prev.length >= 10 ? prev : [...prev, skillId]);
+  };
+
+  const handleRemoveSkill = (index: number) => {
+    setSelectedSkillIds(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = parseInt(String(active.id).replace("slot-", ""));
+    const newIdx = parseInt(String(over.id).replace("slot-", ""));
+    if (isNaN(oldIdx) || isNaN(newIdx)) return;
+    setSelectedSkillIds(prev => arrayMove([...prev], oldIdx, newIdx));
+  };
+
+  // Save is always tappable — a tap on an incomplete form says exactly
+  // what's missing instead of silently greying the button out.
+  const [tagWarning, setTagWarning] = useState(false);
+  const tagGroupRef = useRef<HTMLDivElement>(null);
+
+  const handleCreate = async () => {
+    if (!name.trim()) {
+      toast({ title: "Name this routine first", variant: "destructive" });
+      return;
+    }
+    if (category == null) {
+      setTagWarning(true);
+      tagGroupRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      toast({ title: "Set or voluntary?", description: "Tap one — score entry reads this tag to fill everything in automatically.", variant: "destructive" });
+      return;
+    }
+    const skillCount = selectedSkillIds.filter(id => id != null).length;
+    if (skillCount !== 10) {
+      toast({ title: "A routine needs 10 skills", description: `This one has ${skillCount} so far.`, variant: "destructive" });
+      return;
+    }
+
+    if (editingRoutine) {
+      const lineupChanged = !sameLineup(selectedSkillIds, editingRoutine.skillIds);
+      // Changing the lineup of a routine that's already been trained would
+      // silently rewrite history — ask when the change applies first.
+      // Name-only edits (and unpracticed routines) save straight through.
+      if (lineupChanged && firstPracticedByRoutine.has(editingRoutine.id)) {
+        setApplyMode("fromDay");
+        // Athlete-local today (never the server clock).
+        setApplyFromDay(format(new Date(), "yyyy-MM-dd"));
+        setApplyChangeOpen(true);
+        return;
+      }
+      await updateRoutine({
+        id: editingRoutine.id,
+        name,
+        code: name,
+        category,
+        skillIds: selectedSkillIds,
+      });
+      setEditingRoutine(null);
+    } else {
+      await createRoutine({
+        name,
+        code: name,
+        category,
+        skillIds: selectedSkillIds,
+      });
+    }
+
+    setName("");
+    setCategory(null);
+    setSelectedSkillIds([]);
+    setShowBuilder(false);
+  };
+
+  const confirmApplyChange = async () => {
+    if (!editingRoutine) return;
+    const payload: Parameters<typeof updateRoutine>[0] = {
+      id: editingRoutine.id,
+      name,
+      code: name,
+      category,
+      skillIds: selectedSkillIds,
+    };
+    if (applyMode === "fromDay" && applyFromDay) {
+      payload.applyFromDay = applyFromDay;
+      // Precompute the resulting version list so the offline mirror shows the
+      // right historical lineups even while the edit is still queued. The
+      // server runs the identical pure function and remains the authority.
+      payload.versions = applyLineupChange(
+        editingRoutine.skillIds,
+        editingRoutine.versions,
+        applyFromDay,
+      );
+    } else {
+      // Rewrite all history: the new lineup applies everywhere.
+      payload.versions = [];
+    }
+    setApplyChangeOpen(false);
+    await updateRoutine(payload);
+    setEditingRoutine(null);
+    setName("");
+    setCategory(null);
+    setSelectedSkillIds([]);
+    setShowBuilder(false);
+  };
+
+  const startEditing = (routine: RoutineWithVersions) => {
+    setEditingRoutine(routine);
+    setName(routine.name);
+    setCategory(routine.category === "set" || routine.category === "vol" ? routine.category : null);
+    setSelectedSkillIds(routine.skillIds.slice(0, 10));
+    setTagWarning(false);
+    setShowBuilder(true);
+  };
+
+  const cancelEditing = () => {
+    if (editingRoutine) {
+      setEditingRoutine(null);
+      setName("");
+      setCategory(null);
+      setSelectedSkillIds([]);
+    }
+    setTopPickerOpen(false);
+    setShowBuilder(false);
+  };
+
+  const openBuilder = () => {
+    setEditingRoutine(null);
+    // A fresh create session always starts clean — a stale name/lineup/tag
+    // from an abandoned draft (or "duplicate from existing") would silently
+    // carry over into the new routine.
+    setName("");
+    setCategory(null);
+    setSelectedSkillIds([]);
+    setTagWarning(false);
+    setShowBuilder(true);
+  };
+
+
+  // Display-only aggregates for the header stat band.
+  const routineStrip = useMemo(() => {
+    const list = routines ?? [];
+    if (list.length === 0) return null;
+    const dds = list.map(r => calcDDFromSkillIds(r.skillIds, allItems || []));
+    return {
+      count: list.length,
+      top: Math.max(...dds),
+      avg: dds.reduce((a, b) => a + b, 0) / dds.length,
+    };
+  }, [routines, allItems]);
+
+  return (
+    <PageLayout accent="routines">
+      <PageHeader
+        kicker="Ten skills · one order"
+        title="Choreograph the lineup."
+        accent="the lineup."
+        subtitle="Your 10-skill competition routines — each a sequence in strict order, scored by total difficulty."
+        actions={
+          <>
+            <Button
+              variant={showArchived ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setShowArchived(v => !v); cancelEditing(); }}
+              className={cn(headerActionClass, "shrink-0", !showArchived && "text-muted-foreground hover:text-foreground")}
+              data-testid="button-toggle-archived"
+            >
+              {showArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+            </Button>
+            <Button onClick={openBuilder} className={primaryActionClass} data-testid="button-new-routine">
+              <Plus className="w-5 h-5" /> New Routine
+            </Button>
+          </>
+        }
+      />
+      {routineStrip && (
+        <StatStrip
+          accent="page"
+          className="mb-6"
+          items={[
+            { label: "Routines", value: String(routineStrip.count), testId: "stat-routines-count" },
+            { label: "Top DD", value: routineStrip.top.toFixed(1), testId: "stat-routines-top-dd" },
+            { label: "Avg DD", value: routineStrip.avg.toFixed(1), testId: "stat-routines-avg-dd" },
+          ]}
+        />
+      )}
+      <Dialog open={showBuilder || !!editingRoutine} onOpenChange={(o) => { if (!o) cancelEditing(); }}>
+        <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[90dvh] overflow-y-auto" style={pageAccentStyle("routines")}>
+          <DialogHero
+            icon={Layers}
+            eyebrow="Routine builder"
+            title={editingRoutine ? "Edit routine" : "Create routine"}
+            description={editingRoutine ? undefined : "Ten skills, one order."}
+          />
+          <div className="space-y-4">
+            {!editingRoutine && allRoutines && allRoutines.filter(r => r.archived !== 1).length > 0 && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Duplicate from existing</label>
+                <Select value="" onValueChange={(v) => {
+                  const src = allRoutines?.find(r => r.id === parseInt(v));
+                  if (!src) return;
+                  setName(`${src.name} (copy)`);
+                  setSelectedSkillIds(src.skillIds.slice(0, 10));
+                }}>
+                  <SelectTrigger data-testid="select-duplicate-routine"><SelectValue placeholder="Pick a routine to copy..." /></SelectTrigger>
+                  <SelectContent>
+                    {allRoutines.filter(r => r.archived !== 1).map(r => (
+                      <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <Input 
+              placeholder="Routine Name" 
+              value={name} 
+              onChange={e => setName(e.target.value)} 
+            />
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Set or voluntary?</label>
+              <div ref={tagGroupRef} className={cn("grid grid-cols-2 gap-1 rounded-xl border bg-background p-1 transition-colors", tagWarning && category == null ? "border-amber-500/70 ring-1 ring-amber-500/25" : "border-input")} role="group" aria-label="Set or voluntary">
+                {([["set", "Set"], ["vol", "Voluntary"]] as const).map(([val, label]) => {
+                  const active = category === val;
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setCategory(val)}
+                      aria-pressed={active}
+                      className={cn(
+                        "h-8 rounded-lg text-xs font-medium transition-colors",
+                        active
+                          ? "bg-[hsl(var(--page-accent)/0.18)] text-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                      data-testid={`button-routine-category-${val}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className={cn("text-[10px] mt-1", tagWarning && category == null ? "text-amber-500 dark:text-amber-400" : "text-muted-foreground/60")}>
+                {tagWarning && category == null
+                  ? "Pick Set or Voluntary to save this routine."
+                  : "Required — score entry reads this tag to fill everything in automatically."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <SearchPicker
+                open={topPickerOpen}
+                onOpenChange={(v) => { if (v && selectedSkillIds.length >= 10) return; setTopPickerOpen(v); }}
+                disabled={selectedSkillIds.length >= 10}
+                placeholder={selectedSkillIds.length >= 10 ? "Maximum 10 skills reached" : "Add skill to routine..."}
+                className="h-10 flex-1 rounded-xl border border-input bg-background focus-within:ring-1 focus-within:ring-ring"
+                inputTestId="btn-open-routine-top-picker"
+                inputRef={topPickerInputRef}
+              >
+                    <CommandList className="max-h-[280px]">
+                      <CommandEmpty>No matches.</CommandEmpty>
+                      <CommandGroup heading="Skills">
+                        {pickableSkills(allItems, 0).slice().sort((a, b) => {
+                          const oA = a.sortOrder ?? 999999, oB = b.sortOrder ?? 999999;
+                          if (oA !== oB) return oA - oB;
+                          return b.difficulty - a.difficulty;
+                        }).map(skill => (
+                          <CommandItem
+                            key={skill.id}
+                            value={`${skillDisplayCode(skill, allItems)} ${skillDisplayName(skill, allItems)} skill`}
+                            onSelect={() => { handleAddSkill(skill.id); setTopPickerOpen(false); }}
+                            data-testid={`pick-routine-skill-${skill.id}`}
+                          >
+                            <span className="font-mono text-xs font-semibold text-foreground mr-2">{skillDisplayCode(skill, allItems)}</span>
+                            {skillDisplayCode(skill, allItems) !== skillDisplayName(skill, allItems) && <span className="text-muted-foreground">- {skillDisplayName(skill, allItems)}</span>}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+              </SearchPicker>
+              <span className={cn("text-xs shrink-0 font-mono", selectedSkillIds.length >= 10 ? "text-red-500 font-bold" : "text-muted-foreground")} data-testid="text-routine-count">{selectedSkillIds.length}/10</span>
+            </div>
+            {(() => {
+              const recents = recentSkillIds
+                .map(id => pickableSkills(allItems, 0).find(s => s.id === id))
+                .filter((s): s is NonNullable<typeof s> => !!s);
+              if (recents.length === 0) return null;
+              return (
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recent</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {recents.map(s => (
+                      <button key={`routine-recent-${s.id}`} type="button" disabled={selectedSkillIds.length >= 10} onClick={() => handleAddSkill(s.id)} className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-white/[0.08] text-muted-foreground bg-white/[0.025] hover:bg-white/[0.04] transition-colors pressable [--press-scale:0.95] disabled:opacity-40 disabled:pointer-events-none" data-testid={`btn-routine-recent-${s.id}`}><SkillCode skill={s} allSkills={allItems} /></button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+            <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={selectedSkillIds.map((_, i) => `slot-${i}`)} strategy={rectSortingStrategy}>
+                <div className="min-h-[80px] rounded-lg p-2 bg-white/[0.02] flex flex-wrap gap-2 items-start">
+                  {selectedSkillIds.map((id, idx) => {
+                    const s = skills?.find(sk => sk.id === id);
+                    return (
+                      <SortableChip key={`slot-${idx}`} uid={`slot-${idx}`}>
+                        <Badge variant="secondary" className="gap-0 pr-0 py-0 items-stretch overflow-hidden" data-testid={`chip-routine-skill-${idx}`}>
+                          <span className="py-0.5 pl-2.5 pr-1.5 flex items-center"><SkillCode skill={s} allSkills={allItems} /></span>
+                          <button type="button" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => handleRemoveSkill(idx)} className="px-2.5 flex items-center justify-center hover:bg-muted/60 active:bg-muted" data-testid={`btn-remove-routine-skill-${idx}`} aria-label="Remove"><X className="h-3.5 w-3.5" /></button>
+                        </Badge>
+                      </SortableChip>
+                    );
+                  })}
+                  {selectedSkillIds.length === 0 && <span className="text-xs text-muted-foreground p-2">No skills added yet</span>}
+                </div>
+              </SortableContext>
+            </DndContext>
+            <div className="pt-4 border-t border-white/[0.06] flex justify-between items-center">
+              <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60">Total Difficulty</span>
+              <span className="text-2xl font-bold tabular-nums text-gradient-page">
+                {calcDDFromSkillIds(selectedSkillIds.filter((id): id is number => id !== null), allItems || []).toFixed(1)}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                className="flex-1 h-11" 
+                onClick={handleCreate} 
+                disabled={isCreating || isUpdating}
+                data-testid="button-save-routine"
+              >
+                {isCreating || isUpdating ? "Saving..." : editingRoutine ? "Update Routine" : "Save Routine"}
+              </Button>
+              {editingRoutine && (
+                <Button variant="outline" className="h-11" onClick={cancelEditing}>Cancel</Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={applyChangeOpen} onOpenChange={(o) => { if (!o) setApplyChangeOpen(false); }}>
+        <DialogContent className="sm:max-w-sm" style={pageAccentStyle("routines")}>
+          <DialogHero
+            icon={Layers}
+            eyebrow="Routine builder"
+            noPeriod
+            title="When does this change apply?"
+            description={<>“{editingRoutine?.name}” already has training history. Choose when the new lineup takes effect.</>}
+          />
+          <RadioGroup
+            value={applyMode}
+            onValueChange={(v) => setApplyMode(v as "fromDay" | "rewrite")}
+            className="gap-2"
+          >
+            <label
+              className={cn(
+                "flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors",
+                applyMode === "fromDay" ? "border-primary/60 bg-primary/5" : "border-white/[0.08]",
+              )}
+            >
+              <RadioGroupItem value="fromDay" className="mt-0.5" data-testid="radio-apply-from-day" />
+              <div className="flex-1 space-y-1.5">
+                <div className="text-sm font-medium leading-none">From a day…</div>
+                <p className="text-xs text-muted-foreground">
+                  Sessions before this day keep the old lineup; this day onward uses the new one.
+                </p>
+                <Input
+                  type="date"
+                  value={applyFromDay}
+                  onChange={(e) => setApplyFromDay(e.target.value)}
+                  disabled={applyMode !== "fromDay"}
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-9 mt-1"
+                  data-testid="input-apply-from-day"
+                />
+              </div>
+            </label>
+            <label
+              className={cn(
+                "flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors",
+                applyMode === "rewrite" ? "border-primary/60 bg-primary/5" : "border-white/[0.08]",
+              )}
+            >
+              <RadioGroupItem value="rewrite" className="mt-0.5" data-testid="radio-apply-rewrite" />
+              <div className="flex-1 space-y-1">
+                <div className="text-sm font-medium leading-none">Rewrite all history</div>
+                <p className="text-xs text-muted-foreground">
+                  Every past session counts against the new lineup, as if it was always this way.
+                </p>
+              </div>
+            </label>
+          </RadioGroup>
+          <div className="flex gap-2 pt-1">
+            <Button
+              className="flex-1 h-11"
+              onClick={confirmApplyChange}
+              disabled={isUpdating || (applyMode === "fromDay" && !applyFromDay)}
+              data-testid="button-confirm-apply-change"
+            >
+              {isUpdating ? "Saving..." : "Save Change"}
+            </Button>
+            <Button variant="outline" className="h-11" onClick={() => setApplyChangeOpen(false)}>
+              Back
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <div
+        className="pointer-events-none fixed inset-x-0 top-0 h-72 -z-10"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 0%, hsl(var(--page-accent)/0.12) 0%, hsl(var(--page-accent)/0.02) 55%, transparent 78%)",
+        }}
+        aria-hidden="true"
+      />
+
+      {routines && routines.length > 0 && (
+        <div className="flex items-center gap-3 mb-4">
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/55 shrink-0">
+            {showArchived ? "Archived Lineups" : "Your Lineups"}
+          </span>
+          <span
+            className="h-px flex-1"
+            style={{ background: "linear-gradient(90deg, hsl(var(--page-accent)/0.35), transparent)" }}
+            aria-hidden="true"
+          />
+          <span className="font-mono text-[10px] tabular-nums text-muted-foreground/50 shrink-0">
+            {routines.length.toString().padStart(2, "0")}
+          </span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {routines?.map((routine) => {
+          const dd = calcDDFromSkillIds(routine.skillIds, allItems || []);
+          const firstPracticed = firstPracticedByRoutine.get(routine.id);
+          const practicedLabel = firstPracticed
+            ? (() => { const [y, m, d] = firstPracticed.split("-"); return `${d}-${m}-${y}`; })()
+            : null;
+          return (
+            <div
+              key={routine.id}
+              className={cn(
+                "group relative rounded-2xl overflow-hidden cursor-pointer border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.035] hover:border-[hsl(var(--page-accent)/0.35)] pressable [--press-scale:0.99] transition-[background-color,border-color]",
+                editingRoutine?.id === routine.id && "ring-1 ring-[hsl(var(--page-accent))] border-[hsl(var(--page-accent)/0.5)]",
+              )}
+              onClick={() => navigate(`/routines/${routine.id}`)}
+              data-testid={`card-routine-${routine.id}`}
+            >
+              {/* Purple identity glow at the card's leading corner */}
+              <div
+                className="pointer-events-none absolute -left-8 -top-8 h-32 w-32 opacity-70"
+                style={{
+                  background:
+                    "radial-gradient(circle at 30% 30%, hsl(var(--page-accent)/0.16) 0%, transparent 70%)",
+                }}
+                aria-hidden="true"
+              />
+              {/* Header: name + total DD */}
+              <div className="relative flex items-start justify-between gap-3 p-5 pb-4">
+                <div className="min-w-0 pt-0.5">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span
+                      className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.16em] text-[hsl(var(--page-accent)/0.85)]"
+                    >
+                      <Layers className="h-3 w-3" /> Lineup
+                    </span>
+                    {(routine.category === "set" || routine.category === "vol") && (
+                      <span
+                        className="inline-flex items-center rounded-md border border-[hsl(var(--page-accent)/0.3)] bg-[hsl(var(--page-accent)/0.12)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-[hsl(var(--page-accent))]"
+                        data-testid={`badge-routine-category-${routine.id}`}
+                      >
+                        {routine.category === "set" ? "Set" : "Vol"}
+                      </span>
+                    )}
+                    {routine.id < 0 && (
+                      <PendingSyncBadge testId={`badge-pending-routine-${routine.id}`} />
+                    )}
+                  </div>
+                  <h3 className="font-black text-lg leading-tight tracking-[-0.02em] truncate">
+                    {routine.name}
+                  </h3>
+                  {practicedLabel && (
+                    <span className="mt-1 block text-[10px] font-mono font-normal text-muted-foreground/55" data-testid={`text-routine-first-practiced-${routine.id}`}>
+                      Since {practicedLabel}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-start gap-1 shrink-0">
+                  <div className="text-right leading-none">
+                    <div className="text-4xl font-black tracking-[-0.03em] tabular-nums text-gradient-page">
+                      {dd.toFixed(1)}
+                    </div>
+                    <div className="text-[8px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60 mt-1">Total DD</div>
+                  </div>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 -mr-2 text-muted-foreground/50 hover:text-foreground" data-testid={`button-actions-routine-${routine.id}`}><MoreVertical className="h-4 w-4" /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-36 rounded-xl">
+                        <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => startEditing(routine)}><Pencil className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer gap-2 text-xs" onClick={() => toggleArchive(routine)} data-testid={`button-archive-routine-${routine.id}`}>{routine.archived === 1 ? <><ArchiveRestore className="h-3.5 w-3.5" /> Unarchive</> : <><Archive className="h-3.5 w-3.5" /> Archive</>}</DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={() => setDeleteTarget({ id: routine.id, name: routine.name })}><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              </div>
+              {/* The lineup as an ordered sequence — 01→10 in strict order */}
+              <div
+                className="relative px-5 pb-5 pt-4 border-t border-white/[0.05]"
+                style={{
+                  background:
+                    "linear-gradient(180deg, hsl(var(--page-accent)/0.035) 0%, transparent 100%)",
+                }}
+              >
+                <div className="grid grid-cols-5 gap-1.5">
+                  {routine.skillIds.map((id, idx) => {
+                    const skill = skills?.find(s => s.id === id);
+                    return (
+                      <div
+                        key={idx}
+                        className="relative flex flex-col items-center gap-1 rounded-lg bg-white/[0.02] border border-white/[0.05] px-1 pt-1 pb-1.5 min-w-0"
+                        title={skillDisplayName(skill, allItems)}
+                      >
+                        <span className="font-mono text-[8px] tabular-nums text-[hsl(var(--page-accent)/0.7)] leading-none">
+                          {String(idx + 1).padStart(2, "0")}
+                        </span>
+                        <span className="text-center text-[11px] font-mono text-muted-foreground/80 truncate w-full leading-tight">
+                          <SkillCode skill={skill} allSkills={allItems} fallback="—" />
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {routines?.length === 0 && (
+          <div className="col-span-full py-24 px-6 flex flex-col items-center justify-center text-center rounded-2xl border border-white/[0.07] bg-white/[0.02]">
+            <div className="w-14 h-14 mb-5 rounded-2xl bg-[hsl(var(--page-accent)/0.1)] border border-[hsl(var(--page-accent)/0.25)] flex items-center justify-center">
+              <Layers className="w-7 h-7 text-[hsl(var(--page-accent))]" />
+            </div>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50 mb-2">{showArchived ? "Archived" : "No routines yet"}</p>
+            <h3 className="text-2xl font-black tracking-tight mb-2">{showArchived ? "Nothing archived." : "Build your first."}</h3>
+            {!showArchived && (
+              <>
+                <p className="text-sm text-muted-foreground max-w-xs mb-8 leading-relaxed">
+                  Assemble a 10-skill competition routine and track its difficulty over time.
+                </p>
+                <Button onClick={openBuilder} className="bg-gradient-cta flex items-center gap-1.5 px-5 h-10 rounded-xl text-sm font-semibold text-primary-foreground" data-testid="button-new-routine-empty">
+                  <Plus className="w-4 h-4" /> New Routine
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title={`Delete "${deleteTarget?.name}"?`}
+        description="This action cannot be undone."
+        onConfirm={() => { if (deleteTarget) { deleteRoutine(deleteTarget.id); setDeleteTarget(null); } }}
+        confirmLabel="Delete"
+      />
+
+      <ConfirmDialog
+        open={!!archiveTarget}
+        onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}
+        title={`Archive "${archiveTarget?.name}"?`}
+        description="This routine will be hidden from active lists. You can restore it later from the Archived view."
+        onConfirm={confirmArchive}
+        confirmLabel="Archive"
+        variant="default"
+      />
+    </PageLayout>
+  );
+}

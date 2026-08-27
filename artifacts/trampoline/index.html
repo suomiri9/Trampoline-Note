@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover, interactive-widget=overlays-content" />
+    <title>Trampoline Note</title>
+    <meta name="description" content="Track your trampoline training, skills, and scores." />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#050505" />
+    <!-- MUST stay the first script: "ResizeObserver loop completed with
+         undelivered notifications" is benign browser noise, but it fires as a
+         window error event with NO Error object, so dev tooling (the vite
+         error overlay, the preview log bridge) misreports it as a runtime
+         crash. This classic inline script runs during parse — before any
+         module script can register listeners — so its suppressor always wins.
+         It also wraps ResizeObserver callbacks in requestAnimationFrame so the
+         browser never generates the notification in the first place. -->
+    <script>
+      (function () {
+        var RO_RE = /ResizeObserver loop (completed with undelivered notifications|limit exceeded)/;
+        window.addEventListener(
+          "error",
+          function (e) {
+            if (e.message && RO_RE.test(e.message)) {
+              e.stopImmediatePropagation();
+              e.preventDefault();
+            }
+          },
+          true
+        );
+        if (typeof window.ResizeObserver === "function") {
+          var NativeRO = window.ResizeObserver;
+          var PatchedRO = function (callback) {
+            var raf = null;
+            var pending = new Map();
+            return new NativeRO(function (entries, observer) {
+              for (var i = 0; i < entries.length; i++) {
+                pending.set(entries[i].target, entries[i]);
+              }
+              if (raf !== null) return;
+              raf = requestAnimationFrame(function () {
+                raf = null;
+                var list = Array.from(pending.values());
+                pending.clear();
+                callback(list, observer);
+              });
+            });
+          };
+          PatchedRO.prototype = NativeRO.prototype;
+          window.ResizeObserver = PatchedRO;
+        }
+      })();
+    </script>
+    <!-- Apply the saved theme before first paint so the splash never flashes the
+         wrong background. Dark is the default; the Settings → Appearance toggle
+         switches to light, persisted in localStorage under "theme". -->
+    <script>
+      (function () {
+        try {
+          var light = localStorage.getItem("theme") === "light";
+          var el = document.documentElement;
+          el.classList.toggle("dark", !light);
+          var bg = light ? "#ffffff" : "#050505";
+          el.style.backgroundColor = bg;
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", bg);
+        } catch (e) {}
+      })();
+    </script>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="Trampoline Note" />
+
+    <!-- iOS launch / splash screens. PLAIN solid dark (#050505) on purpose:
+         designed launch images can never pixel-match the live overlay across
+         devices, so the sequence is plain dark → spinner → animated splash. -->
+
+    <!-- iPhone (portrait only; the manifest locks orientation to portrait). -->
+    <link rel="apple-touch-startup-image" href="/splash/launch-640x1136.png"
+      media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-750x1334.png"
+      media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-828x1792.png"
+      media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-1242x2208.png"
+      media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-1125x2436.png"
+      media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-1170x2532.png"
+      media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-1179x2556.png"
+      media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-1206x2622.png"
+      media="screen and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-1242x2688.png"
+      media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-1284x2778.png"
+      media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-1290x2796.png"
+      media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-1320x2868.png"
+      media="screen and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+
+    <!-- iPad mini 8.3" (6th / 7th gen) -->
+    <link rel="apple-touch-startup-image" href="/splash/launch-1488x2266.png"
+      media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-2266x1488.png"
+      media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" />
+
+    <!-- iPad 9.7" / iPad mini 7.9" (4/5) / Air / Air 2 / Pro 9.7" -->
+    <link rel="apple-touch-startup-image" href="/splash/launch-1536x2048.png"
+      media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-2048x1536.png"
+      media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" />
+
+    <!-- iPad 10.2" (7/8/9 gen) -->
+    <link rel="apple-touch-startup-image" href="/splash/launch-1620x2160.png"
+      media="screen and (device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-2160x1620.png"
+      media="screen and (device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" />
+
+    <!-- iPad 10.9" (10th gen) / iPad Air 10.9" (4/5) -->
+    <link rel="apple-touch-startup-image" href="/splash/launch-1640x2360.png"
+      media="screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-2360x1640.png"
+      media="screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" />
+
+    <!-- iPad Pro 10.5" / iPad Air 3 -->
+    <link rel="apple-touch-startup-image" href="/splash/launch-1668x2224.png"
+      media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-2224x1668.png"
+      media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" />
+
+    <!-- iPad Pro 11" (1-4) / iPad Air 11" (M2) -->
+    <link rel="apple-touch-startup-image" href="/splash/launch-1668x2388.png"
+      media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-2388x1668.png"
+      media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" />
+
+    <!-- iPad Pro 12.9" (3-6 gen) -->
+    <link rel="apple-touch-startup-image" href="/splash/launch-2048x2732.png"
+      media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-2732x2048.png"
+      media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" />
+
+    <!-- iPad Pro 13" (M4) -->
+    <link rel="apple-touch-startup-image" href="/splash/launch-2064x2752.png"
+      media="screen and (device-width: 1032px) and (device-height: 1376px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/launch-2752x2064.png"
+      media="screen and (device-width: 1032px) and (device-height: 1376px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" />
+    <!-- Fetch the splash icon during HTML parse, long before the React bundle
+         executes — otherwise an installed iOS PWA paints the live splash with a
+         blank hole where the icon belongs until the image arrives. -->
+    <link rel="preload" href="/icon-512.png" as="image" fetchpriority="high" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <!-- Boot splash: painted straight from HTML so the trampoline bounce starts
+         the moment the page renders — long before the React bundle downloads
+         and boots (on a cold PWA launch the static iOS launch image used to sit
+         frozen for ~1s while the app loaded). Styles are self-contained because
+         index.css is not loaded yet at this point. React's <SplashScreen> does
+         NOT render its own copy — it only times the fade-out and removes this
+         node, so it is the same DOM the whole time and there is no handoff snap
+         mid-bounce.
+         Loading phase (user request): the /splash/launch-*.png images are now
+         PLAIN solid dark (#050505) and this overlay first shows only a spinner
+         (#boot-splash-loader); the icon+title content stays hidden until the
+         icon image and the display fonts are actually loaded (inline script
+         adds .ready, 2.5s safety timeout). Black + loading circle on every
+         device until the real splash can render — no static/live content
+         matching, so there is nothing to visually "stick" or jump. -->
+    <style>
+      #boot-splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;
+        background:radial-gradient(ellipse 70% 45% at 15% -5%,hsl(199 95.5% 73.9% / .07) 0%,transparent 60%),
+                   radial-gradient(ellipse 50% 40% at 90% 0%,hsl(234 89.5% 73.9% / .05) 0%,transparent 55%),
+                   hsl(0 0% 2%)}
+      html:not(.dark) #boot-splash{
+        background:radial-gradient(ellipse 70% 45% at 15% -5%,hsl(200 98% 39.4% / .10) 0%,transparent 60%),
+                   radial-gradient(ellipse 50% 40% at 90% 0%,hsl(239 83.5% 66.7% / .07) 0%,transparent 55%),
+                   hsl(0 0% 100%)}
+      #boot-splash-loader{position:absolute;left:50%;top:50%;width:2.25rem;height:2.25rem;margin:-1.125rem 0 0 -1.125rem;
+        border-radius:9999px;border:3px solid hsl(199 95.5% 73.9% / .2);border-top-color:hsl(199 95.5% 73.9%);
+        animation:boot-spin .8s linear infinite}
+      html:not(.dark) #boot-splash-loader{border-color:hsl(200 98% 39.4% / .2);border-top-color:hsl(200 98% 39.4%)}
+      #boot-splash.ready #boot-splash-loader{display:none}
+      #boot-splash-group{display:flex;flex-direction:column;align-items:center;gap:1.5rem;visibility:hidden}
+      #boot-splash.ready #boot-splash-group{visibility:visible}
+      #boot-splash-stage{position:relative;display:flex;justify-content:center;width:9rem;height:7.6rem}
+      #boot-splash.ready #boot-splash-stage{animation:boot-pop .5s cubic-bezier(.23,1,.32,1) both}
+      #boot-splash-glow{position:absolute;left:50%;top:2.6rem;width:17rem;height:17rem;margin:-8.5rem 0 0 -8.5rem;
+        border-radius:9999px;pointer-events:none;
+        background:radial-gradient(circle,hsl(199 95.5% 73.9% / .13) 0%,transparent 62%)}
+      html:not(.dark) #boot-splash-glow{background:radial-gradient(circle,hsl(200 98% 39.4% / .08) 0%,transparent 62%)}
+      #boot-splash-icon{position:relative;width:6rem;height:6rem;border-radius:1.5rem;-webkit-user-select:none;user-select:none;
+        box-shadow:0 0 0 1px hsl(0 0% 100% / .1),0 8px 20px -8px hsl(199 95.5% 73.9% / .35),0 25px 50px -12px hsl(199 95.5% 73.9% / .25);
+        animation:boot-splash-bounce .95s infinite;transform-origin:center bottom}
+      html:not(.dark) #boot-splash-icon{box-shadow:0 0 0 1px hsl(0 0% 0% / .05),0 25px 50px -12px hsl(200 98% 39.4% / .25)}
+      #boot-splash-ground{position:absolute;bottom:0;left:50%;width:4.9rem;height:.8rem;margin-left:-2.45rem;
+        border-radius:9999px;filter:blur(3px);
+        background:radial-gradient(50% 50% at 50% 50%,hsl(199 95.5% 73.9% / .3) 0%,transparent 72%);
+        animation:boot-ground .95s infinite}
+      html:not(.dark) #boot-splash-ground{background:radial-gradient(50% 50% at 50% 50%,hsl(210 30% 10% / .22) 0%,transparent 72%)}
+      #boot-splash-text{display:flex;flex-direction:column;align-items:center;gap:.7rem}
+      #boot-splash.ready #boot-splash-text{animation:boot-fade-in-up .45s cubic-bezier(.23,1,.32,1) .07s both}
+      #boot-splash-title{margin:0;font-family:'Inter',sans-serif;font-weight:800;font-size:clamp(2.15rem,9vw,2.6rem);line-height:1.02;
+        letter-spacing:-0.035em;color:hsl(180 6.7% 97.1%)}
+      html:not(.dark) #boot-splash-title{color:hsl(210 33.3% 5.9%)}
+      #boot-splash-title span{padding:.1em .08em;margin:-.1em -.08em;
+        background:linear-gradient(135deg,hsl(217 91% 60%) 0%,hsl(239 84% 67%) 100%);
+        -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+      html:not(.dark) #boot-splash-title span{background:linear-gradient(135deg,hsl(221 83% 53%) 0%,hsl(239 84% 62%) 100%);
+        -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+      #boot-splash-tagline{margin:0;font-family:'Inter',sans-serif;font-size:10px;font-weight:500;
+        letter-spacing:.22em;text-transform:uppercase;color:hsl(216 6.9% 57.5% / .7);
+        font-feature-settings:"liga" 0,"calt" 0;font-variant-ligatures:none}
+      html:not(.dark) #boot-splash-tagline{color:hsl(211 11.1% 44.1% / .75)}
+      #boot-splash-tagline .bs-dot{color:hsl(217 91% 60% / .9);margin:0 .1em}
+      html:not(.dark) #boot-splash-tagline .bs-dot{color:hsl(221 83% 53% / .8)}
+      @keyframes boot-spin{to{transform:rotate(360deg)}}
+      @keyframes boot-pop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+      @keyframes boot-fade-in-up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes boot-splash-bounce{
+        0%,100%{transform:translateY(0) scaleX(1) scaleY(1);animation-timing-function:cubic-bezier(.33,0,.4,1)}
+        45%{transform:translateY(-26px) scaleX(.97) scaleY(1.03);animation-timing-function:cubic-bezier(.6,0,.67,1)}
+        90%{transform:translateY(0) scaleX(1.05) scaleY(.95)}}
+      @keyframes boot-ground{
+        0%,100%{transform:scaleX(1.05);opacity:.95;animation-timing-function:cubic-bezier(.33,0,.4,1)}
+        45%{transform:scaleX(.66);opacity:.45;animation-timing-function:cubic-bezier(.6,0,.67,1)}
+        90%{transform:scaleX(1.16);opacity:1}}
+      @media (prefers-reduced-motion:reduce){
+        #boot-splash-icon,#boot-splash-ground{animation:none}
+        #boot-splash-ground{opacity:.8}
+        #boot-splash.ready #boot-splash-stage,#boot-splash.ready #boot-splash-text{animation:none}}
+    </style>
+    <div id="boot-splash" data-testid="splash-screen" aria-hidden="true">
+      <div id="boot-splash-loader"></div>
+      <div id="boot-splash-group">
+        <div id="boot-splash-stage">
+          <div id="boot-splash-glow"></div>
+          <img id="boot-splash-icon" src="/icon-512.png" alt="" draggable="false" />
+          <div id="boot-splash-ground"></div>
+        </div>
+        <div id="boot-splash-text">
+          <h1 id="boot-splash-title">Trampoline <span>Note</span></h1>
+          <p id="boot-splash-tagline">Jump <span class="bs-dot">·</span> Log <span class="bs-dot">·</span> Progress</p>
+        </div>
+      </div>
+    </div>
+    <!-- Splash loading gate, runs during parse (all devices): keep the spinner
+         until the icon image AND the display fonts are actually loaded, then
+         add .ready to swap spinner → animated splash content. 2.5s safety
+         timeout so a stalled asset can never hold the spinner forever, and a
+         15s dead-man fade in case the app bundle itself never boots. -->
+    <script>
+      (function () {
+        var splash = document.getElementById("boot-splash");
+        var icon = document.getElementById("boot-splash-icon");
+        if (!splash || !icon) return;
+        var revealed = false;
+        function reveal() {
+          if (revealed) return;
+          revealed = true;
+          splash.classList.add("ready");
+        }
+        var iconDone = icon.complete && icon.naturalWidth > 0;
+        var fontsDone = false;
+        function check() { if (iconDone && fontsDone) reveal(); }
+        if (!iconDone) {
+          var onIcon = function () { iconDone = true; check(); };
+          icon.addEventListener("load", onIcon);
+          icon.addEventListener("error", onIcon);
+        }
+        if (document.fonts && document.fonts.load) {
+          var fontsOk = function () { fontsDone = true; check(); };
+          Promise.all([
+            document.fonts.load("800 1em 'Inter'"),
+            document.fonts.load("500 1em 'Inter'"),
+          ]).then(fontsOk, fontsOk);
+        } else {
+          fontsDone = true;
+        }
+        check();
+        setTimeout(reveal, 2500);
+        // Dead-man fallback: if the app bundle never boots (network failure,
+        // crash before mount), don't spin/bounce forever — self-fade after 15s.
+        // Harmless no-op when React has already removed the node.
+        setTimeout(function () {
+          if (!document.getElementById("boot-splash")) return;
+          splash.style.transition = "opacity .5s ease-out";
+          splash.style.opacity = "0";
+          splash.style.pointerEvents = "none";
+          setTimeout(function () { splash.remove(); }, 500);
+        }, 15000);
+      })();
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo",
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["node"],
+    "noCheck": true,
+    "paths": {
+      "@shared/*": ["../../lib/trampoline-shared/src/*"]
+    }
+  },
+  "include": ["src"],
+  "references": [
+    {
+      "path": "../../lib/db"
+    },
+    {
+      "path": "../../lib/trampoline-shared"
+    },
+    {
+      "path": "../../lib/api-zod"
+    }
+  ]
+}
