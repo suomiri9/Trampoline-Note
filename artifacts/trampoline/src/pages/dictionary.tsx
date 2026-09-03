@@ -9,7 +9,7 @@ import { Search } from "lucide-react";
 // The shared skills & drills dictionary, athlete-facing only.
 // Everyone can browse/search, adopt entries, and suggest corrections.
 // Admin controls (create/edit/archive/import/review/image) live on
-// /dictionary-admin and are never shown here, even to the owner.
+// the separate Dictionary Admin artifact and are never shown here.
 export default function DictionaryPage() {
   const [searchQuery, setSearchQuery] = useState("");
 

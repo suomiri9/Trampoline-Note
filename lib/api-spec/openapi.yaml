@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: dictionary
+    description: Shared trampoline skills dictionary
 paths:
   /healthz:
     get:
@@ -24,7 +26,278 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /admin/dictionary:
+    get:
+      operationId: listDictionaryEntries
+      tags: [dictionary]
+      summary: List dictionary entries
+      responses:
+        "200":
+          description: Dictionary entries visible to the signed-in user
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DictionaryEntry"
+  /dictionary:
+    post:
+      operationId: createDictionaryEntry
+      tags: [dictionary]
+      summary: Create a dictionary entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DictionaryEntryInput"
+      responses:
+        "201":
+          description: Created entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DictionaryEntry"
+        "400":
+          description: Invalid entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /dictionary/import-library/preview:
+    get:
+      operationId: getDictionaryImportPreview
+      tags: [dictionary]
+      summary: Preview importing the owner's active library
+      responses:
+        "200":
+          description: Import candidates and counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DictionaryImportPreview"
+  /dictionary/import-library:
+    post:
+      operationId: importDictionaryLibrary
+      tags: [dictionary]
+      summary: Import the owner's active library into the dictionary
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DictionaryImportResult"
+  /dictionary/{id}:
+    put:
+      operationId: updateDictionaryEntry
+      tags: [dictionary]
+      summary: Update a dictionary entry
+      parameters:
+        - $ref: "#/components/parameters/DictionaryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DictionaryEntryUpdate"
+      responses:
+        "200":
+          description: Updated entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DictionaryEntry"
+        "400":
+          description: Invalid entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Entry not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /dictionary/{id}/image/generate:
+    post:
+      operationId: generateDictionaryImage
+      tags: [dictionary]
+      summary: Generate a private draft pose sequence image
+      parameters:
+        - $ref: "#/components/parameters/DictionaryId"
+      responses:
+        "200":
+          description: Entry with draft image metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DictionaryEntry"
+        "404":
+          description: Entry not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: Image generation unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /dictionary/{id}/image/approve:
+    post:
+      operationId: approveDictionaryImage
+      tags: [dictionary]
+      summary: Approve the draft image
+      parameters:
+        - $ref: "#/components/parameters/DictionaryId"
+      responses:
+        "200":
+          description: Entry with approved image metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DictionaryEntry"
+        "400":
+          description: No draft image to approve
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Entry not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /dictionary/{id}/image/remove:
+    post:
+      operationId: removeDictionaryImage
+      tags: [dictionary]
+      summary: Remove a draft or approved image
+      parameters:
+        - $ref: "#/components/parameters/DictionaryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DictionaryImageRemoveInput"
+      responses:
+        "200":
+          description: Entry with image metadata updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DictionaryEntry"
+        "400":
+          description: Invalid image target
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Entry not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /dictionary/{id}/image/draft:
+    get:
+      operationId: getDictionaryDraftImage
+      tags: [dictionary]
+      summary: Stream a private draft image
+      parameters:
+        - $ref: "#/components/parameters/DictionaryId"
+      responses:
+        "200":
+          description: Draft image bytes
+          content:
+            image/png: {}
+            image/jpeg: {}
+            image/webp: {}
+        "404":
+          description: Image not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /dictionary/{id}/image/approved:
+    get:
+      operationId: getDictionaryApprovedImage
+      tags: [dictionary]
+      summary: Stream an approved image
+      parameters:
+        - $ref: "#/components/parameters/DictionaryId"
+      responses:
+        "200":
+          description: Approved image bytes
+          content:
+            image/png: {}
+            image/jpeg: {}
+            image/webp: {}
+        "404":
+          description: Image not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /dictionary/suggestions:
+    get:
+      operationId: listDictionarySuggestions
+      tags: [dictionary]
+      summary: List pending dictionary suggestions
+      responses:
+        "200":
+          description: Pending suggestions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DictionarySuggestion"
+  /dictionary/suggestions/{id}/resolve:
+    post:
+      operationId: resolveDictionarySuggestion
+      tags: [dictionary]
+      summary: Accept or reject a suggestion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DictionarySuggestionResolution"
+      responses:
+        "200":
+          description: Resolved suggestion and updated entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DictionarySuggestionResolutionResult"
+        "404":
+          description: Suggestion not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
+  parameters:
+    DictionaryId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: number
+        minimum: 1
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +306,142 @@ components:
           type: string
       required:
         - status
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+    DictionaryEntry:
+      type: object
+      properties:
+        id: { type: number }
+        name: { type: string }
+        shortName: { type: string }
+        numeric: { type: ["string", "null"] }
+        isDrill: { type: number, enum: [0, 1] }
+        difficulty: { type: number }
+        description: { type: ["string", "null"] }
+        altNames:
+          type: array
+          items: { type: string }
+        archived: { type: number, enum: [0, 1] }
+        sortOrder: { type: ["number", "null"] }
+        draftImageKey: { type: ["string", "null"] }
+        draftImageContentType: { type: ["string", "null"] }
+        draftImagePrompt: { type: ["string", "null"] }
+        draftImageModel: { type: ["string", "null"] }
+        draftImageCreatedAt: { type: ["string", "null"], format: date-time }
+        approvedImageKey: { type: ["string", "null"] }
+        approvedImageContentType: { type: ["string", "null"] }
+        approvedImagePrompt: { type: ["string", "null"] }
+        approvedImageModel: { type: ["string", "null"] }
+        approvedImageApprovedAt: { type: ["string", "null"], format: date-time }
+      required: [id, name, shortName, isDrill, difficulty, altNames, archived]
+    DictionaryEntryInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        shortName: { type: string, minLength: 1 }
+        numeric: { type: ["string", "null"] }
+        isDrill: { type: number, enum: [0, 1] }
+        difficulty: { type: number, minimum: 0, maximum: 30 }
+        description: { type: ["string", "null"] }
+        archived: { type: number, enum: [0, 1] }
+        sortOrder: { type: ["number", "null"] }
+      required: [name, shortName]
+    DictionaryEntryUpdate:
+      type: object
+      description: Any subset of editable dictionary fields.
+      properties:
+        name: { type: string, minLength: 1 }
+        shortName: { type: string, minLength: 1 }
+        numeric: { type: ["string", "null"] }
+        isDrill: { type: number, enum: [0, 1] }
+        difficulty: { type: number, minimum: 0, maximum: 30 }
+        description: { type: ["string", "null"] }
+        archived: { type: number, enum: [0, 1] }
+        sortOrder: { type: ["number", "null"] }
+    DictionaryImportCandidate:
+      type: object
+      required: [skillId, name, shortName, isDrill, difficulty, status]
+      properties:
+        skillId: { type: number }
+        name: { type: string }
+        shortName: { type: string }
+        isDrill: { type: number, enum: [0, 1] }
+        difficulty: { type: number, minimum: 0, maximum: 30 }
+        sortOrder: { type: ["number", "null"] }
+        status: { type: string, enum: [new, linked, matched] }
+        dictionaryEntryId: { type: ["number", "null"] }
+    DictionaryImportSkipped:
+      type: object
+      required: [skillId, name, reason]
+      properties:
+        skillId: { type: number }
+        name: { type: string }
+        reason:
+          type: string
+          enum: [archived, not-a-skill-or-drill, shape-group, invalid, duplicate]
+    DictionaryImportPreview:
+      type: object
+      required: [candidates, skipped, counts]
+      properties:
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/DictionaryImportCandidate"
+        skipped:
+          type: array
+          items:
+            $ref: "#/components/schemas/DictionaryImportSkipped"
+        counts:
+          type: object
+          required: [total, toAdd, reused, skipped]
+          properties:
+            total: { type: number }
+            toAdd: { type: number }
+            reused: { type: number }
+            skipped: { type: number }
+    DictionaryImportResult:
+      type: object
+      required: [total, added, reused, linked, skipped]
+      properties:
+        total: { type: number }
+        added: { type: number }
+        reused: { type: number }
+        linked: { type: number }
+        skipped: { type: number }
+    DictionaryImageRemoveInput:
+      type: object
+      properties:
+        target: { type: string, enum: [draft, approved, all] }
+      required: [target]
+    DictionarySuggestion:
+      type: object
+      properties:
+        id: { type: number }
+        entryId: { type: number }
+        suggestedName: { type: string }
+        note: { type: ["string", "null"] }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+        entryName: { type: string }
+        submitterName: { type: ["string", "null"] }
+      required: [id, entryId, suggestedName, status, createdAt, entryName]
+    DictionarySuggestionResolution:
+      type: object
+      properties:
+        action: { type: string, enum: [accept, reject] }
+      required: [action]
+    DictionarySuggestionResolutionResult:
+      type: object
+      properties:
+        suggestion:
+          $ref: "#/components/schemas/DictionarySuggestion"
+        entry:
+          oneOf:
+            - $ref: "#/components/schemas/DictionaryEntry"
+            - type: "null"
+      required: [suggestion, entry]
 

@@ -6,4 +6,28 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './dictionaryEntry';
+export * from './dictionaryEntryArchived';
+export * from './dictionaryEntryInput';
+export * from './dictionaryEntryInputArchived';
+export * from './dictionaryEntryInputIsDrill';
+export * from './dictionaryEntryIsDrill';
+export * from './dictionaryEntryUpdate';
+export * from './dictionaryEntryUpdateArchived';
+export * from './dictionaryEntryUpdateIsDrill';
+export * from './dictionaryImageRemoveInput';
+export * from './dictionaryImageRemoveInputTarget';
+export * from './dictionaryImportCandidate';
+export * from './dictionaryImportCandidateIsDrill';
+export * from './dictionaryImportCandidateStatus';
+export * from './dictionaryImportPreview';
+export * from './dictionaryImportPreviewCounts';
+export * from './dictionaryImportResult';
+export * from './dictionaryImportSkipped';
+export * from './dictionaryImportSkippedReason';
+export * from './dictionarySuggestion';
+export * from './dictionarySuggestionResolution';
+export * from './dictionarySuggestionResolutionAction';
+export * from './dictionarySuggestionResolutionResult';
+export * from './error';
 export * from './healthStatus';

@@ -11,6 +11,56 @@ env = { "CI" = "true" }
 [workflows]
 runButton = "Project"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "dictionary-admin"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "api-server"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "athlete-app"
+
+[[workflows.workflow]]
+name = "dictionary-admin"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=20652 BASE_PATH=/dictionary-admin/ pnpm --filter @workspace/dictionary-admin run typecheck && PORT=20652 BASE_PATH=/dictionary-admin/ pnpm --filter @workspace/dictionary-admin run build"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "api-server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run typecheck && pnpm --filter @workspace/api-server test"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "athlete-app"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/trampoline run typecheck && PORT=21915 BASE_PATH=/ pnpm --filter @workspace/trampoline run build"
+
+[workflows.workflow.metadata]
+isValidation = true
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true

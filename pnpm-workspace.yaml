@@ -36,6 +36,7 @@ minimumReleaseAgeExclude:
 
 packages:
   - artifacts/*
+  - .migration-backup/artifacts/rebound
   - lib/*
   - lib/integrations/*
   - scripts

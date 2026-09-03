@@ -240,6 +240,17 @@ export function registerRoutes(app: Express): void {
     }
   });
 
+  // The separate owner workspace uses this route rather than the athlete list.
+  // The server gate is intentional even though the browser also hides the UI.
+  app.get("/api/admin/dictionary", isAdmin, async (_req, res) => {
+    try {
+      res.json(await storage.getDictionaryEntries(true));
+    } catch (err) {
+      console.error("Admin dictionary list error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.post(api.dictionary.create.path, isAdmin, async (req, res) => {
     try {
       const input = api.dictionary.create.input.parse(req.body);

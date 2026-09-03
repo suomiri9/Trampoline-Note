@@ -6,21 +6,35 @@
  * OpenAPI spec version: 0.1.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
+  DictionaryEntry,
+  DictionaryEntryInput,
+  DictionaryEntryUpdate,
+  DictionaryImageRemoveInput,
+  DictionaryImportPreview,
+  DictionaryImportResult,
+  DictionarySuggestion,
+  DictionarySuggestionResolution,
+  DictionarySuggestionResolutionResult,
+  Error,
   HealthStatus
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
-import type { ErrorType } from '../custom-fetch';
+import type { ErrorType , BodyType } from '../custom-fetch';
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -123,4 +137,889 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
 
 
+
+export const getListDictionaryEntriesUrl = () => {
+
+
+
+
+  return `/api/admin/dictionary`
+}
+
+/**
+ * @summary List dictionary entries
+ */
+export const listDictionaryEntries = async ( options?: Parameters<typeof customFetch>[1]): Promise<DictionaryEntry[]> => {
+
+  return customFetch<DictionaryEntry[]>(getListDictionaryEntriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDictionaryEntriesQueryKey = () => {
+    return [
+    `/api/admin/dictionary`
+    ] as const;
+    }
+
+
+export const getListDictionaryEntriesQueryOptions = <TData = Awaited<ReturnType<typeof listDictionaryEntries>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDictionaryEntries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDictionaryEntriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDictionaryEntries>>> = ({ signal }) => listDictionaryEntries({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDictionaryEntries>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDictionaryEntriesQueryResult = NonNullable<Awaited<ReturnType<typeof listDictionaryEntries>>>
+export type ListDictionaryEntriesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List dictionary entries
+ */
+
+export function useListDictionaryEntries<TData = Awaited<ReturnType<typeof listDictionaryEntries>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDictionaryEntries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDictionaryEntriesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateDictionaryEntryUrl = () => {
+
+
+
+
+  return `/api/dictionary`
+}
+
+/**
+ * @summary Create a dictionary entry
+ */
+export const createDictionaryEntry = async (dictionaryEntryInput: DictionaryEntryInput, options?: Parameters<typeof customFetch>[1]): Promise<DictionaryEntry> => {
+
+  return customFetch<DictionaryEntry>(getCreateDictionaryEntryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(dictionaryEntryInput)
+  }
+);}
+
+
+
+
+
+export const getCreateDictionaryEntryMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDictionaryEntry>>, TError,{data: BodyType<DictionaryEntryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createDictionaryEntry>>, TError,{data: BodyType<DictionaryEntryInput>}, TContext> => {
+
+const mutationKey = ['createDictionaryEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createDictionaryEntry>>, {data: BodyType<DictionaryEntryInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createDictionaryEntry(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateDictionaryEntryMutationResult = NonNullable<Awaited<ReturnType<typeof createDictionaryEntry>>>
+    export type CreateDictionaryEntryMutationBody = BodyType<DictionaryEntryInput>
+    export type CreateDictionaryEntryMutationError = ErrorType<Error>
+
+    /**
+ * @summary Create a dictionary entry
+ */
+export const useCreateDictionaryEntry = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDictionaryEntry>>, TError,{data: BodyType<DictionaryEntryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createDictionaryEntry>>,
+        TError,
+        {data: BodyType<DictionaryEntryInput>},
+        TContext
+      > => {
+      return useMutation(getCreateDictionaryEntryMutationOptions(options));
+    }
+
+export const getGetDictionaryImportPreviewUrl = () => {
+
+
+
+
+  return `/api/dictionary/import-library/preview`
+}
+
+/**
+ * @summary Preview importing the owner's active library
+ */
+export const getDictionaryImportPreview = async ( options?: Parameters<typeof customFetch>[1]): Promise<DictionaryImportPreview> => {
+
+  return customFetch<DictionaryImportPreview>(getGetDictionaryImportPreviewUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDictionaryImportPreviewQueryKey = () => {
+    return [
+    `/api/dictionary/import-library/preview`
+    ] as const;
+    }
+
+
+export const getGetDictionaryImportPreviewQueryOptions = <TData = Awaited<ReturnType<typeof getDictionaryImportPreview>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDictionaryImportPreview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDictionaryImportPreviewQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDictionaryImportPreview>>> = ({ signal }) => getDictionaryImportPreview({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDictionaryImportPreview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDictionaryImportPreviewQueryResult = NonNullable<Awaited<ReturnType<typeof getDictionaryImportPreview>>>
+export type GetDictionaryImportPreviewQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Preview importing the owner's active library
+ */
+
+export function useGetDictionaryImportPreview<TData = Awaited<ReturnType<typeof getDictionaryImportPreview>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDictionaryImportPreview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDictionaryImportPreviewQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getImportDictionaryLibraryUrl = () => {
+
+
+
+
+  return `/api/dictionary/import-library`
+}
+
+/**
+ * @summary Import the owner's active library into the dictionary
+ */
+export const importDictionaryLibrary = async ( options?: Parameters<typeof customFetch>[1]): Promise<DictionaryImportResult> => {
+
+  return customFetch<DictionaryImportResult>(getImportDictionaryLibraryUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getImportDictionaryLibraryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importDictionaryLibrary>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importDictionaryLibrary>>, TError,void, TContext> => {
+
+const mutationKey = ['importDictionaryLibrary'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importDictionaryLibrary>>, void> = () => {
+
+
+          return  importDictionaryLibrary(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportDictionaryLibraryMutationResult = NonNullable<Awaited<ReturnType<typeof importDictionaryLibrary>>>
+
+    export type ImportDictionaryLibraryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Import the owner's active library into the dictionary
+ */
+export const useImportDictionaryLibrary = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importDictionaryLibrary>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importDictionaryLibrary>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getImportDictionaryLibraryMutationOptions(options));
+    }
+
+export const getUpdateDictionaryEntryUrl = (id: number,) => {
+
+
+
+
+  return `/api/dictionary/${id}`
+}
+
+/**
+ * @summary Update a dictionary entry
+ */
+export const updateDictionaryEntry = async (id: number,
+    dictionaryEntryUpdate: DictionaryEntryUpdate, options?: Parameters<typeof customFetch>[1]): Promise<DictionaryEntry> => {
+
+  return customFetch<DictionaryEntry>(getUpdateDictionaryEntryUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(dictionaryEntryUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateDictionaryEntryMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDictionaryEntry>>, TError,{id: number;data: BodyType<DictionaryEntryUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateDictionaryEntry>>, TError,{id: number;data: BodyType<DictionaryEntryUpdate>}, TContext> => {
+
+const mutationKey = ['updateDictionaryEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateDictionaryEntry>>, {id: number;data: BodyType<DictionaryEntryUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateDictionaryEntry(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateDictionaryEntryMutationResult = NonNullable<Awaited<ReturnType<typeof updateDictionaryEntry>>>
+    export type UpdateDictionaryEntryMutationBody = BodyType<DictionaryEntryUpdate>
+    export type UpdateDictionaryEntryMutationError = ErrorType<Error>
+
+    /**
+ * @summary Update a dictionary entry
+ */
+export const useUpdateDictionaryEntry = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDictionaryEntry>>, TError,{id: number;data: BodyType<DictionaryEntryUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateDictionaryEntry>>,
+        TError,
+        {id: number;data: BodyType<DictionaryEntryUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateDictionaryEntryMutationOptions(options));
+    }
+
+export const getGenerateDictionaryImageUrl = (id: number,) => {
+
+
+
+
+  return `/api/dictionary/${id}/image/generate`
+}
+
+/**
+ * @summary Generate a private draft pose sequence image
+ */
+export const generateDictionaryImage = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<DictionaryEntry> => {
+
+  return customFetch<DictionaryEntry>(getGenerateDictionaryImageUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getGenerateDictionaryImageMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateDictionaryImage>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateDictionaryImage>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['generateDictionaryImage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateDictionaryImage>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  generateDictionaryImage(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateDictionaryImageMutationResult = NonNullable<Awaited<ReturnType<typeof generateDictionaryImage>>>
+
+    export type GenerateDictionaryImageMutationError = ErrorType<Error>
+
+    /**
+ * @summary Generate a private draft pose sequence image
+ */
+export const useGenerateDictionaryImage = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateDictionaryImage>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateDictionaryImage>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getGenerateDictionaryImageMutationOptions(options));
+    }
+
+export const getApproveDictionaryImageUrl = (id: number,) => {
+
+
+
+
+  return `/api/dictionary/${id}/image/approve`
+}
+
+/**
+ * @summary Approve the draft image
+ */
+export const approveDictionaryImage = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<DictionaryEntry> => {
+
+  return customFetch<DictionaryEntry>(getApproveDictionaryImageUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getApproveDictionaryImageMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveDictionaryImage>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveDictionaryImage>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['approveDictionaryImage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveDictionaryImage>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  approveDictionaryImage(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveDictionaryImageMutationResult = NonNullable<Awaited<ReturnType<typeof approveDictionaryImage>>>
+
+    export type ApproveDictionaryImageMutationError = ErrorType<Error>
+
+    /**
+ * @summary Approve the draft image
+ */
+export const useApproveDictionaryImage = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveDictionaryImage>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveDictionaryImage>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getApproveDictionaryImageMutationOptions(options));
+    }
+
+export const getRemoveDictionaryImageUrl = (id: number,) => {
+
+
+
+
+  return `/api/dictionary/${id}/image/remove`
+}
+
+/**
+ * @summary Remove a draft or approved image
+ */
+export const removeDictionaryImage = async (id: number,
+    dictionaryImageRemoveInput: DictionaryImageRemoveInput, options?: Parameters<typeof customFetch>[1]): Promise<DictionaryEntry> => {
+
+  return customFetch<DictionaryEntry>(getRemoveDictionaryImageUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(dictionaryImageRemoveInput)
+  }
+);}
+
+
+
+
+
+export const getRemoveDictionaryImageMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeDictionaryImage>>, TError,{id: number;data: BodyType<DictionaryImageRemoveInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeDictionaryImage>>, TError,{id: number;data: BodyType<DictionaryImageRemoveInput>}, TContext> => {
+
+const mutationKey = ['removeDictionaryImage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeDictionaryImage>>, {id: number;data: BodyType<DictionaryImageRemoveInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  removeDictionaryImage(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveDictionaryImageMutationResult = NonNullable<Awaited<ReturnType<typeof removeDictionaryImage>>>
+    export type RemoveDictionaryImageMutationBody = BodyType<DictionaryImageRemoveInput>
+    export type RemoveDictionaryImageMutationError = ErrorType<Error>
+
+    /**
+ * @summary Remove a draft or approved image
+ */
+export const useRemoveDictionaryImage = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeDictionaryImage>>, TError,{id: number;data: BodyType<DictionaryImageRemoveInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeDictionaryImage>>,
+        TError,
+        {id: number;data: BodyType<DictionaryImageRemoveInput>},
+        TContext
+      > => {
+      return useMutation(getRemoveDictionaryImageMutationOptions(options));
+    }
+
+export const getGetDictionaryDraftImageUrl = (id: number,) => {
+
+
+
+
+  return `/api/dictionary/${id}/image/draft`
+}
+
+/**
+ * @summary Stream a private draft image
+ */
+export const getDictionaryDraftImage = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetDictionaryDraftImageUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDictionaryDraftImageQueryKey = (id: number,) => {
+    return [
+    `/api/dictionary/${id}/image/draft`
+    ] as const;
+    }
+
+
+export const getGetDictionaryDraftImageQueryOptions = <TData = Awaited<ReturnType<typeof getDictionaryDraftImage>>, TError = ErrorType<Error>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDictionaryDraftImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDictionaryDraftImageQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDictionaryDraftImage>>> = ({ signal }) => getDictionaryDraftImage(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDictionaryDraftImage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDictionaryDraftImageQueryResult = NonNullable<Awaited<ReturnType<typeof getDictionaryDraftImage>>>
+export type GetDictionaryDraftImageQueryError = ErrorType<Error>
+
+
+/**
+ * @summary Stream a private draft image
+ */
+
+export function useGetDictionaryDraftImage<TData = Awaited<ReturnType<typeof getDictionaryDraftImage>>, TError = ErrorType<Error>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDictionaryDraftImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDictionaryDraftImageQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetDictionaryApprovedImageUrl = (id: number,) => {
+
+
+
+
+  return `/api/dictionary/${id}/image/approved`
+}
+
+/**
+ * @summary Stream an approved image
+ */
+export const getDictionaryApprovedImage = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetDictionaryApprovedImageUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDictionaryApprovedImageQueryKey = (id: number,) => {
+    return [
+    `/api/dictionary/${id}/image/approved`
+    ] as const;
+    }
+
+
+export const getGetDictionaryApprovedImageQueryOptions = <TData = Awaited<ReturnType<typeof getDictionaryApprovedImage>>, TError = ErrorType<Error>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDictionaryApprovedImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDictionaryApprovedImageQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDictionaryApprovedImage>>> = ({ signal }) => getDictionaryApprovedImage(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDictionaryApprovedImage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDictionaryApprovedImageQueryResult = NonNullable<Awaited<ReturnType<typeof getDictionaryApprovedImage>>>
+export type GetDictionaryApprovedImageQueryError = ErrorType<Error>
+
+
+/**
+ * @summary Stream an approved image
+ */
+
+export function useGetDictionaryApprovedImage<TData = Awaited<ReturnType<typeof getDictionaryApprovedImage>>, TError = ErrorType<Error>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDictionaryApprovedImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDictionaryApprovedImageQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListDictionarySuggestionsUrl = () => {
+
+
+
+
+  return `/api/dictionary/suggestions`
+}
+
+/**
+ * @summary List pending dictionary suggestions
+ */
+export const listDictionarySuggestions = async ( options?: Parameters<typeof customFetch>[1]): Promise<DictionarySuggestion[]> => {
+
+  return customFetch<DictionarySuggestion[]>(getListDictionarySuggestionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDictionarySuggestionsQueryKey = () => {
+    return [
+    `/api/dictionary/suggestions`
+    ] as const;
+    }
+
+
+export const getListDictionarySuggestionsQueryOptions = <TData = Awaited<ReturnType<typeof listDictionarySuggestions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDictionarySuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDictionarySuggestionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDictionarySuggestions>>> = ({ signal }) => listDictionarySuggestions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDictionarySuggestions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDictionarySuggestionsQueryResult = NonNullable<Awaited<ReturnType<typeof listDictionarySuggestions>>>
+export type ListDictionarySuggestionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List pending dictionary suggestions
+ */
+
+export function useListDictionarySuggestions<TData = Awaited<ReturnType<typeof listDictionarySuggestions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDictionarySuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDictionarySuggestionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getResolveDictionarySuggestionUrl = (id: number,) => {
+
+
+
+
+  return `/api/dictionary/suggestions/${id}/resolve`
+}
+
+/**
+ * @summary Accept or reject a suggestion
+ */
+export const resolveDictionarySuggestion = async (id: number,
+    dictionarySuggestionResolution: DictionarySuggestionResolution, options?: Parameters<typeof customFetch>[1]): Promise<DictionarySuggestionResolutionResult> => {
+
+  return customFetch<DictionarySuggestionResolutionResult>(getResolveDictionarySuggestionUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(dictionarySuggestionResolution)
+  }
+);}
+
+
+
+
+
+export const getResolveDictionarySuggestionMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveDictionarySuggestion>>, TError,{id: number;data: BodyType<DictionarySuggestionResolution>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveDictionarySuggestion>>, TError,{id: number;data: BodyType<DictionarySuggestionResolution>}, TContext> => {
+
+const mutationKey = ['resolveDictionarySuggestion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveDictionarySuggestion>>, {id: number;data: BodyType<DictionarySuggestionResolution>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  resolveDictionarySuggestion(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResolveDictionarySuggestionMutationResult = NonNullable<Awaited<ReturnType<typeof resolveDictionarySuggestion>>>
+    export type ResolveDictionarySuggestionMutationBody = BodyType<DictionarySuggestionResolution>
+    export type ResolveDictionarySuggestionMutationError = ErrorType<Error>
+
+    /**
+ * @summary Accept or reject a suggestion
+ */
+export const useResolveDictionarySuggestion = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveDictionarySuggestion>>, TError,{id: number;data: BodyType<DictionarySuggestionResolution>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resolveDictionarySuggestion>>,
+        TError,
+        {id: number;data: BodyType<DictionarySuggestionResolution>},
+        TContext
+      > => {
+      return useMutation(getResolveDictionarySuggestionMutationOptions(options));
+    }
 

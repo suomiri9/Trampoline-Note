@@ -17,3 +17,371 @@ export const HealthCheckResponse = zod.object({
 })
 
 
+/**
+ * @summary List dictionary entries
+ */
+export const ListDictionaryEntriesResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "shortName": zod.string(),
+  "numeric": zod.string().nullish(),
+  "isDrill": zod.union([zod.literal(0),zod.literal(1)]),
+  "difficulty": zod.number(),
+  "description": zod.string().nullish(),
+  "altNames": zod.array(zod.string()),
+  "archived": zod.union([zod.literal(0),zod.literal(1)]),
+  "sortOrder": zod.number().nullish(),
+  "draftImageKey": zod.string().nullish(),
+  "draftImageContentType": zod.string().nullish(),
+  "draftImagePrompt": zod.string().nullish(),
+  "draftImageModel": zod.string().nullish(),
+  "draftImageCreatedAt": zod.coerce.date().nullish(),
+  "approvedImageKey": zod.string().nullish(),
+  "approvedImageContentType": zod.string().nullish(),
+  "approvedImagePrompt": zod.string().nullish(),
+  "approvedImageModel": zod.string().nullish(),
+  "approvedImageApprovedAt": zod.coerce.date().nullish()
+})
+export const ListDictionaryEntriesResponse = zod.array(ListDictionaryEntriesResponseItem)
+
+
+/**
+ * @summary Create a dictionary entry
+ */
+
+
+export const createDictionaryEntryBodyDifficultyMin = 0;
+export const createDictionaryEntryBodyDifficultyMax = 30;
+
+
+
+export const CreateDictionaryEntryBody = zod.object({
+  "name": zod.string().min(1),
+  "shortName": zod.string().min(1),
+  "numeric": zod.string().nullish(),
+  "isDrill": zod.union([zod.literal(0),zod.literal(1)]).optional(),
+  "difficulty": zod.number().min(createDictionaryEntryBodyDifficultyMin).max(createDictionaryEntryBodyDifficultyMax).optional(),
+  "description": zod.string().nullish(),
+  "archived": zod.union([zod.literal(0),zod.literal(1)]).optional(),
+  "sortOrder": zod.number().nullish()
+})
+
+export const CreateDictionaryEntryResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "shortName": zod.string(),
+  "numeric": zod.string().nullish(),
+  "isDrill": zod.union([zod.literal(0),zod.literal(1)]),
+  "difficulty": zod.number(),
+  "description": zod.string().nullish(),
+  "altNames": zod.array(zod.string()),
+  "archived": zod.union([zod.literal(0),zod.literal(1)]),
+  "sortOrder": zod.number().nullish(),
+  "draftImageKey": zod.string().nullish(),
+  "draftImageContentType": zod.string().nullish(),
+  "draftImagePrompt": zod.string().nullish(),
+  "draftImageModel": zod.string().nullish(),
+  "draftImageCreatedAt": zod.coerce.date().nullish(),
+  "approvedImageKey": zod.string().nullish(),
+  "approvedImageContentType": zod.string().nullish(),
+  "approvedImagePrompt": zod.string().nullish(),
+  "approvedImageModel": zod.string().nullish(),
+  "approvedImageApprovedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Preview importing the owner's active library
+ */
+export const getDictionaryImportPreviewResponseCandidatesItemDifficultyMin = 0;
+export const getDictionaryImportPreviewResponseCandidatesItemDifficultyMax = 30;
+
+
+
+export const GetDictionaryImportPreviewResponse = zod.object({
+  "candidates": zod.array(zod.object({
+  "skillId": zod.number(),
+  "name": zod.string(),
+  "shortName": zod.string(),
+  "isDrill": zod.union([zod.literal(0),zod.literal(1)]),
+  "difficulty": zod.number().min(getDictionaryImportPreviewResponseCandidatesItemDifficultyMin).max(getDictionaryImportPreviewResponseCandidatesItemDifficultyMax),
+  "sortOrder": zod.number().nullish(),
+  "status": zod.enum(['new', 'linked', 'matched']),
+  "dictionaryEntryId": zod.number().nullish()
+})),
+  "skipped": zod.array(zod.object({
+  "skillId": zod.number(),
+  "name": zod.string(),
+  "reason": zod.enum(['archived', 'not-a-skill-or-drill', 'shape-group', 'invalid', 'duplicate'])
+})),
+  "counts": zod.object({
+  "total": zod.number(),
+  "toAdd": zod.number(),
+  "reused": zod.number(),
+  "skipped": zod.number()
+})
+})
+
+
+/**
+ * @summary Import the owner's active library into the dictionary
+ */
+export const ImportDictionaryLibraryResponse = zod.object({
+  "total": zod.number(),
+  "added": zod.number(),
+  "reused": zod.number(),
+  "linked": zod.number(),
+  "skipped": zod.number()
+})
+
+
+/**
+ * @summary Update a dictionary entry
+ */
+
+
+
+export const UpdateDictionaryEntryParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+
+
+export const updateDictionaryEntryBodyDifficultyMin = 0;
+export const updateDictionaryEntryBodyDifficultyMax = 30;
+
+
+
+export const UpdateDictionaryEntryBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "shortName": zod.string().min(1).optional(),
+  "numeric": zod.string().nullish(),
+  "isDrill": zod.union([zod.literal(0),zod.literal(1)]).optional(),
+  "difficulty": zod.number().min(updateDictionaryEntryBodyDifficultyMin).max(updateDictionaryEntryBodyDifficultyMax).optional(),
+  "description": zod.string().nullish(),
+  "archived": zod.union([zod.literal(0),zod.literal(1)]).optional(),
+  "sortOrder": zod.number().nullish()
+}).describe('Any subset of editable dictionary fields.')
+
+export const UpdateDictionaryEntryResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "shortName": zod.string(),
+  "numeric": zod.string().nullish(),
+  "isDrill": zod.union([zod.literal(0),zod.literal(1)]),
+  "difficulty": zod.number(),
+  "description": zod.string().nullish(),
+  "altNames": zod.array(zod.string()),
+  "archived": zod.union([zod.literal(0),zod.literal(1)]),
+  "sortOrder": zod.number().nullish(),
+  "draftImageKey": zod.string().nullish(),
+  "draftImageContentType": zod.string().nullish(),
+  "draftImagePrompt": zod.string().nullish(),
+  "draftImageModel": zod.string().nullish(),
+  "draftImageCreatedAt": zod.coerce.date().nullish(),
+  "approvedImageKey": zod.string().nullish(),
+  "approvedImageContentType": zod.string().nullish(),
+  "approvedImagePrompt": zod.string().nullish(),
+  "approvedImageModel": zod.string().nullish(),
+  "approvedImageApprovedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Generate a private draft pose sequence image
+ */
+
+
+
+export const GenerateDictionaryImageParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const GenerateDictionaryImageResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "shortName": zod.string(),
+  "numeric": zod.string().nullish(),
+  "isDrill": zod.union([zod.literal(0),zod.literal(1)]),
+  "difficulty": zod.number(),
+  "description": zod.string().nullish(),
+  "altNames": zod.array(zod.string()),
+  "archived": zod.union([zod.literal(0),zod.literal(1)]),
+  "sortOrder": zod.number().nullish(),
+  "draftImageKey": zod.string().nullish(),
+  "draftImageContentType": zod.string().nullish(),
+  "draftImagePrompt": zod.string().nullish(),
+  "draftImageModel": zod.string().nullish(),
+  "draftImageCreatedAt": zod.coerce.date().nullish(),
+  "approvedImageKey": zod.string().nullish(),
+  "approvedImageContentType": zod.string().nullish(),
+  "approvedImagePrompt": zod.string().nullish(),
+  "approvedImageModel": zod.string().nullish(),
+  "approvedImageApprovedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Approve the draft image
+ */
+
+
+
+export const ApproveDictionaryImageParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const ApproveDictionaryImageResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "shortName": zod.string(),
+  "numeric": zod.string().nullish(),
+  "isDrill": zod.union([zod.literal(0),zod.literal(1)]),
+  "difficulty": zod.number(),
+  "description": zod.string().nullish(),
+  "altNames": zod.array(zod.string()),
+  "archived": zod.union([zod.literal(0),zod.literal(1)]),
+  "sortOrder": zod.number().nullish(),
+  "draftImageKey": zod.string().nullish(),
+  "draftImageContentType": zod.string().nullish(),
+  "draftImagePrompt": zod.string().nullish(),
+  "draftImageModel": zod.string().nullish(),
+  "draftImageCreatedAt": zod.coerce.date().nullish(),
+  "approvedImageKey": zod.string().nullish(),
+  "approvedImageContentType": zod.string().nullish(),
+  "approvedImagePrompt": zod.string().nullish(),
+  "approvedImageModel": zod.string().nullish(),
+  "approvedImageApprovedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Remove a draft or approved image
+ */
+
+
+
+export const RemoveDictionaryImageParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const RemoveDictionaryImageBody = zod.object({
+  "target": zod.enum(['draft', 'approved', 'all'])
+})
+
+export const RemoveDictionaryImageResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "shortName": zod.string(),
+  "numeric": zod.string().nullish(),
+  "isDrill": zod.union([zod.literal(0),zod.literal(1)]),
+  "difficulty": zod.number(),
+  "description": zod.string().nullish(),
+  "altNames": zod.array(zod.string()),
+  "archived": zod.union([zod.literal(0),zod.literal(1)]),
+  "sortOrder": zod.number().nullish(),
+  "draftImageKey": zod.string().nullish(),
+  "draftImageContentType": zod.string().nullish(),
+  "draftImagePrompt": zod.string().nullish(),
+  "draftImageModel": zod.string().nullish(),
+  "draftImageCreatedAt": zod.coerce.date().nullish(),
+  "approvedImageKey": zod.string().nullish(),
+  "approvedImageContentType": zod.string().nullish(),
+  "approvedImagePrompt": zod.string().nullish(),
+  "approvedImageModel": zod.string().nullish(),
+  "approvedImageApprovedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Stream a private draft image
+ */
+
+
+
+export const GetDictionaryDraftImageParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const GetDictionaryDraftImageResponse = zod.unknown()
+
+
+/**
+ * @summary Stream an approved image
+ */
+
+
+
+export const GetDictionaryApprovedImageParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const GetDictionaryApprovedImageResponse = zod.unknown()
+
+
+/**
+ * @summary List pending dictionary suggestions
+ */
+export const ListDictionarySuggestionsResponseItem = zod.object({
+  "id": zod.number(),
+  "entryId": zod.number(),
+  "suggestedName": zod.string(),
+  "note": zod.string().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "entryName": zod.string(),
+  "submitterName": zod.string().nullish()
+})
+export const ListDictionarySuggestionsResponse = zod.array(ListDictionarySuggestionsResponseItem)
+
+
+/**
+ * @summary Accept or reject a suggestion
+ */
+
+
+
+export const ResolveDictionarySuggestionParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const ResolveDictionarySuggestionBody = zod.object({
+  "action": zod.enum(['accept', 'reject'])
+})
+
+export const ResolveDictionarySuggestionResponse = zod.object({
+  "suggestion": zod.object({
+  "id": zod.number(),
+  "entryId": zod.number(),
+  "suggestedName": zod.string(),
+  "note": zod.string().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "entryName": zod.string(),
+  "submitterName": zod.string().nullish()
+}),
+  "entry": zod.union([zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "shortName": zod.string(),
+  "numeric": zod.string().nullish(),
+  "isDrill": zod.union([zod.literal(0),zod.literal(1)]),
+  "difficulty": zod.number(),
+  "description": zod.string().nullish(),
+  "altNames": zod.array(zod.string()),
+  "archived": zod.union([zod.literal(0),zod.literal(1)]),
+  "sortOrder": zod.number().nullish(),
+  "draftImageKey": zod.string().nullish(),
+  "draftImageContentType": zod.string().nullish(),
+  "draftImagePrompt": zod.string().nullish(),
+  "draftImageModel": zod.string().nullish(),
+  "draftImageCreatedAt": zod.coerce.date().nullish(),
+  "approvedImageKey": zod.string().nullish(),
+  "approvedImageContentType": zod.string().nullish(),
+  "approvedImagePrompt": zod.string().nullish(),
+  "approvedImageModel": zod.string().nullish(),
+  "approvedImageApprovedAt": zod.coerce.date().nullish()
+}),zod.null()])
+})
+
+

@@ -9,3 +9,249 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface Error {
+  message: string;
+}
+
+export type DictionaryEntryIsDrill = typeof DictionaryEntryIsDrill[keyof typeof DictionaryEntryIsDrill];
+
+
+export const DictionaryEntryIsDrill = {
+  NUMBER_0: 0,
+  NUMBER_1: 1,
+} as const;
+
+export type DictionaryEntryArchived = typeof DictionaryEntryArchived[keyof typeof DictionaryEntryArchived];
+
+
+export const DictionaryEntryArchived = {
+  NUMBER_0: 0,
+  NUMBER_1: 1,
+} as const;
+
+export interface DictionaryEntry {
+  id: number;
+  name: string;
+  shortName: string;
+  /** @nullable */
+  numeric?: string | null;
+  isDrill: DictionaryEntryIsDrill;
+  difficulty: number;
+  /** @nullable */
+  description?: string | null;
+  altNames: string[];
+  archived: DictionaryEntryArchived;
+  /** @nullable */
+  sortOrder?: number | null;
+  /** @nullable */
+  draftImageKey?: string | null;
+  /** @nullable */
+  draftImageContentType?: string | null;
+  /** @nullable */
+  draftImagePrompt?: string | null;
+  /** @nullable */
+  draftImageModel?: string | null;
+  /** @nullable */
+  draftImageCreatedAt?: string | null;
+  /** @nullable */
+  approvedImageKey?: string | null;
+  /** @nullable */
+  approvedImageContentType?: string | null;
+  /** @nullable */
+  approvedImagePrompt?: string | null;
+  /** @nullable */
+  approvedImageModel?: string | null;
+  /** @nullable */
+  approvedImageApprovedAt?: string | null;
+}
+
+export type DictionaryEntryInputIsDrill = typeof DictionaryEntryInputIsDrill[keyof typeof DictionaryEntryInputIsDrill];
+
+
+export const DictionaryEntryInputIsDrill = {
+  NUMBER_0: 0,
+  NUMBER_1: 1,
+} as const;
+
+export type DictionaryEntryInputArchived = typeof DictionaryEntryInputArchived[keyof typeof DictionaryEntryInputArchived];
+
+
+export const DictionaryEntryInputArchived = {
+  NUMBER_0: 0,
+  NUMBER_1: 1,
+} as const;
+
+export interface DictionaryEntryInput {
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  shortName: string;
+  /** @nullable */
+  numeric?: string | null;
+  isDrill?: DictionaryEntryInputIsDrill;
+  /**
+     * @minimum 0
+     * @maximum 30
+     */
+  difficulty?: number;
+  /** @nullable */
+  description?: string | null;
+  archived?: DictionaryEntryInputArchived;
+  /** @nullable */
+  sortOrder?: number | null;
+}
+
+export type DictionaryEntryUpdateIsDrill = typeof DictionaryEntryUpdateIsDrill[keyof typeof DictionaryEntryUpdateIsDrill];
+
+
+export const DictionaryEntryUpdateIsDrill = {
+  NUMBER_0: 0,
+  NUMBER_1: 1,
+} as const;
+
+export type DictionaryEntryUpdateArchived = typeof DictionaryEntryUpdateArchived[keyof typeof DictionaryEntryUpdateArchived];
+
+
+export const DictionaryEntryUpdateArchived = {
+  NUMBER_0: 0,
+  NUMBER_1: 1,
+} as const;
+
+/**
+ * Any subset of editable dictionary fields.
+ */
+export interface DictionaryEntryUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @minLength 1 */
+  shortName?: string;
+  /** @nullable */
+  numeric?: string | null;
+  isDrill?: DictionaryEntryUpdateIsDrill;
+  /**
+     * @minimum 0
+     * @maximum 30
+     */
+  difficulty?: number;
+  /** @nullable */
+  description?: string | null;
+  archived?: DictionaryEntryUpdateArchived;
+  /** @nullable */
+  sortOrder?: number | null;
+}
+
+export type DictionaryImportCandidateIsDrill = typeof DictionaryImportCandidateIsDrill[keyof typeof DictionaryImportCandidateIsDrill];
+
+
+export const DictionaryImportCandidateIsDrill = {
+  NUMBER_0: 0,
+  NUMBER_1: 1,
+} as const;
+
+export type DictionaryImportCandidateStatus = typeof DictionaryImportCandidateStatus[keyof typeof DictionaryImportCandidateStatus];
+
+
+export const DictionaryImportCandidateStatus = {
+  new: 'new',
+  linked: 'linked',
+  matched: 'matched',
+} as const;
+
+export interface DictionaryImportCandidate {
+  skillId: number;
+  name: string;
+  shortName: string;
+  isDrill: DictionaryImportCandidateIsDrill;
+  /**
+     * @minimum 0
+     * @maximum 30
+     */
+  difficulty: number;
+  /** @nullable */
+  sortOrder?: number | null;
+  status: DictionaryImportCandidateStatus;
+  /** @nullable */
+  dictionaryEntryId?: number | null;
+}
+
+export type DictionaryImportSkippedReason = typeof DictionaryImportSkippedReason[keyof typeof DictionaryImportSkippedReason];
+
+
+export const DictionaryImportSkippedReason = {
+  archived: 'archived',
+  'not-a-skill-or-drill': 'not-a-skill-or-drill',
+  'shape-group': 'shape-group',
+  invalid: 'invalid',
+  duplicate: 'duplicate',
+} as const;
+
+export interface DictionaryImportSkipped {
+  skillId: number;
+  name: string;
+  reason: DictionaryImportSkippedReason;
+}
+
+export type DictionaryImportPreviewCounts = {
+  total: number;
+  toAdd: number;
+  reused: number;
+  skipped: number;
+};
+
+export interface DictionaryImportPreview {
+  candidates: DictionaryImportCandidate[];
+  skipped: DictionaryImportSkipped[];
+  counts: DictionaryImportPreviewCounts;
+}
+
+export interface DictionaryImportResult {
+  total: number;
+  added: number;
+  reused: number;
+  linked: number;
+  skipped: number;
+}
+
+export type DictionaryImageRemoveInputTarget = typeof DictionaryImageRemoveInputTarget[keyof typeof DictionaryImageRemoveInputTarget];
+
+
+export const DictionaryImageRemoveInputTarget = {
+  draft: 'draft',
+  approved: 'approved',
+  all: 'all',
+} as const;
+
+export interface DictionaryImageRemoveInput {
+  target: DictionaryImageRemoveInputTarget;
+}
+
+export interface DictionarySuggestion {
+  id: number;
+  entryId: number;
+  suggestedName: string;
+  /** @nullable */
+  note?: string | null;
+  status: string;
+  createdAt: string;
+  entryName: string;
+  /** @nullable */
+  submitterName?: string | null;
+}
+
+export type DictionarySuggestionResolutionAction = typeof DictionarySuggestionResolutionAction[keyof typeof DictionarySuggestionResolutionAction];
+
+
+export const DictionarySuggestionResolutionAction = {
+  accept: 'accept',
+  reject: 'reject',
+} as const;
+
+export interface DictionarySuggestionResolution {
+  action: DictionarySuggestionResolutionAction;
+}
+
+export interface DictionarySuggestionResolutionResult {
+  suggestion: DictionarySuggestion;
+  entry: DictionaryEntry | null;
+}
+
