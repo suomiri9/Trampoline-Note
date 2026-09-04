@@ -11,7 +11,7 @@ import {
 } from '@workspace/api-client-react';
 import type { DictionaryEntry } from '@workspace/api-client-react';
 import { EntryForm } from '@/components/entry-form';
-import type { EntryFormValues } from '@/components/entry-form';
+import { combineNumericShape, type EntryFormValues } from '@/components/entry-form';
 import { ImagePanel } from '@/components/image-panel';
 
 interface EntryDetailProps {
@@ -46,7 +46,7 @@ export function EntryDetail({ entry, onClose }: EntryDetailProps) {
       data: {
         name: values.name,
         shortName: values.shortName,
-        numeric: values.numeric ?? null,
+        numeric: combineNumericShape(values.numeric, values.numericShape),
         isDrill: Number(values.isDrill) as 0 | 1,
         difficulty: Number(values.difficulty),
         description: values.description ?? null,

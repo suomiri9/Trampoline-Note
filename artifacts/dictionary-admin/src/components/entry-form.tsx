@@ -29,12 +29,47 @@ import {
   DialogFooter,
 } from '@workspace/rebound/components/ui/dialog';
 import { Separator } from '@workspace/rebound/components/ui/separator';
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from '@workspace/rebound/components/ui/toggle-group';
 import type { DictionaryEntry } from '@workspace/api-client-react';
+
+const NUMERIC_SHAPES = [
+  { value: 'none', symbol: '—', label: 'No shape' },
+  { value: 'o', symbol: 'o', label: 'Tuck' },
+  { value: '<', symbol: '<', label: 'Pike' },
+  { value: '/', symbol: '/', label: 'Straight' },
+] as const;
+
+type NumericShape = (typeof NUMERIC_SHAPES)[number]['value'];
+
+export function splitNumericShape(value: string | null | undefined): {
+  numeric: string | null;
+  numericShape: NumericShape;
+} {
+  if (!value) return { numeric: null, numericShape: 'none' };
+  const suffix = value.slice(-1);
+  if (suffix === 'o' || suffix === '<' || suffix === '/') {
+    return { numeric: value.slice(0, -1) || null, numericShape: suffix };
+  }
+  return { numeric: value, numericShape: 'none' };
+}
+
+export function combineNumericShape(
+  numeric: string | null | undefined,
+  numericShape: NumericShape,
+): string | null {
+  const base = numeric?.trim();
+  if (!base) return null;
+  return numericShape === 'none' ? base : `${base}${numericShape}`;
+}
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   shortName: z.string().min(1, 'Short name is required'),
   numeric: z.string().nullable().optional(),
+  numericShape: z.enum(['none', 'o', '<', '/']),
   isDrill: z.enum(['0', '1']),
   difficulty: z.coerce.number().min(0).max(30),
   description: z.string().nullable().optional(),
@@ -61,6 +96,7 @@ export function EntryForm({ open, onOpenChange, entry, onSubmit, isPending }: En
       name: '',
       shortName: '',
       numeric: null,
+      numericShape: 'none',
       isDrill: '0',
       difficulty: 5,
       description: null,
@@ -71,10 +107,12 @@ export function EntryForm({ open, onOpenChange, entry, onSubmit, isPending }: En
 
   useEffect(() => {
     if (open && entry) {
+      const numericParts = splitNumericShape(entry.numeric);
       form.reset({
         name: entry.name,
         shortName: entry.shortName,
-        numeric: entry.numeric ?? null,
+        numeric: numericParts.numeric,
+        numericShape: numericParts.numericShape,
         isDrill: entry.isDrill === 1 ? '1' : '0',
         difficulty: entry.difficulty,
         description: entry.description ?? null,
@@ -86,6 +124,7 @@ export function EntryForm({ open, onOpenChange, entry, onSubmit, isPending }: En
         name: '',
         shortName: '',
         numeric: null,
+        numericShape: 'none',
         isDrill: '0',
         difficulty: 5,
         description: null,
@@ -141,18 +180,53 @@ export function EntryForm({ open, onOpenChange, entry, onSubmit, isPending }: En
                 control={form.control}
                 name="numeric"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="col-span-2">
                     <FormLabel>Numeric Code</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="e.g. 801"
-                        {...field}
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.value || null)}
-                        data-testid="input-entry-numeric"
+                    <div className="flex items-center gap-2">
+                      <FormControl>
+                        <Input
+                          placeholder="e.g. 40"
+                          {...field}
+                          value={field.value ?? ''}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                          data-testid="input-entry-numeric"
+                        />
+                      </FormControl>
+                      <FormField
+                        control={form.control}
+                        name="numericShape"
+                        render={({ field: shapeField }) => (
+                          <FormControl>
+                            <ToggleGroup
+                              type="single"
+                              variant="outline"
+                              value={shapeField.value}
+                              onValueChange={(value) => {
+                                if (value) shapeField.onChange(value);
+                              }}
+                              aria-label="Numeric code shape"
+                              className="shrink-0"
+                            >
+                              {NUMERIC_SHAPES.map((shape) => (
+                                <ToggleGroupItem
+                                  key={shape.value}
+                                  value={shape.value}
+                                  aria-label={shape.label}
+                                  title={shape.label}
+                                  className="size-10 px-0 text-base"
+                                  data-testid={`button-numeric-shape-${shape.value}`}
+                                >
+                                  {shape.symbol}
+                                </ToggleGroupItem>
+                              ))}
+                            </ToggleGroup>
+                          </FormControl>
+                        )}
                       />
-                    </FormControl>
-                    <FormDescription>Optional FIG numeric code</FormDescription>
+                    </div>
+                    <FormDescription>
+                      Optional FIG numeric code and shape: tuck (o), pike (&lt;), or straight (/)
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

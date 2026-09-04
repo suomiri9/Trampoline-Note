@@ -42,7 +42,7 @@ import {
 import type { DictionaryEntry } from '@workspace/api-client-react';
 import type { AuthUser } from '@/hooks/use-auth';
 import { EntryForm } from '@/components/entry-form';
-import type { EntryFormValues } from '@/components/entry-form';
+import { combineNumericShape, type EntryFormValues } from '@/components/entry-form';
 import { EntryDetail } from '@/components/entry-detail';
 import { SuggestionsPanel } from '@/components/suggestions-panel';
 import { ImportLibraryDialog } from '@/components/import-library-dialog';
@@ -214,7 +214,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       data: {
         name: values.name,
         shortName: values.shortName,
-        numeric: values.numeric ?? null,
+        numeric: combineNumericShape(values.numeric, values.numericShape),
         isDrill: Number(values.isDrill) as 0 | 1,
         difficulty: Number(values.difficulty),
         description: values.description ?? null,
