@@ -1,0 +1,1 @@
+- [Production public origin](production-public-origin.md) — OAuth callbacks and emailed links must use the custom production domain, not the generated Replit hostname.
