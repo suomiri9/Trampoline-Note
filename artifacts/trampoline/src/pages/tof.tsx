@@ -20,7 +20,7 @@ import {
 import { TrackerTargetSelect } from "@/components/tracker-target-select";
 import { AdhocSkillsBuilder } from "@/components/adhoc-skills-builder";
 import { PageLayout } from "@/components/page-layout";
-import { PageHeader, primaryActionClass } from "@/components/page-header";
+import { PageHeader, primaryActionClass, headerActionClass } from "@/components/page-header";
 import { StatStrip } from "@/components/stat-strip";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -29,7 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Timer, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDown, ChevronRight, Link2, Gauge, ArrowUpRight } from "lucide-react";
+import { Timer, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDown, ChevronRight, Link2, Gauge, ArrowUpRight, BarChart3 } from "lucide-react";
 import { DialogHero } from "@/components/dialog-hero";
 import { pageAccentStyle } from "@/lib/page-accent";
 import { cn } from "@/lib/utils";
@@ -526,9 +526,19 @@ export default function TofPage() {
         accent="the air."
         subtitle="Every hundredth of a second you hang counts. Read per-jump time-of-flight from a Veriflite screenshot or by hand, and see which skills quietly cost you height."
         actions={
-          <Button onClick={openNew} className={primaryActionClass} data-testid="button-new-tof-session">
-            <Plus className="w-5 h-5" /> New Session
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/tof/compare")}
+              className={headerActionClass}
+              data-testid="button-compare-tof"
+            >
+              <BarChart3 className="w-4 h-4" /> Compare
+            </Button>
+            <Button onClick={openNew} className={primaryActionClass} data-testid="button-new-tof-session">
+              <Plus className="w-5 h-5" /> New Session
+            </Button>
+          </>
         }
       />
 

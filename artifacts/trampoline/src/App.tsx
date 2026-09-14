@@ -220,6 +220,7 @@ const TofPage = lazyPage(() => import("@/pages/tof"));
 const TofSkillPage = lazyPage(() => import("@/pages/tof-skill"));
 const TofRoutinePage = lazyPage(() => import("@/pages/tof-routine"));
 const TofSessionPage = lazyPage(() => import("@/pages/tof-session"));
+const TrackerComparePage = lazyPage(() => import("@/pages/tracker-compare"));
 const ExecutionSessionPage = lazyPage(() => import("@/pages/execution-session"));
 const DebutsPage = lazyPage(() => import("@/pages/debuts"));
 const ExecutionPage = lazyPage(() => import("@/pages/execution"));
@@ -388,10 +389,12 @@ function Router() {
         <Route path="/whoop" component={WhoopPage} />
         <Route path="/coach" component={CoachPage} />
         <Route path="/tof" component={TofPage} />
+        <Route path="/tof/compare" component={TrackerComparePage} />
         <Route path="/tof/skill/:id" component={TofSkillPage} />
         <Route path="/tof/routine/:id" component={TofRoutinePage} />
         <Route path="/tof/session/:id" component={TofSessionPage} />
         <Route path="/execution" component={ExecutionPage} />
+        <Route path="/execution/compare" component={TrackerComparePage} />
         <Route path="/execution/skill/:id" component={ExecutionSkillPage} />
         <Route path="/execution/routine/:id" component={ExecutionRoutinePage} />
         <Route path="/execution/session/:id" component={ExecutionSessionPage} />

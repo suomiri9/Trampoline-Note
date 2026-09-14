@@ -29,7 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardCheck, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDown, RotateCcw, X, Link2, ChevronRight, Camera } from "lucide-react";
+import { ClipboardCheck, Plus, Pencil, Trash2, MoreVertical, ImageUp, Loader2, TrendingDown, RotateCcw, X, Link2, ChevronRight, Camera, BarChart3 } from "lucide-react";
 import { DialogHero } from "@/components/dialog-hero";
 import { pageAccentStyle } from "@/lib/page-accent";
 import { cn } from "@/lib/utils";
@@ -754,9 +754,19 @@ export default function ExecutionPage() {
         accent="the clean."
         subtitle="Every tenth a judge takes is a break they saw. Log the scorecard — from a sheet photo or by hand — and find the skills quietly draining your E score."
         actions={
-          <Button onClick={openNew} className={primaryActionClass} data-testid="button-new-execution-session">
-            <Plus className="w-5 h-5" /> New Session
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/execution/compare")}
+              className={headerActionClass}
+              data-testid="button-compare-execution"
+            >
+              <BarChart3 className="w-4 h-4" /> Compare
+            </Button>
+            <Button onClick={openNew} className={primaryActionClass} data-testid="button-new-execution-session">
+              <Plus className="w-5 h-5" /> New Session
+            </Button>
+          </>
         }
       />
 
