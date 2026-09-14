@@ -741,7 +741,7 @@ function ScoreGraph({
                     strokeWidth={s.key === "total" ? 2.5 : 1.5}
                     fill={`url(#scoreFill-${s.key}${idSuffix})`}
                     hide={hidden.has(s.key)}
-                    dot={false}
+                    dot={{ r: 2.5, fill: s.color, stroke: s.color, strokeWidth: 0 }}
                     activeDot={{ r: 5, fill: s.color, stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                     connectNulls
                   />

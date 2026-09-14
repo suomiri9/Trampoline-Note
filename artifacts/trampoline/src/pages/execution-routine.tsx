@@ -225,7 +225,7 @@ export default function ExecutionRoutinePage() {
                       return p ? `${p.label} · ${p.skillCount} skill${p.skillCount === 1 ? "" : "s"}${p.hasLanding ? " + landing" : ""}` : "";
                     }}
                   />
-                  <Area type="linear" dataKey="totalDeductions" stroke="#f43f5e" strokeWidth={2} fill="url(#execRoutineFill)" dot={false} activeDot={{ r: 5 }} />
+                  <Area type="linear" dataKey="totalDeductions" stroke="#f43f5e" strokeWidth={2} fill="url(#execRoutineFill)" dot={{ r: 2.5, fill: "#f43f5e", stroke: "#f43f5e", strokeWidth: 0 }} activeDot={{ r: 5 }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -264,7 +264,7 @@ export default function ExecutionRoutinePage() {
                       return p ? p.label : "";
                     }}
                   />
-                  <Area type="linear" dataKey="eScore" connectNulls stroke="#10b981" strokeWidth={2} fill="url(#execRoutineEscoreFill)" dot={false} activeDot={{ r: 5 }} />
+                  <Area type="linear" dataKey="eScore" connectNulls stroke="#10b981" strokeWidth={2} fill="url(#execRoutineEscoreFill)" dot={{ r: 2.5, fill: "#10b981", stroke: "#10b981", strokeWidth: 0 }} activeDot={{ r: 5 }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

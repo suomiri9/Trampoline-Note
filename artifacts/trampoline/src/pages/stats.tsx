@@ -465,7 +465,7 @@ export default function StatsPage() {
                     strokeWidth={2}
                     fill="url(#ddFill)"
                     connectNulls
-                    dot={chartData.length > 35 ? false : { r: 2.5, fill: 'hsl(var(--page-accent))', strokeWidth: 0 }}
+                    dot={{ r: 2.5, fill: 'hsl(var(--page-accent))', stroke: 'hsl(var(--page-accent))', strokeWidth: 0 }}
                     activeDot={{ r: 5, fill: 'hsl(var(--page-accent))', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                   />
                 </AreaChart>
@@ -611,7 +611,7 @@ export default function StatsPage() {
                       strokeWidth={2}
                       fill="url(#turnsFill)"
                       connectNulls
-                      dot={false}
+                      dot={{ r: 2.5, fill: 'hsl(200 90% 60%)', stroke: 'hsl(200 90% 60%)', strokeWidth: 0 }}
                       activeDot={{ r: 5, fill: 'hsl(200 90% 60%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                     />
                     <Area
@@ -623,7 +623,7 @@ export default function StatsPage() {
                       strokeDasharray="4 3"
                       fill="url(#minPerTurnFill)"
                       connectNulls
-                      dot={false}
+                      dot={{ r: 2.5, fill: 'hsl(150 70% 55%)', stroke: 'hsl(150 70% 55%)', strokeWidth: 0 }}
                       activeDot={{ r: 4, fill: 'hsl(150 70% 55%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                     />
                     <Area
@@ -635,7 +635,7 @@ export default function StatsPage() {
                       strokeDasharray="1 3"
                       fill="url(#ddPerTurnFill)"
                       connectNulls
-                      dot={false}
+                      dot={{ r: 2.5, fill: 'hsl(35 90% 60%)', stroke: 'hsl(35 90% 60%)', strokeWidth: 0 }}
                       activeDot={{ r: 4, fill: 'hsl(35 90% 60%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                     />
                   </AreaChart>

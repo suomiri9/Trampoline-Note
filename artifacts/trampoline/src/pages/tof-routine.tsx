@@ -208,7 +208,7 @@ export default function TofRoutinePage() {
                       return p ? `${p.label} · ${p.jumps} jump${p.jumps === 1 ? "" : "s"}` : "";
                     }}
                   />
-                  <Area type="linear" dataKey="totalTof" stroke="#f59e0b" strokeWidth={2} fill="url(#tofRoutineFill)" dot={false} activeDot={{ r: 5 }} />
+                  <Area type="linear" dataKey="totalTof" stroke="#f59e0b" strokeWidth={2} fill="url(#tofRoutineFill)" dot={{ r: 2.5, fill: "#f59e0b", stroke: "#f59e0b", strokeWidth: 0 }} activeDot={{ r: 5 }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -246,7 +246,7 @@ export default function TofRoutinePage() {
                       return p ? `${p.label} · ${p.jumps} jump${p.jumps === 1 ? "" : "s"}` : "";
                     }}
                   />
-                  <Area type="linear" dataKey="dropDelta" connectNulls stroke="#ef4444" strokeWidth={2} fill="url(#tofRoutineDropFill)" dot={false} activeDot={{ r: 5 }} />
+                  <Area type="linear" dataKey="dropDelta" connectNulls stroke="#ef4444" strokeWidth={2} fill="url(#tofRoutineDropFill)" dot={{ r: 2.5, fill: "#ef4444", stroke: "#ef4444", strokeWidth: 0 }} activeDot={{ r: 5 }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
