@@ -1,0 +1,93 @@
+Please improve my existing Trampoline Note app while keeping its current dark visual style and existing features working.
+
+Goal: Make the app simple, fast, accessible, and welcoming for trampoline athletes of different ages and experience levels.
+
+Please inspect the existing project first, then implement these improvements:
+
+Improve the sign-in and account-creation forms:
+
+Add a show/hide password button.
+
+Display password requirements clearly before submission.
+
+Show specific, friendly validation messages beneath the relevant field.
+
+Mark optional fields clearly.
+
+Keep entered information when validation fails.
+
+Add loading states to prevent buttons being pressed twice.
+
+Improve accessibility:
+
+Increase the contrast of grey text against the black background.
+
+Ensure text remains readable when enlarged.
+
+Give every field and control an accessible label.
+
+Add clear keyboard-focus outlines.
+
+Make all important touch targets at least 44×44 pixels.
+
+Do not communicate information using colour alone.
+
+Respect reduced-motion settings.
+
+Check the interface against WCAG 2.2 AA where practical.
+
+Create simple onboarding for new users:
+
+Explain the main process as “Add a session → Record skills → Review progress.”
+
+Let users skip the introduction and access it again later.
+
+Show a helpful empty state with a large “Log your first training session” button.
+
+Make training logging faster:
+
+Add one clear primary “Log training” button.
+
+Show recently used skills.
+
+Allow users to reuse a previous session or routine.
+
+Use sensible defaults while letting users change them.
+
+Save unfinished entries as drafts where possible.
+
+Confirm clearly when a session has been saved.
+
+Make terminology easier to understand:
+
+Use familiar, plain language.
+
+Add short explanations or tooltips for technical terms.
+
+Allow skill search to recognize common alternative names.
+
+Make error messages explain both the problem and the solution.
+
+Make the layout responsive:
+
+Optimize it for small phones first.
+
+Also test tablets, desktop screens, landscape mode, keyboard navigation, and enlarged text.
+
+Keep important actions easy to reach with one hand on mobile.
+
+Ensure the interface does not overflow horizontally.
+
+Add flexible preferences where they fit the current architecture:
+
+Light, dark, and system themes.
+
+Metric and imperial units.
+
+Suitable date and time-zone handling.
+
+A structure that can support additional languages later.
+
+Please preserve the existing branding, authentication, database structure, and user data unless a change is necessary. Do not replace working features or rewrite the entire app unnecessarily.
+
+Work through the improvements in small, safe stages. First examine the current code and describe your implementation plan. Then make the changes, run the app, test the main user journeys, fix any errors, and give me a concise summary of what changed. If an important product decision is unclear, ask me before making a major assumption.

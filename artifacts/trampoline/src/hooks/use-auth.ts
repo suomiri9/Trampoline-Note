@@ -5,6 +5,7 @@ import { cancelPendingSettingsPush } from "@/lib/settings-sync";
 import { getOfflineModeEnabled } from "@/lib/offline-mode";
 import { fetchWithTimeout, markCacheServed, markNetworkOk } from "@/lib/read-fallback";
 import { queryClient as appQueryClient } from "@/lib/queryClient";
+import { trackEvent } from "@/lib/analytics";
 
 const USER_CACHE_KEY = "user";
 const SESSION_MARKER_KEY = "tn-session-active";
@@ -146,6 +147,7 @@ export function useAuth() {
   const loginMutation = useMutation({
     mutationFn: loginFn,
     onSuccess: (data) => {
+      trackEvent("account_login_succeeded");
       queryClient.clear();
       queryClient.setQueryData(["/api/auth/user"], data);
     },
@@ -154,6 +156,7 @@ export function useAuth() {
   const registerMutation = useMutation({
     mutationFn: registerFn,
     onSuccess: (data) => {
+      trackEvent("account_registration_succeeded");
       queryClient.clear();
       queryClient.setQueryData(["/api/auth/user"], data);
     },

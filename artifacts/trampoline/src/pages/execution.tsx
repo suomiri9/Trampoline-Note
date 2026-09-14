@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { useQueuedExecutionSessions } from "@/hooks/use-queued-execution-sessions";
 import { tryNetworkOrEnqueue, tryNetworkOrEnqueueChange, isQueuedOfflineResult, deleteQueuedByTempId, type OfflineQueuedResult } from "@/lib/offline-queue";
+import { trackEvent } from "@/lib/analytics";
 import type { ExecutionSession, InsertExecutionSession } from "@shared/schema";
 import { fileToDataUrl } from "@/lib/image-file";
 import { SheetPhotoPreview } from "@/components/sheet-photo-preview";
@@ -232,13 +233,23 @@ export default function ExecutionPage() {
     mutationFn: postSession,
     onSuccess: (result) => {
       const queued = isQueuedOfflineResult(result);
+      trackEvent(queued ? "training_session_queued" : "training_session_saved", {
+        session_type: "execution",
+        operation: "create",
+      });
       if (!queued) {
         queryClient.invalidateQueries({ queryKey: [api.executionSessions.list.path] });
       }
       toast({ title: queued ? "Saved offline. Will sync when reconnected." : "Execution session saved" });
       closeForm(false);
     },
-    onError: (e: Error) => toast({ title: "Failed to save session", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => {
+      trackEvent("training_session_save_failed", {
+        session_type: "execution",
+        operation: "create",
+      });
+      toast({ title: "Failed to save session", description: e.message, variant: "destructive" });
+    },
   });
 
   const updateMutation = useMutation({
@@ -257,11 +268,21 @@ export default function ExecutionPage() {
     },
     onSuccess: (result) => {
       const queued = isQueuedOfflineResult(result);
+      trackEvent(queued ? "training_session_queued" : "training_session_saved", {
+        session_type: "execution",
+        operation: "update",
+      });
       if (!queued) queryClient.invalidateQueries({ queryKey: [api.executionSessions.list.path] });
       toast({ title: queued ? "Saved offline. Will sync when reconnected." : "Execution session updated" });
       closeForm(false);
     },
-    onError: (e: Error) => toast({ title: "Failed to update session", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => {
+      trackEvent("training_session_save_failed", {
+        session_type: "execution",
+        operation: "update",
+      });
+      toast({ title: "Failed to update session", description: e.message, variant: "destructive" });
+    },
   });
 
   const deleteMutation = useMutation({

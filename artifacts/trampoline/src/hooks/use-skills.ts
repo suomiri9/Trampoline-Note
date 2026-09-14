@@ -13,6 +13,7 @@ import {
   deleteQueuedByTempId,
   updateQueuedByTempId,
 } from "@/lib/offline-queue";
+import { trackEvent } from "@/lib/analytics";
 
 export function useSkills() {
   const { toast } = useToast();
@@ -59,6 +60,17 @@ export function useSkills() {
       const queued = result && (result as any)._queuedOffline === true;
       if (!queued) {
         queryClient.invalidateQueries({ queryKey: [api.skills.list.path] });
+        const kind =
+          result?.parentSkillId != null
+            ? "shape"
+            : result?.isDrill === 1
+              ? "drill"
+              : result?.isDrill === 2
+                ? "connection"
+                : result?.isDrill === 3
+                  ? "routine_part"
+                  : "skill";
+        trackEvent("skill_created", { kind });
       }
       const label =
         result?.isDrill === 2 ? "Connection" : result?.isDrill === 1 ? "Drill" : "Skill";

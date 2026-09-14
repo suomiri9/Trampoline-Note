@@ -12,6 +12,7 @@ import { useOnline } from "@/hooks/use-online";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { trackEvent } from "@/lib/analytics";
 import { Unplug, AlertTriangle, RefreshCw, Lock, HeartPulse, Heart, Moon, Zap, Activity } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { format, parseISO, subDays } from "date-fns";
@@ -193,6 +194,14 @@ const OAUTH_MESSAGES: Record<string, string> = {
   not_configured: "WHOOP sign-in isn't configured yet — the app owner needs to add the WHOOP app credentials.",
 };
 
+const OAUTH_OUTCOMES = {
+  connected: "connected",
+  denied: "denied",
+  state_mismatch: "state_mismatch",
+  link_failed: "link_failed",
+  not_configured: "not_configured",
+} as const;
+
 export default function WhoopPage() {
   const [range, setRange] = useState<WhoopRange>(30);
   const [oauthError, setOauthError] = useState<string | null>(null);
@@ -205,6 +214,12 @@ export default function WhoopPage() {
     const params = new URLSearchParams(window.location.search);
     const status = params.get("whoop");
     if (!status) return;
+    const outcome = status in OAUTH_OUTCOMES
+      ? OAUTH_OUTCOMES[status as keyof typeof OAUTH_OUTCOMES]
+      : null;
+    if (outcome) {
+      trackEvent("whoop_connect_callback", { outcome });
+    }
     if (status === "connected") {
       toast({ title: "WHOOP connected", description: "Your WHOOP data is loading." });
       // Recovery data just became available — make the Coach card refetch a
@@ -311,6 +326,7 @@ export default function WhoopPage() {
   // Breaks out of the preview iframe: WHOOP's login page refuses to render
   // inside one, so navigate the top-level window (new tab if that's blocked).
   const signInWithWhoop = () => {
+    trackEvent("whoop_connect_clicked", { entrypoint: "dashboard" });
     const url = "/api/whoop/auth";
     const framed = window.self !== window.top;
     if (framed) {

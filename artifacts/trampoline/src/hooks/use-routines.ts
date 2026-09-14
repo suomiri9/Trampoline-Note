@@ -12,6 +12,7 @@ import {
   deleteQueuedByTempId,
   updateQueuedByTempId,
 } from "@/lib/offline-queue";
+import { trackEvent } from "@/lib/analytics";
 
 export function useRoutines() {
   const { toast } = useToast();
@@ -52,6 +53,7 @@ export function useRoutines() {
       const queued = result && (result as any)._queuedOffline === true;
       if (!queued) {
         queryClient.invalidateQueries({ queryKey: [api.routines.list.path] });
+        trackEvent("routine_created");
       }
       toast({
         title: queued ? "Routine saved offline" : "Routine created successfully",

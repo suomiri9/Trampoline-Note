@@ -32,6 +32,7 @@ import { queryClient } from "@/lib/queryClient";
 import { bottomNavClearance, cn } from "@/lib/utils";
 import { compressDataUrl } from "@/lib/image-file";
 import { persistBeforeClose, startLockedSave } from "@/lib/training-save-guard";
+import { trackEvent } from "@/lib/analytics";
 import { PhotoAreaSelect, type PhotoAreaSelectHandle } from "@/components/photo-area-select";
 import {
   Dialog,
@@ -161,6 +162,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [saveError, setSaveError] = useState<string | null>(null);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const saveSourceRef = useRef<"manual" | "auto">("manual");
   const [isConnectMode, setIsConnectMode] = useState(false);
   const [editingRoutineIdx, setEditingRoutineIdx] = useState<number | null>(null);
   const [editingGroupIndices, setEditingGroupIndices] = useState<number[] | null>(null);
@@ -952,6 +954,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     if (saved) {
       const pendingEntryUpdated = !!(result && typeof result === "object" && "pendingEntryUpdated" in result);
       const queued = !!(result && typeof result === "object" && "_queuedOffline" in result);
+      if (saveSourceRef.current === "manual") {
+        const operation = isEditing ? "update" : "create";
+        trackEvent(pendingEntryUpdated || queued ? "training_session_queued" : "training_session_saved", {
+          session_type: "training",
+          operation,
+        });
+      }
       toast({
         title: pendingEntryUpdated
           ? "Pending session updated"
@@ -962,6 +971,12 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
               : "Session logged!",
       });
     } else {
+      if (saveSourceRef.current === "manual") {
+        trackEvent("training_session_save_failed", {
+          session_type: "training",
+          operation: isEditing ? "update" : "create",
+        });
+      }
       const fallback = "Your session is still here. Check your connection and try End training again.";
       toast({
         title: isEditing ? "Couldn't update session" : "Couldn't log session",
@@ -1019,12 +1034,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   // The lock is set synchronously, before react-query updates isPending, so
   // rapid repeated taps can never start two create/update requests.
-  const flushDraftSave = (): boolean => {
+  const flushDraftSave = (source: "manual" | "auto" = "manual"): boolean => {
     if (isSavingRef.current) return false;
     if (!hasUnsavedContent()) {
       onOpenChange(false);
       return false;
     }
+    saveSourceRef.current = source;
     return startLockedSave(
       isSavingRef,
       setIsSaving,
@@ -1048,7 +1064,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   // and offline-queue writes run to completion after unmount.
   useEffect(() => {
     return () => {
-      if (openRef.current) flushDraftSaveRef.current();
+      if (openRef.current) flushDraftSaveRef.current("auto");
     };
   }, []);
 

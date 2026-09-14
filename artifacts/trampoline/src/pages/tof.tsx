@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { useQueuedTofSessions } from "@/hooks/use-queued-tof-sessions";
 import { tryNetworkOrEnqueue, tryNetworkOrEnqueueChange, isQueuedOfflineResult, deleteQueuedByTempId, type OfflineQueuedResult } from "@/lib/offline-queue";
+import { trackEvent } from "@/lib/analytics";
 import type { TofSession, InsertTofSession } from "@shared/schema";
 import { fileToDataUrl } from "@/lib/image-file";
 
@@ -195,13 +196,23 @@ export default function TofPage() {
     },
     onSuccess: (result) => {
       const queued = isQueuedOfflineResult(result);
+      trackEvent(queued ? "training_session_queued" : "training_session_saved", {
+        session_type: "tof",
+        operation: "create",
+      });
       if (!queued) {
         queryClient.invalidateQueries({ queryKey: [api.tofSessions.list.path] });
       }
       toast({ title: queued ? "Saved offline. Will sync when reconnected." : "ToF session saved" });
       closeForm(false);
     },
-    onError: (e: Error) => toast({ title: "Failed to save session", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => {
+      trackEvent("training_session_save_failed", {
+        session_type: "tof",
+        operation: "create",
+      });
+      toast({ title: "Failed to save session", description: e.message, variant: "destructive" });
+    },
   });
 
   const updateMutation = useMutation({
@@ -220,11 +231,21 @@ export default function TofPage() {
     },
     onSuccess: (result) => {
       const queued = isQueuedOfflineResult(result);
+      trackEvent(queued ? "training_session_queued" : "training_session_saved", {
+        session_type: "tof",
+        operation: "update",
+      });
       if (!queued) queryClient.invalidateQueries({ queryKey: [api.tofSessions.list.path] });
       toast({ title: queued ? "Saved offline. Will sync when reconnected." : "ToF session updated" });
       closeForm(false);
     },
-    onError: (e: Error) => toast({ title: "Failed to update session", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => {
+      trackEvent("training_session_save_failed", {
+        session_type: "tof",
+        operation: "update",
+      });
+      toast({ title: "Failed to update session", description: e.message, variant: "destructive" });
+    },
   });
 
   const deleteMutation = useMutation({
