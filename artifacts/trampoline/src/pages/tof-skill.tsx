@@ -215,7 +215,7 @@ export default function TofSkillPage() {
                       return p ? `${p.label} · ${p.routineName} · jump ${p.jumpNo}` : "";
                     }}
                   />
-                  <Area type="monotone" dataKey="tof" stroke="#f59e0b" strokeWidth={2} fill="url(#tofSkillFill)" dot={false} activeDot={{ r: 5 }} />
+                  <Area type="linear" dataKey="tof" stroke="#f59e0b" strokeWidth={2} fill="url(#tofSkillFill)" dot={false} activeDot={{ r: 5 }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -253,7 +253,7 @@ export default function TofSkillPage() {
                       return p ? `${p.label} · ${p.routineName} · jump ${p.jumpNo}` : "";
                     }}
                   />
-                  <Area type="monotone" dataKey="dropDelta" connectNulls stroke="#ef4444" strokeWidth={2} fill="url(#tofSkillDropFill)" dot={false} activeDot={{ r: 5 }} />
+                  <Area type="linear" dataKey="dropDelta" connectNulls stroke="#ef4444" strokeWidth={2} fill="url(#tofSkillDropFill)" dot={false} activeDot={{ r: 5 }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

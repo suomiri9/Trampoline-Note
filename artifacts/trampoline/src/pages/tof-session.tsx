@@ -184,7 +184,7 @@ export default function TofSessionPage() {
                   return p ? `Jump ${p.jumpNo} · ${p.code}` : "";
                 }}
               />
-              <Area type="monotone" dataKey="tof" stroke="#f59e0b" strokeWidth={2} fill="url(#tofSessionFill)" dot={false} activeDot={{ r: 5 }} />
+              <Area type="linear" dataKey="tof" stroke="#f59e0b" strokeWidth={2} fill="url(#tofSessionFill)" dot={false} activeDot={{ r: 5 }} />
             </AreaChart>
           </ResponsiveContainer>
         </div>

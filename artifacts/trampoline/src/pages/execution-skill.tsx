@@ -238,7 +238,7 @@ export default function ExecutionSkillPage() {
                       return p ? `${p.label} · ${p.targetLabel} · #${p.pos}` : "";
                     }}
                   />
-                  <Area type="monotone" dataKey="points" stroke="#f43f5e" strokeWidth={2} fill="url(#execSkillFill)" dot={false} activeDot={{ r: 5 }} />
+                  <Area type="linear" dataKey="points" stroke="#f43f5e" strokeWidth={2} fill="url(#execSkillFill)" dot={false} activeDot={{ r: 5 }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

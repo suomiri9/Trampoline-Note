@@ -650,7 +650,7 @@ export default function WhoopPage() {
                   cursor={{ stroke: "hsl(var(--primary) / 0.3)", strokeWidth: 1 }}
                 />
                 <Area
-                  type="monotone"
+                  type="linear"
                   dataKey="recoveryScore"
                   stroke="url(#whoopRecoveryStroke)"
                   strokeWidth={2}
@@ -697,8 +697,8 @@ export default function WhoopPage() {
                   cursor={{ stroke: "hsl(var(--primary) / 0.3)", strokeWidth: 1 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11, fontFamily: "var(--font-mono)" }} />
-                <Area yAxisId="h" name="Sleep (h)" type="monotone" dataKey="asleepHours" stroke="hsl(var(--chart-4))" strokeWidth={2} fill="url(#whoopSleepFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
-                <Area yAxisId="p" name="Performance %" type="monotone" dataKey="performancePct" stroke="hsl(var(--chart-1))" strokeWidth={1.5} strokeDasharray="4 3" fill="url(#whoopSleepPerfFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
+                <Area yAxisId="h" name="Sleep (h)" type="linear" dataKey="asleepHours" stroke="hsl(var(--chart-4))" strokeWidth={2} fill="url(#whoopSleepFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
+                <Area yAxisId="p" name="Performance %" type="linear" dataKey="performancePct" stroke="hsl(var(--chart-1))" strokeWidth={1.5} strokeDasharray="4 3" fill="url(#whoopSleepPerfFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
               </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -720,7 +720,7 @@ export default function WhoopPage() {
                   formatter={(v: any) => [Number(v).toFixed(1), "Strain"]}
                   cursor={{ stroke: "hsl(var(--primary) / 0.3)", strokeWidth: 1 }}
                 />
-                <Area type="monotone" dataKey="strain" stroke="hsl(var(--chart-3))" strokeWidth={2} fill="url(#whoopStrainFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
+                <Area type="linear" dataKey="strain" stroke="hsl(var(--chart-3))" strokeWidth={2} fill="url(#whoopStrainFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
               </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -750,8 +750,8 @@ export default function WhoopPage() {
                   cursor={{ stroke: "hsl(var(--primary) / 0.3)", strokeWidth: 1 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11, fontFamily: "var(--font-mono)" }} />
-                <Area yAxisId="rhr" name="RHR (bpm)" type="monotone" dataKey="restingHeartRate" stroke="hsl(var(--chart-5))" strokeWidth={2} fill="url(#whoopRhrFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
-                <Area yAxisId="hrv" name="HRV (ms)" type="monotone" dataKey="hrvMs" stroke="hsl(var(--chart-1))" strokeWidth={1.5} strokeDasharray="4 3" fill="url(#whoopHrvFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
+                <Area yAxisId="rhr" name="RHR (bpm)" type="linear" dataKey="restingHeartRate" stroke="hsl(var(--chart-5))" strokeWidth={2} fill="url(#whoopRhrFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
+                <Area yAxisId="hrv" name="HRV (ms)" type="linear" dataKey="hrvMs" stroke="hsl(var(--chart-1))" strokeWidth={1.5} strokeDasharray="4 3" fill="url(#whoopHrvFill)" connectNulls dot={false} activeDot={{ r: 4 }} />
               </AreaChart>
             </ResponsiveContainer>
           </ChartCard>

@@ -605,7 +605,7 @@ export default function StatsPage() {
                     <YAxis yAxisId="ddPerTurn" hide />
                     <Area
                       yAxisId="turns"
-                      type="monotone"
+                      type="linear"
                       dataKey="turns"
                       stroke="hsl(200 90% 60%)"
                       strokeWidth={2}
@@ -616,7 +616,7 @@ export default function StatsPage() {
                     />
                     <Area
                       yAxisId="minPerTurn"
-                      type="monotone"
+                      type="linear"
                       dataKey="minPerTurn"
                       stroke="hsl(150 70% 55%)"
                       strokeWidth={1.5}
@@ -628,7 +628,7 @@ export default function StatsPage() {
                     />
                     <Area
                       yAxisId="ddPerTurn"
-                      type="monotone"
+                      type="linear"
                       dataKey="ddPerTurn"
                       stroke="hsl(35 90% 60%)"
                       strokeWidth={1.5}
