@@ -1145,11 +1145,12 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
                 <div className="flex flex-wrap gap-2">
                   <div className="flex w-full sm:w-auto sm:flex-1 min-w-0 sm:basis-0 h-11 rounded-xl border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
+                  {/* Keep the results portal outside the scrolling dialog body:
+                      iPad popovers otherwise clip before their final rows. */}
                   <SearchPicker
                     open={pickerOpen}
                     onOpenChange={setPickerOpen}
                     placeholder="Search skills or add new..."
-                    container={dialogBodyRef.current}
                     className="flex-1 h-full"
                     inputClassName="text-xs"
                     inputTestId="btn-open-picker"
@@ -2894,11 +2895,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         setGroupPickerOpen(false);
                       };
                       return (
+                        // This editor is also inside the clipped dialog body.
                         <SearchPicker
                           open={groupPickerOpen}
                           onOpenChange={setGroupPickerOpen}
                           placeholder="Add skill..."
-                          container={dialogBodyRef.current}
                           className="w-full h-full"
                           inputClassName="text-xs"
                           inputRef={groupPickerInputRef}

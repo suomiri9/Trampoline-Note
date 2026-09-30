@@ -130,7 +130,9 @@ export function SearchPicker({
       </PopoverAnchor>
       <PopoverContent
         container={container}
-        className="p-0 w-[--radix-popover-trigger-width]"
+        // Let CommandList own touch scrolling; a second scrolling popover
+        // traps the tail of the list when Radix has to cap its height.
+        className="p-0 w-[--radix-popover-trigger-width] overflow-hidden"
         align={align}
         onOpenAutoFocus={(e) => e.preventDefault()}
         onInteractOutside={(e) => {
@@ -140,6 +142,7 @@ export function SearchPicker({
       >
         <Command
           ref={commandRef}
+          className="min-h-0 max-h-[var(--radix-popover-content-available-height)]"
           filter={(value, s) => (value.toLowerCase().includes(s.toLowerCase()) ? 1 : 0)}
         >
           {/* Hidden controlled input keeps cmdk's filter in sync with the outer box. */}
