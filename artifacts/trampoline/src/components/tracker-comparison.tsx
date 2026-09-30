@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useShowSkillNames } from "@/hooks/use-skill-label-mode";
 import { cn } from "@/lib/utils";
 import {
-  alignAttemptProfiles, buildAttemptProfiles, jumpSkillLabel, sharedJumpSkills,
+  alignAttemptProfiles, buildAttemptProfiles, jumpDifference, jumpSkillLabel,
   type AttemptProfile, type ComparisonTracker,
 } from "@/lib/tracker-comparison";
 
@@ -28,6 +28,45 @@ function totalLabel(profile: AttemptProfile, tracker: ComparisonTracker) {
   return tracker === "tof"
     ? `${profile.total.toFixed(2)} s ${profile.values.some(value => value == null) ? "recorded ToF" : "total ToF"}`
     : `${profile.total.toFixed(1)} pts total deductions${profile.landingRecorded ? " (incl. landing)" : " (landing not recorded)"}`;
+}
+
+function signedDifference(value: number, tracker: ComparisonTracker) {
+  return `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(tracker === "tof" ? 3 : 1)} ${tracker === "tof" ? "s" : "pts"}`;
+}
+
+function ComparisonDot({
+  cx, cy, payload, attempt, attemptIndex, profiles, tracker, showSkillNames, color,
+}: {
+  cx?: number;
+  cy?: number;
+  payload?: { jump: number };
+  attempt: AttemptProfile;
+  attemptIndex: number;
+  profiles: AttemptProfile[];
+  tracker: ComparisonTracker;
+  showSkillNames: boolean;
+  color: string;
+}) {
+  if (cx == null || cy == null || !payload) return null;
+  const jumpIndex = payload.jump - 1;
+  const skill = jumpSkillLabel(attempt.jumpSkills[jumpIndex], showSkillNames);
+  const shortSkill = skill.length > 16 ? `${skill.slice(0, 15)}…` : skill;
+  const difference = jumpDifference(profiles, attemptIndex, jumpIndex);
+  // Alternate labels above and below their dots; each series gets its own lane.
+  const above = attemptIndex % 2 === 0;
+  const distance = 22 + Math.floor(attemptIndex / 2) * 37;
+  const labelY = cy + (above ? -distance - 24 : distance);
+  return (
+    <g>
+      <line x1={cx} y1={cy + (above ? -5 : 5)} x2={cx} y2={above ? labelY + 30 : labelY} stroke={color} strokeOpacity={0.55} />
+      <circle cx={cx} cy={cy} r={4} fill={color} />
+      <rect x={cx - 51} y={labelY} width={102} height={30} rx={5} fill="hsl(var(--background))" stroke={color} strokeOpacity={0.7} />
+      <text x={cx} y={labelY + 12} textAnchor="middle" fontSize={10} fontWeight={600} fill="hsl(var(--foreground))">{shortSkill}</text>
+      <text x={cx} y={labelY + 24} textAnchor="middle" fontSize={10} fontWeight={600} fill={color}>
+        {attemptIndex === 0 ? "Baseline" : difference == null ? "No delta" : signedDifference(difference, tracker)}
+      </text>
+    </g>
+  );
 }
 
 export function TrackerComparison({
@@ -51,19 +90,7 @@ export function TrackerComparison({
     return attempt ? [attempt] : [];
   });
   const chartData = useMemo(() => alignAttemptProfiles(selected), [attempts, selectedKeys]);
-  const sharedSkills = sharedJumpSkills(selected);
-  const hasDifferentSkills = selected.some(attempt =>
-    attempt.values.some((_, index) => !sharedSkills[index]),
-  );
-  const needsSkillReference = hasDifferentSkills || selected.some(attempt =>
-    attempt.jumpSkills.some(skill => jumpSkillLabel(skill, showSkillNames).length > 10),
-  );
-  const axisSkill = (jump: number) => {
-    const skill = sharedSkills[jump - 1];
-    if (!skill) return `Jump ${jump}`;
-    const label = jumpSkillLabel(skill, showSkillNames);
-    return label === "Unknown skill" ? `Jump ${jump}` : label.length > 10 ? `${label.slice(0, 9)}…` : label;
-  };
+  const labelMargin = 42 + Math.ceil(selected.length / 2) * 37;
   const unit = tracker === "tof" ? "seconds" : "deduction points";
   const toggle = (key: string) => setSelectedKeys(current =>
     current.includes(key) ? current.filter(item => item !== key) : [...current, key],
@@ -120,7 +147,7 @@ export function TrackerComparison({
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold truncate">{attempt.label}</span>
                     <span className="block text-[11px] text-muted-foreground/70">{dateLabel(attempt.date)} · {totalLabel(attempt, tracker)}</span>
-                    <span className="block text-[10px] text-muted-foreground/55">{attempt.values.filter(v => v != null).length} recorded jumps · attempt #{attempt.key.split(":")[1]}</span>
+                    <span className="block text-[10px] text-muted-foreground/55">{attempt.values.filter(v => v != null).length} recorded jumps · attempt #{attempt.key.split(":")[1]}{index === 0 ? " · Baseline" : ""}</span>
                   </span>
                 </button>
               );
@@ -140,32 +167,41 @@ export function TrackerComparison({
           <h2 className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/65">
             {tracker === "tof" ? "Time of flight per jump" : "Execution deduction per jump"}
           </h2>
-           <p className="text-xs text-muted-foreground/65 mt-1 mb-5">Jump order 1–10 · {unit} · straight lines and recorded dots{needsSkillReference ? " · full skills by attempt below" : ""}</p>
-          <div className="h-64 sm:h-72 w-full" data-testid={`plot-comparison-${tracker}`}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 8, right: 12, left: 4, bottom: 16 }}>
+           <p className="text-xs text-muted-foreground/65 mt-1">
+             Jump order 1–10 · {unit} · straight lines and recorded dots. Labels show each attempt's skill and its difference from the first selected attempt (compared − baseline).
+             {tracker === "execution" && " A positive difference means more deductions, not an improvement."}
+           </p>
+           <p className="text-xs font-medium mt-2 mb-4" data-testid={`baseline-comparison-${tracker}`}>
+             Baseline: {selected[0].label} · {dateLabel(selected[0].date)} · attempt #{selected[0].key.split(":")[1]}
+           </p>
+           <div className="w-full overflow-x-auto pb-2" data-testid={`plot-comparison-${tracker}`}>
+             <div className="min-w-[1240px]" style={{ height: Math.max(380, 260 + labelMargin * 2) }}>
+               <ResponsiveContainer width="100%" height="100%">
+               <LineChart data={chartData} margin={{ top: labelMargin, right: 58, left: 50, bottom: labelMargin }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.45)" />
-                 <XAxis dataKey="jump" type="number" domain={[1, 10]} ticks={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]} allowDecimals={false} tickFormatter={(jump: number) => axisSkill(jump)} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} label={{ value: "Jump order / skill", position: "insideBottom", offset: -10, fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                 <XAxis dataKey="jump" type="number" domain={[1, 10]} ticks={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]} allowDecimals={false} tickFormatter={(jump: number) => `Jump ${jump}`} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} label={{ value: "Jump order", position: "insideBottom", offset: -10, fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                 <YAxis type="number" domain={["auto", "auto"]} width={48} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v: number) => v.toFixed(tracker === "tof" ? 2 : 1)} label={{ value: tracker === "tof" ? "Seconds" : "Points", angle: -90, position: "insideLeft", fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                 <Tooltip
                   contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", background: "hsl(var(--popover))", color: "hsl(var(--popover-foreground))" }}
                    labelFormatter={label => `Jump ${label}`}
-                   formatter={(value: number, _name: string, entry: { dataKey?: string | number; payload?: { jump?: number } }) => {
+                    formatter={(value: number, _name: string, entry: { dataKey?: string | number; payload?: { jump?: number } }) => {
                     const attempt = selected.find(item => item.key === entry.dataKey);
                      const jump = entry.payload?.jump;
                      const skill = attempt && jump != null ? jumpSkillLabel(attempt.jumpSkills[jump - 1], showSkillNames) : "Unknown skill";
-                     return [`${value.toFixed(tracker === "tof" ? 3 : 1)} ${tracker === "tof" ? "s" : "pts"}`, attempt ? `${attempt.label} · ${dateLabel(attempt.date)} · #${attempt.key.split(":")[1]} · ${skill}` : skill];
+                      const index = selected.findIndex(item => item.key === entry.dataKey);
+                      const delta = jump != null ? jumpDifference(selected, index, jump - 1) : null;
+                      return [`${value.toFixed(tracker === "tof" ? 3 : 1)} ${tracker === "tof" ? "s" : "pts"}`, attempt ? `${attempt.label} · ${dateLabel(attempt.date)} · #${attempt.key.split(":")[1]} · ${skill} · ${index === 0 ? "Baseline" : delta == null ? "No delta" : signedDifference(delta, tracker)}` : skill];
                   }}
                 />
                 {selected.map((attempt, index) => (
-                  <Line key={attempt.key} type="linear" dataKey={attempt.key} name={attempt.label} stroke={COLORS[index % COLORS.length]} strokeWidth={2.5} connectNulls={false} dot={{ r: 4, fill: COLORS[index % COLORS.length], strokeWidth: 0 }} activeDot={{ r: 8, strokeWidth: 2 }} isAnimationActive={false} />
+                   <Line key={attempt.key} type="linear" dataKey={attempt.key} name={attempt.label} stroke={COLORS[index % COLORS.length]} strokeWidth={2.5} connectNulls={false} dot={<ComparisonDot attempt={attempt} attemptIndex={index} profiles={selected} tracker={tracker} showSkillNames={showSkillNames} color={COLORS[index % COLORS.length]} />} activeDot={{ r: 8, strokeWidth: 2 }} isAnimationActive={false} />
                 ))}
               </LineChart>
-            </ResponsiveContainer>
+               </ResponsiveContainer>
+             </div>
           </div>
-           {needsSkillReference && (
              <div className="mt-4 space-y-2" data-testid={`skills-comparison-${tracker}`}>
-               <h3 className="text-[11px] font-semibold text-muted-foreground">Skills by attempt and jump</h3>
+                <h3 className="text-[11px] font-semibold text-muted-foreground">Full skills by attempt and jump</h3>
                {selected.map((attempt, index) => (
                  <div key={attempt.key} className="text-xs" data-testid={`skills-comparison-${attempt.key}`}>
                    <div className="font-semibold" style={{ color: COLORS[index % COLORS.length] }}>{attempt.label} · #{attempt.key.split(":")[1]}</div>
@@ -177,16 +213,15 @@ export function TrackerComparison({
                  </div>
                ))}
              </div>
-           )}
           <p className="text-[11px] text-muted-foreground/65 mt-3">
-            Missing jump positions stay blank, not zero. {tracker === "execution" && "Landing deductions are included in totals when recorded, but are not plotted as a jump."}
+             Missing jump positions stay blank, not zero; no difference is shown without both measurements. {tracker === "execution" && "Landing deductions are included in totals when recorded, but are not plotted as a jump."}
           </p>
           <div className="mt-4 divide-y divide-border/20" data-testid={`selected-comparison-${tracker}`}>
             {selected.map((attempt, index) => (
               <div key={attempt.key} className="flex items-center gap-3 py-3 text-sm" data-testid={`row-comparison-${attempt.key}`}>
                 <span className="h-3 w-3 rounded-full shrink-0" style={{ background: COLORS[index % COLORS.length] }} />
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold truncate">{attempt.label} <span className="text-xs font-normal text-muted-foreground">· #{attempt.key.split(":")[1]}</span></div>
+                   <div className="font-semibold truncate">{attempt.label} <span className="text-xs font-normal text-muted-foreground">· #{attempt.key.split(":")[1]}{index === 0 ? " · Baseline" : ""}</span></div>
                   <div className="text-xs text-muted-foreground">{dateLabel(attempt.date)} · {totalLabel(attempt, tracker)}</div>
                 </div>
                 <button type="button" onClick={() => toggle(attempt.key)} aria-label={`Remove ${attempt.label} attempt #${attempt.key.split(":")[1]}`} className="p-2 rounded-lg hover:bg-white/[0.08] pressable" data-testid={`button-remove-comparison-${attempt.key}`}><X className="h-4 w-4" /></button>

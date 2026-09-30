@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ExecutionSession, Routine, Skill, TofSession } from "@shared/schema";
-import { alignAttemptProfiles, buildAttemptProfiles, jumpSkillLabel, sharedJumpSkills } from "@/lib/tracker-comparison";
+import { alignAttemptProfiles, buildAttemptProfiles, jumpDifference, jumpSkillLabel, sharedJumpSkills } from "@/lib/tracker-comparison";
 
 const routine = { id: 1, name: "Set routine", skillIds: [10, 11] } as Routine;
 const skill = { id: 10, name: "Jump", code: "A", parentSkillId: null, shape: null } as Skill;
@@ -44,6 +44,32 @@ describe("attempt profile comparison", () => {
     expect(profiles[0].values).toEqual([0, 0.2]);
     expect(alignAttemptProfiles(profiles)[0]).toEqual({ jump: 1, "execution:3": 0, "execution:4": 0.1 });
     expect(alignAttemptProfiles(profiles)[2]["execution:3"]).toBeNull();
+  });
+
+  it("calculates signed per-jump differences in seconds from the first selected ToF attempt, not chronological order", () => {
+    const profiles = buildAttemptProfiles("tof", [
+      { id: 1, date: "2026-01-01", routineId: 1, tofValues: [1.1, 1.2, null, 0] },
+      { id: 2, date: "2026-01-02", routineId: 1, tofValues: [1.5, 1.2, 1.4, 0] },
+    ] as TofSession[], [routine], [skill, second]);
+    const selected = [profiles[1], profiles[0]];
+    expect(selected[0].key).toBe("tof:2");
+    expect(jumpDifference(selected, 1, 0)).toBeCloseTo(-0.4);
+    expect([1, 2, 3].map(jump => jumpDifference(selected, 1, jump)))
+      .toEqual([0, null, 0]);
+    expect(jumpDifference(selected, 0, 0)).toBeNull();
+    expect(jumpDifference([profiles[0], profiles[1]], 1, 0)).toBeCloseTo(0.4);
+  });
+
+  it("calculates execution deduction points without landing and never invents deltas for missing baseline positions", () => {
+    const profiles = buildAttemptProfiles("execution", [
+      { id: 3, date: "2026-01-01", routineId: 1, deductions: [0, null, 0.3], landingDeduction: 0.5 },
+      { id: 4, date: "2026-01-02", routineId: 1, deductions: [0.2, 0.1, 0], landingDeduction: 0 },
+    ] as ExecutionSession[], [routine], [skill, second]);
+    expect(jumpDifference(profiles, 1, 0)).toBeCloseTo(0.2);
+    expect(jumpDifference(profiles, 1, 1)).toBeNull();
+    expect(jumpDifference(profiles, 1, 2)).toBeCloseTo(-0.3);
+    expect(jumpDifference(profiles, 1, 3)).toBeNull();
+    expect(jumpDifference(profiles, 2, 0)).toBeNull();
   });
 
   it("shows ordered routine skills only when all selected attempts share the identity", () => {

@@ -116,3 +116,11 @@ export function alignAttemptProfiles(profiles: AttemptProfile[]): JumpComparison
     return row;
   });
 }
+
+/** Difference at the same jump position, always relative to the first selected attempt. */
+export function jumpDifference(profiles: AttemptProfile[], attemptIndex: number, jumpIndex: number): number | null {
+  if (attemptIndex <= 0 || attemptIndex >= profiles.length) return null;
+  const baseline = profiles[0].values[jumpIndex];
+  const compared = profiles[attemptIndex].values[jumpIndex];
+  return baseline != null && compared != null ? compared - baseline : null;
+}
