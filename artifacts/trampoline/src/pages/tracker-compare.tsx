@@ -88,8 +88,8 @@ export default function TrackerComparePage() {
         accent="graphs"
         subtitle={
           tracker === "tof"
-            ? "Put routine totals or skill airtime histories on one date-based graph."
-            : "Put routine deductions, E scores, or skill histories on one date-based graph."
+            ? "Overlay recorded attempts by jump position to compare time of flight."
+            : "Overlay recorded attempts by jump position to compare execution deductions."
         }
         backLink={
           <BackLink

@@ -1,154 +1,46 @@
 import { describe, expect, it } from "vitest";
 import type { ExecutionSession, Routine, Skill, TofSession } from "@shared/schema";
-import {
-  alignComparisonSeries,
-  buildExecutionComparisonSeries,
-  buildTofComparisonSeries,
-  collapseDuplicateDates,
-  comparisonMetric,
-  filterComparisonTargets,
-  type ComparisonSeries,
-} from "@/lib/tracker-comparison";
+import { alignAttemptProfiles, buildAttemptProfiles } from "@/lib/tracker-comparison";
 
-const routine = {
-  id: 1,
-  name: "Set routine",
-  skillIds: [10, 11],
-  archived: 0,
-} as unknown as Routine;
-const skillA = {
-  id: 10,
-  code: "A",
-  name: "Skill A",
-  archived: 0,
-  parentSkillId: null,
-  shape: null,
-} as unknown as Skill;
-const skillB = {
-  id: 11,
-  code: "B",
-  name: "Skill B",
-  archived: 0,
-  parentSkillId: null,
-  shape: null,
-} as unknown as Skill;
+const routine = { id: 1, name: "Set routine", skillIds: [10, 11] } as Routine;
+const skill = { id: 10, name: "Jump", code: "A", parentSkillId: null, shape: null } as Skill;
 
-describe("tracker comparison transformations", () => {
-  it("orders dates and averages duplicate recordings without inventing gaps", () => {
-    expect(collapseDuplicateDates([
-      { date: "2026-02-03", value: 3 },
-      { date: "2026-02-01", value: 1 },
-      { date: "2026-02-01", value: 2 },
-    ])).toEqual([
-      { date: "2026-02-01", value: 1.5, count: 2 },
-      { date: "2026-02-03", value: 3, count: 1 },
-    ]);
-  });
-
-  it("aligns series by date and keeps missing values null", () => {
-    const series: ComparisonSeries[] = [
-      {
-        key: "routine:1",
-        label: "Set routine",
-        kind: "routine",
-        unit: "seconds",
-        points: [
-          { date: "2026-02-03", value: 3 },
-          { date: "2026-02-01", value: 1 },
-        ],
-      },
-      {
-        key: "routine:2",
-        label: "Vol routine",
-        kind: "routine",
-        unit: "seconds",
-        points: [{ date: "2026-02-02", value: 2 }],
-      },
-    ];
-
-    expect(alignComparisonSeries(series)).toEqual([
-      { date: "2026-02-01", "routine:1": 1, "routine:2": null },
-      { date: "2026-02-02", "routine:1": null, "routine:2": 2 },
-      { date: "2026-02-03", "routine:1": 3, "routine:2": null },
-    ]);
-  });
-
-  it("filters routine and skill selections when the metric scope changes", () => {
-    const targets = [
-      { key: "routine:1", id: 1, kind: "routine" as const, label: "Set", description: "Routine", recordCount: 1 },
-      { key: "skill:10", id: 10, kind: "skill" as const, label: "A", description: "Skill A", recordCount: 2 },
-    ];
-    expect(filterComparisonTargets(targets, comparisonMetric("tof", "total")).map(item => item.key))
-      .toEqual(["routine:1"]);
-    expect(filterComparisonTargets(targets, comparisonMetric("tof", "skill")).map(item => item.key))
-      .toEqual(["skill:10"]);
-  });
-
-  it("builds skill ToF history from routine positions and excludes incompatible routine totals", () => {
+describe("attempt profile comparison", () => {
+  it("retains individual identity for attempts on the same date and plots ordered positions", () => {
     const sessions = [
-      {
-        id: 1,
-        date: "2026-02-02",
-        routineId: 1,
-        skillId: null,
-        skillIds: null,
-        tofValues: [1.1, 1.2],
-      },
-    ] as unknown as TofSession[];
-    const series = buildTofComparisonSeries({
-      selectedKeys: ["skill:10", "routine:1"],
-      sessions,
-      routines: [routine],
-      allSkills: [skillA, skillB],
-      metric: "skill",
-    });
-    expect(series).toHaveLength(1);
-    expect(series[0].key).toBe("skill:10");
-    expect(series[0].points[0]).toMatchObject({ date: "2026-02-02", value: 1.1, count: 1 });
+      { id: 7, date: "2026-02-01", routineId: 1, skillId: null, skillIds: null, tofValues: [1.1, 1.2] },
+      { id: 8, date: "2026-02-01", routineId: 1, skillId: null, skillIds: null, tofValues: [1.3, 1.4] },
+    ] as TofSession[];
+    const profiles = buildAttemptProfiles("tof", sessions, [routine], [skill]);
+    expect(profiles.map(p => p.key)).toEqual(["tof:7", "tof:8"]);
+    expect(profiles.map(p => p.total)).toEqual([2.3, 2.7]);
+    const aligned = alignAttemptProfiles(profiles);
+    expect(aligned).toHaveLength(10);
+    expect(aligned[0]).toEqual({ jump: 1, "tof:7": 1.1, "tof:8": 1.3 });
+    expect(aligned[1]).toEqual({ jump: 2, "tof:7": 1.2, "tof:8": 1.4 });
+    expect(aligned[2]).toEqual({ jump: 3, "tof:7": null, "tof:8": null });
   });
 
-  it("keeps incomplete E-score dates as gaps while retaining zero deductions", () => {
-    const sessions = [
-      {
-        id: 1,
-        date: "2026-02-01",
-        routineId: 1,
-        skillId: null,
-        skillIds: null,
-        deductions: Array.from({ length: 10 }, () => 0),
-        landingDeduction: 0,
-      },
-      {
-        id: 2,
-        date: "2026-02-02",
-        routineId: 1,
-        skillId: null,
-        skillIds: null,
-        deductions: [0],
-        landingDeduction: null,
-      },
-    ] as unknown as ExecutionSession[];
-    const eSeries = buildExecutionComparisonSeries({
-      selectedKeys: ["routine:1"],
-      sessions,
-      routines: [routine],
-      allSkills: [skillA, skillB],
-      metric: "eScore",
-    });
-    expect(eSeries[0].points).toEqual([
-      { date: "2026-02-01", value: 20, count: 1 },
-    ]);
+  it("preserves missing positions instead of shifting or padding with zero", () => {
+    const profiles = buildAttemptProfiles("tof", [{
+      id: 9, date: "2026-02-02", routineId: null, skillId: 10, skillIds: null,
+      tofValues: [1.1, null, 1.5],
+    } as unknown as TofSession], [], [skill]);
+    expect(profiles[0].values).toEqual([1.1, null, 1.5]);
+    expect(alignAttemptProfiles(profiles).slice(0, 4).map(row => row["tof:9"]))
+      .toEqual([1.1, null, 1.5, null]);
+  });
 
-    const skillSeries = buildExecutionComparisonSeries({
-      selectedKeys: ["skill:10"],
-      sessions,
-      routines: [routine],
-      allSkills: [skillA, skillB],
-      metric: "skill",
-    });
-    expect(skillSeries[0].points).toEqual([
-      { date: "2026-02-01", value: 0, count: 1 },
-      { date: "2026-02-02", value: 0, count: 1 },
-    ]);
+  it("retains zero deductions and includes recorded landing only in the total", () => {
+    const profiles = buildAttemptProfiles("execution", [
+      { id: 3, date: "2026-02-01", routineId: 1, skillId: null, skillIds: null, deductions: [0, 0.2], landingDeduction: 0.3 },
+      { id: 4, date: "2026-02-01", routineId: 1, skillId: null, skillIds: null, deductions: [0.1], landingDeduction: null },
+    ] as ExecutionSession[], [routine], [skill]);
+    expect(profiles.map(p => p.key)).toEqual(["execution:3", "execution:4"]);
+    expect(profiles.map(p => p.total)).toEqual([0.5, 0.1]);
+    expect(profiles.map(p => p.landingRecorded)).toEqual([true, false]);
+    expect(profiles[0].values).toEqual([0, 0.2]);
+    expect(alignAttemptProfiles(profiles)[0]).toEqual({ jump: 1, "execution:3": 0, "execution:4": 0.1 });
+    expect(alignAttemptProfiles(profiles)[2]["execution:3"]).toBeNull();
   });
 });
