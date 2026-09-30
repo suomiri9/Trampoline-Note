@@ -1,1 +1,2 @@
+- [Auth observer lifecycle](auth-observer-lifecycle.md) — retain the observed session query during identity changes so successful login updates the UI without restart.
 - [Production public origin](production-public-origin.md) — OAuth callbacks and emailed links must use the custom production domain, not the generated Replit hostname.

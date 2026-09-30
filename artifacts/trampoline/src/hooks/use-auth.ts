@@ -9,6 +9,56 @@ import { trackEvent } from "@/lib/analytics";
 
 const USER_CACHE_KEY = "user";
 const SESSION_MARKER_KEY = "tn-session-active";
+const AUTH_QUERY_KEY = ["/api/auth/user"] as const;
+
+// Reads started under an earlier session must never update the identity mirror
+// (or wipe the offline queue on a late 401) after an auth transition begins.
+let authEpoch = 0;
+let authTransitionPending = 0;
+// A read that already received a response may be writing/clearing IndexedDB.
+// Let that finish before a new session writes its own mirror.
+let authReadStorage: Promise<void> = Promise.resolve();
+
+function assertCurrentAuthRead(epoch: number) {
+  if (epoch !== authEpoch || authTransitionPending > 0) {
+    throw new Error("Auth read superseded by a session change");
+  }
+}
+
+async function beginAuthTransition(queryClient: ReturnType<typeof useQueryClient>) {
+  authEpoch++;
+  authTransitionPending++;
+  await authReadStorage;
+  await queryClient.cancelQueries({ queryKey: AUTH_QUERY_KEY });
+}
+
+function finishAuthTransition() {
+  authEpoch++;
+  authTransitionPending--;
+}
+
+function failAuthTransition(queryClient: ReturnType<typeof useQueryClient>) {
+  finishAuthTransition();
+  // A cancelled read may have learned that the old session expired. When the
+  // attempted change fails, verify the existing session again rather than
+  // leaving its pre-transition identity trusted indefinitely.
+  if (authTransitionPending === 0) {
+    void queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+  }
+}
+
+function replaceIdentity(queryClient: ReturnType<typeof useQueryClient>, user: SafeUser | null) {
+  // clear() removes the *active* auth query. Its mounted useQuery observer
+  // remains attached to that removed query, not the new query setQueryData
+  // creates, so the login page stays visible until a full app restart.
+  queryClient.removeQueries({
+    predicate: (query) => query.queryKey[0] !== AUTH_QUERY_KEY[0],
+  });
+  // clear() also removed user-scoped mutation results; retain that isolation
+  // without detaching the mounted auth observer.
+  queryClient.getMutationCache().clear();
+  queryClient.setQueryData(AUTH_QUERY_KEY, user);
+}
 
 function setSessionMarker(active: boolean) {
   if (typeof localStorage === "undefined") return;
@@ -30,6 +80,7 @@ function hasSessionMarker(): boolean {
 }
 
 async function fetchUser(): Promise<SafeUser | null> {
+  const epoch = authEpoch;
   const offlineModeOn = getOfflineModeEnabled();
   try {
     // Cap the wait when offline mode is on: on flaky wifi this request can
@@ -38,12 +89,16 @@ async function fetchUser(): Promise<SafeUser | null> {
     const response = offlineModeOn
       ? await fetchWithTimeout("/api/auth/user", { credentials: "include" })
       : await fetch("/api/auth/user", { credentials: "include" });
+    assertCurrentAuthRead(epoch);
 
     if (response.status === 401) {
       // Definitive server answer — identity is no longer mirror-served.
       markNetworkOk(USER_CACHE_KEY);
       setSessionMarker(false);
-      await cacheClearAll();
+      const clearing = cacheClearAll();
+      authReadStorage = clearing;
+      await clearing;
+      assertCurrentAuthRead(epoch);
       appQueryClient.removeQueries({
         predicate: (query) => query.queryKey[0] !== "/api/auth/user",
       });
@@ -56,12 +111,17 @@ async function fetchUser(): Promise<SafeUser | null> {
     }
 
     const data = (await response.json()) as SafeUser;
+    assertCurrentAuthRead(epoch);
     // Fully parsed network result — clear this key's saved-data signal.
     markNetworkOk(USER_CACHE_KEY);
     setSessionMarker(true);
-    await cacheSet(USER_CACHE_KEY, data);
+    const writing = cacheSet(USER_CACHE_KEY, data);
+    authReadStorage = writing;
+    await writing;
+    assertCurrentAuthRead(epoch);
     return data;
   } catch (err) {
+    assertCurrentAuthRead(epoch);
     // Fall back to the cached identity whenever the network layer failed
     // (rejected, timed out, or the server errored) while offline mode is on
     // AND we previously held a verified session (marker present). A real
@@ -71,6 +131,7 @@ async function fetchUser(): Promise<SafeUser | null> {
     // is exactly when the fallback is needed.
     if (offlineModeOn && hasSessionMarker()) {
       const cached = await cacheGet<SafeUser>(USER_CACHE_KEY);
+      assertCurrentAuthRead(epoch);
       if (cached) {
         markCacheServed(USER_CACHE_KEY);
         return cached;
@@ -138,7 +199,7 @@ async function logoutFn(): Promise<void> {
 export function useAuth() {
   const queryClient = useQueryClient();
   const { data: user, isLoading } = useQuery<SafeUser | null>({
-    queryKey: ["/api/auth/user"],
+    queryKey: AUTH_QUERY_KEY,
     queryFn: fetchUser,
     retry: false,
     staleTime: 1000 * 60 * 5,
@@ -146,28 +207,34 @@ export function useAuth() {
 
   const loginMutation = useMutation({
     mutationFn: loginFn,
+    onMutate: () => beginAuthTransition(queryClient),
     onSuccess: (data) => {
+      finishAuthTransition();
       trackEvent("account_login_succeeded");
-      queryClient.clear();
-      queryClient.setQueryData(["/api/auth/user"], data);
+      replaceIdentity(queryClient, data);
     },
+    onError: () => failAuthTransition(queryClient),
   });
 
   const registerMutation = useMutation({
     mutationFn: registerFn,
+    onMutate: () => beginAuthTransition(queryClient),
     onSuccess: (data) => {
+      finishAuthTransition();
       trackEvent("account_registration_succeeded");
-      queryClient.clear();
-      queryClient.setQueryData(["/api/auth/user"], data);
+      replaceIdentity(queryClient, data);
     },
+    onError: () => failAuthTransition(queryClient),
   });
 
   const logoutMutation = useMutation({
     mutationFn: logoutFn,
+    onMutate: () => beginAuthTransition(queryClient),
     onSuccess: () => {
-      queryClient.clear();
-      queryClient.setQueryData(["/api/auth/user"], null);
+      finishAuthTransition();
+      replaceIdentity(queryClient, null);
     },
+    onError: () => failAuthTransition(queryClient),
   });
 
   return {
