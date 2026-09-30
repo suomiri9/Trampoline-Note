@@ -5,11 +5,12 @@ import {
   CartesianGrid, Line, LineChart, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
 } from "recharts";
-import type { ExecutionSession, Routine, Skill, TofSession } from "@shared/schema";
+import type { ExecutionSession, RoutineWithVersions, Skill, TofSession } from "@shared/schema";
 import { Button } from "@/components/ui/button";
+import { useShowSkillNames } from "@/hooks/use-skill-label-mode";
 import { cn } from "@/lib/utils";
 import {
-  alignAttemptProfiles, buildAttemptProfiles,
+  alignAttemptProfiles, buildAttemptProfiles, jumpSkillLabel, sharedJumpSkills,
   type AttemptProfile, type ComparisonTracker,
 } from "@/lib/tracker-comparison";
 
@@ -34,10 +35,11 @@ export function TrackerComparison({
 }: {
   tracker: ComparisonTracker;
   sessions: TofSession[] | ExecutionSession[] | undefined;
-  routines: Routine[] | undefined;
+  routines: RoutineWithVersions[] | undefined;
   allSkills: Skill[] | undefined;
 }) {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const [showSkillNames] = useShowSkillNames();
   const attempts = useMemo(
     () => tracker === "tof"
       ? buildAttemptProfiles("tof", sessions as TofSession[] | undefined, routines, allSkills)
@@ -49,6 +51,19 @@ export function TrackerComparison({
     return attempt ? [attempt] : [];
   });
   const chartData = useMemo(() => alignAttemptProfiles(selected), [attempts, selectedKeys]);
+  const sharedSkills = sharedJumpSkills(selected);
+  const hasDifferentSkills = selected.some(attempt =>
+    attempt.values.some((_, index) => !sharedSkills[index]),
+  );
+  const needsSkillReference = hasDifferentSkills || selected.some(attempt =>
+    attempt.jumpSkills.some(skill => jumpSkillLabel(skill, showSkillNames).length > 10),
+  );
+  const axisSkill = (jump: number) => {
+    const skill = sharedSkills[jump - 1];
+    if (!skill) return `Jump ${jump}`;
+    const label = jumpSkillLabel(skill, showSkillNames);
+    return label === "Unknown skill" ? `Jump ${jump}` : label.length > 10 ? `${label.slice(0, 9)}…` : label;
+  };
   const unit = tracker === "tof" ? "seconds" : "deduction points";
   const toggle = (key: string) => setSelectedKeys(current =>
     current.includes(key) ? current.filter(item => item !== key) : [...current, key],
@@ -125,19 +140,21 @@ export function TrackerComparison({
           <h2 className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/65">
             {tracker === "tof" ? "Time of flight per jump" : "Execution deduction per jump"}
           </h2>
-          <p className="text-xs text-muted-foreground/65 mt-1 mb-5">Jump position 1–10 · {unit} · straight lines and recorded dots</p>
+           <p className="text-xs text-muted-foreground/65 mt-1 mb-5">Jump order 1–10 · {unit} · straight lines and recorded dots{needsSkillReference ? " · full skills by attempt below" : ""}</p>
           <div className="h-64 sm:h-72 w-full" data-testid={`plot-comparison-${tracker}`}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 8, right: 12, left: 4, bottom: 16 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.45)" />
-                <XAxis dataKey="jump" type="number" domain={[1, 10]} ticks={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]} allowDecimals={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} label={{ value: "Jump position", position: "insideBottom", offset: -10, fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                 <XAxis dataKey="jump" type="number" domain={[1, 10]} ticks={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]} allowDecimals={false} tickFormatter={(jump: number) => axisSkill(jump)} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} label={{ value: "Jump order / skill", position: "insideBottom", offset: -10, fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                 <YAxis type="number" domain={["auto", "auto"]} width={48} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v: number) => v.toFixed(tracker === "tof" ? 2 : 1)} label={{ value: tracker === "tof" ? "Seconds" : "Points", angle: -90, position: "insideLeft", fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                 <Tooltip
                   contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", background: "hsl(var(--popover))", color: "hsl(var(--popover-foreground))" }}
-                  labelFormatter={label => `Jump ${label}`}
-                  formatter={(value: number, _name: string, entry: { dataKey?: string | number }) => {
+                   labelFormatter={label => `Jump ${label}`}
+                   formatter={(value: number, _name: string, entry: { dataKey?: string | number; payload?: { jump?: number } }) => {
                     const attempt = selected.find(item => item.key === entry.dataKey);
-                    return [`${value.toFixed(tracker === "tof" ? 3 : 1)} ${tracker === "tof" ? "s" : "pts"}`, attempt ? `${attempt.label} · ${dateLabel(attempt.date)} · #${attempt.key.split(":")[1]}` : ""];
+                     const jump = entry.payload?.jump;
+                     const skill = attempt && jump != null ? jumpSkillLabel(attempt.jumpSkills[jump - 1], showSkillNames) : "Unknown skill";
+                     return [`${value.toFixed(tracker === "tof" ? 3 : 1)} ${tracker === "tof" ? "s" : "pts"}`, attempt ? `${attempt.label} · ${dateLabel(attempt.date)} · #${attempt.key.split(":")[1]} · ${skill}` : skill];
                   }}
                 />
                 {selected.map((attempt, index) => (
@@ -146,6 +163,21 @@ export function TrackerComparison({
               </LineChart>
             </ResponsiveContainer>
           </div>
+           {needsSkillReference && (
+             <div className="mt-4 space-y-2" data-testid={`skills-comparison-${tracker}`}>
+               <h3 className="text-[11px] font-semibold text-muted-foreground">Skills by attempt and jump</h3>
+               {selected.map((attempt, index) => (
+                 <div key={attempt.key} className="text-xs" data-testid={`skills-comparison-${attempt.key}`}>
+                   <div className="font-semibold" style={{ color: COLORS[index % COLORS.length] }}>{attempt.label} · #{attempt.key.split(":")[1]}</div>
+                   <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-muted-foreground">
+                     {attempt.values.map((_, position) => (
+                       <span key={position}>Jump {position + 1}: {jumpSkillLabel(attempt.jumpSkills[position], showSkillNames)}</span>
+                     ))}
+                   </div>
+                 </div>
+               ))}
+             </div>
+           )}
           <p className="text-[11px] text-muted-foreground/65 mt-3">
             Missing jump positions stay blank, not zero. {tracker === "execution" && "Landing deductions are included in totals when recorded, but are not plotted as a jump."}
           </p>
