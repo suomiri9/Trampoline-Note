@@ -20,3 +20,4 @@
 export * from "./schema";
 export * from "./auth";
 export * from "./dictionary-data-migrations";
+export * from "./files";

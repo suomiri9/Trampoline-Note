@@ -27,12 +27,14 @@ import {
 
 export type { CoachSkillProposal, CoachPointProposal } from "./coach-proposals";
 
+// Works with Replit's AI integration or a plain OpenAI key. A placeholder key
+// keeps the server starting without one; AI calls then fail as "unavailable".
 const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY || "missing",
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined,
 });
 
-const MODEL = "gpt-5.6-terra";
+const MODEL = process.env.COACH_MODEL || "gpt-5.6-terra";
 
 export class CoachUnavailableError extends Error {
   constructor(message = "The AI coach is unavailable right now.") {

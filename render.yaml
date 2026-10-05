@@ -28,10 +28,13 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
-      - key: AI_INTEGRATIONS_OPENAI_API_KEY
+      - key: OPENAI_API_KEY
         sync: false
-      - key: AI_INTEGRATIONS_OPENAI_BASE_URL
-        value: https://api.openai.com/v1
+      # Model for the AI coach. Change it here or in Render's Environment tab.
+      - key: COACH_MODEL
+        value: gpt-4.1
+      - key: RESEND_API_KEY
+        sync: false
       - key: WHOOP_CLIENT_ID
         sync: false
       - key: WHOOP_CLIENT_SECRET

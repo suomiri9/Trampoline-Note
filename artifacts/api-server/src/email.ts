@@ -1,11 +1,6 @@
-// Password-reset email delivery via the Resend integration.
-//
-// Uses the Replit Resend connector through @replit/connectors-sdk, which
-// handles identity, token refresh, and auth headers automatically. In
+// Password-reset email delivery via the Resend API (RESEND_API_KEY). In
 // non-production environments the reset link is also logged to the server
 // console so the flow stays easy to test locally.
-
-import { ReplitConnectors } from "@replit/connectors-sdk";
 
 interface PasswordResetEmailParams {
   to: string;
@@ -15,9 +10,6 @@ interface PasswordResetEmailParams {
 
 const FROM_ADDRESS = process.env.RESET_EMAIL_FROM || "onboarding@resend.dev";
 const APP_NAME = "Trampoline Note";
-
-// The SDK fetches fresh auth per request, so a single instance is safe to reuse.
-const connectors = new ReplitConnectors();
 
 // The email adapts to the recipient's device light/dark setting via the
 // `prefers-color-scheme` media query. The inline styles are the LIGHT baseline
@@ -87,16 +79,22 @@ export async function sendPasswordResetEmail({
     console.log(`[email] Password reset link for ${to}: ${resetUrl}`);
   }
 
-  // Resend integration: send through the connectors proxy.
-  const response = await connectors.proxy("resend", "/emails", {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error("RESEND_API_KEY is not set");
+
+  const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    body: {
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
       from: FROM_ADDRESS,
       to: [to],
       subject: `Reset your ${APP_NAME} password`,
       html: resetEmailHtml(resetUrl, displayName),
       text: resetEmailText(resetUrl, displayName),
-    },
+    }),
   });
 
   if (!response.ok) {
