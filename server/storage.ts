@@ -15,6 +15,7 @@ import {
   type InsertScore
 } from "@shared/schema";
 import { eq, desc, and, isNull, sql, gte } from "drizzle-orm";
+import { planSkillInsert } from "@shared/history";
 
 export interface IStorage {
   // Notes
@@ -108,30 +109,10 @@ export class DatabaseStorage implements IStorage {
       .from(skills)
       .where(and(eq(skills.userId, userId), eq(skills.isDrill, isDrill)));
 
-    const sorted = sameCategory
-      .map(s => ({ id: s.id, sortOrder: s.sortOrder ?? 999999, difficulty: s.difficulty }))
-      .sort((a, b) => a.sortOrder !== b.sortOrder ? a.sortOrder - b.sortOrder : b.difficulty - a.difficulty);
-
-    let insertIdx = sorted.length;
-    for (let i = 0; i < sorted.length; i++) {
-      if (difficulty >= sorted[i].difficulty) {
-        insertIdx = i;
-        break;
-      }
-    }
-
-    const shiftUpdates = sorted.slice(insertIdx).map((s, i) =>
-      db.update(skills)
-        .set({ sortOrder: insertIdx + i + 1 })
-        .where(eq(skills.id, s.id))
+    const { insertIdx, updates } = planSkillInsert(sameCategory, difficulty);
+    await Promise.all(
+      updates.map(u => db.update(skills).set({ sortOrder: u.sortOrder }).where(eq(skills.id, u.id)))
     );
-    await Promise.all(shiftUpdates);
-
-    for (let i = 0; i < insertIdx; i++) {
-      if (sorted[i].sortOrder !== i) {
-        await db.update(skills).set({ sortOrder: i }).where(eq(skills.id, sorted[i].id));
-      }
-    }
 
     const [skill] = await db.insert(skills)
       .values({ ...insertSkill, userId, sortOrder: insertIdx })

@@ -1,10 +1,8 @@
 import { setOfflineModeEnabled } from "./offline-mode";
 import { drainQueue, clearOfflineDataAndQueue } from "./offline-queue";
 import { queryClient } from "./queryClient";
-import { isNativeApp } from "./native";
 
 export async function registerServiceWorker(): Promise<void> {
-  if (isNativeApp) return;
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
   try {
     await navigator.serviceWorker.register("/sw.js");

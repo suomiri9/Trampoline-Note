@@ -1,8 +1,12 @@
+import { isNativeApp } from './platform';
+
 const KEY = 'offlineModeEnabled';
 
 const subscribers = new Set<() => void>();
 
 export function getOfflineModeEnabled(): boolean {
+  // The iOS app keeps all data on the device, so it never needs offline mode.
+  if (isNativeApp) return false;
   try {
     return typeof localStorage !== 'undefined' && localStorage.getItem(KEY) === '1';
   } catch {

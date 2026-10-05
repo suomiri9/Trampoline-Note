@@ -32,15 +32,16 @@ Requires a `DATABASE_URL` environment variable pointing to a PostgreSQL database
 
 ## iOS app
 
-The iOS app is the same React frontend wrapped with [Capacitor](https://capacitorjs.com). The UI ships inside the app; it talks to your deployed Express server over HTTPS, so the server must stay deployed (e.g. a Replit deployment).
+The iOS app is the same React frontend wrapped with [Capacitor](https://capacitorjs.com). It needs no server: in the app, `/api` requests are answered on the device (`client/src/lib/local-api`) and everything is saved to one JSON file in the app's Documents folder, which is included in iPhone backups and visible in the Files app. There is no sign-in and no sync between devices.
 
-You need a Mac with Xcode and, to put it on the App Store, an Apple Developer account.
+To move existing data into the app, use **Settings → Your data → Export** on the web app, then **Import from a file** in the iOS app.
+
+You need a Mac with Xcode, and an Apple Developer account to publish to the App Store.
 
 ```bash
 npm install
-cp .env.example .env   # set VITE_API_BASE_URL to your deployed server URL
-npm run ios:sync       # build the web app and copy it into ios/
-npm run ios:open       # open the project in Xcode, then press Run
+npm run ios:sync   # build the web app and copy it into ios/
+npm run ios:open   # open the project in Xcode, then press Run
 ```
 
 Run `npm run ios:sync` again after every frontend change. App icon and launch screen live in `ios/App/App/Assets.xcassets`.

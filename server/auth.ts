@@ -4,7 +4,6 @@ import connectPg from "connect-pg-simple";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
-import { notes, skills, routines, scores } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { storage } from "./storage";
@@ -184,31 +183,6 @@ export async function setupAuth(app: Express) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
-  });
-
-  // Permanently deletes the signed-in user and all of their data.
-  // Required by the App Store for apps that let people create accounts.
-  app.delete("/api/auth/account", isAuthenticated, async (req, res) => {
-    const userId = req.session.userId!;
-    if (userId === DEMO_USER_ID) {
-      return res.status(403).json({ message: "The demo account can't be deleted." });
-    }
-    try {
-      await db.transaction(async (tx) => {
-        await tx.delete(notes).where(eq(notes.userId, userId));
-        await tx.delete(scores).where(eq(scores.userId, userId));
-        await tx.delete(routines).where(eq(routines.userId, userId));
-        await tx.delete(skills).where(eq(skills.userId, userId));
-        await tx.delete(users).where(eq(users.id, userId));
-      });
-    } catch (error) {
-      console.error("Error deleting account:", error);
-      return res.status(500).json({ message: "Failed to delete account" });
-    }
-    req.session.destroy(() => {
-      res.clearCookie("connect.sid", { httpOnly: true, secure: true, sameSite: "lax" });
-      res.json({ message: "Account deleted" });
-    });
   });
 
   app.post("/api/auth/logout", (req, res) => {
