@@ -5,6 +5,7 @@ import { logger } from "./lib/logger";
 import { setupAuth } from "./auth";
 import { registerRoutes } from "./routes/routes";
 import { appCors, isAppRequest } from "./app-client";
+import { serveStatic } from "./static";
 
 const app: Express = express();
 
@@ -50,5 +51,8 @@ app.use("/api", router);
 export async function initializeApp(): Promise<Express> {
   await setupAuth(app);
   registerRoutes(app);
+  if (process.env["SERVE_STATIC"] === "true") {
+    logger.info({ mounted: serveStatic(app) }, "Serving web app builds");
+  }
   return app;
 }

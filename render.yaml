@@ -1,0 +1,40 @@
+# Render Blueprint: one web service that serves the web app (/), the
+# dictionary admin (/dictionary-admin/) and the API (/api).
+# In Render: New > Blueprint > pick this repo. Fill in the "sync: false" values when asked.
+services:
+  - type: web
+    name: trampoline-note
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: >-
+      corepack enable &&
+      pnpm install --frozen-lockfile &&
+      PORT=3000 BASE_PATH=/ pnpm --filter @workspace/trampoline run build &&
+      PORT=3000 BASE_PATH=/dictionary-admin/ pnpm --filter @workspace/dictionary-admin run build &&
+      pnpm --filter @workspace/api-server run build
+    startCommand: node --enable-source-maps artifacts/api-server/dist/index.mjs
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: SERVE_STATIC
+        value: "true"
+      - key: APP_BASE_URL
+        value: https://trampolinenote.com
+      - key: SESSION_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: AI_INTEGRATIONS_OPENAI_API_KEY
+        sync: false
+      - key: AI_INTEGRATIONS_OPENAI_BASE_URL
+        value: https://api.openai.com/v1
+      - key: WHOOP_CLIENT_ID
+        sync: false
+      - key: WHOOP_CLIENT_SECRET
+        sync: false
+      - key: RESET_EMAIL_FROM
+        sync: false
