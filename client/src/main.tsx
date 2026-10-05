@@ -3,8 +3,12 @@ import App from "./App";
 import "./index.css";
 import { getOfflineModeEnabled } from "./lib/offline-mode";
 import { registerServiceWorker } from "./lib/offline-control";
+import { installNativeApiBase, isNativeApp } from "./lib/native";
 
-if (getOfflineModeEnabled()) {
+installNativeApiBase();
+
+// The iOS app already ships the app shell on the device, so it needs no service worker.
+if (getOfflineModeEnabled() && !isNativeApp) {
   window.addEventListener("load", () => {
     void registerServiceWorker();
   });

@@ -40,14 +40,16 @@ import {
 } from "@/lib/offline-queue";
 import type { FailedItem } from "@/lib/offline-db";
 import { enableOfflineMode, disableOfflineMode } from "@/lib/offline-control";
+import { isNativeApp } from "@/lib/native";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 export default function SettingsPage() {
-  const { user, logout, isLoggingOut } = useAuth();
+  const { user, logout, isLoggingOut, deleteAccount, isDeletingAccount } = useAuth();
   const { toast } = useToast();
   const [showSignOutAlert, setShowSignOutAlert] = useState(false);
+  const [showDeleteAccountAlert, setShowDeleteAccountAlert] = useState(false);
   const [timeFormat, setTimeFormat] = useTimeFormat();
   const [offlineModeEnabled, setOfflineModeEnabled] = useOfflineMode();
   const isOnline = useOnline();
@@ -76,9 +78,10 @@ export default function SettingsPage() {
     }
     let alive = true;
     const check = async () => {
-      let sw = false;
+      // The iOS app bundles the app shell, so it is always available offline.
+      let sw = isNativeApp;
       try {
-        if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+        if (!sw && typeof navigator !== "undefined" && "serviceWorker" in navigator) {
           const reg = await navigator.serviceWorker.getRegistration();
           sw = !!(reg && (reg.active || reg.installing || reg.waiting));
         }
@@ -300,6 +303,18 @@ export default function SettingsPage() {
 
   const handleSignOutClick = () => setShowSignOutAlert(true);
 
+  const handleDeleteAccount = async () => {
+    try {
+      await deleteAccount();
+    } catch (err) {
+      toast({
+        title: "Couldn't delete account",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
+    }
+  };
+
   const signOutDescription =
     pendingCount > 0
       ? `You have ${pendingCount} entr${pendingCount === 1 ? "y" : "ies"} waiting to sync — signing out will lose ${pendingCount === 1 ? "it" : "them"}.`
@@ -363,6 +378,15 @@ export default function SettingsPage() {
               {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
               Sign out
             </Button>
+            <button
+              type="button"
+              className="block text-xs text-muted-foreground underline underline-offset-2 hover:text-destructive disabled:opacity-50"
+              onClick={() => setShowDeleteAccountAlert(true)}
+              disabled={isDeletingAccount || !isOnline}
+              data-testid="btn-delete-account"
+            >
+              {isDeletingAccount ? "Deleting account…" : "Delete account"}
+            </button>
           </div>
         </section>
 
@@ -584,6 +608,15 @@ export default function SettingsPage() {
         description={signOutDescription}
         onConfirm={() => logout()}
         confirmLabel="Sign out"
+      />
+
+      <ConfirmDialog
+        open={showDeleteAccountAlert}
+        onOpenChange={setShowDeleteAccountAlert}
+        title="Delete account?"
+        description="This permanently deletes your account and all of your notes, scores, skills and routines. This can't be undone."
+        onConfirm={() => void handleDeleteAccount()}
+        confirmLabel="Delete account"
       />
 
       <Dialog open={showFailedDialog} onOpenChange={setShowFailedDialog}>

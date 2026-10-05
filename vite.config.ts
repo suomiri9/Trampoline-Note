@@ -27,6 +27,8 @@ export default defineConfig({
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
+  // Read .env files (e.g. VITE_API_BASE_URL for the iOS app) from the repo root.
+  envDir: import.meta.dirname,
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
