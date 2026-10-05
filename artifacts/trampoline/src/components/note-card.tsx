@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { MoreVertical, Pencil, Trash2, HeartPulse, ChevronDown } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, HeartPulse, ChevronDown, Share as ShareIcon } from "lucide-react";
 import { PendingSyncBadge } from "@/components/pending-sync-badge";
 import { type Note } from "@shared/schema";
 import { parseNoteSkills, calculateTotalDD, computeTurns } from "@/lib/training-utils";
@@ -25,6 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useState } from "react";
+import { isNativeApp, shareText } from "@/lib/native-app";
 
 interface NoteCardProps {
   note: Note;
@@ -72,6 +73,15 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
   const noteDay = String(note.date).slice(0, 10);
   const totalDifficulty = calculateTotalDD(skillsData, allItems, routines, noteDay);
   const [trackTurns] = useTrackTurns();
+  const handleShare = () => {
+    const lines = [
+      `Trampoline session · ${format(new Date(note.date), "EEE, d MMM yyyy")}`,
+      totalDifficulty > 0 ? `Total DD ${totalDifficulty.toFixed(1)}` : null,
+      note.rating ? `Rating ${"★".repeat(note.rating)}` : null,
+      note.content || null,
+    ].filter(Boolean);
+    void shareText("Training session", lines.join("\n"));
+  };
   const turnInfo = computeTurns(skillsData);
   const [expandedMath, setExpandedMath] = useState<Set<number>>(new Set());
   const toggleMath = (idx: number) => {
@@ -218,6 +228,11 @@ export function NoteCard({ note, onEdit, index, isPending = false, defaultOpen =
                       <DropdownMenuItem onClick={() => onEdit(note)} className="cursor-pointer gap-2">
                         <Pencil className="h-4 w-4" /> Edit Session
                       </DropdownMenuItem>
+                      {isNativeApp && (
+                        <DropdownMenuItem onClick={handleShare} className="cursor-pointer gap-2" data-testid={`btn-share-${note.id}`}>
+                          <ShareIcon className="h-4 w-4" /> Share
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => setShowDeleteAlert(true)}

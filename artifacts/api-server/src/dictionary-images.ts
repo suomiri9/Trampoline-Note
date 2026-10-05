@@ -2,29 +2,21 @@ import { randomUUID } from "crypto";
 import OpenAI from "openai";
 import type { Response } from "express";
 import type { DictionaryEntry } from "@workspace/db";
-import { objectStorageClient } from "./replit_integrations/object_storage";
+import { deleteFile, saveFile, sendFile } from "./file-store";
 
 const MAX_BYTES = 20 * 1024 * 1024;
 const MODEL = process.env.AI_INTEGRATIONS_OPENAI_IMAGE_MODEL || "gpt-image-1";
+// Works with Replit's AI integration or a plain OpenAI key. A placeholder key
+// keeps the server starting without one; AI calls then fail as "unavailable".
 const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY || "missing",
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined,
 });
 
 export class DictionaryImageUnavailableError extends Error {
   constructor() { super("Image generation is unavailable right now."); }
 }
 
-function privateDir(): { bucket: string; prefix: string } {
-  const dir = process.env.PRIVATE_OBJECT_DIR || "";
-  const parts = dir.replace(/^\/+/, "").replace(/\/+$/, "").split("/");
-  if (!parts[0]) throw new DictionaryImageUnavailableError();
-  return { bucket: parts[0], prefix: parts.slice(1).join("/") };
-}
-function fileFor(key: string) {
-  const { bucket, prefix } = privateDir();
-  return objectStorageClient.bucket(bucket).file(prefix ? `${prefix}/${key}` : key);
-}
 function validKey(entryId: number, key: string | null): key is string {
   return !!key && key.startsWith(`dictionary-images/${entryId}/`) && !key.includes("..");
 }
@@ -59,7 +51,7 @@ export async function generateDictionaryImage(entry: DictionaryEntry): Promise<{
   const extension = contentType === "image/png" ? "png" : contentType === "image/jpeg" ? "jpg" : "webp";
   const key = `dictionary-images/${entry.id}/${randomUUID()}.${extension}`;
   try {
-    await fileFor(key).save(data, { contentType, resumable: false, metadata: { cacheControl: "private, max-age=31536000, immutable" } });
+    await saveFile(key, data, contentType);
   } catch {
     throw new DictionaryImageUnavailableError();
   }
@@ -68,7 +60,7 @@ export async function generateDictionaryImage(entry: DictionaryEntry): Promise<{
 
 export async function deleteDictionaryImage(entryId: number, key: string): Promise<void> {
   if (!validKey(entryId, key)) return;
-  try { await fileFor(key).delete({ ignoreNotFound: true }); } catch { /* cleanup is best effort */ }
+  try { await deleteFile(key); } catch { /* cleanup is best effort */ }
 }
 export async function serveDictionaryImage(
   entryId: number,
@@ -78,16 +70,5 @@ export async function serveDictionaryImage(
   cacheControl = "private, max-age=31536000, immutable",
 ): Promise<boolean> {
   if (!validKey(entryId, key) || !contentType) return false;
-  const file = fileFor(key);
-  const [exists] = await file.exists();
-  if (!exists) return false;
-  res.setHeader("Content-Type", contentType);
-  res.setHeader("Cache-Control", cacheControl);
-  await new Promise<void>((resolve, reject) => {
-    const stream = file.createReadStream();
-    stream.on("error", reject);
-    res.on("close", resolve);
-    stream.pipe(res);
-  });
-  return true;
+  return sendFile(key, contentType, cacheControl, res);
 }

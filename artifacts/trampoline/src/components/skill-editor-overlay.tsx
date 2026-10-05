@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { haptics } from "@/lib/native-app";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { useDndSensors } from "@/hooks/use-dnd-sensors";
@@ -75,7 +76,7 @@ export function SkillEditorOverlay({
         )}
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={haptics.select} onDragEnd={handleDragEnd}>
           <SortableContext items={uids} strategy={verticalListSortingStrategy}>
             <div className="space-y-0.5">
               {skillIds.map((sid, i) => {

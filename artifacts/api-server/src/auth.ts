@@ -9,12 +9,17 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { storage } from "./storage";
 import { sendPasswordResetEmail } from "./email";
+import { deleteCoachImages, isCoachImageRef } from "./coach-images";
+import { appSessionToken, isAppRequest, sessionTokenFor } from "./app-client";
 
 declare module "express-session" {
   interface SessionData {
     userId: string;
     // CSRF state for the in-flight "Sign in with WHOOP" OAuth redirect.
     whoopOauthState?: { value: string; expiresAt: number };
+    // Set when WHOOP sign-in started from the iOS app, so the callback
+    // returns to the app instead of the website.
+    whoopReturnToApp?: boolean;
   }
 }
 
@@ -85,6 +90,11 @@ function sha256(value: string): string {
 // Base URL for emailed reset links. Prefer an explicit configured origin so a
 // forged Host/Origin header can never poison the link; fall back to the
 // request origin (fine for dev / single-domain deploys).
+// The iOS app can't read cookies, so it gets the session token in the body.
+function withAppToken<T extends object>(req: Request, body: T): T | (T & { sessionToken: string }) {
+  return isAppRequest(req) ? { ...body, sessionToken: sessionTokenFor(req) } : body;
+}
+
 export function getBaseUrl(req: Request): string {
   const configured = process.env.APP_BASE_URL;
   if (configured) return configured.replace(/\/+$/, "");
@@ -127,6 +137,7 @@ async function seedPreviewUser() {
 
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
+  app.use(appSessionToken);
   app.use(getSession());
 
   if (process.env.NODE_ENV !== "production") {
@@ -178,7 +189,7 @@ export async function setupAuth(app: Express) {
 
       await setSessionUser(req, user.id);
       const { password: _, ...safeUser } = user;
-      res.status(201).json(safeUser);
+      res.status(201).json(withAppToken(req, safeUser));
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
@@ -209,7 +220,7 @@ export async function setupAuth(app: Express) {
 
       await setSessionUser(req, user.id);
       const { password: _, ...safeUser } = user;
-      res.json(safeUser);
+      res.json(withAppToken(req, safeUser));
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
@@ -247,6 +258,27 @@ export async function setupAuth(app: Express) {
       }
       res.clearCookie("connect.sid", { httpOnly: true, secure: true, sameSite: "lax" });
       res.json({ message: "Logged out" });
+    });
+  });
+
+  // Permanently deletes the signed-in user's account and all of their data.
+  // Required by the App Store for apps that let people create accounts.
+  app.delete("/api/auth/account", isAuthenticated, async (req, res) => {
+    const userId = req.session.userId!;
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      if (user?.isAdmin) {
+        return res.status(403).json({ message: "The owner account can't be deleted from the app." });
+      }
+      const { coachImageRefs } = await storage.deleteUserAccount(userId);
+      await deleteCoachImages(coachImageRefs.filter(isCoachImageRef));
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      return res.status(500).json({ message: "Failed to delete account" });
+    }
+    req.session.destroy(() => {
+      res.clearCookie("connect.sid", { httpOnly: true, secure: true, sameSite: "lax" });
+      res.json({ message: "Account deleted" });
     });
   });
 

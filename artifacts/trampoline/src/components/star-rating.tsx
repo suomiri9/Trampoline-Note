@@ -1,5 +1,6 @@
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { haptics } from "@/lib/native-app";
 import { useState } from "react";
 
 interface StarRatingProps {
@@ -29,6 +30,7 @@ export function StarRating({ value, onChange, readonly = false, size = "md" }: S
           )}
           onClick={() => {
             if (readonly) return;
+            haptics.tap();
             // Clicking the same star clears it
             onChange(value === star ? null : star);
           }}

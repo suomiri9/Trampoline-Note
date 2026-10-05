@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ApiImage } from "@/components/api-image";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -514,7 +515,7 @@ function DraftEntryCard({
       {images.length > 0 && (
         <div className="space-y-2 min-w-0">
           {images.map((src, i) => (
-            <img
+            <ApiImage
               key={i}
               src={src}
               alt={`menu photo ${i + 1}`}
@@ -807,7 +808,7 @@ function ImageBubbles({ images, testId }: { images: string[]; testId: string }) 
   return (
     <div className={cn("flex gap-1.5 mb-1.5", images.length > 1 && "flex-wrap")}>
       {images.map((src, i) => (
-        <img
+        <ApiImage
           key={i}
           src={src}
           alt={`attachment ${i + 1}`}

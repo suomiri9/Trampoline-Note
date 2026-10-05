@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from "react";
+import { haptics } from "@/lib/native-app";
 import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
@@ -412,7 +413,7 @@ export default function RoutinesPage() {
                 </div>
               );
             })()}
-            <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragStart={haptics.select} onDragEnd={handleDragEnd}>
               <SortableContext items={selectedSkillIds.map((_, i) => `slot-${i}`)} strategy={rectSortingStrategy}>
                 <div className="min-h-[80px] rounded-lg p-2 bg-white/[0.02] flex flex-wrap gap-2 items-start">
                   {selectedSkillIds.map((id, idx) => {

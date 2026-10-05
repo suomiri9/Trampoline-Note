@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SafeUser } from "@shared/models/auth";
 import { cacheGet, cacheSet, cacheClearAll } from "@/lib/offline-db";
 import { cancelPendingSettingsPush } from "@/lib/settings-sync";
+import { forgetAppSession, rememberAppSession } from "@/lib/native-app";
 import { getOfflineModeEnabled } from "@/lib/offline-mode";
 import { fetchWithTimeout, markCacheServed, markNetworkOk } from "@/lib/read-fallback";
 import { queryClient as appQueryClient } from "@/lib/queryClient";
@@ -95,6 +96,7 @@ async function fetchUser(): Promise<SafeUser | null> {
       // Definitive server answer — identity is no longer mirror-served.
       markNetworkOk(USER_CACHE_KEY);
       setSessionMarker(false);
+      forgetAppSession();
       const clearing = cacheClearAll();
       authReadStorage = clearing;
       await clearing;
@@ -154,7 +156,7 @@ async function loginFn(credentials: { email: string; password: string }): Promis
     throw new Error(data.message || "Login failed");
   }
 
-  const data = (await response.json()) as SafeUser;
+  const data = rememberAppSession((await response.json()) as SafeUser);
   setSessionMarker(true);
   await cacheSet(USER_CACHE_KEY, data);
   return data;
@@ -173,7 +175,7 @@ async function registerFn(data: { email: string; password: string; displayName?:
     throw new Error(result.message || "Registration failed");
   }
 
-  const userData = (await response.json()) as SafeUser;
+  const userData = rememberAppSession((await response.json()) as SafeUser);
   setSessionMarker(true);
   await cacheSet(USER_CACHE_KEY, userData);
   return userData;
@@ -192,6 +194,23 @@ async function logoutFn(): Promise<void> {
   // this device: session marker, cached user, mirrored skills/routines,
   // AND any pending offline create queue entries.
   setSessionMarker(false);
+  forgetAppSession();
+  cancelPendingSettingsPush();
+  await cacheClearAll();
+}
+
+async function deleteAccountFn(): Promise<void> {
+  const response = await fetch("/api/auth/account", {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.message || "Failed to delete account");
+  }
+  setSessionMarker(false);
+  forgetAppSession();
   cancelPendingSettingsPush();
   await cacheClearAll();
 }
@@ -237,6 +256,16 @@ export function useAuth() {
     onError: () => failAuthTransition(queryClient),
   });
 
+  const deleteAccountMutation = useMutation({
+    mutationFn: deleteAccountFn,
+    onMutate: () => beginAuthTransition(queryClient),
+    onSuccess: () => {
+      finishAuthTransition();
+      replaceIdentity(queryClient, null);
+    },
+    onError: () => failAuthTransition(queryClient),
+  });
+
   return {
     user,
     isLoading,
@@ -249,5 +278,7 @@ export function useAuth() {
     isRegistering: registerMutation.isPending,
     logout: logoutMutation.mutate,
     isLoggingOut: logoutMutation.isPending,
+    deleteAccount: deleteAccountMutation.mutateAsync,
+    isDeletingAccount: deleteAccountMutation.isPending,
   };
 }

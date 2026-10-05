@@ -1,3 +1,5 @@
+import { syncStatusBar } from '@/lib/native-app';
+
 export type Theme = 'dark' | 'light';
 
 const KEY = 'theme';
@@ -26,6 +28,7 @@ export function applyTheme(theme: Theme) {
   el.style.backgroundColor = bg;
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', bg);
+  syncStatusBar(theme);
 }
 
 export function setTheme(theme: Theme) {
