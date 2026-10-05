@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { whoopAuthUrl } from "@/lib/native-app";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { invalidateCoachPush } from "@/lib/coach-push";
@@ -327,7 +328,7 @@ export default function WhoopPage() {
   // inside one, so navigate the top-level window (new tab if that's blocked).
   const signInWithWhoop = () => {
     trackEvent("whoop_connect_clicked", { entrypoint: "dashboard" });
-    const url = "/api/whoop/auth";
+    const url = whoopAuthUrl();
     const framed = window.self !== window.top;
     if (framed) {
       try {

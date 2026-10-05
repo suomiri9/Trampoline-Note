@@ -3,6 +3,7 @@ import { storage, SkillLinkError, TofRoutineError, DictionaryError } from "../st
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { isAuthenticated, isAdmin, getUserId, getBaseUrl } from "../auth";
+import { APP_ORIGIN } from "../app-client";
 import { getPushRecommendation, clearCoachPushCache, coachChat, parseMenuPhoto, parseTofScreenshot, parseExecutionSheet, parseScoreSheet, menuChat, CoachUnavailableError, CoachStoppedError } from "../coach";
 import { serveCoachImage } from "../coach-images";
 import { generateDictionaryImage, deleteDictionaryImage, serveDictionaryImage, DictionaryImageUnavailableError } from "../dictionary-images";
@@ -973,12 +974,16 @@ export function registerRoutes(app: Express): void {
 
   const whoopRedirectUri = (req: Parameters<typeof getBaseUrl>[0]) =>
     `${getBaseUrl(req)}/api/whoop/callback`;
+  const whoopResultUrl = (req: Parameters<typeof getBaseUrl>[0], result: string) =>
+    `${req.session.whoopReturnToApp ? APP_ORIGIN : ""}/whoop?whoop=${result}`;
 
   // Kick off the WHOOP OAuth flow: stash a CSRF state in the session and
   // redirect the browser to WHOOP's login/consent page.
   app.get("/api/whoop/auth", isAuthenticated, (req, res) => {
+    // Started from the iOS app (see app-client.ts): come back to the app.
+    req.session.whoopReturnToApp = typeof req.query.app_token === "string";
     if (!isWhoopConfigured()) {
-      return res.redirect("/whoop?whoop=not_configured");
+      return res.redirect(whoopResultUrl(req, "not_configured"));
     }
     const state = crypto.randomBytes(16).toString("hex");
     req.session.whoopOauthState = { value: state, expiresAt: Date.now() + 10 * 60 * 1000 };
@@ -995,7 +1000,7 @@ export function registerRoutes(app: Express): void {
     const { code, state, error } = req.query as Record<string, string | undefined>;
     if (error) {
       // User hit "deny" (or WHOOP reported an error) — not a server failure.
-      return res.redirect("/whoop?whoop=denied");
+      return res.redirect(whoopResultUrl(req, "denied"));
     }
     if (
       !code ||
@@ -1004,16 +1009,16 @@ export function registerRoutes(app: Express): void {
       expected.value !== state ||
       Date.now() > expected.expiresAt
     ) {
-      return res.redirect("/whoop?whoop=state_mismatch");
+      return res.redirect(whoopResultUrl(req, "state_mismatch"));
     }
     try {
       await completeWhoopLink(getUserId(req), code, whoopRedirectUri(req));
       // Recovery data just became available — regenerate the push card.
       clearCoachPushCache(getUserId(req));
-      res.redirect("/whoop?whoop=connected");
+      res.redirect(whoopResultUrl(req, "connected"));
     } catch (err) {
       console.error("WHOOP link error:", err);
-      res.redirect("/whoop?whoop=link_failed");
+      res.redirect(whoopResultUrl(req, "link_failed"));
     }
   });
 

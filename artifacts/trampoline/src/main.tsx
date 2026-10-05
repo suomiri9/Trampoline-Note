@@ -7,6 +7,10 @@ import "./rebound-tokens.css";
 import { ensureOfflineReady } from "./lib/offline-control";
 import { applyTheme, getTheme } from "./lib/theme";
 import { startKeyboardInsetTracker } from "./lib/keyboard-inset";
+import { installAppApiAccess } from "./lib/native-app";
+
+// iOS app only: send /api requests to the hosted API with the session token.
+installAppApiAccess();
 
 // Keyboard-aware overlays: publish the visual-viewport keyboard inset from
 // boot (CSS vars + html[data-kb-open]) so dialogs re-center above the

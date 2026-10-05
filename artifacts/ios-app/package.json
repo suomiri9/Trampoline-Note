@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "PORT=5173 BASE_PATH=/ pnpm --filter @workspace/trampoline run build && cap sync ios",
     "sync": "cap sync ios",
     "open": "cap open ios"
   },

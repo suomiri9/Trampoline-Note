@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ApiImage } from "@/components/api-image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -115,7 +116,7 @@ function ImagePanel({
         </div>
         {hasDraft ? (
           <div className="space-y-2">
-            <img
+            <ApiImage
               src={dictionaryImageUrl(entry.id, "draft", draftTs ?? null)}
               alt={`Draft image for ${entry.name}`}
               className="w-full rounded-lg object-cover max-h-48"
@@ -185,7 +186,7 @@ function ImagePanel({
         </div>
         {hasApproved ? (
           <div className="space-y-2">
-            <img
+            <ApiImage
               src={dictionaryImageUrl(entry.id, "approved", approvedTs ?? null)}
               alt={`Approved image for ${entry.name}`}
               className="w-full rounded-lg object-cover max-h-48"
@@ -515,7 +516,7 @@ export function DictionarySection({ searchQuery, showArchived, mode, formOpen, o
                           {/* Approved image thumbnail in athlete rows */}
                           {entry.approvedImageApprovedAt && (
                             <div className="mt-1.5">
-                              <img
+                              <ApiImage
                                 src={dictionaryImageUrl(entry.id, "approved", entry.approvedImageApprovedAt ? String(entry.approvedImageApprovedAt) : null)}
                                 alt={entry.name}
                                 className="h-12 w-16 rounded-md object-cover"
