@@ -9,6 +9,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { storage } from "./storage";
 import { sendPasswordResetEmail } from "./email";
+import { deleteCoachImages, isCoachImageRef } from "./coach-images";
 
 declare module "express-session" {
   interface SessionData {
@@ -247,6 +248,27 @@ export async function setupAuth(app: Express) {
       }
       res.clearCookie("connect.sid", { httpOnly: true, secure: true, sameSite: "lax" });
       res.json({ message: "Logged out" });
+    });
+  });
+
+  // Permanently deletes the signed-in user's account and all of their data.
+  // Required by the App Store for apps that let people create accounts.
+  app.delete("/api/auth/account", isAuthenticated, async (req, res) => {
+    const userId = req.session.userId!;
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      if (user?.isAdmin) {
+        return res.status(403).json({ message: "The owner account can't be deleted from the app." });
+      }
+      const { coachImageRefs } = await storage.deleteUserAccount(userId);
+      await deleteCoachImages(coachImageRefs.filter(isCoachImageRef));
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      return res.status(500).json({ message: "Failed to delete account" });
+    }
+    req.session.destroy(() => {
+      res.clearCookie("connect.sid", { httpOnly: true, secure: true, sameSite: "lax" });
+      res.json({ message: "Account deleted" });
     });
   });
 

@@ -103,10 +103,11 @@ function useAnimatedPercent(target: number | null): number | null {
 }
 
 export default function SettingsPage() {
-  const { user, logout, isLoggingOut } = useAuth();
+  const { user, logout, isLoggingOut, deleteAccount, isDeletingAccount } = useAuth();
   const { toast } = useToast();
   const [scrolled, setScrolled] = useState(false);
   const [showSignOutAlert, setShowSignOutAlert] = useState(false);
+  const [showDeleteAccountAlert, setShowDeleteAccountAlert] = useState(false);
   const [timeFormat, setTimeFormat] = useTimeFormat();
   const [offlineModeEnabled, setOfflineModeEnabled] = useOfflineMode();
   const [archiveCascade, setArchiveCascade] = useArchiveCascade();
@@ -1093,6 +1094,17 @@ export default function SettingsPage() {
                   Privacy Policy
                 </Link>
               </div>
+              <div className="mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAccountAlert(true)}
+                  disabled={isDeletingAccount || !isOnline}
+                  className="text-[11px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60 underline underline-offset-4 hover:text-destructive transition-colors disabled:opacity-50"
+                  data-testid="btn-delete-account"
+                >
+                  {isDeletingAccount ? "Deleting account…" : "Delete account"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1105,6 +1117,19 @@ export default function SettingsPage() {
         description={signOutDescription}
         onConfirm={() => logout()}
         confirmLabel="Sign out"
+      />
+
+      <ConfirmDialog
+        open={showDeleteAccountAlert}
+        onOpenChange={setShowDeleteAccountAlert}
+        title="Delete account?"
+        description="This permanently deletes your account and all of your training data, including notes, scores, skills, routines, coach chats and your WHOOP link. This can't be undone."
+        onConfirm={() => {
+          deleteAccount().catch((err: Error) =>
+            toast({ title: "Couldn't delete account", description: err.message, variant: "destructive" }),
+          );
+        }}
+        confirmLabel="Delete account"
       />
 
       <Dialog open={showFailedDialog} onOpenChange={setShowFailedDialog}>

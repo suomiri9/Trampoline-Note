@@ -196,6 +196,21 @@ async function logoutFn(): Promise<void> {
   await cacheClearAll();
 }
 
+async function deleteAccountFn(): Promise<void> {
+  const response = await fetch("/api/auth/account", {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.message || "Failed to delete account");
+  }
+  setSessionMarker(false);
+  cancelPendingSettingsPush();
+  await cacheClearAll();
+}
+
 export function useAuth() {
   const queryClient = useQueryClient();
   const { data: user, isLoading } = useQuery<SafeUser | null>({
@@ -237,6 +252,16 @@ export function useAuth() {
     onError: () => failAuthTransition(queryClient),
   });
 
+  const deleteAccountMutation = useMutation({
+    mutationFn: deleteAccountFn,
+    onMutate: () => beginAuthTransition(queryClient),
+    onSuccess: () => {
+      finishAuthTransition();
+      replaceIdentity(queryClient, null);
+    },
+    onError: () => failAuthTransition(queryClient),
+  });
+
   return {
     user,
     isLoading,
@@ -249,5 +274,7 @@ export function useAuth() {
     isRegistering: registerMutation.isPending,
     logout: logoutMutation.mutate,
     isLoggingOut: logoutMutation.isPending,
+    deleteAccount: deleteAccountMutation.mutateAsync,
+    isDeletingAccount: deleteAccountMutation.isPending,
   };
 }

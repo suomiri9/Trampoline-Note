@@ -167,6 +167,9 @@ export interface IStorage {
     assistantMessage: { content: string; draft?: string | null; proposals?: string | null; suggestions?: string | null };
   }): Promise<void>;
   clearCoachMessages(userId: string): Promise<void>;
+
+  // Account deletion
+  deleteUserAccount(userId: string): Promise<{ coachImageRefs: unknown[] }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1307,6 +1310,45 @@ export class DatabaseStorage implements IStorage {
 
   async clearCoachMessages(userId: string): Promise<void> {
     await db.delete(coachMessages).where(eq(coachMessages.userId, userId));
+  }
+
+  // Permanently removes a user and every row that belongs to them, in one
+  // transaction. Returns the coach photo entries so the caller can remove
+  // the stored files afterwards (best-effort, outside the transaction).
+  async deleteUserAccount(userId: string): Promise<{ coachImageRefs: unknown[] }> {
+    return await db.transaction(async (tx) => {
+      const messages = await tx
+        .select({ images: coachMessages.images })
+        .from(coachMessages)
+        .where(eq(coachMessages.userId, userId));
+      const coachImageRefs: unknown[] = [];
+      for (const m of messages) {
+        if (!m.images) continue;
+        try {
+          const parsed = JSON.parse(m.images);
+          if (Array.isArray(parsed)) coachImageRefs.push(...parsed);
+        } catch {
+          // Malformed legacy value; nothing stored to clean up.
+        }
+      }
+
+      await tx.delete(coachMessages).where(eq(coachMessages.userId, userId));
+      await tx.delete(notes).where(eq(notes.userId, userId));
+      await tx.delete(scores).where(eq(scores.userId, userId));
+      await tx.delete(routineVersions).where(eq(routineVersions.userId, userId));
+      await tx.delete(routines).where(eq(routines.userId, userId));
+      await tx.delete(skills).where(eq(skills.userId, userId));
+      await tx.delete(tofSessions).where(eq(tofSessions.userId, userId));
+      await tx.delete(executionSessions).where(eq(executionSessions.userId, userId));
+      await tx.delete(dictionarySuggestions).where(eq(dictionarySuggestions.userId, userId));
+      await tx.delete(dictionaryLibraryImports).where(eq(dictionaryLibraryImports.userId, userId));
+      await tx.delete(whoopTokens).where(eq(whoopTokens.userId, userId));
+      await tx.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
+      // Sign the user out everywhere.
+      await tx.delete(sessions).where(sql`${sessions.sess}->>'userId' = ${userId}`);
+      await tx.delete(users).where(eq(users.id, userId));
+      return { coachImageRefs };
+    });
   }
 
   // One coach chat turn = one atomic commit: the optional menu-guide update
