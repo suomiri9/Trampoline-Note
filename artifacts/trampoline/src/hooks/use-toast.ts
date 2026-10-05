@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { toast as sonnerToast } from "sonner"
+import { haptics } from "@/lib/native-app"
 
 // Thin adapter over Sonner (emil-design-eng — the Sonner principles:
 // interruptible transition-based enter/exit, spatial consistency, velocity
@@ -16,6 +17,8 @@ type ToastInput = {
 
 function toast({ title, description, variant = "default", duration }: ToastInput) {
   const show = variant === "destructive" ? sonnerToast.error : sonnerToast
+  if (variant === "destructive") haptics.error()
+  else haptics.success()
   const id = show(title ?? description ?? "", {
     // If the title carried the message, surface description separately.
     description: title != null ? description : undefined,

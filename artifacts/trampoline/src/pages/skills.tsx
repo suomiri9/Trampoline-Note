@@ -1,4 +1,5 @@
 import { useState, useRef, Fragment } from "react";
+import { haptics } from "@/lib/native-app";
 import { useLocation } from "wouter";
 import { useSkills } from "@/hooks/use-skills";
 import { useRoutines } from "@/hooks/use-routines";
@@ -718,7 +719,7 @@ export default function SkillsPage() {
             <div className="rounded-2xl border border-[hsl(var(--page-accent)/0.14)] bg-white/[0.02] overflow-hidden">
               {renderLibraryHeader("Skills Library", skills?.length)}
               <div className="overflow-x-auto p-2">
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(skills)}>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={haptics.select} onDragEnd={handleDragEnd(skills)}>
                   <Table>
                     <TableHeader><TableRow className="border-white/[0.08] hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow w-24">Code</TableHead><TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
                     <SortableContext items={(skills || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
@@ -903,7 +904,7 @@ export default function SkillsPage() {
             <div className="rounded-2xl border border-[hsl(var(--page-accent)/0.14)] bg-white/[0.02] overflow-hidden">
               {renderLibraryHeader("Drills Library", drills?.length)}
               <div className="overflow-x-auto p-2">
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(drills)}>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={haptics.select} onDragEnd={handleDragEnd(drills)}>
                   <Table>
                     <TableHeader><TableRow className="border-white/[0.08] hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow w-24">Code</TableHead><TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
                     <SortableContext items={(drills || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
@@ -1105,7 +1106,7 @@ export default function SkillsPage() {
                       })()}
                     </div>
 
-                    <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleConnChipDragEnd}>
+                    <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragStart={haptics.select} onDragEnd={handleConnChipDragEnd}>
                       <SortableContext items={connSkillIds.map((_, i) => `cs-${i}`)} strategy={rectSortingStrategy}>
                         <div className="min-h-[80px] rounded-lg p-2 bg-white/[0.02] flex flex-wrap gap-2 items-start">
                           {connSkillIds.map((id, idx) => {
@@ -1171,7 +1172,7 @@ export default function SkillsPage() {
             <div className="rounded-2xl border border-[hsl(var(--page-accent)/0.14)] bg-white/[0.02] overflow-hidden">
               {renderLibraryHeader("Connections Library", frequentConnections?.length)}
               <div className="overflow-x-auto p-2">
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(frequentConnections)}>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={haptics.select} onDragEnd={handleDragEnd(frequentConnections)}>
                   <Table>
                     <TableHeader><TableRow className="border-white/[0.08] hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow">Sequence</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
                     <SortableContext items={(frequentConnections || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>
@@ -1363,7 +1364,7 @@ export default function SkillsPage() {
             <div className="rounded-2xl border border-[hsl(var(--page-accent)/0.14)] bg-white/[0.02] overflow-hidden">
               {renderLibraryHeader("Routine Parts Library", routineParts?.length)}
               <div className="overflow-x-auto p-2">
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(routineParts)}>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={haptics.select} onDragEnd={handleDragEnd(routineParts)}>
                   <Table>
                     <TableHeader><TableRow className="border-white/[0.08] hover:bg-transparent">{reorderMode && <TableHead className="w-8" />}<TableHead className="eyebrow">Name</TableHead><TableHead className="eyebrow">Sequence</TableHead><TableHead className="eyebrow text-right">DD</TableHead>{!reorderMode && <TableHead className="w-10" />}</TableRow></TableHeader>
                     <SortableContext items={(routineParts || []).map(s => `skill-${s.id}`)} strategy={verticalListSortingStrategy}>

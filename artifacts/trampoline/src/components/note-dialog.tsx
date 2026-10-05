@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { haptics } from "@/lib/native-app";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -1952,7 +1953,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           );
                         })()}
                       </div>
-                      <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleNewConnChipDragEnd}>
+                      <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragStart={haptics.select} onDragEnd={handleNewConnChipDragEnd}>
                         <SortableContext items={newConnSkillIds.map((_, i) => `nc-${i}`)} strategy={rectSortingStrategy}>
                           <div className="min-h-[80px] rounded-lg p-2 bg-white/[0.02] flex flex-wrap gap-2 items-start">
                             {newConnSkillIds.map((sid, i) => {
@@ -2079,7 +2080,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                           </div>
                         );
                       })()}
-                      <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragEnd={handleNewRoutineChipDragEnd}>
+                      <DndContext sensors={longPressSensors} collisionDetection={closestCenter} onDragStart={haptics.select} onDragEnd={handleNewRoutineChipDragEnd}>
                         <SortableContext items={newRoutineSkillIds.map((_, i) => `nr-${i}`)} strategy={rectSortingStrategy}>
                           <div className="min-h-[80px] rounded-lg p-2 bg-white/[0.02] flex flex-wrap gap-2 items-start">
                             {newRoutineSkillIds.map((sid, i) => {
@@ -2296,7 +2297,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                     </div>
                   </div>
 
-                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handlePracticeListDragEnd}>
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={haptics.select} onDragEnd={handlePracticeListDragEnd}>
                   {/* pr keeps rows (esp. the trailing ⋮ menu) clear of the overlay scroll indicator on iOS */}
                   <div ref={practiceListRef} className="max-h-[296px] overflow-y-auto overscroll-contain pr-1.5">
                     {(() => {
