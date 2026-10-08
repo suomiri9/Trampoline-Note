@@ -168,6 +168,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   // this open's real values (restored draft or a blank session).
   const [draftPromptOpen, setDraftPromptOpen] = useState(false);
   const [draftArmed, setDraftArmed] = useState(false);
+  const [draftDiscardConfirmOpen, setDraftDiscardConfirmOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const saveSourceRef = useRef<"manual" | "auto">("manual");
   const [isConnectMode, setIsConnectMode] = useState(false);
@@ -1038,6 +1039,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       const draft = noteToEdit ? null : readSessionDraft();
       setNoteStep(draft?.step ?? "skills");
       setDraftPromptOpen(!!draft);
+      setDraftDiscardConfirmOpen(false);
       setSaveError(null);
       setDiscardConfirmOpen(false);
       setIsSaving(false);
@@ -3066,6 +3068,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       variant="destructive"
       onConfirm={() => {
         setDraftPromptOpen(false);
+        setDraftDiscardConfirmOpen(true);
+      }}
+    />
+    <ConfirmDialog
+      open={draftDiscardConfirmOpen}
+      onOpenChange={setDraftDiscardConfirmOpen}
+      title="Discard your unfinished session?"
+      description="The skills and notes you logged in it will be deleted. This can't be undone."
+      confirmLabel="Discard and start new"
+      cancelLabel="Keep it"
+      variant="destructive"
+      onConfirm={() => {
+        setDraftDiscardConfirmOpen(false);
         clearSessionDraft();
         resetToBlankSession();
         setNoteStep("skills");
