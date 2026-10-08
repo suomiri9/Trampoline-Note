@@ -42,7 +42,7 @@ export default function LoginPage() {
           <div className="flex flex-col items-center gap-4">
             <AppMark />
             <div>
-              <h1 className="text-3xl font-black tracking-[-0.04em]">Trampoline <span className="text-gradient-primary">Note</span></h1>
+              <h1 className="text-3xl font-black tracking-[-0.04em]">Trampoline <span className="text-gradient-icon">Note</span></h1>
               <p className="text-muted-foreground mt-1.5 text-sm">Track your training, skills, and scores.</p>
             </div>
           </div>
@@ -66,7 +66,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm flex flex-col items-center gap-8">
         <AuthHero
           eyebrow="Training log"
-          title={<>Trampoline <span className="text-gradient-primary">Note</span></>}
+          title={<>Trampoline <span className="text-gradient-icon">Note</span></>}
           subtitle="Track your training, skills, and scores."
         />
 

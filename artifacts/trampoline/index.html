@@ -151,10 +151,6 @@
       media="screen and (device-width: 1032px) and (device-height: 1376px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
     <link rel="apple-touch-startup-image" href="/splash/launch-2752x2064.png"
       media="screen and (device-width: 1032px) and (device-height: 1376px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" />
-    <!-- Fetch the splash icon during HTML parse, long before the React bundle
-         executes — otherwise an installed iOS PWA paints the live splash with a
-         blank hole where the icon belongs until the image arrives. -->
-    <link rel="preload" href="/icon-512.png" as="image" fetchpriority="high" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -171,7 +167,7 @@
          Loading phase (user request): the /splash/launch-*.png images are now
          PLAIN solid dark (#050505) and this overlay first shows only a spinner
          (#boot-splash-loader); the icon+title content stays hidden until the
-         icon image and the display fonts are actually loaded (inline script
+         display fonts are actually loaded (the icon is inline SVG; inline script
          adds .ready, 2.5s safety timeout). Black + loading circle on every
          device until the real splash can render — no static/live content
          matching, so there is nothing to visually "stick" or jump. -->
@@ -197,14 +193,34 @@
         border-radius:9999px;pointer-events:none;
         background:radial-gradient(circle,hsl(199 95.5% 73.9% / .13) 0%,transparent 62%)}
       html:not(.dark) #boot-splash-glow{background:radial-gradient(circle,hsl(200 98% 39.4% / .08) 0%,transparent 62%)}
-      #boot-splash-icon{position:relative;width:6rem;height:6rem;border-radius:1.5rem;-webkit-user-select:none;user-select:none;
+      #boot-splash-icon{position:relative;display:block;width:6rem;height:6rem;border-radius:1.5rem;overflow:hidden;-webkit-user-select:none;user-select:none;
         box-shadow:0 0 0 1px hsl(0 0% 100% / .1),0 8px 20px -8px hsl(199 95.5% 73.9% / .35),0 25px 50px -12px hsl(199 95.5% 73.9% / .25);
-        animation:boot-splash-bounce .95s infinite;transform-origin:center bottom}
+        transform-origin:center bottom}
+      #boot-splash.ready #boot-splash-icon{animation:boot-splash-bounce .7s infinite}
       html:not(.dark) #boot-splash-icon{box-shadow:0 0 0 1px hsl(0 0% 0% / .05),0 25px 50px -12px hsl(200 98% 39.4% / .25)}
       #boot-splash-ground{position:absolute;bottom:0;left:50%;width:4.9rem;height:.8rem;margin-left:-2.45rem;
         border-radius:9999px;filter:blur(3px);
         background:radial-gradient(50% 50% at 50% 50%,hsl(199 95.5% 73.9% / .3) 0%,transparent 72%);
-        animation:boot-ground .95s infinite}
+        }
+      #boot-splash.ready #boot-splash-ground{animation:boot-ground .7s infinite}
+      /* App icon graph, drawn one point per bounce (5 bounces = one loop):
+         bounces 1-4 each draw the next line piece in the air and pop the next
+         dot, bounce 5 holds the full graph, then it fades and starts again. */
+      #boot-splash-icon .bs-line{stroke-dasharray:100;stroke-dashoffset:100}
+      #boot-splash-icon .bs-dot{transform-box:fill-box;transform-origin:center;opacity:0}
+      #boot-splash-icon .bs-dot0{opacity:1}
+      #boot-splash.ready #boot-splash-icon .bs-graph{animation:bs-graph 3.5s linear infinite}
+      #boot-splash.ready #boot-splash-icon .bs-line{animation:bs-line 3.5s linear infinite}
+      #boot-splash.ready #boot-splash-icon .bs-dot1{animation:bs-dot1 3.5s linear infinite}
+      #boot-splash.ready #boot-splash-icon .bs-dot2{animation:bs-dot2 3.5s linear infinite}
+      #boot-splash.ready #boot-splash-icon .bs-dot3{animation:bs-dot3 3.5s linear infinite}
+      #boot-splash.ready #boot-splash-icon .bs-dot4{animation:bs-dot4 3.5s linear infinite}
+      @keyframes bs-line{0%{stroke-dashoffset:100}1.0%{stroke-dashoffset:100;animation-timing-function:cubic-bezier(.33,1,.68,1)}11.0%{stroke-dashoffset:76.02}21.0%{stroke-dashoffset:76.02;animation-timing-function:cubic-bezier(.33,1,.68,1)}31.0%{stroke-dashoffset:57.13}41.0%{stroke-dashoffset:57.13;animation-timing-function:cubic-bezier(.33,1,.68,1)}51.0%{stroke-dashoffset:23.98}61.0%{stroke-dashoffset:23.98;animation-timing-function:cubic-bezier(.33,1,.68,1)}71.0%{stroke-dashoffset:0}100%{stroke-dashoffset:0}}
+      @keyframes bs-dot1{0%,10.0%{opacity:0;transform:scale(.4)}13.6%,100%{opacity:1;transform:scale(1)}}
+      @keyframes bs-dot2{0%,30.0%{opacity:0;transform:scale(.4)}33.6%,100%{opacity:1;transform:scale(1)}}
+      @keyframes bs-dot3{0%,50.0%{opacity:0;transform:scale(.4)}53.6%,100%{opacity:1;transform:scale(1)}}
+      @keyframes bs-dot4{0%,70.0%{opacity:0;transform:scale(.4)}73.6%,100%{opacity:1;transform:scale(1)}}
+      @keyframes bs-graph{0%,92%{opacity:1}99%,100%{opacity:0}}
       html:not(.dark) #boot-splash-ground{background:radial-gradient(50% 50% at 50% 50%,hsl(210 30% 10% / .22) 0%,transparent 72%)}
       #boot-splash-text{display:flex;flex-direction:column;align-items:center;gap:.7rem}
       #boot-splash.ready #boot-splash-text{animation:boot-fade-in-up .45s cubic-bezier(.23,1,.32,1) .07s both}
@@ -212,9 +228,7 @@
         letter-spacing:-0.035em;color:hsl(180 6.7% 97.1%)}
       html:not(.dark) #boot-splash-title{color:hsl(210 33.3% 5.9%)}
       #boot-splash-title span{padding:.1em .08em;margin:-.1em -.08em;
-        background:linear-gradient(135deg,hsl(217 91% 60%) 0%,hsl(239 84% 67%) 100%);
-        -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
-      html:not(.dark) #boot-splash-title span{background:linear-gradient(135deg,hsl(221 83% 53%) 0%,hsl(239 84% 62%) 100%);
+        background:linear-gradient(135deg,#3B5BFF 0%,#00B4E6 100%);
         -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
       #boot-splash-tagline{margin:0;font-family:'Inter',sans-serif;font-size:10px;font-weight:500;
         letter-spacing:.22em;text-transform:uppercase;color:hsl(216 6.9% 57.5% / .7);
@@ -234,7 +248,10 @@
         45%{transform:scaleX(.66);opacity:.45;animation-timing-function:cubic-bezier(.6,0,.67,1)}
         90%{transform:scaleX(1.16);opacity:1}}
       @media (prefers-reduced-motion:reduce){
-        #boot-splash-icon,#boot-splash-ground{animation:none}
+        #boot-splash.ready #boot-splash-icon,#boot-splash.ready #boot-splash-ground,
+        #boot-splash.ready #boot-splash-icon *{animation:none}
+        #boot-splash-icon .bs-line{stroke-dashoffset:0}
+        #boot-splash-icon .bs-dot{opacity:1}
         #boot-splash-ground{opacity:.8}
         #boot-splash.ready #boot-splash-stage,#boot-splash.ready #boot-splash-text{animation:none}}
     </style>
@@ -243,7 +260,21 @@
       <div id="boot-splash-group">
         <div id="boot-splash-stage">
           <div id="boot-splash-glow"></div>
-          <img id="boot-splash-icon" src="/icon-512.png" alt="" draggable="false" />
+          <svg id="boot-splash-icon" viewBox="0 0 1024 1024" aria-hidden="true">
+            <defs><linearGradient id="bs-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3B5BFF"/><stop offset="1" stop-color="#00B4E6"/></linearGradient></defs>
+            <rect width="1024" height="1024" fill="url(#bs-bg)"/>
+            <rect x="250" y="150" width="524" height="724" rx="64" fill="#fff"/>
+            <path d="M318 240H706M318 300H706" stroke="#D1D1D6" stroke-width="20" stroke-linecap="round"/>
+            <path d="M314 770H710" stroke="#1C1C1E" stroke-width="26" stroke-linecap="round"/>
+            <g class="bs-graph" fill="#4A78F2" stroke="#fff" stroke-width="12">
+              <polyline class="bs-line" pathLength="100" points="340,690 430,610 520,640 610,500 690,410" fill="none" stroke="#4A78F2" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle class="bs-dot bs-dot0" cx="340" cy="690" r="22"/>
+              <circle class="bs-dot bs-dot1" cx="430" cy="610" r="22"/>
+              <circle class="bs-dot bs-dot2" cx="520" cy="640" r="22"/>
+              <circle class="bs-dot bs-dot3" cx="610" cy="500" r="22"/>
+              <circle class="bs-dot bs-dot4" cx="690" cy="410" r="32"/>
+            </g>
+          </svg>
           <div id="boot-splash-ground"></div>
         </div>
         <div id="boot-splash-text">
@@ -253,29 +284,24 @@
       </div>
     </div>
     <!-- Splash loading gate, runs during parse (all devices): keep the spinner
-         until the icon image AND the display fonts are actually loaded, then
+         until the display fonts are actually loaded (the icon is inline SVG), then
          add .ready to swap spinner → animated splash content. 2.5s safety
          timeout so a stalled asset can never hold the spinner forever, and a
          15s dead-man fade in case the app bundle itself never boots. -->
     <script>
       (function () {
         var splash = document.getElementById("boot-splash");
-        var icon = document.getElementById("boot-splash-icon");
-        if (!splash || !icon) return;
+        if (!splash) return;
         var revealed = false;
         function reveal() {
           if (revealed) return;
           revealed = true;
           splash.classList.add("ready");
+          // SplashScreen keeps the splash up until the first graph is drawn.
+          window.__bootSplashReadyAt = performance.now();
         }
-        var iconDone = icon.complete && icon.naturalWidth > 0;
         var fontsDone = false;
-        function check() { if (iconDone && fontsDone) reveal(); }
-        if (!iconDone) {
-          var onIcon = function () { iconDone = true; check(); };
-          icon.addEventListener("load", onIcon);
-          icon.addEventListener("error", onIcon);
-        }
+        function check() { if (fontsDone) reveal(); }
         if (document.fonts && document.fonts.load) {
           var fontsOk = function () { fontsDone = true; check(); };
           Promise.all([
