@@ -1956,7 +1956,7 @@ export default function ScorePage() {
                     )}
                   </div>
                   {editingRoutine === "set" && customSkillIds && allSkills && (
-                    <div className="absolute inset-0 z-20 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setEditingRoutine(null); }}>
+                    <div className="absolute inset-0 z-20 flex items-start justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setEditingRoutine(null); }}>
                       <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
                         <SkillEditorOverlay
                           title="Edit Skills"
@@ -2070,7 +2070,7 @@ export default function ScorePage() {
                       )}
                     </div>
                     {editingRoutine === "vol" && customSkillIdsVol && allSkills && (
-                      <div className="absolute inset-0 z-20 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setEditingRoutine(null); }}>
+                      <div className="absolute inset-0 z-20 flex items-start justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setEditingRoutine(null); }}>
                         <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
                           <SkillEditorOverlay
                             title="Edit Skills (Vol)"
