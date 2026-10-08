@@ -6,7 +6,7 @@
 
 const CACHE = 'tn-shell-v12';
 
-// Replaced at build time (script/build.ts) with the full list of built files
+// Replaced at build time (offlineManifest in vite.config.ts) with the full list of built files
 // under /assets/ plus /offline-manifest.json. Route chunks are lazy-loaded,
 // so without precaching them a page never visited while online failed with
 // "This page isn't available offline yet" even when Settings showed 100%.

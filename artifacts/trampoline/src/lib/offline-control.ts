@@ -2,6 +2,12 @@ import { setOfflineModeEnabled, getOfflineModeEnabled } from "./offline-mode";
 import { drainQueue, clearOfflineDataAndQueue } from "./offline-queue";
 import { queryClient } from "./queryClient";
 import { cacheGet } from "./offline-db";
+import { isNativeApp } from "./native-app";
+
+/** True when the app's screens ship inside the iOS app, so they already open
+ * with no connection. iOS doesn't run service workers in the app, so there is
+ * no app-shell download to do or check there: only the account data is. */
+export const appShellBundled = isNativeApp;
 
 /** App-shell URLs — must stay in sync with APP_SHELL in client/public/sw.js. */
 export const APP_SHELL_URLS = [
@@ -14,7 +20,7 @@ export const APP_SHELL_URLS = [
 ];
 
 /** URL of the build-generated list of every hashed build asset (route
- * chunks, CSS, fonts). Emitted by script/build.ts; absent in dev. */
+ * chunks, CSS, fonts). Emitted by the offlineManifest plugin in vite.config.ts; absent in dev. */
 export const OFFLINE_MANIFEST_URL = "/offline-manifest.json";
 
 let manifestMemo: { at: number; urls: string[] | null } | null = null;
@@ -166,6 +172,7 @@ function wireUpdateHandling(reg: ServiceWorkerRegistration): void {
 }
 
 export async function registerServiceWorker(): Promise<void> {
+  if (appShellBundled) return;
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
   try {
     const reg = await navigator.serviceWorker.register("/sw.js");
@@ -197,6 +204,7 @@ async function parseShellCacheNameFromSource(): Promise<string | null> {
 }
 
 export async function backfillShellCache(): Promise<void> {
+  if (appShellBundled) return;
   try {
     if (typeof caches === "undefined") return;
     let shellCacheName = await findShellCacheName();
