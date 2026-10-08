@@ -278,6 +278,57 @@
   }
 }
 
+/* "Note" in the Trampoline Note wordmark: the app icon's gradient. */
+.text-gradient-icon {
+  padding: 0.16em 0.1em 0.22em 0.04em;
+  margin: -0.16em -0.1em -0.22em -0.04em;
+  background: linear-gradient(135deg, #3b5bff 0%, #00b4e6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Auth-page app mark: the icon's graph draws once, one point at a time
+   (each dot pops as the line reaches it), then stays still. */
+@keyframes app-mark-draw {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes app-mark-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.app-mark-line {
+  stroke-dasharray: 100;
+  animation: app-mark-draw 0.9s 0.15s var(--ease-out-strong) both;
+}
+
+.app-mark-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: app-mark-pop 0.25s var(--ease-out-strong) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-mark-line,
+  .app-mark-dot {
+    animation: none;
+  }
+}
+
 /* Minimal flat panel: hairline border, no elevation (matches the
    border-border/10 panels on Home/Stats — the app-wide design language).
    (.card-3d is a legacy class name; ~50 call sites keep it as an alias.) */

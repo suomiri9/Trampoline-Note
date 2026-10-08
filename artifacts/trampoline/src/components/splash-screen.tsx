@@ -2,6 +2,16 @@ import { useEffect } from "react";
 
 const VISIBLE_MS = 1500;
 const FADE_MS = 500;
+// The splash icon draws its graph one point per bounce; keep the splash up
+// until the first full graph has been drawn (4 bounces of 0.7s plus a beat).
+const FIRST_GRAPH_MS = 2900;
+const MIN_AFTER_MOUNT_MS = 600;
+
+declare global {
+  interface Window {
+    __bootSplashReadyAt?: number;
+  }
+}
 
 // The splash itself lives in index.html (#boot-splash): pure HTML + inline CSS
 // painted during page parse, so the trampoline bounce starts long before the
@@ -15,12 +25,17 @@ export function SplashScreen() {
   useEffect(() => {
     const el = document.getElementById("boot-splash");
     if (!el) return;
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const readyAt = window.__bootSplashReadyAt ?? performance.now();
+    const visibleMs = reduceMotion
+      ? VISIBLE_MS
+      : Math.max(MIN_AFTER_MOUNT_MS, readyAt + FIRST_GRAPH_MS - performance.now());
     const leaveTimer = setTimeout(() => {
       el.style.transition = `opacity ${FADE_MS}ms ease-out`;
       el.style.opacity = "0";
       el.style.pointerEvents = "none";
-    }, VISIBLE_MS);
-    const doneTimer = setTimeout(() => el.remove(), VISIBLE_MS + FADE_MS);
+    }, visibleMs);
+    const doneTimer = setTimeout(() => el.remove(), visibleMs + FADE_MS);
     return () => {
       clearTimeout(leaveTimer);
       clearTimeout(doneTimer);

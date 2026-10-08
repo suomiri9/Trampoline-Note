@@ -15,6 +15,9 @@ const config: CapacitorConfig = {
   // Lets the server tell requests come from the iOS app.
   appendUserAgent: "TrampolineNoteiOS",
   ios: {
+    // Xcode shows the target and scheme as "Trampoline Note"; the project file
+    // and the built product stay "App", which Capacitor expects.
+    scheme: "Trampoline Note",
     // The web app already pads for the notch and home indicator.
     contentInset: "never",
     backgroundColor: "#2563eb",
