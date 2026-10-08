@@ -50,7 +50,7 @@ export function syncStatusBar(theme: "dark" | "light") {
 // api-server/src/app-client.ts) and every request carries it as a header.
 // ---------------------------------------------------------------------------
 
-export const API_ORIGIN = (import.meta.env.VITE_APP_API_ORIGIN ?? "https://trampolinenote.com").replace(/\/+$/, "");
+export const API_ORIGIN = (import.meta.env.VITE_APP_API_ORIGIN ?? "https://trampoline-note.onrender.com").replace(/\/+$/, "");
 const TOKEN_KEY = "tn-app-session";
 
 function getSessionToken(): string | null {

@@ -26,6 +26,9 @@ services:
         value: "true"
       - key: APP_BASE_URL
         value: https://trampolinenote.com
+      # Where the iOS app reaches the API (see trampoline/src/lib/native-app.ts).
+      - key: APP_API_ORIGIN
+        value: https://trampoline-note.onrender.com
       - key: SESSION_SECRET
         sync: false
       - key: DATABASE_URL

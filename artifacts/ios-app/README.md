@@ -2,7 +2,7 @@
 
 A native iOS app (Capacitor) that ships the web app's screens
 (`artifacts/trampoline`) on the device and talks to the hosted API at
-https://trampolinenote.com. Screens open instantly and work without signal;
+https://trampoline-note.onrender.com (the server on Render). Screens open instantly and work without signal;
 data still lives on the server.
 
 Because the screens are inside the app, a design change reaches iPhone users

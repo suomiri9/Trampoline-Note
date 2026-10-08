@@ -972,8 +972,14 @@ export function registerRoutes(app: Express): void {
 
   // ---- WHOOP: per-user OAuth ("Sign in with WHOOP") + dashboard data ----
 
-  const whoopRedirectUri = (req: Parameters<typeof getBaseUrl>[0]) =>
-    `${getBaseUrl(req)}/api/whoop/callback`;
+  // The iOS app talks to the API at APP_API_ORIGIN (the Render address), so
+  // its WHOOP sign-in must come back there too: the session cookie lives on
+  // that host. Both callback URLs need registering with WHOOP.
+  const whoopRedirectUri = (req: Parameters<typeof getBaseUrl>[0]) => {
+    const appOrigin = process.env.APP_API_ORIGIN?.replace(/\/+$/, "");
+    const base = req.session.whoopReturnToApp && appOrigin ? appOrigin : getBaseUrl(req);
+    return `${base}/api/whoop/callback`;
+  };
   const whoopResultUrl = (req: Parameters<typeof getBaseUrl>[0], result: string) =>
     `${req.session.whoopReturnToApp ? APP_ORIGIN : ""}/whoop?whoop=${result}`;
 
