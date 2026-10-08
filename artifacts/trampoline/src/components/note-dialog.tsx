@@ -1026,18 +1026,17 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       variant: "destructive",
     });
     setSaveError(`${firstMessage ?? "Please check the highlighted fields."} Your session is still open so you can correct it.`);
-    if (errors.date) setNoteStep(1);
+    if (errors.date) setNoteStep("details");
   };
 
-  const [noteStep, setNoteStep] = useState<1 | 2 | 3>(1);
+  const [noteStep, setNoteStep] = useState<"skills" | "details">("skills");
   const isSavingRef = useRef(false);
   useEffect(() => {
     if (open) {
-      // New sessions open on Skills (date and time are pre-filled; the Start
-      // tab is still there to change them). A restored draft reopens where
-      // it was left.
+      // Sessions open on Skills (date and time are pre-filled and live on
+      // the Details tab). A restored draft reopens where it was left.
       const draft = noteToEdit ? null : readSessionDraft();
-      setNoteStep(noteToEdit ? 1 : draft?.step ?? 2);
+      setNoteStep(draft?.step ?? "skills");
       setDraftPromptOpen(!!draft);
       setSaveError(null);
       setDiscardConfirmOpen(false);
@@ -1157,8 +1156,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
             title={isEditing ? "Edit session" : "Log session"}
             description="Record your notes and skills practiced."
           />
-          <div className="mt-3 grid grid-cols-3 gap-1 p-1 rounded-xl bg-white/[0.03]" role="tablist" aria-label="Session form steps">
-            {([1, 2, 3] as const).map((s, i) => (
+          <div className="mt-3 grid grid-cols-2 gap-1 p-1 rounded-xl bg-white/[0.03]" role="tablist" aria-label="Session form steps">
+            {(["skills", "details"] as const).map((s, i) => (
               <button
                 key={s}
                 type="button"
@@ -1169,9 +1168,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   "h-8 rounded-lg text-[11px] font-mono uppercase tracking-wider transition-colors",
                   noteStep === s ? "bg-background text-foreground font-semibold shadow-sm" : "text-muted-foreground",
                 )}
-                data-testid={["tab-note-start","tab-note-skills","tab-note-finish"][i]}
+                data-testid={["tab-note-skills","tab-note-details"][i]}
               >
-                {["1 · Start","2 · Skills","3 · Finish"][i]}
+                {["1 · Skills","2 · Details"][i]}
               </button>
             ))}
           </div>
@@ -1180,36 +1179,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         <div ref={dialogBodyRef} className="flex-1 overflow-scroll-touch min-h-0 px-6 pb-6 text-foreground">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit, onInvalid as any)} className="space-y-6">
-              <div className={cn("space-y-4", noteStep !== 1 && "hidden")}>
-                <FormField control={form.control} name="date" render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormLabel className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button variant="outline" className="w-full text-left font-normal rounded-xl h-11 font-mono">
-                            {field.value ? format(field.value, "EEE, d MMMM yyyy") : "Pick a date"}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date()} initialFocus />
-                      </PopoverContent>
-                    </Popover>
-                  </FormItem>
-                )} />
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                  <FormField control={form.control} name="startTime" render={({ field }) => (
-                    <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
-                      <FormControl><TimeField ariaLabel="Start time" value={field.value || ""} onChange={field.onChange} testId="input-start-time" /></FormControl>
-                    </FormItem>
-                  )} />
-                </div>
-              </div>
-
-              <div className={cn("space-y-3", noteStep !== 2 && "hidden")}>
+              <div className={cn("space-y-3", noteStep !== "skills" && "hidden")}>
                 <FormLabel className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Skills & drills practiced</FormLabel>
 
                 <div className="flex flex-wrap gap-2">
@@ -2806,12 +2776,30 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 onPick={(shape) => { if (shapeSwapIndices) duplicateGroupWithShape(shapeSwapIndices, shape); setShapeSwapIndices(null); }}
               />
 
-              <div className={cn("space-y-4", noteStep !== 3 && "hidden")}>
+              <div className={cn("space-y-4", noteStep !== "details" && "hidden")}>
+                <FormField control={form.control} name="date" render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button variant="outline" className="w-full text-left font-normal rounded-xl h-11 font-mono">
+                            {field.value ? format(field.value, "EEE, d MMMM yyyy") : "Pick a date"}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date()} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                  </FormItem>
+                )} />
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
                   <FormField control={form.control} name="startTime" render={({ field }) => (
                     <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
-                      <FormControl><TimeField ariaLabel="Start time" value={field.value || ""} onChange={field.onChange} testId="input-start-time-3" /></FormControl>
+                      <FormControl><TimeField ariaLabel="Start time" value={field.value || ""} onChange={field.onChange} testId="input-start-time" /></FormControl>
                     </FormItem>
                   )} />
                   <span className="text-muted-foreground text-sm">→</span>
@@ -2845,22 +2833,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   <span>{saveError}</span>
                 </div>
               )}
-              {noteStep === 1 ? (
-                <Button type="button" className="w-full h-12 rounded-xl text-lg font-semibold" onClick={() => setNoteStep(2)} data-testid="btn-note-next">
-                  Skills →
+              {noteStep === "skills" ? (
+                <Button type="button" className="w-full h-12 rounded-xl text-lg font-semibold" onClick={() => setNoteStep("details")} data-testid="btn-note-finish">
+                  Details →
                 </Button>
-              ) : noteStep === 2 ? (
-                <div className="flex gap-2">
-                  <Button type="button" variant="outline" className="h-12 px-4 rounded-xl font-semibold" onClick={() => setNoteStep(1)} data-testid="btn-note-back">
-                    ← Start
-                  </Button>
-                  <Button type="button" className="flex-1 h-12 rounded-xl text-lg font-semibold" onClick={() => setNoteStep(3)} data-testid="btn-note-finish">
-                    Finish →
-                  </Button>
-                </div>
               ) : (
                 <div className="flex gap-2">
-                  <Button type="button" variant="outline" className="h-12 px-4 rounded-xl font-semibold" onClick={() => setNoteStep(2)} data-testid="btn-note-back">
+                  <Button type="button" variant="outline" className="h-12 px-4 rounded-xl font-semibold" onClick={() => setNoteStep("skills")} data-testid="btn-note-back">
                     ← Skills
                   </Button>
                   <Button
@@ -3089,7 +3068,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         setDraftPromptOpen(false);
         clearSessionDraft();
         resetToBlankSession();
-        setNoteStep(2);
+        setNoteStep("skills");
       }}
     />
 

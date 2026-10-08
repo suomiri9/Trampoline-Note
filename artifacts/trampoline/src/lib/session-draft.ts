@@ -12,7 +12,7 @@ export interface SessionDraft {
   content: string;
   rating: number | null;
   skills: unknown[];
-  step: 1 | 2 | 3;
+  step: "skills" | "details";
   savedAt: number;
 }
 
@@ -32,7 +32,7 @@ export function readSessionDraft(): SessionDraft | null {
       content: typeof d.content === "string" ? d.content : "",
       rating: typeof d.rating === "number" ? d.rating : null,
       skills: d.skills,
-      step: d.step === 1 || d.step === 3 ? d.step : 2,
+      step: d.step === "details" ? "details" : "skills",
       savedAt: typeof d.savedAt === "number" ? d.savedAt : 0,
     };
   } catch {
