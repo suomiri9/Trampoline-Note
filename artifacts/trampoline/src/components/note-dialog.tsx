@@ -3,7 +3,7 @@ import { haptics } from "@/lib/native-app";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { AlertTriangle, CalendarIcon, Clock, Loader2, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, Minus, X, Search, Shapes, ChevronDown, ChevronRight, Camera, Check, Merge, Split, Repeat, NotebookPen, Target, Dumbbell, Link2, Layers, Puzzle } from "lucide-react";
 import { DialogHero } from "@/components/dialog-hero";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
@@ -33,6 +33,7 @@ import { queryClient } from "@/lib/queryClient";
 import { bottomNavClearance, cn } from "@/lib/utils";
 import { compressDataUrl } from "@/lib/image-file";
 import { persistBeforeClose, startLockedSave } from "@/lib/training-save-guard";
+import { readSessionDraft, writeSessionDraft, clearSessionDraft } from "@/lib/session-draft";
 import { trackEvent } from "@/lib/analytics";
 import { PhotoAreaSelect, type PhotoAreaSelectHandle } from "@/components/photo-area-select";
 import {
@@ -162,6 +163,11 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [selectedSkills, setSelectedSkills] = useState<SkillItem[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
+  // Unfinished-session draft: restored on open, offered as "keep going or
+  // start new". `draftArmed` turns on autosave only once the form holds
+  // this open's real values (restored draft or a blank session).
+  const [draftPromptOpen, setDraftPromptOpen] = useState(false);
+  const [draftArmed, setDraftArmed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const saveSourceRef = useRef<"manual" | "auto">("manual");
   const [isConnectMode, setIsConnectMode] = useState(false);
@@ -389,6 +395,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     }
   }, [selectedSkills, open]);
 
+  const resetToBlankSession = () => {
+    setSelectedSkills([]);
+    form.reset({
+      date: new Date(),
+      startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+      endTime: "",
+      content: "",
+      skills: "",
+      rating: null,
+    });
+  };
+
   useEffect(() => {
     if (open) {
       if (noteToEdit) {
@@ -416,15 +434,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         setNewSkillCode("");
         setNewSkillDD("");
         setNewSkillIsDrill(false);
-        form.reset({
-          date: new Date(),
-          startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-          endTime: "",
-          content: "",
-          skills: "",
-          rating: null,
-        });
+        const draft = readSessionDraft();
+        if (draft) {
+          const draftSkills = draft.skills as SkillItem[];
+          setSelectedSkills(draftSkills);
+          form.reset({
+            date: parseISO(draft.date),
+            startTime: draft.startTime,
+            endTime: draft.endTime,
+            content: draft.content,
+            skills: JSON.stringify(draftSkills),
+            rating: draft.rating,
+          });
+        } else {
+          resetToBlankSession();
+        }
+        setDraftArmed(true);
       }
+    } else {
+      setDraftArmed(false);
     }
   }, [open, noteToEdit, form]);
 
@@ -943,6 +971,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       },
       (confirmedResult) => {
         result = confirmedResult;
+        if (!isEditing) clearSessionDraft();
         onOpenChange(false);
       },
       (err) => {
@@ -1004,7 +1033,12 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const isSavingRef = useRef(false);
   useEffect(() => {
     if (open) {
-      setNoteStep(1);
+      // New sessions open on Skills (date and time are pre-filled; the Start
+      // tab is still there to change them). A restored draft reopens where
+      // it was left.
+      const draft = noteToEdit ? null : readSessionDraft();
+      setNoteStep(noteToEdit ? 1 : draft?.step ?? 2);
+      setDraftPromptOpen(!!draft);
       setSaveError(null);
       setDiscardConfirmOpen(false);
       setIsSaving(false);
@@ -1027,6 +1061,30 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLocation]);
+
+  // Keep an unfinished NEW session on this device as it is filled in, so
+  // closing the app mid-training doesn't lose it.
+  useEffect(() => {
+    if (!open || noteToEdit || !draftArmed) return;
+    const save = () => {
+      const v = form.getValues();
+      const hasContent = selectedSkills.length > 0 || !!v.content || !!v.rating || !!v.endTime;
+      if (!hasContent) { clearSessionDraft(); return; }
+      writeSessionDraft({
+        date: format(v.date ?? new Date(), "yyyy-MM-dd"),
+        startTime: v.startTime || "",
+        endTime: v.endTime || "",
+        content: v.content || "",
+        rating: v.rating ?? null,
+        skills: selectedSkills,
+        step: noteStep,
+        savedAt: Date.now(),
+      });
+    };
+    save();
+    const sub = form.watch(() => save());
+    return () => sub.unsubscribe();
+  }, [open, noteToEdit, draftArmed, selectedSkills, noteStep, form]);
 
   const hasUnsavedContent = () => {
     const v = form.getValues();
@@ -1054,6 +1112,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   flushDraftSaveRef.current = flushDraftSave;
   const openRef = useRef(open);
   openRef.current = open;
+  const isEditingRef = useRef(isEditing);
+  isEditingRef.current = isEditing;
 
   // The location-watcher effect above only runs while this component stays
   // mounted. When the HOST PAGE unmounts — the bottom nav sits above the
@@ -1065,12 +1125,20 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   // and offline-queue writes run to completion after unmount.
   useEffect(() => {
     return () => {
-      if (openRef.current) flushDraftSaveRef.current("auto");
+      // A new session is already kept on the device as a draft; only
+      // edits to existing sessions need saving here.
+      if (openRef.current && isEditingRef.current) flushDraftSaveRef.current("auto");
     };
   }, []);
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen && isSavingRef.current) return;
+    // Closing a new session keeps it as an unfinished draft on this device
+    // (Home shows a badge), so there is nothing to confirm.
+    if (!newOpen && !isEditing) {
+      onOpenChange(false);
+      return;
+    }
     if (!newOpen && hasUnsavedContent()) {
       setDiscardConfirmOpen(true);
       return;
@@ -3005,7 +3073,23 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       variant="destructive"
       onConfirm={() => {
         setDiscardConfirmOpen(false);
+        if (!isEditing) clearSessionDraft();
         onOpenChange(false);
+      }}
+    />
+    <ConfirmDialog
+      open={draftPromptOpen}
+      onOpenChange={setDraftPromptOpen}
+      title="You have an unfinished session"
+      description={`Started ${format(form.getValues("date") ?? new Date(), "EEE, d MMM")} with ${buildGroups(selectedSkills).length} skill${buildGroups(selectedSkills).length === 1 ? "" : "s"}. Keep going, or throw it away and start a new one?`}
+      confirmLabel="Start new"
+      cancelLabel="Keep going"
+      variant="destructive"
+      onConfirm={() => {
+        setDraftPromptOpen(false);
+        clearSessionDraft();
+        resetToBlankSession();
+        setNoteStep(2);
       }}
     />
 

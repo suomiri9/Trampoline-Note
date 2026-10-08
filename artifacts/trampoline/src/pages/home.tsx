@@ -8,6 +8,7 @@ import { useRoutines } from "@/hooks/use-routines";
 import { parseNoteSkills, calculateTotalDD } from "@/lib/training-utils";
 import { NoteCard } from "@/components/note-card";
 import { NoteDialog } from "@/components/note-dialog";
+import { useHasSessionDraft } from "@/lib/session-draft";
 import { PointsToFix } from "@/components/points-to-fix";
 import { PageLayout } from "@/components/page-layout";
 import { PageHeader, headerActionClass } from "@/components/page-header";
@@ -30,6 +31,7 @@ export default function Home() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
   const [isPointsOpen, setIsPointsOpen] = useState(false);
+  const hasUnfinishedSession = useHasSessionDraft();
 
   const handleCreateNew = () => {
     setNoteToEdit(null);
@@ -128,13 +130,20 @@ export default function Home() {
               <span className="group-data-[collapsed=true]/pageheader:hidden">Points to Fix</span>
             </Button>
             <Button
-              className={cn(headerActionClass, "bg-gradient-cta text-primary-foreground btn-3d shrink-0")}
+              className={cn(headerActionClass, "bg-gradient-cta text-primary-foreground btn-3d shrink-0 relative")}
               onClick={handleCreateNew}
-              aria-label="New session"
+              aria-label={hasUnfinishedSession ? "Continue unfinished session" : "New session"}
               data-testid="btn-new-note"
             >
               <Plus className="w-5 h-5" />
-              <span className="group-data-[collapsed=true]/pageheader:hidden">Start Training</span>
+              <span className="group-data-[collapsed=true]/pageheader:hidden">{hasUnfinishedSession ? "Continue Training" : "Start Training"}</span>
+              {hasUnfinishedSession && (
+                <span
+                  className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-amber-400 ring-2 ring-background"
+                  aria-hidden="true"
+                  data-testid="badge-unfinished-session"
+                />
+              )}
             </Button>
           </>
         }
