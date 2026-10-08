@@ -70,6 +70,7 @@ import {
   backfillShellCache,
   findShellCacheName,
   APP_SHELL_URLS,
+  appShellBundled,
   getOfflineAssetUrls,
   getCachedPathnames,
   countCachedTargets,
@@ -268,9 +269,10 @@ export default function SettingsPage() {
     }
     let alive = true;
     const check = async () => {
-      let sw = false;
+      // In the iOS app the screens are bundled, so they always open offline.
+      let sw = appShellBundled;
       try {
-        if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+        if (!appShellBundled && typeof navigator !== "undefined" && "serviceWorker" in navigator) {
           const reg = await navigator.serviceWorker.getRegistration();
           sw = !!(reg && (reg.active || reg.installing || reg.waiting));
         }
@@ -286,7 +288,9 @@ export default function SettingsPage() {
       // changes).
       let shellProgress = sw ? 1 : 0;
       try {
-        if (typeof caches !== "undefined") {
+        if (appShellBundled) {
+          shellProgress = 1;
+        } else if (typeof caches !== "undefined") {
           const shellCacheName = await findShellCacheName();
           if (shellCacheName) {
             const assetUrls = await getOfflineAssetUrls();
