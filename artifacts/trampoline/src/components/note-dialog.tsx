@@ -1723,7 +1723,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                         const title = isRoutine || isFC ? it.names[0] : it.codes.join(" + ");
                         const editIds = isRoutine || isFC ? (it.customSkillIds ?? []) : it.skillIds;
                         return (
-                          <div className="absolute inset-0 z-40 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm rounded-lg" onClick={(e) => { if (e.target === e.currentTarget) setReviewEditingIdx(null); }}>
+                          <div className="absolute inset-0 z-40 flex items-start justify-center p-4 bg-black/70 rounded-lg" onClick={(e) => { if (e.target === e.currentTarget) setReviewEditingIdx(null); }}>
                             <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-border/40">
                                 <div className="flex items-center gap-2 min-w-0">
@@ -2818,7 +2818,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         {editingGroupIndices !== null && editingRoutineIdx === null && (() => {
           const indices = editingGroupIndices;
           return (
-            <div className="absolute inset-0 z-30 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setEditingGroupIndices(null); }}>
+            <div className="absolute inset-0 z-30 flex items-start justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setEditingGroupIndices(null); }}>
               <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-black/30 overflow-hidden" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 shrink-0">
                   <span className="text-sm font-semibold">Connected Group</span>
@@ -2965,7 +2965,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
             : "bg-primary text-primary-foreground";
 
           return (
-            <div className="absolute inset-0 z-40 flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setEditingRoutineIdx(null); }}>
+            <div className="absolute inset-0 z-40 flex items-start justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setEditingRoutineIdx(null); }}>
               <div className="flex flex-col w-full max-w-md max-h-full bg-background rounded-2xl border border-border shadow-black/30 p-4" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-border/40">
                   <div className="flex items-center gap-2 min-w-0">
