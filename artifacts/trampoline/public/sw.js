@@ -4,7 +4,7 @@
  * zero network. API requests are NOT intercepted — offline behaviour for
  * data is handled at the React layer. */
 
-const CACHE = 'tn-shell-v12';
+const CACHE = 'tn-shell-v13';
 
 // Replaced at build time (offlineManifest in vite.config.ts) with the full list of built files
 // under /assets/ plus /offline-manifest.json. Route chunks are lazy-loaded,
