@@ -1220,7 +1220,7 @@ export function registerRoutes(app: Express): void {
       };
 
       // Stop support: if the client aborts the fetch mid-stream (the Stop
-      // button), abort the upstream OpenAI stream too and persist nothing —
+      // button), abort the upstream Claude stream too and persist nothing —
       // a stopped question can simply be re-asked.
       const aborter = new AbortController();
       let finished = false;

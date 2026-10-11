@@ -1,5 +1,5 @@
 // Date helpers for the AI coach. Kept dependency-free so they can be
-// unit-tested without pulling in the OpenAI client / storage imports.
+// unit-tested without pulling in the AI client / storage imports.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

@@ -1,11 +1,11 @@
 // AI coach: builds a compact per-user training + WHOOP context and asks a
-// Replit-managed OpenAI model (no user API key) for (a) a daily "push level"
+// Claude model (see ./ai) for (a) a daily "push level"
 // recommendation and (b) grounded answers in the coach chat.
 //
 // The model only ever sees a summarized context — recent session DD totals,
 // ratings, scores and WHOOP recovery/HRV/sleep/strain — never raw dumps.
 
-import OpenAI from "openai";
+import { aiComplete, type AiContentPart, type AiMessage } from "./ai";
 import { storage } from "./storage";
 import { storeCoachImages, deleteCoachImages, type CoachImageRef } from "./coach-images";
 import { getWhoopDashboardDataCached, WhoopNotConnectedError } from "./whoop";
@@ -26,15 +26,6 @@ import {
 } from "./coach-proposals";
 
 export type { CoachSkillProposal, CoachPointProposal } from "./coach-proposals";
-
-// Works with Replit's AI integration or a plain OpenAI key. A placeholder key
-// keeps the server starting without one; AI calls then fail as "unavailable".
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY || "missing",
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined,
-});
-
-const MODEL = process.env.COACH_MODEL || "gpt-5.6-terra";
 
 export class CoachUnavailableError extends Error {
   constructor(message = "The AI coach is unavailable right now.") {
@@ -237,16 +228,13 @@ export async function getPushRecommendation(
 
   let raw: string;
   try {
-    const response = await openai.chat.completions.create({
-      model: MODEL,
+    raw = await aiComplete({
       messages: [
         { role: "system", content: system },
         { role: "user", content: `Athlete data:\n\n${ctx.text}\n\nHow hard should I push today?` },
       ],
-      response_format: { type: "json_object" },
-      max_completion_tokens: 2048,
+      json: true,
     });
-    raw = response.choices[0]?.message?.content ?? "";
   } catch (err) {
     console.error("[coach] push recommendation failed:", err);
     throw new CoachUnavailableError();
@@ -548,9 +536,7 @@ export function extractDraft(
   return { stripped, draft: { date, items, unmatched, noteText } };
 }
 
-type ContentPart =
-  | { type: "text"; text: string }
-  | { type: "image_url"; image_url: { url: string } };
+type ContentPart = AiContentPart;
 
 export async function coachChat(
   userId: string,
@@ -619,7 +605,7 @@ export async function coachChat(
     userParts.push({ type: "image_url", image_url: { url } });
   }
 
-  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+  const messages: AiMessage[] = [
     { role: "system", content: system },
     ...recent.map((m) => ({
       role: (m.role === "assistant" ? "assistant" : "user") as "assistant" | "user",
@@ -630,37 +616,11 @@ export async function coachChat(
 
   let reply: string;
   try {
-    if (onDelta) {
-      // `signal` aborts the upstream OpenAI stream when the athlete taps
-      // Stop (the SSE client disconnects), so tokens stop being generated
-      // and billed server-side too.
-      const stream = await openai.chat.completions.create(
-        {
-          model: MODEL,
-          messages,
-          max_completion_tokens: 4096,
-          stream: true,
-        },
-        { signal },
-      );
-      let acc = "";
-      for await (const part of stream) {
-        const delta = part.choices[0]?.delta?.content ?? "";
-        if (delta) {
-          acc += delta;
-          onDelta(delta);
-        }
-      }
-      if (signal?.aborted) throw new CoachStoppedError();
-      reply = acc.trim();
-    } else {
-      const response = await openai.chat.completions.create({
-        model: MODEL,
-        messages,
-        max_completion_tokens: 4096,
-      });
-      reply = (response.choices[0]?.message?.content ?? "").trim();
-    }
+    // `signal` aborts the upstream Claude stream when the athlete taps
+    // Stop (the SSE client disconnects), so tokens stop being generated
+    // and billed server-side too.
+    reply = (await aiComplete({ messages, signal, onDelta })).trim();
+    if (signal?.aborted) throw new CoachStoppedError();
   } catch (err) {
     // A stop (client disconnect) surfaces either as our own CoachStoppedError
     // or as the SDK's abort error — both mean "discard, don't persist".
@@ -842,8 +802,7 @@ function extractSuggestions(raw: string): { cleaned: string; suggestions: string
 export async function generateSuggestions(reply: string, hasDraft: boolean): Promise<string[]> {
   if (hasDraft || !reply.trim()) return [];
   try {
-    const res = await openai.chat.completions.create({
-      model: MODEL,
+    const raw = (await aiComplete({
       messages: [
         {
           role: "system",
@@ -855,9 +814,7 @@ export async function generateSuggestions(reply: string, hasDraft: boolean): Pro
           content: `Coach just said:\n"${reply.slice(0, 600)}"\n\nSuggest 2–4 likely short replies the athlete would tap:`,
         },
       ],
-      max_completion_tokens: 120,
-    });
-    const raw = (res.choices[0]?.message?.content ?? "").trim();
+    })).trim();
     const match = raw.match(/\[[\s\S]*\]/);
     if (!match) return [];
     const parsed = JSON.parse(match[0]);
@@ -911,16 +868,11 @@ export async function menuChat(
     .filter(Boolean)
     .join("\n\n");
 
-  const oaiMessages = buildMenuChatMessages(system, cropDataUrl, messages);
+  const modelMessages = buildMenuChatMessages(system, cropDataUrl, messages);
 
   let reply: string;
   try {
-    const response = await openai.chat.completions.create({
-      model: MODEL,
-      messages: oaiMessages,
-      max_completion_tokens: 1024,
-    });
-    reply = (response.choices[0]?.message?.content ?? "").trim();
+    reply = (await aiComplete({ messages: modelMessages })).trim();
   } catch (err) {
     console.error("[coach] menu-chat failed:", err);
     throw new CoachUnavailableError();
@@ -978,16 +930,13 @@ export async function parseTofScreenshot(
 
   let raw: string;
   try {
-    const response = await openai.chat.completions.create({
-      model: MODEL,
+    raw = await aiComplete({
       messages: [
         { role: "system", content: system },
         { role: "user", content: userParts },
       ],
-      response_format: { type: "json_object" },
-      max_completion_tokens: 2048,
+      json: true,
     });
-    raw = response.choices[0]?.message?.content ?? "";
   } catch (err) {
     console.error("[tof] parse-screenshot failed:", err);
     throw new CoachUnavailableError("Screenshot reading is unavailable right now.");
@@ -1048,16 +997,13 @@ export async function parseExecutionSheet(
 
   let raw: string;
   try {
-    const response = await openai.chat.completions.create({
-      model: MODEL,
+    raw = await aiComplete({
       messages: [
         { role: "system", content: system },
         { role: "user", content: userParts },
       ],
-      response_format: { type: "json_object" },
-      max_completion_tokens: 2048,
+      json: true,
     });
-    raw = response.choices[0]?.message?.content ?? "";
   } catch (err) {
     console.error("[execution] parse-sheet failed:", err);
     throw new CoachUnavailableError("Photo reading is unavailable right now.");
@@ -1125,16 +1071,13 @@ export async function parseScoreSheet(
 
   let raw: string;
   try {
-    const response = await openai.chat.completions.create({
-      model: MODEL,
+    raw = await aiComplete({
       messages: [
         { role: "system", content: system },
         { role: "user", content: userParts },
       ],
-      response_format: { type: "json_object" },
-      max_completion_tokens: 2048,
+      json: true,
     });
-    raw = response.choices[0]?.message?.content ?? "";
   } catch (err) {
     console.error("[score] parse-sheet failed:", err);
     throw new CoachUnavailableError("Photo reading is unavailable right now.");
@@ -1244,15 +1187,14 @@ export async function parseMenuPhoto(
 
   let reply: string;
   try {
-    const response = await openai.chat.completions.create({
-      model: MODEL,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: userParts },
-      ],
-      max_completion_tokens: 2048,
-    });
-    reply = (response.choices[0]?.message?.content ?? "").trim();
+    reply = (
+      await aiComplete({
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: userParts },
+        ],
+      })
+    ).trim();
   } catch (err) {
     console.error("[coach] parse-menu failed:", err);
     throw new CoachUnavailableError();

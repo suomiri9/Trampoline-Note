@@ -888,7 +888,7 @@ export function CoachChat({ compact = false }: { compact?: boolean }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Aborts the in-flight SSE fetch when the athlete taps Stop; the server
-  // sees the disconnect and aborts the OpenAI stream too. Nothing is
+  // sees the disconnect and aborts the Claude stream too. Nothing is
   // persisted for a stopped reply — the question is restored to the input.
   const abortRef = useRef<AbortController | null>(null);
 
