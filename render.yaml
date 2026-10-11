@@ -33,11 +33,15 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
+      # Claude powers the AI coach and photo reading.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # Claude model for the AI coach. Change it here or in Render's Environment tab.
+      - key: CLAUDE_MODEL
+        value: claude-opus-5-5
+      # Only used to draw skill-dictionary pictures (Claude can't make images).
       - key: OPENAI_API_KEY
         sync: false
-      # Model for the AI coach. Change it here or in Render's Environment tab.
-      - key: COACH_MODEL
-        value: gpt-4.1
       - key: RESEND_API_KEY
         sync: false
       - key: WHOOP_CLIENT_ID

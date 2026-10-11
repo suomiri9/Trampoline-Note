@@ -18,9 +18,18 @@ const { createMock, storageMock } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("openai", () => ({
-  default: class OpenAI {
-    chat = { completions: { create: createMock } };
+// createMock returns either a fakeStream (the streamed chat reply, fed to
+// onDelta chunk by chunk) or a plain reply string (non-streamed calls).
+vi.mock("./ai", () => ({
+  aiComplete: async (req: { onDelta?: (c: string) => void }) => {
+    const res = await createMock(req);
+    if (typeof res === "string") return res;
+    let acc = "";
+    for await (const chunk of res as AsyncIterable<string>) {
+      acc += chunk;
+      req.onDelta?.(chunk);
+    }
+    return acc;
   },
 }));
 vi.mock("./storage", () => ({ storage: storageMock }));
@@ -43,13 +52,13 @@ vi.mock("./whoop", () => ({
 
 import { coachChat, CoachStoppedError } from "./coach";
 
-// An async-iterable "stream" that yields the given text chunks as OpenAI
-// delta parts, optionally running a hook before ending.
+// An async-iterable "stream" that yields the given text chunks, optionally
+// running a hook before ending.
 function fakeStream(chunks: string[], onEnd?: () => void) {
   return {
     async *[Symbol.asyncIterator]() {
       for (const c of chunks) {
-        yield { choices: [{ delta: { content: c } }] };
+        yield c;
       }
       onEnd?.();
     },
@@ -92,7 +101,7 @@ describe("coachChat stop contract", () => {
       // generateSuggestions call: abort mid-flight, then return normally.
       .mockImplementationOnce(async () => {
         aborter.abort();
-        return { choices: [{ message: { content: "```suggestions\n[]\n```" } }] };
+        return "```suggestions\n[]\n```";
       });
 
     await expect(
@@ -109,9 +118,7 @@ describe("coachChat stop contract", () => {
     const refs = [{ key: "coach-images/user-1/x.jpg", contentType: "image/jpeg" }];
     createMock
       .mockImplementationOnce(async () => fakeStream(["Nice menu."]))
-      .mockImplementationOnce(async () => ({
-        choices: [{ message: { content: "```suggestions\n[]\n```" } }],
-      }));
+      .mockImplementationOnce(async () => "```suggestions\n[]\n```");
     // Stop lands while the upload is in flight; the upload still finishes,
     // so the compensation must delete the now-orphaned blobs.
     storeCoachImagesMock.mockImplementationOnce(async () => {
@@ -140,9 +147,7 @@ describe("coachChat stop contract", () => {
     const aborter = new AbortController();
     createMock
       .mockImplementationOnce(async () => fakeStream(["All good."]))
-      .mockImplementationOnce(async () => ({
-        choices: [{ message: { content: "```suggestions\n[]\n```" } }],
-      }));
+      .mockImplementationOnce(async () => "```suggestions\n[]\n```");
     storageMock.commitCoachExchange.mockImplementationOnce(async () => {
       aborter.abort(); // late stop mid-transaction — commit wins
     });
@@ -180,9 +185,7 @@ describe("coachChat stop contract", () => {
     // First call: the chat stream; second call: generateSuggestions (non-stream).
     createMock
       .mockImplementationOnce(async () => fakeStream(["All good."]))
-      .mockImplementationOnce(async () => ({
-        choices: [{ message: { content: "```suggestions\n[]\n```" } }],
-      }));
+      .mockImplementationOnce(async () => "```suggestions\n[]\n```");
 
     const res = await coachChat("user-1", "hi", undefined, undefined, () => {}, undefined, new AbortController().signal);
     expect(res.reply).toBe("All good.");
