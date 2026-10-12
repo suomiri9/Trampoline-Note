@@ -7,6 +7,7 @@ import { getOfflineModeEnabled } from "@/lib/offline-mode";
 import { fetchWithTimeout, markCacheServed, markNetworkOk } from "@/lib/read-fallback";
 import { queryClient as appQueryClient } from "@/lib/queryClient";
 import { trackEvent } from "@/lib/analytics";
+import { clearSessionDraft } from "@/lib/session-draft";
 
 const USER_CACHE_KEY = "user";
 const SESSION_MARKER_KEY = "tn-session-active";
@@ -196,6 +197,7 @@ async function logoutFn(): Promise<void> {
   setSessionMarker(false);
   forgetAppSession();
   cancelPendingSettingsPush();
+  clearSessionDraft();
   await cacheClearAll();
 }
 
@@ -212,6 +214,7 @@ async function deleteAccountFn(): Promise<void> {
   setSessionMarker(false);
   forgetAppSession();
   cancelPendingSettingsPush();
+  clearSessionDraft();
   await cacheClearAll();
 }
 

@@ -3,7 +3,7 @@ import { haptics } from "@/lib/native-app";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { AlertTriangle, CalendarIcon, Clock, Loader2, Trash2, GripVertical, MessageSquare, Copy, MoreVertical, Plus, Minus, X, Search, Shapes, ChevronDown, ChevronRight, Camera, Check, Merge, Split, Repeat, NotebookPen, Target, Dumbbell, Link2, Layers, Puzzle } from "lucide-react";
 import { DialogHero } from "@/components/dialog-hero";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
@@ -33,6 +33,7 @@ import { queryClient } from "@/lib/queryClient";
 import { bottomNavClearance, cn } from "@/lib/utils";
 import { compressDataUrl } from "@/lib/image-file";
 import { persistBeforeClose, startLockedSave } from "@/lib/training-save-guard";
+import { readSessionDraft, writeSessionDraft, clearSessionDraft } from "@/lib/session-draft";
 import { trackEvent } from "@/lib/analytics";
 import { PhotoAreaSelect, type PhotoAreaSelectHandle } from "@/components/photo-area-select";
 import {
@@ -162,6 +163,12 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   const [selectedSkills, setSelectedSkills] = useState<SkillItem[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
+  // Unfinished-session draft: restored on open, offered as "keep going or
+  // start new". `draftArmed` turns on autosave only once the form holds
+  // this open's real values (restored draft or a blank session).
+  const [draftPromptOpen, setDraftPromptOpen] = useState(false);
+  const [draftArmed, setDraftArmed] = useState(false);
+  const [draftDiscardConfirmOpen, setDraftDiscardConfirmOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const saveSourceRef = useRef<"manual" | "auto">("manual");
   const [isConnectMode, setIsConnectMode] = useState(false);
@@ -389,6 +396,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     }
   }, [selectedSkills, open]);
 
+  const resetToBlankSession = () => {
+    setSelectedSkills([]);
+    form.reset({
+      date: new Date(),
+      startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+      endTime: "",
+      content: "",
+      skills: "",
+      rating: null,
+    });
+  };
+
   useEffect(() => {
     if (open) {
       if (noteToEdit) {
@@ -416,15 +435,25 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         setNewSkillCode("");
         setNewSkillDD("");
         setNewSkillIsDrill(false);
-        form.reset({
-          date: new Date(),
-          startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-          endTime: "",
-          content: "",
-          skills: "",
-          rating: null,
-        });
+        const draft = readSessionDraft();
+        if (draft) {
+          const draftSkills = draft.skills as SkillItem[];
+          setSelectedSkills(draftSkills);
+          form.reset({
+            date: parseISO(draft.date),
+            startTime: draft.startTime,
+            endTime: draft.endTime,
+            content: draft.content,
+            skills: JSON.stringify(draftSkills),
+            rating: draft.rating,
+          });
+        } else {
+          resetToBlankSession();
+        }
+        setDraftArmed(true);
       }
+    } else {
+      setDraftArmed(false);
     }
   }, [open, noteToEdit, form]);
 
@@ -943,6 +972,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       },
       (confirmedResult) => {
         result = confirmedResult;
+        if (!isEditing) clearSessionDraft();
         onOpenChange(false);
       },
       (err) => {
@@ -997,14 +1027,19 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       variant: "destructive",
     });
     setSaveError(`${firstMessage ?? "Please check the highlighted fields."} Your session is still open so you can correct it.`);
-    if (errors.date) setNoteStep(1);
+    if (errors.date) setNoteStep("details");
   };
 
-  const [noteStep, setNoteStep] = useState<1 | 2 | 3>(1);
+  const [noteStep, setNoteStep] = useState<"skills" | "details">("skills");
   const isSavingRef = useRef(false);
   useEffect(() => {
     if (open) {
-      setNoteStep(1);
+      // Sessions open on Skills (date and time are pre-filled and live on
+      // the Details tab). A restored draft reopens where it was left.
+      const draft = noteToEdit ? null : readSessionDraft();
+      setNoteStep(draft?.step ?? "skills");
+      setDraftPromptOpen(!!draft);
+      setDraftDiscardConfirmOpen(false);
       setSaveError(null);
       setDiscardConfirmOpen(false);
       setIsSaving(false);
@@ -1027,6 +1062,30 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLocation]);
+
+  // Keep an unfinished NEW session on this device as it is filled in, so
+  // closing the app mid-training doesn't lose it.
+  useEffect(() => {
+    if (!open || noteToEdit || !draftArmed) return;
+    const save = () => {
+      const v = form.getValues();
+      const hasContent = selectedSkills.length > 0 || !!v.content || !!v.rating || !!v.endTime;
+      if (!hasContent) { clearSessionDraft(); return; }
+      writeSessionDraft({
+        date: format(v.date ?? new Date(), "yyyy-MM-dd"),
+        startTime: v.startTime || "",
+        endTime: v.endTime || "",
+        content: v.content || "",
+        rating: v.rating ?? null,
+        skills: selectedSkills,
+        step: noteStep,
+        savedAt: Date.now(),
+      });
+    };
+    save();
+    const sub = form.watch(() => save());
+    return () => sub.unsubscribe();
+  }, [open, noteToEdit, draftArmed, selectedSkills, noteStep, form]);
 
   const hasUnsavedContent = () => {
     const v = form.getValues();
@@ -1054,6 +1113,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   flushDraftSaveRef.current = flushDraftSave;
   const openRef = useRef(open);
   openRef.current = open;
+  const isEditingRef = useRef(isEditing);
+  isEditingRef.current = isEditing;
 
   // The location-watcher effect above only runs while this component stays
   // mounted. When the HOST PAGE unmounts — the bottom nav sits above the
@@ -1065,12 +1126,20 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   // and offline-queue writes run to completion after unmount.
   useEffect(() => {
     return () => {
-      if (openRef.current) flushDraftSaveRef.current("auto");
+      // A new session is already kept on the device as a draft; only
+      // edits to existing sessions need saving here.
+      if (openRef.current && isEditingRef.current) flushDraftSaveRef.current("auto");
     };
   }, []);
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen && isSavingRef.current) return;
+    // Closing a new session keeps it as an unfinished draft on this device
+    // (Home shows a badge), so there is nothing to confirm.
+    if (!newOpen && !isEditing) {
+      onOpenChange(false);
+      return;
+    }
     if (!newOpen && hasUnsavedContent()) {
       setDiscardConfirmOpen(true);
       return;
@@ -1089,8 +1158,8 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
             title={isEditing ? "Edit session" : "Log session"}
             description="Record your notes and skills practiced."
           />
-          <div className="mt-3 grid grid-cols-3 gap-1 p-1 rounded-xl bg-white/[0.03]" role="tablist" aria-label="Session form steps">
-            {([1, 2, 3] as const).map((s, i) => (
+          <div className="mt-3 grid grid-cols-2 gap-1 p-1 rounded-xl bg-white/[0.03]" role="tablist" aria-label="Session form steps">
+            {(["skills", "details"] as const).map((s, i) => (
               <button
                 key={s}
                 type="button"
@@ -1101,9 +1170,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   "h-8 rounded-lg text-[11px] font-mono uppercase tracking-wider transition-colors",
                   noteStep === s ? "bg-background text-foreground font-semibold shadow-sm" : "text-muted-foreground",
                 )}
-                data-testid={["tab-note-start","tab-note-skills","tab-note-finish"][i]}
+                data-testid={["tab-note-skills","tab-note-details"][i]}
               >
-                {["1 · Start","2 · Skills","3 · Finish"][i]}
+                {["1 · Skills","2 · Details"][i]}
               </button>
             ))}
           </div>
@@ -1112,36 +1181,7 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         <div ref={dialogBodyRef} className="flex-1 overflow-scroll-touch min-h-0 px-6 pb-6 text-foreground">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit, onInvalid as any)} className="space-y-6">
-              <div className={cn("space-y-4", noteStep !== 1 && "hidden")}>
-                <FormField control={form.control} name="date" render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormLabel className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button variant="outline" className="w-full text-left font-normal rounded-xl h-11 font-mono">
-                            {field.value ? format(field.value, "EEE, d MMMM yyyy") : "Pick a date"}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date()} initialFocus />
-                      </PopoverContent>
-                    </Popover>
-                  </FormItem>
-                )} />
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                  <FormField control={form.control} name="startTime" render={({ field }) => (
-                    <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
-                      <FormControl><TimeField ariaLabel="Start time" value={field.value || ""} onChange={field.onChange} testId="input-start-time" /></FormControl>
-                    </FormItem>
-                  )} />
-                </div>
-              </div>
-
-              <div className={cn("space-y-3", noteStep !== 2 && "hidden")}>
+              <div className={cn("space-y-3", noteStep !== "skills" && "hidden")}>
                 <FormLabel className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Skills & drills practiced</FormLabel>
 
                 <div className="flex flex-wrap gap-2">
@@ -2738,12 +2778,30 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                 onPick={(shape) => { if (shapeSwapIndices) duplicateGroupWithShape(shapeSwapIndices, shape); setShapeSwapIndices(null); }}
               />
 
-              <div className={cn("space-y-4", noteStep !== 3 && "hidden")}>
+              <div className={cn("space-y-4", noteStep !== "details" && "hidden")}>
+                <FormField control={form.control} name="date" render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button variant="outline" className="w-full text-left font-normal rounded-xl h-11 font-mono">
+                            {field.value ? format(field.value, "EEE, d MMMM yyyy") : "Pick a date"}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date()} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                  </FormItem>
+                )} />
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
                   <FormField control={form.control} name="startTime" render={({ field }) => (
                     <FormItem className="flex items-center gap-2 flex-1 min-w-0 space-y-0">
-                      <FormControl><TimeField ariaLabel="Start time" value={field.value || ""} onChange={field.onChange} testId="input-start-time-3" /></FormControl>
+                      <FormControl><TimeField ariaLabel="Start time" value={field.value || ""} onChange={field.onChange} testId="input-start-time" /></FormControl>
                     </FormItem>
                   )} />
                   <span className="text-muted-foreground text-sm">→</span>
@@ -2777,22 +2835,13 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   <span>{saveError}</span>
                 </div>
               )}
-              {noteStep === 1 ? (
-                <Button type="button" className="w-full h-12 rounded-xl text-lg font-semibold" onClick={() => setNoteStep(2)} data-testid="btn-note-next">
-                  Skills →
+              {noteStep === "skills" ? (
+                <Button type="button" className="w-full h-12 rounded-xl text-lg font-semibold" onClick={() => setNoteStep("details")} data-testid="btn-note-finish">
+                  Details →
                 </Button>
-              ) : noteStep === 2 ? (
-                <div className="flex gap-2">
-                  <Button type="button" variant="outline" className="h-12 px-4 rounded-xl font-semibold" onClick={() => setNoteStep(1)} data-testid="btn-note-back">
-                    ← Start
-                  </Button>
-                  <Button type="button" className="flex-1 h-12 rounded-xl text-lg font-semibold" onClick={() => setNoteStep(3)} data-testid="btn-note-finish">
-                    Finish →
-                  </Button>
-                </div>
               ) : (
                 <div className="flex gap-2">
-                  <Button type="button" variant="outline" className="h-12 px-4 rounded-xl font-semibold" onClick={() => setNoteStep(2)} data-testid="btn-note-back">
+                  <Button type="button" variant="outline" className="h-12 px-4 rounded-xl font-semibold" onClick={() => setNoteStep("skills")} data-testid="btn-note-back">
                     ← Skills
                   </Button>
                   <Button
@@ -3005,7 +3054,36 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       variant="destructive"
       onConfirm={() => {
         setDiscardConfirmOpen(false);
+        if (!isEditing) clearSessionDraft();
         onOpenChange(false);
+      }}
+    />
+    <ConfirmDialog
+      open={draftPromptOpen}
+      onOpenChange={setDraftPromptOpen}
+      title="You have an unfinished session"
+      description={`Started ${format(form.getValues("date") ?? new Date(), "EEE, d MMM")} with ${buildGroups(selectedSkills).length} skill${buildGroups(selectedSkills).length === 1 ? "" : "s"}. Keep going, or throw it away and start a new one?`}
+      confirmLabel="Start new"
+      cancelLabel="Keep going"
+      variant="destructive"
+      onConfirm={() => {
+        setDraftPromptOpen(false);
+        setDraftDiscardConfirmOpen(true);
+      }}
+    />
+    <ConfirmDialog
+      open={draftDiscardConfirmOpen}
+      onOpenChange={setDraftDiscardConfirmOpen}
+      title="Discard your unfinished session?"
+      description="The skills and notes you logged in it will be deleted. This can't be undone."
+      confirmLabel="Discard and start new"
+      cancelLabel="Keep it"
+      variant="destructive"
+      onConfirm={() => {
+        setDraftDiscardConfirmOpen(false);
+        clearSessionDraft();
+        resetToBlankSession();
+        setNoteStep("skills");
       }}
     />
 
