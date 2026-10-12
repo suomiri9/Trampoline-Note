@@ -7,6 +7,7 @@ import { registerRoutes } from "./routes/routes";
 import { appCors, isAppRequest } from "./app-client";
 import { serveStatic } from "./static";
 import { ensureFileStore } from "./file-store";
+import { seedFigDictionary } from "./dictionary-fig-seed";
 
 const app: Express = express();
 
@@ -51,6 +52,7 @@ app.use("/api", router);
 
 export async function initializeApp(): Promise<Express> {
   await ensureFileStore();
+  await seedFigDictionary();
   await setupAuth(app);
   registerRoutes(app);
   if (process.env["SERVE_STATIC"] === "true") {
