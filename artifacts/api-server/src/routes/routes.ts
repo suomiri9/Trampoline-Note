@@ -6,6 +6,7 @@ import { isAuthenticated, isAdmin, getUserId, getBaseUrl } from "../auth";
 import { APP_ORIGIN } from "../app-client";
 import { getPushRecommendation, clearCoachPushCache, coachChat, parseMenuPhoto, parseTofScreenshot, parseExecutionSheet, parseScoreSheet, menuChat, CoachUnavailableError, CoachStoppedError } from "../coach";
 import { serveCoachImage } from "../coach-images";
+import { torqCoachChat } from "../torq-coach";
 import { generateDictionaryImage, deleteDictionaryImage, serveDictionaryImage, DictionaryImageUnavailableError } from "../dictionary-images";
 import { db } from "../db";
 import { users } from "@shared/models/auth";
@@ -1282,6 +1283,43 @@ export function registerRoutes(app: Express): void {
       res.status(204).end();
     } catch (err) {
       console.error("Coach clear error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // The Torq iOS app's coach chat: the phone sends the conversation plus a
+  // summary of its video measurements; the reply also draws on this
+  // athlete's Trampoline Note data. Read-only, nothing is stored here.
+  app.post("/api/torq/coach", isAuthenticated, async (req, res) => {
+    const aborter = new AbortController();
+    let finished = false;
+    res.on("close", () => {
+      if (!finished) aborter.abort();
+    });
+    try {
+      const schema = z.object({
+        messages: z
+          .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().trim().min(1).max(4000) }))
+          .min(1)
+          .max(40)
+          .refine((m) => m[m.length - 1].role === "user", "The last message must be the athlete's"),
+        torqData: z.string().max(60000).default(""),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      });
+      const { messages, torqData, date } = schema.parse(req.body);
+      const reply = await torqCoachChat(getUserId(req), messages, torqData, date, aborter.signal);
+      finished = true;
+      res.json({ reply });
+    } catch (err) {
+      finished = true;
+      if (err instanceof CoachStoppedError) return res.end();
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message ?? "Invalid request" });
+      }
+      if (err instanceof CoachUnavailableError) {
+        return res.status(503).json({ code: "coach_unavailable", message: err.message });
+      }
+      console.error("torq coach error:", err);
       res.status(500).json({ message: "Internal server error" });
     }
   });
