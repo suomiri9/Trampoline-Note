@@ -8,7 +8,7 @@
 // entries, skills or points, and it only talks about the athlete's own
 // trampoline data. History lives on the phone and is sent with each request.
 
-import { aiComplete, type AiMessage } from "./ai";
+import { aiComplete, AI_MODEL, type AiMessage } from "./ai";
 import { storage } from "./storage";
 import { buildCoachContext, COACH_SAFETY_RULES, CoachUnavailableError, CoachStoppedError } from "./coach";
 import type { Skill } from "@workspace/db";
@@ -103,9 +103,24 @@ export async function torqCoachChat(
     reply = (await aiComplete({ messages, signal })).trim();
   } catch (err) {
     if (signal?.aborted) throw new CoachStoppedError();
-    console.error("[torq-coach] chat failed:", err);
+    const status = (err as { status?: number }).status;
+    console.error(`[torq-coach] chat failed (status ${status ?? "none"}, model ${AI_MODEL}):`, err);
+    if (status === 401 || status === 403) {
+      throw new CoachUnavailableError("The coach's AI key isn't working. The app owner needs to check it.");
+    }
+    if (status === 429) {
+      throw new CoachUnavailableError("The coach is busy or out of AI credit right now. Try again later.");
+    }
+    if (status === 404 || status === 400) {
+      throw new CoachUnavailableError("The coach's AI settings are wrong. The app owner needs to check them.");
+    }
     throw new CoachUnavailableError();
   }
-  if (!reply) throw new CoachUnavailableError();
+  // An empty reply means Claude declined the question; answer in scope
+  // instead of reporting an outage.
+  if (!reply) {
+    console.warn("[torq-coach] empty reply (declined)");
+    return "I can't help with that one. Ask me about your jumps, sessions, scores or recovery.";
+  }
   return reply;
 }
