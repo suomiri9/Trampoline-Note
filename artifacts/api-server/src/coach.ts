@@ -155,7 +155,7 @@ export async function buildCoachContext(userId: string, clientDate?: unknown): P
 // push recommendation prompts. Every prompt also states the closed-list
 // (deny-by-default) rule directly: the coach may ONLY do what its prompt
 // explicitly permits, everything else must be refused.
-const COACH_SAFETY_RULES = [
+export const COACH_SAFETY_RULES = [
   "SAFETY RULES (non-negotiable, apply to every reply):",
   "- Never suggest, recommend, or reference skills that are not already in the athlete's skill library.",
   "- Never give trampoline technique tips, form corrections, progressions, or skill advice of your own — technique belongs to the athlete's real coach.",
