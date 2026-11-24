@@ -17,7 +17,9 @@ async function handleResponse(res: Response, fallbackError: string) {
     } catch {
       // Ignore JSON parse errors if the response isn't JSON
     }
-    throw new Error(errorMessage);
+    const error = new Error(errorMessage) as Error & { status?: number };
+    error.status = res.status;
+    throw error;
   }
   return res.status === 204 ? null : res.json();
 }

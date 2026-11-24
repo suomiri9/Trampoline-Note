@@ -27,7 +27,9 @@ const cookieOptions: session.CookieOptions = {
   httpOnly: true,
   secure: true,
   sameSite: "lax" as const,
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+  // 30 days since the LAST visit (see `rolling` below), so someone who uses
+  // the site every week is never signed out mid-training.
+  maxAge: 30 * 24 * 60 * 60 * 1000,
 };
 
 function getSession() {
@@ -43,6 +45,10 @@ function getSession() {
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
+    // Re-send the cookie with a fresh expiry on every response. Without this
+    // the browser dropped the login a fixed time after signing in, even for
+    // daily users, and "End training" then failed with "Unauthorized".
+    rolling: true,
     cookie: cookieOptions,
   });
 }

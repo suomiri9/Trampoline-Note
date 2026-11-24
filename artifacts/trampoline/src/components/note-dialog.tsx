@@ -149,6 +149,17 @@ function SortablePracticeGroup({ gId, isConnected, children }: { gId: string; is
 }
 
 
+
+const SIGNED_OUT_MESSAGE =
+  "You've been signed out, so this session isn't saved yet. It's kept on this device: press Sign in again, then open Continue Training and press End training.";
+
+const SIGNED_OUT_EDIT_MESSAGE =
+  "You've been signed out, so these changes aren't saved yet. Sign in again in a new tab, then press Save here.";
+
+function isSignedOutError(err: unknown): boolean {
+  return !!err && typeof err === "object" && (err as { status?: unknown }).status === 401;
+}
+
 export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -162,6 +173,9 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
   
   const [selectedSkills, setSelectedSkills] = useState<SkillItem[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // True when the last save failed because the login had expired (401).
+  const [signedOut, setSignedOut] = useState(false);
+  const signedOutRef = useRef(false);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
   // Unfinished-session draft: restored on open, offered as "keep going or
   // start new". `draftArmed` turns on autosave only once the form holds
@@ -932,8 +946,33 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
 
   const totalDifficulty = calculateTotalDD(selectedSkills, allItems, routines, noteDay);
 
+  // Write the unfinished session to this device right now (the autosave
+  // effect may not have run yet), so signing in again brings it back.
+  const keepDraftNow = () => {
+    const v = form.getValues();
+    writeSessionDraft({
+      date: format(v.date ?? new Date(), "yyyy-MM-dd"),
+      startTime: v.startTime || "",
+      endTime: v.endTime || "",
+      content: v.content || "",
+      rating: v.rating ?? null,
+      skills: selectedSkills,
+      step: "details",
+      savedAt: Date.now(),
+    });
+  };
+
+  // Sends the user to the sign-in screen. The draft is already on this
+  // device, and the home screen offers "Continue Training" after sign-in.
+  const goSignIn = () => {
+    if (!isEditing) keepDraftNow();
+    void queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+  };
+
   const onSubmit = async (values: FormValues) => {
     setSaveError(null);
+    setSignedOut(false);
+    signedOutRef.current = false;
     let payload: any;
     try {
       payload = {
@@ -976,6 +1015,18 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
         onOpenChange(false);
       },
       (err) => {
+        if (isSignedOutError(err)) {
+          // Keep everything on this device so it comes back after signing in.
+          signedOutRef.current = true;
+          if (isEditing) {
+            setSaveError(SIGNED_OUT_EDIT_MESSAGE);
+            return;
+          }
+          keepDraftNow();
+          setSignedOut(true);
+          setSaveError(SIGNED_OUT_MESSAGE);
+          return;
+        }
         const fallback = "Your session is still here. Check your connection and try End training again.";
         const detail = err instanceof Error && err.message ? err.message : fallback;
         setSaveError(`${detail} Your session has not been discarded.`);
@@ -1010,8 +1061,10 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
       }
       const fallback = "Your session is still here. Check your connection and try End training again.";
       toast({
-        title: isEditing ? "Couldn't update session" : "Couldn't log session",
-        description: fallback,
+        title: signedOutRef.current ? "You've been signed out" : isEditing ? "Couldn't update session" : "Couldn't log session",
+        description: signedOutRef.current
+          ? isEditing ? "Sign in again, then press Save." : "Your session is kept. Sign in again, then press End training."
+          : fallback,
         variant: "destructive",
       });
     }
@@ -2832,7 +2885,20 @@ export function NoteDialog({ open, onOpenChange, noteToEdit }: NoteDialogProps) 
                   data-testid="note-save-error"
                 >
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                  <span>{saveError}</span>
+                  <div className="flex-1 space-y-2">
+                    <span>{saveError}</span>
+                    {signedOut && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="w-full rounded-lg"
+                        onClick={goSignIn}
+                        data-testid="btn-note-sign-in-again"
+                      >
+                        Sign in again
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
               {noteStep === "skills" ? (
